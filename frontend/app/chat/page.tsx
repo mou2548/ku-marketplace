@@ -17,6 +17,7 @@ import {
 
 const navLinks = [
   { label: "Home", href: "/", active: false },
+  { label: "Give away", href: "#", active: false },
   { label: "Inventory", href: "#", active: false },
   { label: "Messages", href: "/chat", active: true },
   { label: "History", href: "#", active: false },
@@ -73,7 +74,7 @@ function TopAppBar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[rgba(191,201,189,0.3)] bg-[rgba(250,248,255,0.8)] shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-        <Link href="/" className="font-kanit text-base font-bold text-ku-green">
+        <Link href="/" className="font-prompt text-base font-bold text-ku-green">
           KU Marketplace
         </Link>
 
@@ -117,7 +118,7 @@ function Sidebar() {
     <aside className="hidden w-[360px] shrink-0 flex-col border-r border-[rgba(191,201,189,0.2)] bg-ku-surface lg:flex">
       <div className="flex flex-col gap-4 border-b border-[rgba(191,201,189,0.1)] p-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-kanit text-xl font-semibold text-ku-ink">Chats</h2>
+          <h2 className="font-prompt text-xl font-semibold text-ku-ink">Chats</h2>
           <button
             aria-label="New chat"
             className="grid size-8 place-items-center rounded-full bg-[rgba(0,102,51,0.15)] hover:bg-[rgba(0,102,51,0.25)]"
@@ -162,7 +163,7 @@ function Sidebar() {
           >
             <div className="relative shrink-0">
               <div className="grid size-14 place-items-center overflow-hidden rounded-full border-2 border-ku-surface bg-ku-periwinkle">
-                <span className="font-kanit text-sm font-semibold text-ku-green-dark">
+                <span className="font-prompt text-sm font-semibold text-ku-green-dark">
                   {c.name.slice(0, 2)}
                 </span>
               </div>
@@ -173,7 +174,7 @@ function Sidebar() {
 
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="truncate font-kanit text-base font-semibold text-ku-ink">
+                <h3 className="truncate font-prompt text-base font-semibold text-ku-ink">
                   {c.name}
                 </h3>
                 <span className="shrink-0 font-prompt text-xs font-medium text-ku-muted">
@@ -206,10 +207,10 @@ function ChatHeader() {
     <div className="flex h-18 items-center justify-between border-b border-[rgba(191,201,189,0.2)] bg-ku-surface px-6 py-4">
       <div className="flex items-center gap-4">
         <div className="grid size-10 place-items-center overflow-hidden rounded-full bg-ku-periwinkle">
-          <span className="font-kanit text-sm font-semibold text-ku-green-dark">SK</span>
+          <span className="font-prompt text-sm font-semibold text-ku-green-dark">SK</span>
         </div>
         <div className="flex flex-col">
-          <h2 className="font-kanit text-lg text-ku-ink">Somsri K.</h2>
+          <h2 className="font-prompt text-lg text-ku-ink">Somsri K.</h2>
           <span className="font-prompt text-xs font-medium text-[#10B981]">Online</span>
         </div>
       </div>
@@ -230,7 +231,7 @@ function TradeFlashcard() {
     <div className="border-b border-[rgba(191,201,189,0.1)] bg-ku-surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
       <div className="flex flex-col gap-4 rounded-2xl border border-[rgba(191,201,189,0.2)] bg-ku-surface p-6">
         <div className="flex items-center justify-between">
-          <h3 className="font-kanit text-[13px] font-bold uppercase tracking-[1.3px] text-ku-muted">
+          <h3 className="font-prompt text-[13px] font-bold uppercase tracking-[1.3px] text-ku-muted">
             Current Trade
           </h3>
           <span className="flex items-center gap-2 rounded-full bg-[#FEF3C7] px-3 py-1">
@@ -250,7 +251,7 @@ function TradeFlashcard() {
               <span className="font-prompt text-[11px] font-semibold uppercase tracking-[0.55px] text-ku-muted">
                 Your Offer
               </span>
-              <span className="font-kanit text-base text-ku-ink">Calculus Textbook</span>
+              <span className="font-prompt text-base text-ku-ink">Calculus Textbook</span>
             </div>
           </div>
 
@@ -266,7 +267,7 @@ function TradeFlashcard() {
               <span className="font-prompt text-[11px] font-semibold uppercase tracking-[0.55px] text-ku-muted">
                 Their Offer
               </span>
-              <span className="font-kanit text-base text-ku-ink">Casio Calculator</span>
+              <span className="font-prompt text-base text-ku-ink">Casio Calculator</span>
             </div>
           </div>
 
@@ -305,7 +306,7 @@ function ChatStream() {
         m.from === "them" ? (
           <div key={i} className="flex items-end gap-4">
             <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ku-periwinkle">
-              <span className="font-kanit text-xs font-semibold text-ku-green-dark">SK</span>
+              <span className="font-prompt text-xs font-semibold text-ku-green-dark">SK</span>
             </div>
             <div className="max-w-[560px] rounded-2xl rounded-bl-sm border border-[rgba(191,201,189,0.2)] bg-ku-surface p-4 font-prompt text-base leading-[26px] text-ku-ink shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
               {m.text}
@@ -340,7 +341,7 @@ function ChatStream() {
                 <span className="size-2 rounded-full bg-[#BA1A1A]" />
                 Meetup point
               </span>
-              <span className="font-kanit text-base font-semibold text-white">Main Library</span>
+              <span className="font-prompt text-base font-semibold text-white">Main Library</span>
             </div>
           </div>
           <p className="px-1 py-2 text-center font-prompt text-base text-white">

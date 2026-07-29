@@ -12,6 +12,7 @@ import {
 
 const navLinks = [
   { label: "Home", href: "/", active: false },
+  { label: "Give away", href: "#", active: false },
   { label: "Inventory", href: "#", active: true },
   { label: "Messages", href: "#", active: false },
   { label: "History", href: "#", active: false },
@@ -30,7 +31,7 @@ function TopAppBar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[rgba(191,201,189,0.3)] bg-[rgba(250,248,255,0.8)] shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-        <Link href="/" className="font-kanit text-base font-bold text-ku-green">
+        <Link href="/" className="font-prompt text-base font-bold text-ku-green">
           KU Marketplace
         </Link>
 
@@ -102,7 +103,7 @@ function SellerScoreCard() {
     <div className="flex items-center justify-between rounded-3xl border border-ku-line bg-white p-6 shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
       <div className="flex items-center gap-4">
         <div className="relative grid size-12 place-items-center overflow-hidden rounded-full border border-[rgba(191,201,189,0.3)] bg-ku-periwinkle">
-          <span className="font-kanit text-sm font-semibold text-ku-green-dark">
+          <span className="font-prompt text-sm font-semibold text-ku-green-dark">
             KP
           </span>
           <span className="absolute bottom-0.5 right-0.5 size-3 rounded-full border-2 border-white bg-ku-green-dark" />
@@ -123,7 +124,7 @@ function SellerScoreCard() {
 
       <div className="flex items-center gap-4 rounded-xl bg-ku-lilac px-4 py-2">
         <div className="flex flex-col items-center border-r border-[rgba(191,201,189,0.3)] pr-4">
-          <span className="font-kanit text-xl font-bold text-ku-green-dark">
+          <span className="font-prompt text-xl font-bold text-ku-green-dark">
             4.9
           </span>
           <span className="font-prompt text-xs font-medium text-ku-muted">
@@ -131,7 +132,7 @@ function SellerScoreCard() {
           </span>
         </div>
         <div className="flex flex-col items-center pl-0">
-          <span className="font-kanit text-xl font-bold text-ku-ink">128</span>
+          <span className="font-prompt text-xl font-bold text-ku-ink">128</span>
           <span className="font-prompt text-xs font-medium text-ku-muted">
             Sales
           </span>
@@ -147,7 +148,7 @@ function SpecsCard() {
       {/* Title & price */}
       <div className="flex flex-col gap-2 pb-6">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="font-kanit text-2xl font-semibold text-ku-ink">
+          <h1 className="font-prompt text-2xl font-semibold text-ku-ink">
             iPad Pro 11&quot; M2 (2022)
           </h1>
           <button aria-label="Save" className="pt-1 text-ku-muted hover:text-ku-green">
@@ -155,7 +156,7 @@ function SpecsCard() {
           </button>
         </div>
 
-        <p className="font-kanit text-5xl font-bold tracking-[-0.96px] text-ku-green-accent">
+        <p className="font-prompt text-5xl font-bold tracking-[-0.96px] text-ku-green-accent">
           $650
         </p>
 

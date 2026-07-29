@@ -7,7 +7,7 @@ export default function QrCodePage() {
       <div className="flex w-full max-w-[600px] flex-col items-center gap-6 rounded-3xl border border-[#E2E8F0] bg-white p-6 shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
         {/* Title */}
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="font-kanit text-3xl font-semibold tracking-[-0.32px] text-ku-green">
+          <h1 className="font-prompt text-3xl font-semibold tracking-[-0.32px] text-ku-green">
             สแกนเพื่อยืนยันการมอบของ
           </h1>
           <p className="max-w-[400px] font-prompt text-base text-ku-muted">

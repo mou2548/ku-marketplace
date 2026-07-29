@@ -12,6 +12,7 @@ import {
 
 const navLinks = [
   { label: "Home", href: "/", active: false },
+  { label: "Give away", href: "#", active: false },
   { label: "Inventory", href: "#", active: true },
   { label: "Messages", href: "#", active: false },
   { label: "History", href: "#", active: false },
@@ -56,7 +57,7 @@ function TopAppBar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[rgba(191,201,189,0.3)] bg-[rgba(250,248,255,0.8)] shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-        <Link href="/" className="font-kanit text-base font-bold text-ku-green">
+        <Link href="/" className="font-prompt text-base font-bold text-ku-green">
           KU Marketplace
         </Link>
 
@@ -191,7 +192,7 @@ export default function SentOffersPage() {
         {/* Page header & tabs */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <h1 className="font-kanit text-3xl font-semibold tracking-[-0.32px] text-ku-ink">
+            <h1 className="font-prompt text-3xl font-semibold tracking-[-0.32px] text-ku-ink">
               My Sent Offers
             </h1>
             <p className="font-prompt text-base text-ku-muted">

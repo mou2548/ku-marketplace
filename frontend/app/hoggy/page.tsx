@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -11,10 +14,13 @@ import {
   Check,
   Send,
   ImageIcon,
+  X,
+  PanelRight,
 } from "lucide-react";
 
 const navLinks = [
   { label: "Home", href: "/", active: false },
+  { label: "Give away", href: "#", active: false },
   { label: "Inventory", href: "#", active: true },
   { label: "Messages", href: "#", active: false },
   { label: "History", href: "#", active: false },
@@ -25,7 +31,7 @@ const tags = ["Engineering", "Textbook", "1st Year Course"];
 
 const tradeWants = ["Scientific Calculator", "Lab Equipment", "Other Textbooks"];
 
-const inventory = [
+const initialInventory = [
   { title: "Lab Coat (Size M)", note: "Excellent condition, washed", selected: true },
   { title: "Scientific Calculator", note: "Casio FX-991EX", selected: true },
   { title: "Drafting Tools Set", note: "Missing one ruler", selected: false },
@@ -35,7 +41,7 @@ function TopAppBar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[rgba(191,201,189,0.3)] bg-[rgba(250,248,255,0.8)] shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-        <Link href="/" className="font-kanit text-base font-bold text-ku-green">
+        <Link href="/" className="font-prompt text-base font-bold text-ku-green">
           KU Marketplace
         </Link>
 
@@ -74,16 +80,33 @@ function TopAppBar() {
   );
 }
 
-function ContextualHeader() {
+function ContextualHeader({
+  open,
+  count,
+  onToggle,
+}: {
+  open: boolean;
+  count: number;
+  onToggle: () => void;
+}) {
   return (
-    <div className="flex h-12 items-center gap-4 border-b border-[rgba(191,201,189,0.3)] bg-[rgba(250,248,255,0.8)] px-6 backdrop-blur-md">
+    <div className="flex h-12 items-center justify-between border-b border-[rgba(191,201,189,0.3)] bg-[rgba(250,248,255,0.8)] px-6 backdrop-blur-md">
+      <div className="flex items-center gap-4">
+        <button
+          aria-label="Back"
+          className="grid size-10 place-items-center rounded-full hover:bg-ku-lilac"
+        >
+          <ArrowLeft className="size-4 text-ku-ink" />
+        </button>
+        <h1 className="font-prompt text-xl font-semibold text-ku-ink">Offer trade</h1>
+      </div>
       <button
-        aria-label="Back"
-        className="grid size-10 place-items-center rounded-full hover:bg-ku-lilac"
+        onClick={onToggle}
+        className="flex items-center gap-2 rounded-full bg-ku-green-accent px-4 py-1.5 font-prompt text-sm font-medium text-white hover:brightness-95"
       >
-        <ArrowLeft className="size-4 text-ku-ink" />
+        <PanelRight className="size-4" />
+        {open ? "Hide items" : `Select items (${count})`}
       </button>
-      <h1 className="font-kanit text-xl font-semibold text-ku-ink">Offer trade</h1>
     </div>
   );
 }
@@ -109,7 +132,7 @@ function HeroImage() {
 function TitleModule() {
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="font-kanit text-2xl font-semibold text-ku-ink">
+      <h2 className="font-prompt text-2xl font-semibold text-ku-ink">
         Calculus 1: Early Transcendentals (8th Edition)
       </h2>
       <div className="flex items-center gap-2 font-prompt text-base text-ku-muted">
@@ -124,11 +147,11 @@ function OwnerModule() {
   return (
     <div className="flex items-center gap-4">
       <div className="grid size-[60px] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-ku-periwinkle bg-ku-lilac">
-        <span className="font-kanit text-lg font-semibold text-ku-green-dark">NP</span>
+        <span className="font-prompt text-lg font-semibold text-ku-green-dark">NP</span>
       </div>
       <div className="flex flex-1 flex-col">
         <div className="flex items-center gap-1">
-          <h3 className="font-kanit text-xl font-semibold text-ku-ink">Nong Ploy</h3>
+          <h3 className="font-prompt text-xl font-semibold text-ku-ink">Nong Ploy</h3>
           <BadgeCheck className="size-[18px] text-ku-green-accent" />
         </div>
         <span className="font-prompt text-xs font-medium text-ku-muted">
@@ -176,7 +199,7 @@ function ConditionTagsModule() {
 function DescriptionModule() {
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="font-kanit text-xl font-semibold text-ku-ink">Description</h3>
+      <h3 className="font-prompt text-xl font-semibold text-ku-ink">Description</h3>
       <p className="font-prompt text-base leading-[26px] text-ku-muted">
         Used this for Dr. Panya&apos;s Cal 1 class last semester. Kept in pristine
         condition inside a protective sleeve. No pages folded, completely free of
@@ -192,7 +215,7 @@ function TradePreferencesModule() {
     <div className="flex flex-col gap-4 rounded-2xl border-2 border-dashed border-[#BFC9BD] bg-ku-lilac p-6">
       <div className="flex items-center gap-2">
         <ArrowLeftRight className="size-5 text-[#7C5800]" />
-        <h3 className="font-kanit text-xl font-semibold text-ku-ink">
+        <h3 className="font-prompt text-xl font-semibold text-ku-ink">
           Trade Preferences
         </h3>
       </div>
@@ -214,17 +237,21 @@ function InventoryItem({
   title,
   note,
   selected,
+  onToggle,
 }: {
   title: string;
   note: string;
   selected: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <div
-      className={`flex items-center gap-4 rounded-3xl p-4 ${
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex w-full items-center gap-4 rounded-3xl p-4 text-left transition-colors ${
         selected
           ? "border-2 border-ku-green-accent bg-[rgba(46,143,90,0.05)]"
-          : "border border-[#BFC9BD] bg-white"
+          : "border border-[#BFC9BD] bg-white hover:bg-ku-lilac"
       }`}
     >
       <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-ku-lilac shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
@@ -249,24 +276,43 @@ function InventoryItem({
       ) : (
         <div className="size-6 shrink-0 rounded-full border-2 border-[#BFC9BD]" />
       )}
-    </div>
+    </button>
   );
 }
 
-function TradeDrawer() {
-  const selectedCount = inventory.filter((i) => i.selected).length;
+function TradeDrawer({
+  items,
+  onToggle,
+  onClose,
+}: {
+  items: typeof initialInventory;
+  onToggle: (index: number) => void;
+  onClose: () => void;
+}) {
+  const selectedCount = items.filter((i) => i.selected).length;
 
   return (
     <aside className="flex w-full flex-col border-l border-[rgba(191,201,189,0.3)] bg-white shadow-[-10px_0_30px_rgba(15,23,42,0.08)] lg:w-[420px]">
-      <div className="flex items-center border-b border-[rgba(191,201,189,0.3)] px-6 py-5">
-        <h2 className="font-kanit text-xl font-semibold text-ku-ink">
+      <div className="flex items-center justify-between border-b border-[rgba(191,201,189,0.3)] px-6 py-5">
+        <h2 className="font-prompt text-xl font-semibold text-ku-ink">
           Select items to trade
         </h2>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="grid size-8 place-items-center rounded-full hover:bg-ku-lilac"
+        >
+          <X className="size-4 text-ku-muted" />
+        </button>
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto bg-[rgba(250,248,255,0.5)] p-6">
-        {inventory.map((item) => (
-          <InventoryItem key={item.title} {...item} />
+        {items.map((item, index) => (
+          <InventoryItem
+            key={item.title}
+            {...item}
+            onToggle={() => onToggle(index)}
+          />
         ))}
       </div>
 
@@ -278,7 +324,7 @@ function TradeDrawer() {
         </div>
         <Link
           href="/offers"
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-ku-green-accent font-kanit text-lg font-semibold text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:brightness-95"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-ku-green-accent font-prompt text-lg font-semibold text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:brightness-95"
         >
           Send Trade Offer
           <Send className="size-4" />
@@ -289,12 +335,26 @@ function TradeDrawer() {
 }
 
 export default function OfferTradePage() {
+  const [items, setItems] = useState(initialInventory);
+  const [drawerOpen, setDrawerOpen] = useState(true);
+
+  const toggleItem = (index: number) =>
+    setItems((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, selected: !it.selected } : it))
+    );
+
+  const selectedCount = items.filter((i) => i.selected).length;
+
   return (
     <div className="flex flex-1 flex-col bg-ku-surface lg:flex-row">
       {/* Main contextual canvas */}
       <div className="flex flex-1 flex-col">
         <TopAppBar />
-        <ContextualHeader />
+        <ContextualHeader
+          open={drawerOpen}
+          count={selectedCount}
+          onToggle={() => setDrawerOpen((o) => !o)}
+        />
         <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
           <HeroImage />
           <TitleModule />
@@ -306,7 +366,13 @@ export default function OfferTradePage() {
       </div>
 
       {/* Trade offer drawer */}
-      <TradeDrawer />
+      {drawerOpen && (
+        <TradeDrawer
+          items={items}
+          onToggle={toggleItem}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
     </div>
   );
 }

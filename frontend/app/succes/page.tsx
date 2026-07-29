@@ -16,7 +16,7 @@ export default function SuccessPage() {
           <div className="grid size-24 place-items-center rounded-full bg-ku-green-accent shadow-[0_8px_30px_rgba(0,75,36,0.3)]">
             <Check className="size-10 text-white" strokeWidth={3} />
           </div>
-          <h1 className="mt-4 text-center font-kanit text-5xl font-bold tracking-[-0.96px] text-ku-green-accent">
+          <h1 className="mt-4 text-center font-prompt text-5xl font-bold tracking-[-0.96px] text-ku-green-accent">
             Success!
           </h1>
           <p className="mt-1 text-center font-prompt text-lg text-ku-muted">
@@ -29,10 +29,10 @@ export default function SuccessPage() {
           {/* Trade header */}
           <div className="flex items-center gap-4 border-b border-[#BFC9BD] pb-4">
             <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border border-[#BFC9BD] bg-ku-periwinkle">
-              <span className="font-kanit text-sm font-semibold text-ku-green-dark">NT</span>
+              <span className="font-prompt text-sm font-semibold text-ku-green-dark">NT</span>
             </div>
             <div className="flex flex-1 flex-col">
-              <h3 className="font-kanit text-xl font-semibold text-ku-ink">
+              <h3 className="font-prompt text-xl font-semibold text-ku-ink">
                 Review Nutthapong T.
               </h3>
               <span className="font-prompt text-sm font-medium tracking-[0.14px] text-ku-muted">
