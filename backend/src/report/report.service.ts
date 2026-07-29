@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReportStatus } from '../../generated/prisma/client';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -37,8 +41,20 @@ export class ReportService {
     return report;
   }
 
+  private assertOpen(report: { report_id: number; status: ReportStatus }) {
+    if (
+      report.status !== ReportStatus.Pending &&
+      report.status !== ReportStatus.Under_Investigation
+    ) {
+      throw new BadRequestException(
+        `Report ${report.report_id} has already been decided (status: ${report.status})`,
+      );
+    }
+  }
+
   async resolve(reportId: number, adminId: number, dto: ResolveReportDto) {
-    await this.findOneOrThrow(reportId);
+    const report = await this.findOneOrThrow(reportId);
+    this.assertOpen(report);
     return this.prisma.report.update({
       where: { report_id: reportId },
       data: {
@@ -51,7 +67,8 @@ export class ReportService {
   }
 
   async restore(reportId: number, adminId: number) {
-    await this.findOneOrThrow(reportId);
+    const report = await this.findOneOrThrow(reportId);
+    this.assertOpen(report);
     return this.prisma.report.update({
       where: { report_id: reportId },
       data: {

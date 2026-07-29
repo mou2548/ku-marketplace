@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppealStatus, ReportStatus } from '../../generated/prisma/client';
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
 
@@ -20,6 +22,11 @@ export class AppealService {
     if (!report) {
       throw new NotFoundException(`Report ${dto.report_id} not found`);
     }
+    if (report.target_id !== appellantId) {
+      throw new ForbiddenException(
+        'Only the user the report was filed against can appeal it',
+      );
+    }
     if (!report.handled_at) {
       throw new BadRequestException(
         'Report has not been resolved yet — nothing to appeal',
@@ -31,6 +38,15 @@ export class AppealService {
     if (new Date() > deadline) {
       throw new BadRequestException(
         `Appeal window closed — must appeal within ${APPEAL_WINDOW_DAYS} days of resolution`,
+      );
+    }
+
+    const existingAppeal = await this.prisma.appeal.findFirst({
+      where: { report_id: dto.report_id },
+    });
+    if (existingAppeal) {
+      throw new BadRequestException(
+        `Report ${dto.report_id} has already been appealed`,
       );
     }
 
@@ -58,14 +74,28 @@ export class AppealService {
       );
     }
 
-    return this.prisma.appeal.update({
-      where: { appeal_id: appealId },
-      data: {
-        status: dto.status,
-        resolution_note: dto.resolution_note,
-        handled_by: adminId,
-        handled_at: new Date(),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updatedAppeal = await tx.appeal.update({
+        where: { appeal_id: appealId },
+        data: {
+          status: dto.status,
+          resolution_note: dto.resolution_note,
+          handled_by: adminId,
+          handled_at: new Date(),
+        },
+      });
+
+      if (dto.status === AppealStatus.Approved) {
+        await tx.report.update({
+          where: { report_id: appeal.report_id },
+          data: {
+            status: ReportStatus.Report_Dismissed,
+            resolution_note: 'Report reversed — appeal approved.',
+          },
+        });
+      }
+
+      return updatedAppeal;
     });
   }
 }

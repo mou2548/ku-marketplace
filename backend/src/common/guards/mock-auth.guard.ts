@@ -15,6 +15,14 @@ import { CurrentUserPayload } from '../interfaces/current-user.interface';
  */
 @Injectable()
 export class MockAuthGuard implements CanActivate {
+  constructor() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'MockAuthGuard cannot run in production — replace with real auth before deploying.',
+      );
+    }
+  }
+
   canActivate(context: ExecutionContext): boolean {
     const request = context
       .switchToHttp()
