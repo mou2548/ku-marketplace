@@ -8,13 +8,20 @@ import {
   Post,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
+import type {
+  AcceptOfferPayload,
+  BuyPostPayload,
+  CreateOfferPayload,
+  CreatePostPayload,
+  UpdatePostPayload,
+} from './posts.service';
 
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
-  createPost(@Body() body: Record<string, any>) {
+  createPost(@Body() body: CreatePostPayload) {
     return this.postsService.createPost(body);
   }
 
@@ -31,7 +38,7 @@ export class PostsController {
   @Patch(':post_id')
   updatePostPrice(
     @Param('post_id') postId: string,
-    @Body() body: Record<string, any>,
+    @Body() body: UpdatePostPayload,
   ) {
     return this.postsService.updatePostPrice(postId, body);
   }
@@ -42,14 +49,14 @@ export class PostsController {
   }
 
   @Post(':post_id/buy')
-  buyPost(@Param('post_id') postId: string) {
-    return this.postsService.buyPost(postId);
+  buyPost(@Param('post_id') postId: string, @Body() body: BuyPostPayload) {
+    return this.postsService.buyPost(postId, body);
   }
 
   @Post(':post_id/offer')
   createOffer(
     @Param('post_id') postId: string,
-    @Body() body: Record<string, any>,
+    @Body() body: CreateOfferPayload,
   ) {
     return this.postsService.createOffer(postId, body);
   }
@@ -63,8 +70,9 @@ export class PostsController {
   acceptOffer(
     @Param('post_id') postId: string,
     @Param('offer_id') offerId: string,
+    @Body() body: AcceptOfferPayload,
   ) {
-    return this.postsService.acceptOffer(postId, offerId);
+    return this.postsService.acceptOffer(postId, offerId, body);
   }
 
   @Post(':offer_id/withdraw')
