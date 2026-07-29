@@ -4,10 +4,87 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// --- §4.1 User (minimal — only what Report/Appeal need as FK target) ---
+model User {
+  user_id        Int      @id @default(autoincrement())
+  email          String   @unique @db.VarChar(255)
+  first_name_en  String   @db.VarChar(100)
+  last_name_en   String   @db.VarChar(100)
+  first_name_th  String   @db.VarChar(100)
+  last_name_th   String   @db.VarChar(100)
+  password_hash  String   @db.VarChar(255)
+  phone_number   String?  @db.VarChar(20)
+  status         String   @default("Active") @db.VarChar(20)
+  isAdmin        Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  reports_filed   Report[] @relation("ReportReporter")
+  reports_handled Report[] @relation("ReportHandledBy")
+  appeals_filed   Appeal[] @relation("AppealAppellant")
+  appeals_handled Appeal[] @relation("AppealHandledBy")
+}
+
+// --- §4.9 Report / Appeal ---
+enum ReportType {
+  Post
+  User
+  Transaction
+}
+
+enum ReportStatus {
+  Pending
+  Under_Investigation
+  Violation_Confirmed
+  Report_Dismissed
+}
+
+model Report {
+  report_id       Int          @id @default(autoincrement())
+  reporter_id     Int
+  reporter        User         @relation("ReportReporter", fields: [reporter_id], references: [user_id])
+  report_type     ReportType
+  target_id       Int
+  reason_category String       @db.VarChar(100)
+  details         String?
+  evidence_urls   Json?
+  status          ReportStatus @default(Pending)
+  handled_by      Int?
+  handler         User?        @relation("ReportHandledBy", fields: [handled_by], references: [user_id])
+  resolution_note String?
+  handled_at      DateTime?
+  created_at      DateTime     @default(now())
+
+  appeals Appeal[]
+}
+
+enum AppealStatus {
+  Pending
+  Under_Review
+  Approved
+  Rejected
+}
+
+model Appeal {
+  appeal_id       Int          @id @default(autoincrement())
+  report_id       Int
+  report          Report       @relation(fields: [report_id], references: [report_id])
+  appellant_id    Int
+  appellant       User         @relation("AppealAppellant", fields: [appellant_id], references: [user_id])
+  reason          String
+  evidence_urls   Json?
+  status          AppealStatus @default(Pending)
+  handled_by      Int?
+  handler         User?        @relation("AppealHandledBy", fields: [handled_by], references: [user_id])
+  resolution_note String?
+  created_at      DateTime     @default(now())
+  handled_at      DateTime?
 }

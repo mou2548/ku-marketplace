@@ -1,0 +1,128 @@
+@host = http://localhost:3001
+
+### === §7.7 Report & Moderation ===
+### Seeded test users: 1 = regular user, 2 = admin A, 3 = admin B
+
+### 1. POST /reports — no auth header -> expect 401
+POST {{host}}/reports
+Content-Type: application/json
+
+{
+  "report_type": "Post",
+  "target_id": 1,
+  "reason_category": "Fake item"
+}
+
+### 2. POST /reports — with x-user-id -> expect 201 + status: Pending
+POST {{host}}/reports
+Content-Type: application/json
+x-user-id: 1
+
+{
+  "report_type": "Post",
+  "target_id": 1,
+  "reason_category": "Fake item",
+  "details": "Item photos don't match description",
+  "evidence_urls": ["https://example.com/evidence1.jpg"]
+}
+
+### 3. POST /reports — invalid report_type -> expect 400
+POST {{host}}/reports
+Content-Type: application/json
+x-user-id: 1
+
+{
+  "report_type": "NotARealType",
+  "target_id": 1,
+  "reason_category": "Fake item"
+}
+
+### 4. GET /admin/reports — no admin header -> expect 403
+GET {{host}}/admin/reports
+x-user-id: 1
+
+### 5. GET /admin/reports — as admin -> expect 200 + list
+GET {{host}}/admin/reports
+x-user-id: 2
+x-is-admin: true
+
+### 6. POST /admin/reports/1/resolve — as admin A -> expect 200, status: Violation_Confirmed
+POST {{host}}/admin/reports/1/resolve
+Content-Type: application/json
+x-user-id: 2
+x-is-admin: true
+
+{
+  "status": "Violation_Confirmed",
+  "resolution_note": "Confirmed after reviewing chat history."
+}
+
+### 7. POST /admin/reports/999/resolve — nonexistent report -> expect 404
+POST {{host}}/admin/reports/999/resolve
+Content-Type: application/json
+x-user-id: 2
+x-is-admin: true
+
+{
+  "status": "Violation_Confirmed"
+}
+
+### 8. POST /reports — create a 2nd report to test /restore on
+POST {{host}}/reports
+Content-Type: application/json
+x-user-id: 1
+
+{
+  "report_type": "Post",
+  "target_id": 2,
+  "reason_category": "Reported unfairly"
+}
+
+### 9. POST /admin/reports/2/restore — as admin A -> expect 200, status: Report_Dismissed
+POST {{host}}/admin/reports/2/restore
+x-user-id: 2
+x-is-admin: true
+
+### === Appeals ===
+
+### 10. POST /appeals — appeal report 1 (already resolved) -> expect 201
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 1
+
+{
+  "report_id": 1,
+  "reason": "I believe this decision was unfair, item was as described.",
+  "evidence_urls": ["https://example.com/appeal-evidence.jpg"]
+}
+
+### 11. POST /appeals — appeal report 2 again -> expect 400 (report handled but let's test unresolved case separately)
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 1
+
+{
+  "report_id": 2,
+  "reason": "Testing appeal on already-restored report"
+}
+
+### 12. POST /admin/appeals/1/decide — same admin who resolved report 1 -> expect 400
+POST {{host}}/admin/appeals/1/decide
+Content-Type: application/json
+x-user-id: 2
+x-is-admin: true
+
+{
+  "status": "Approved"
+}
+
+### 13. POST /admin/appeals/1/decide — different admin (admin B) -> expect 200
+POST {{host}}/admin/appeals/1/decide
+Content-Type: application/json
+x-user-id: 3
+x-is-admin: true
+
+{
+  "status": "Approved",
+  "resolution_note": "Reviewed chat log, agree the item matched description."
+}
