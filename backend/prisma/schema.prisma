@@ -1,13 +1,79 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
-
 datasource db {
   provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ItemCondition {
+  new
+  very_good
+  good
+  acceptable
+}
+
+enum ItemStatus {
+  Unlisted
+  Listed
+  Transferred
+}
+
+model User {
+  user_id       Int      @id @default(autoincrement())
+  email         String   @unique @db.VarChar(255)
+  first_name_en String   @db.VarChar(100)
+  last_name_en  String   @db.VarChar(100)
+  first_name_th String   @db.VarChar(100)
+  last_name_th  String   @db.VarChar(100)
+  password_hash String   @db.VarChar(255)
+  phone_number  String?  @db.VarChar(20)
+  status        String   @default("Active") @db.VarChar(20)
+  isAdmin       Boolean  @default(false)
+  created_at    DateTime @default(now())
+
+  items Item[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  items     Item[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model Item {
+  item_id         Int           @id @default(autoincrement())
+  owner_id        Int
+  owner           User          @relation(fields: [owner_id], references: [user_id], onDelete: Cascade)
+  name            String        @db.VarChar(255)
+  condition       ItemCondition
+  description     String?       @db.Text
+  status          ItemStatus    @default(Unlisted)
+  course_name     String?       @db.VarChar(100)
+  brand_model     String?       @db.VarChar(100)
+  warranty_expiry DateTime?
+  size            String?       @db.VarChar(20)
+  created_at      DateTime      @default(now())
+  images          ItemImage[]
+
+  // Relational Category link
+  categoryId Int?      @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("items")
+}
+
+model ItemImage {
+  image_id      Int      @id @default(autoincrement())
+  item_id       Int
+  item          Item     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  image_url     String   @db.VarChar(500)
+  is_primary    Boolean  @default(false)
+  display_order Int      @default(0)
+  created_at    DateTime @default(now())
 }
