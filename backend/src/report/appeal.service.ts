@@ -88,6 +88,14 @@ export class AppealService {
         'Appeal must be decided by a different admin than the one who resolved the original report',
       );
     }
+    if (
+      appeal.status !== AppealStatus.Pending &&
+      appeal.status !== AppealStatus.Under_Review
+    ) {
+      throw new BadRequestException(
+        `Appeal ${appealId} has already been decided (status: ${appeal.status})`,
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const updatedAppeal = await tx.appeal.update({

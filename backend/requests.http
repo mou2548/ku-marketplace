@@ -181,3 +181,20 @@ x-user-id: 1
   "report_id": {{createPostReport.response.body.$.report_id}},
   "reason": "This is my post, the report is wrong"
 }
+
+### === Double-decide guard — an already-decided appeal must not be overwritten ===
+
+### 18. POST /admin/appeals/:id/decide — decide the appeal from #13 a SECOND time -> expect 400
+### #13 already approved this appeal (which set its report to Report_Dismissed).
+### Before the fix there was no status check, so this Rejected would have gone through:
+### appeal would end up Rejected while its report stayed Report_Dismissed — contradictory,
+### and handled_by/handled_at of the original decision would be silently overwritten.
+POST {{host}}/admin/appeals/{{createAppeal1.response.body.$.appeal_id}}/decide
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Rejected",
+  "resolution_note": "Attempt to overwrite an already-approved appeal"
+}
