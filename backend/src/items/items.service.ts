@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { ItemCondition } from '@prisma/client';
 
 @Injectable()
 export class ItemsService {
@@ -89,13 +90,14 @@ export class ItemsService {
   }
 
   async update(id: number, updateItemDto: UpdateItemDto) {
-    const { images, category, warranty_expiry, ...itemData } = updateItemDto;
+    const { images, category, warranty_expiry, condition, ...itemData } = updateItemDto;
 
     try {
       return await this.prisma.item.update({
         where: { item_id: id },
         data: {
           ...itemData,
+          ...(condition && { condition: condition as ItemCondition }),
           ...(warranty_expiry !== undefined && {
             warranty_expiry: warranty_expiry ? new Date(warranty_expiry) : null,
           }),
