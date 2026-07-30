@@ -212,7 +212,7 @@ function SpecsCard() {
           Buy now
         </button>
         <Link
-          href="/hoggy"
+          href="/trade"
           className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-ku-green-accent bg-white font-prompt text-sm font-medium tracking-[0.14px] text-ku-green-accent hover:bg-ku-lilac"
         >
           <Repeat className="size-4" />
