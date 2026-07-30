@@ -1,42 +1,36 @@
 import Link from "next/link";
 import { Bell, User } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-
 const NAV_LINKS = [
-  { label: "Home", href: "/marketplace" },
-  { label: "Giveaway", href: "#" },
-  { label: "Inventory", href: "#" },
-  { label: "Messages", href: "#" },
-  { label: "History", href: "#" },
+  { label: "Home", href: "/" },
+  { label: "Giveaway", href: "/giveaway" },
+  { label: "Inventory", href: "/inventory" },
+  { label: "Messages", href: "/chat" },
+  { label: "History", href: "/trade" },
   { label: "Account", href: "/account" },
 ] as const;
 
-type NavLabel = (typeof NAV_LINKS)[number]["label"];
-
-export function SiteHeader({ active = "Home" }: { active?: NavLabel }) {
+export function SiteHeader({
+  active,
+}: {
+  active?: (typeof NAV_LINKS)[number]["href"];
+}) {
   return (
-    <header className="flex w-full items-center justify-between px-8 py-4">
-      <span className="text-lg font-bold" style={{ color: "#1D6D41" }}>
-        KU Marketplace
-      </span>
+    <header className="sticky top-0 z-10 flex flex-col border-b border-border/30 bg-white/80 px-10 shadow-card backdrop-blur-[10px]">
+      <div className="flex h-16 w-full items-center justify-between">
+        <span className="text-base font-bold text-[#1D6D41]">
+          KU Marketplace
+        </span>
 
-      <nav className="flex items-center gap-8">
-        {NAV_LINKS.map((link) => {
-          const isActive = link.label === active;
-          return (
+        <nav className="flex items-start gap-8">
+          {NAV_LINKS.map((link) => (
             <Link
-              key={link.label}
+              key={link.href}
               href={link.href}
               className={
-                isActive
-                  ? "border-b-2 pb-1 text-sm font-medium"
-                  : "text-sm text-muted-foreground transition-colors hover:text-foreground"
-              }
-              style={
-                isActive
-                  ? { color: "#1D6D41", borderColor: "#1D6D41" }
-                  : undefined
+                link.href === active
+                  ? "flex items-center justify-center rounded-lg border-b-2 border-[#1D6D41] px-3 py-2 text-base font-medium text-[#1D6C41]"
+                  : "flex items-center rounded-lg px-3 py-2 text-base text-muted-foreground hover:bg-[#F4F6F8]"
               }
             >
               {link.label}
@@ -52,6 +46,25 @@ export function SiteHeader({ active = "Home" }: { active?: NavLabel }) {
         <Button variant="ghost" size="icon" aria-label="Account">
           <User className="size-5" style={{ color: "#1D6D41" }} />
         </Button>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-4">
+          <Link
+            href="/notifications"
+            aria-label="Notifications"
+            className="flex size-8 items-center justify-center rounded-full text-[#1D6D41] hover:bg-[#F4F6F8]"
+          >
+            <Bell className="size-4" />
+          </Link>
+          <Link
+            href="/account"
+            aria-label="Account"
+            className="flex size-8 items-center justify-center rounded-full text-[#1D6D41] hover:bg-[#F4F6F8]"
+          >
+            <User className="size-4" />
+          </Link>
+        </div>
       </div>
     </header>
   );
