@@ -1,0 +1,37 @@
+@host = http://localhost:3002
+
+### === §7.4 Transactions, Fulfillment & Payment ===
+### No Item/Post/Offer endpoints exist yet (§7.2/§7.3 belong to other modules),
+### so there's no way to create a Transaction through the API alone — seed one
+### directly via Prisma first. Existing seeded users from earlier testing:
+### 1 = seller, 2 = buyer, 3 = unrelated third party.
+### Example seed (run once, adjust ids/values as needed):
+###
+###   const item = await prisma.item.create({ data: { owner_id: 1, name: 'Calculus textbook', category: 'Books', condition: 'Good', course_name: '01417161' } });
+###   const post = await prisma.post.create({ data: { item_id: item.item_id, post_type: 'SellOnly', price: 250.0 } });
+###   const tx = await prisma.transaction.create({ data: { post_id: post.post_id, buyer_id: 2, seller_id: 1, delivery_method: 'Meetup' } });
+###
+### The requests below assume the resulting transaction has transaction_id: 1.
+
+### 1. GET /transactions — no auth header -> expect 401
+GET {{host}}/transactions
+
+### 2. GET /transactions — as buyer (2) -> expect 200, list includes transaction 1
+GET {{host}}/transactions
+x-user-id: 2
+
+### 3. GET /transactions — as seller (1) -> expect 200, list includes transaction 1
+GET {{host}}/transactions
+x-user-id: 1
+
+### 4. GET /transactions/1 — as seller (1) -> expect 200, status: Pending
+GET {{host}}/transactions/1
+x-user-id: 1
+
+### 5. GET /transactions/1 — as unrelated user (3) -> expect 403
+GET {{host}}/transactions/1
+x-user-id: 3
+
+### 6. GET /transactions/999 — nonexistent -> expect 404
+GET {{host}}/transactions/999
+x-user-id: 1
