@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { GiveawaysService } from './giveaways.service';
 import type {
   CreateGiveawayPayload,
@@ -27,11 +35,13 @@ export class GiveawaysController {
   }
 
   @Post('giveaways/:id/draw')
+  @HttpCode(HttpStatus.OK)
   draw(@Param('id') id: string) {
     return this.giveawaysService.draw(id);
   }
 
   @Post('giveaways/:id/select')
+  @HttpCode(HttpStatus.OK)
   select(@Param('id') id: string, @Body() body: SelectRecipientsPayload) {
     return this.giveawaysService.select(id, body.receiver_ids ?? []);
   }
@@ -42,6 +52,7 @@ export class GiveawaysController {
   }
 
   @Post('giveaways/recipients/:recipient_id/forfeit')
+  @HttpCode(HttpStatus.OK)
   forfeit(
     @Param('recipient_id') recipientId: string,
     @Body() body: ForfeitPayload,
@@ -55,6 +66,7 @@ export class GiveawaysController {
   }
 
   @Post('giveaways-tickets/:id/qr/scan')
+  @HttpCode(HttpStatus.OK)
   qrScan(@Param('id') id: string, @Body() body: ScanQrPayload) {
     return this.giveawaysService.qrScan(id, body.token);
   }

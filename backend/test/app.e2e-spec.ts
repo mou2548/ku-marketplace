@@ -46,10 +46,10 @@ describe('AppController (e2e)', () => {
       .send({ delivery_method: 'Meetup', quantity: 1 })
       .expect(201);
     await request(server)
-      .post('/posts/post_001/offer')
+      .post('/posts/post_001/offers')
       .send({ item_ids: [201, 205], additional_money: 100 })
       .expect(201);
-    await request(server).get('/posts/post_001/offer').expect(200);
+    await request(server).get('/posts/post_001/offers').expect(200);
     await request(server)
       .post('/posts/post_001/offers/offer_001/accept')
       .send({ delivery_method: 'Shipping' })
@@ -91,11 +91,11 @@ describe('AppController (e2e)', () => {
     await request(server)
       .post('/giveaways/giveaway_001/draw')
       .send({})
-      .expect(201);
+      .expect(200);
     await request(server)
       .post('/giveaways/giveaway_001/select')
       .send({ receiver_ids: [3311, 3320, 3325] })
-      .expect(201)
+      .expect(200)
       .expect(({ body }) => {
         const response = body as { data: { recipients: unknown[] } };
         expect(response.data.recipients).toHaveLength(3);
@@ -104,7 +104,7 @@ describe('AppController (e2e)', () => {
     await request(server)
       .post('/giveaways/recipients/recipient_001/forfeit')
       .send({ confirm: true })
-      .expect(201);
+      .expect(200);
     await request(server)
       .post('/giveaways-tickets/ticket_001/qr/generate')
       .send({})
@@ -112,7 +112,7 @@ describe('AppController (e2e)', () => {
     await request(server)
       .post('/giveaways-tickets/ticket_001/qr/scan')
       .send({ token: 'mock-qr-token-001' })
-      .expect(201)
+      .expect(200)
       .expect(({ body }) =>
         expect(body).toMatchObject({ data: { valid: true } }),
       );
