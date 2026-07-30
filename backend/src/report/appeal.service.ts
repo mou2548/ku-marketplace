@@ -5,9 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AppealStatus, ReportStatus } from '../../generated/prisma/client';
+import {
+  AppealStatus,
+  ReportStatus,
+  ReportType,
+} from '../../generated/prisma/client';
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
+import { resolveTargetOwnerId } from '../common/mock-data/mock-target-owners';
 
 const APPEAL_WINDOW_DAYS = 7;
 
@@ -22,7 +27,17 @@ export class AppealService {
     if (!report) {
       throw new NotFoundException(`Report ${dto.report_id} not found`);
     }
-    if (report.target_id !== appellantId) {
+    const ownerId =
+      report.report_type === ReportType.User
+        ? report.target_id
+        : resolveTargetOwnerId(report.report_type, report.target_id);
+
+    if (ownerId === undefined) {
+      throw new NotFoundException(
+        `No owner found for ${report.report_type} ${report.target_id}`,
+      );
+    }
+    if (ownerId !== appellantId) {
       throw new ForbiddenException(
         'Only the user the report was filed against can appeal it',
       );

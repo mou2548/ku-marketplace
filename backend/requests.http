@@ -14,6 +14,7 @@ Content-Type: application/json
 }
 
 ### 2. POST /reports — with x-user-id -> expect 201 + status: Pending
+# @name createReport1
 POST {{host}}/reports
 Content-Type: application/json
 x-user-id: 1
@@ -46,8 +47,9 @@ GET {{host}}/admin/reports
 x-user-id: 2
 x-is-admin: true
 
-### 6. POST /admin/reports/1/resolve — as admin A -> expect 200, status: Violation_Confirmed
-POST {{host}}/admin/reports/1/resolve
+### 6. POST /admin/reports/:id/resolve — as admin A -> expect 200, status: Violation_Confirmed
+### uses the report created in #2 — run #2 first
+POST {{host}}/admin/reports/{{createReport1.response.body.$.report_id}}/resolve
 Content-Type: application/json
 x-user-id: 2
 x-is-admin: true
@@ -68,6 +70,7 @@ x-is-admin: true
 }
 
 ### 8. POST /reports — create a 2nd report to test /restore on
+# @name createReport2
 POST {{host}}/reports
 Content-Type: application/json
 x-user-id: 1
@@ -78,36 +81,39 @@ x-user-id: 1
   "reason_category": "Reported unfairly"
 }
 
-### 9. POST /admin/reports/2/restore — as admin A -> expect 200, status: Report_Dismissed
-POST {{host}}/admin/reports/2/restore
+### 9. POST /admin/reports/:id/restore — as admin A -> expect 200, status: Report_Dismissed
+### uses the report created in #8 — run #8 first
+POST {{host}}/admin/reports/{{createReport2.response.body.$.report_id}}/restore
 x-user-id: 2
 x-is-admin: true
 
 ### === Appeals ===
 
-### 10. POST /appeals — appeal report 1 (already resolved) -> expect 201
+### 10. POST /appeals — appeal report from #2 (already resolved) -> expect 201
+# @name createAppeal1
 POST {{host}}/appeals
 Content-Type: application/json
 x-user-id: 1
 
 {
-  "report_id": 1,
+  "report_id": {{createReport1.response.body.$.report_id}},
   "reason": "I believe this decision was unfair, item was as described.",
   "evidence_urls": ["https://example.com/appeal-evidence.jpg"]
 }
 
-### 11. POST /appeals — appeal report 2 again -> expect 400 (report handled but let's test unresolved case separately)
+### 11. POST /appeals — appeal report from #8 (already restored/dismissed) -> expect 201
 POST {{host}}/appeals
 Content-Type: application/json
 x-user-id: 1
 
 {
-  "report_id": 2,
+  "report_id": {{createReport2.response.body.$.report_id}},
   "reason": "Testing appeal on already-restored report"
 }
 
-### 12. POST /admin/appeals/1/decide — same admin who resolved report 1 -> expect 400
-POST {{host}}/admin/appeals/1/decide
+### 12. POST /admin/appeals/:id/decide — same admin who resolved report 1 -> expect 400
+### uses the appeal created in #10 — run #10 first
+POST {{host}}/admin/appeals/{{createAppeal1.response.body.$.appeal_id}}/decide
 Content-Type: application/json
 x-user-id: 2
 x-is-admin: true
@@ -116,8 +122,8 @@ x-is-admin: true
   "status": "Approved"
 }
 
-### 13. POST /admin/appeals/1/decide — different admin (admin B) -> expect 200
-POST {{host}}/admin/appeals/1/decide
+### 13. POST /admin/appeals/:id/decide — different admin (admin B) -> expect 200
+POST {{host}}/admin/appeals/{{createAppeal1.response.body.$.appeal_id}}/decide
 Content-Type: application/json
 x-user-id: 3
 x-is-admin: true
@@ -125,4 +131,53 @@ x-is-admin: true
 {
   "status": "Approved",
   "resolution_note": "Reviewed chat log, agree the item matched description."
+}
+
+### === Appeal ownership fix — Post/Transaction target_id != user_id ===
+### mock owner map (src/common/mock-data/mock-target-owners.ts): Post:10 -> user 1
+
+### 14. POST /reports — report a Post whose real owner is user 1, but post_id (10) != owner's user_id
+# @name createPostReport
+POST {{host}}/reports
+Content-Type: application/json
+x-user-id: 2
+
+{
+  "report_type": "Post",
+  "target_id": 10,
+  "reason_category": "Fake item"
+}
+
+### 15. POST /admin/reports/:id/resolve — as admin A -> expect 200, status: Violation_Confirmed
+### run #14 first (Send Request) so {{createPostReport.response.body.$.report_id}} resolves
+POST {{host}}/admin/reports/{{createPostReport.response.body.$.report_id}}/resolve
+Content-Type: application/json
+x-user-id: 2
+x-is-admin: true
+
+{
+  "status": "Violation_Confirmed"
+}
+
+### 16. POST /appeals — wrong user (id 10, matches the post_id, NOT the real owner) -> expect 403
+### Before the fix this would have wrongly PASSED because target_id (10) was compared
+### directly against appellantId. Now it should be blocked with 403.
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 10
+
+{
+  "report_id": {{createPostReport.response.body.$.report_id}},
+  "reason": "I own this post (I don't, my user_id just matches the post_id)"
+}
+
+### 17. POST /appeals — real owner (user 1) appeals -> expect 201
+### Before the fix this would have wrongly gotten 403 because target_id (10) != appellantId (1).
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 1
+
+{
+  "report_id": {{createPostReport.response.body.$.report_id}},
+  "reason": "This is my post, the report is wrong"
 }
