@@ -53,7 +53,7 @@ export class PostsController {
     return this.postsService.buyPost(postId, body);
   }
 
-  @Post(':post_id/offer')
+  @Post(':post_id/offers')
   createOffer(
     @Param('post_id') postId: string,
     @Body() body: CreateOfferPayload,
@@ -61,7 +61,7 @@ export class PostsController {
     return this.postsService.createOffer(postId, body);
   }
 
-  @Get(':post_id/offer')
+  @Get(':post_id/offers')
   getOffers(@Param('post_id') postId: string) {
     return this.postsService.getOffers(postId);
   }
