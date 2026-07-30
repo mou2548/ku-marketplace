@@ -33,7 +33,7 @@ export default function AccountPage() {
         background: "linear-gradient(0deg, #FAF8FF 0%, #FAF8FF 100%), #FFF",
       }}
     >
-      <SiteHeader active="Account" />
+      <SiteHeader active="/account" />
 
       <main className="mx-auto flex w-full max-w-[1280px] flex-col items-start px-6 pt-20 pb-[258px]">
         <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">

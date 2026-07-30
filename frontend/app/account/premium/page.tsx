@@ -94,7 +94,7 @@ export default function PremiumPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FAF8FF" }}>
-      <SiteHeader active="Account" />
+      <SiteHeader active="/account" />
 
       <main className="mx-auto flex w-full max-w-[1280px] flex-col items-start gap-8 px-8 pt-[127px] pb-12">
         <div className="flex w-full flex-col items-center gap-2 text-center">
