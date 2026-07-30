@@ -1,4 +1,3 @@
-// src/items/items.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -9,26 +8,38 @@ import { ItemCondition } from '@prisma/client';
 export class ItemsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createItemDto: CreateItemDto, ownerId: number = 1) {
+  async getCategories() {
+    return this.prisma.category.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async count() {
+    const count = await this.prisma.item.count();
+    return { count };
+  }
+
+  async create(createItemDto: CreateItemDto) {
     const { images, warranty_expiry, category, ...itemData } = createItemDto;
 
     return this.prisma.item.create({
       data: {
         ...itemData,
-        //  Use relational connect for owner instead of owner_id scalar
+        // Satisfies Prisma's required owner relation in schema
         owner: {
-          connect: { user_id: ownerId },
+          connect: { user_id: 1 },
         },
         warranty_expiry: warranty_expiry ? new Date(warranty_expiry) : null,
 
-        //  Connect category by slug
+        // Connect category by slug
         ...(category && {
           category: {
             connect: { slug: category },
           },
         }),
 
-        images: images
+        // Create images if provided
+        images: images && images.length > 0
           ? {
               create: images.map((img) => ({
                 image_url: img.image_url,
@@ -41,14 +52,6 @@ export class ItemsService {
       include: {
         images: true,
         category: true,
-        owner: {
-          select: {
-            user_id: true,
-            first_name_en: true,
-            last_name_en: true,
-            email: true,
-          },
-        },
       },
     });
   }
@@ -71,14 +74,6 @@ export class ItemsService {
       include: {
         images: true,
         category: true,
-        owner: {
-          select: {
-            user_id: true,
-            first_name_en: true,
-            last_name_en: true,
-            email: true,
-          },
-        },
       },
     });
 
@@ -106,6 +101,16 @@ export class ItemsService {
               connect: { slug: category },
             },
           }),
+          ...(images && {
+            images: {
+              deleteMany: {},
+              create: images.map((img) => ({
+                image_url: img.image_url,
+                is_primary: img.is_primary ?? false,
+                display_order: img.display_order ?? 0,
+              })),
+            },
+          }),
         },
         include: {
           images: true,
@@ -114,7 +119,7 @@ export class ItemsService {
       });
     } catch (error) {
       if (error.code === 'P2025') {
-        throw new NotFoundException(`Item with ID ${id} not found`);
+        throw new NotFoundException(`Item or connected relation with ID ${id} not found`);
       }
       throw error;
     }
@@ -131,15 +136,5 @@ export class ItemsService {
       }
       throw error;
     }
-  }
-
-  async getCategories() {
-    return this.prisma.category.findMany({
-      include: {
-        _count: {
-          select: { items: true },
-        },
-      },
-    });
   }
 }
