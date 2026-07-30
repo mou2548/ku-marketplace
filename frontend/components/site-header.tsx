@@ -35,6 +35,17 @@ export function SiteHeader({
             >
               {link.label}
             </Link>
+          );
+        })}
+      </nav>
+
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" aria-label="Notifications">
+          <Bell className="size-5" style={{ color: "#1D6D41" }} />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="Account">
+          <User className="size-5" style={{ color: "#1D6D41" }} />
+        </Button>
           ))}
         </nav>
 
