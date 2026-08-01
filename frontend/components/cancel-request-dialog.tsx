@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { XCircle } from "lucide-react";
 
 import {
   AlertDialog,
@@ -10,6 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
@@ -33,6 +35,9 @@ export function CancelRequestDialog({
       </button>
       <AlertDialogContent>
         <AlertDialogHeader>
+          <AlertDialogMedia className="bg-error-bg text-error">
+            <XCircle />
+          </AlertDialogMedia>
           <AlertDialogTitle>Cancel Giveaway Request?</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to cancel your request for{" "}

@@ -92,7 +92,7 @@ export function TradeReviewCard() {
                   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm text-muted-foreground",
                   selected
                     ? "border-[#FBBF24] bg-[#FDF3D8]"
-                    : "border-transparent bg-[#EAEDFF] hover:bg-[#EAEDFF]/70"
+                    : "border-transparent bg-surface-muted hover:bg-surface-muted/70"
                 )}
               >
                 <Icon className="size-3.5" />
