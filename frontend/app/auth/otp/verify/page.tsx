@@ -1,9 +1,11 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   InputOTP,
   InputOTPGroup,
@@ -16,15 +18,22 @@ function OtpVerifyForm() {
   const [otp, setOtp] = useState("");
 
   return (
-    <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl bg-white p-10 text-center shadow-md">
+    <Card className="w-full max-w-md flex-col items-center gap-6 rounded-3xl p-10 text-center shadow-elevated ring-0">
+      <Image
+        src="/images/ku-logo.png"
+        alt="Kasetsart University"
+        width={72}
+        height={85}
+        priority
+      />
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-bold" style={{ color: "#191C1E" }}>
+        <h1 className="text-xl font-bold text-foreground">
           ยืนยันอีเมลของคุณ
         </h1>
-        <p className="text-sm" style={{ color: "#3F4940" }}>
+        <p className="text-sm text-muted-foreground">
           เราได้ส่งรหัส 6 หลักไปยัง
           <br />
-          <span className="font-semibold" style={{ color: "#191C1E" }}>
+          <span className="font-semibold text-foreground">
             {email}
           </span>
         </p>
@@ -32,13 +41,8 @@ function OtpVerifyForm() {
 
       <p className="text-xs text-muted-foreground">
         By continuing, you agree to the{" "}
-        <a
-          href="#"
-          className="underline underline-offset-2"
-          style={{ color: "#1D6D41" }}
-        >
-          KU Marketplace Terms
-        </a>
+        {/* TODO: link to a real terms page once the legal copy exists. */}
+        <span className="font-medium text-primary-dark">KU Marketplace Terms</span>
         .
       </p>
 
@@ -52,7 +56,7 @@ function OtpVerifyForm() {
               <InputOTPSlot
                 key={index}
                 index={index}
-                className="size-11 rounded-lg border data-[active=true]:border-[#1D6D41] data-[active=true]:ring-[#1D6D41]/30"
+                className="size-11 rounded-lg border data-[active=true]:border-primary-dark data-[active=true]:ring-primary-dark/30"
               />
             ))}
           </InputOTPGroup>
@@ -61,22 +65,18 @@ function OtpVerifyForm() {
         <Button
           type="submit"
           disabled={otp.length < 6}
-          className="h-11 w-full rounded-full"
-          style={{ backgroundColor: "#1D6D41" }}
+          className="h-11 w-full rounded-full bg-primary-dark"
         >
           ยืนยันการสมัครสมาชิก (Verify & Complete)
         </Button>
       </form>
-    </div>
+    </Card>
   );
 }
 
 export default function OtpVerifyPage() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center p-6"
-      style={{ background: "linear-gradient(0deg, #FAF8FF 0%, #FAF8FF 100%), #FFF" }}
-    >
+    <div className="flex min-h-screen items-center justify-center bg-page-background p-6">
       <Suspense fallback={null}>
         <OtpVerifyForm />
       </Suspense>
