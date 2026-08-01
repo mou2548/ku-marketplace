@@ -1,13 +1,26 @@
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: postgres_db
+    restart: always
     environment:
-      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mydb
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
 volumes:
   pgdata:
+  redis_data:
