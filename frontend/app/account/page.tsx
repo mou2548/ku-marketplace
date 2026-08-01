@@ -1,7 +1,12 @@
 import Link from "next/link";
-import { BadgeCheck, Bell, Camera, ChevronRight, ShieldCheck, User } from "lucide-react";
+import { BadgeCheck, Bell, Camera, ChevronRight, ShieldCheck } from "lucide-react";
 
+import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
 const STATS = [
@@ -10,46 +15,43 @@ const STATS = [
   { label: "COMPLETED SWAPS", value: 8 },
 ];
 
+// TODO: build a real security-settings route; until it exists it's marked
+// "Coming soon" rather than rendered as a link that goes nowhere.
 const SETTINGS_LINKS = [
   {
     icon: Bell,
     title: "Notifications",
     subtitle: "Manage your alerts and emails",
-    href: "#",
+    href: "/notifications",
   },
   {
     icon: ShieldCheck,
     title: "Security",
     subtitle: "Password and 2FA settings",
-    href: "#",
+    href: null,
   },
 ];
 
 export default function AccountPage() {
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: "linear-gradient(0deg, #FAF8FF 0%, #FAF8FF 100%), #FFF",
-      }}
-    >
-      <SiteHeader active="/account" />
+    <div className="min-h-screen bg-page-background">
+      <SiteHeader />
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-col items-start px-6 pt-20 pb-[258px]">
+      <main className="mx-auto flex w-full max-w-[1280px] flex-col items-start gap-6 px-6 py-8">
+        <PageHeader title="Account" subtitle="Manage your profile, activity, and settings." />
+
         <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-6 text-center shadow-sm">
-              <div className="relative">
-                <div className="flex size-20 items-center justify-center rounded-full bg-muted">
-                  <User className="size-9 text-muted-foreground" />
-                </div>
-                <span
-                  className="absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: "#1D6D41" }}
-                >
+            <Card className="flex-col items-center gap-3 rounded-3xl p-6 text-center shadow-elevated ring-0">
+              <Avatar className="size-20">
+                <AvatarImage src="" alt="Mike R." />
+                <AvatarFallback className="bg-primary-light text-2xl font-semibold text-primary-dark">
+                  M
+                </AvatarFallback>
+                <AvatarBadge className="size-6 bg-primary-dark text-white">
                   <Camera className="size-3.5" />
-                </span>
-              </div>
+                </AvatarBadge>
+              </Avatar>
               <div>
                 <p className="font-semibold">Mike R.</p>
                 <p className="text-sm text-muted-foreground">mike.r@ku.edu</p>
@@ -57,48 +59,35 @@ export default function AccountPage() {
               <Button variant="outline" className="w-full">
                 Edit Profile
               </Button>
-            </div>
+            </Card>
 
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Membership Status
               </span>
-              <span
-                className="flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium"
-                style={{ backgroundColor: "#DCEFE3", color: "#1D6D41" }}
-              >
+              <Badge className="h-auto w-fit gap-1.5 bg-primary-light px-3 py-1.5 text-sm text-primary-dark">
                 <BadgeCheck className="size-4" />
                 Verified KU Student Pro
-              </span>
+              </Badge>
             </div>
 
-            <div
-              className="flex flex-col gap-3 rounded-2xl p-6 text-white"
-              style={{ backgroundColor: "#1D6D41" }}
-            >
+            <Card className="flex-col gap-3 rounded-3xl bg-primary-dark p-6 text-white ring-0">
               <p className="font-semibold">Premium Benefits</p>
               <p className="text-sm text-white/85">
                 Get zero transaction fees and priority support with Premium.
               </p>
-              <Button
-                className="w-full bg-white hover:bg-white/90"
-                style={{ color: "#1D6D41" }}
-              >
+              <Button className="w-full bg-white text-primary-dark hover:bg-white/90">
                 Upgrade to Premium
               </Button>
-            </div>
+            </Card>
           </div>
 
           <div className="flex flex-col gap-6 lg:col-span-2">
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <Card className="rounded-3xl p-6 shadow-elevated ring-0">
               <h2 className="mb-4 font-semibold">Activity Summary</h2>
               <div className="grid grid-cols-3 gap-4">
                 {STATS.map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-xl p-4"
-                    style={{ backgroundColor: "#F2F3FF" }}
-                  >
+                  <div key={stat.label} className="rounded-xl bg-surface-muted p-4">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                       {stat.label}
                     </p>
@@ -106,32 +95,58 @@ export default function AccountPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <Card className="rounded-3xl p-6 shadow-elevated ring-0">
               <h2 className="mb-2 font-semibold">Account Settings</h2>
               <div className="flex flex-col">
-                {SETTINGS_LINKS.map((item) => (
-                  <Link
-                    key={item.title}
-                    href={item.href}
-                    className="flex items-center gap-3 rounded-lg px-2 py-3 hover:bg-muted/50"
-                  >
-                    <item.icon className="size-5" style={{ color: "#1D6D41" }} />
-                    <span className="flex-1">
-                      <span className="block text-sm font-medium">{item.title}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {item.subtitle}
+                {SETTINGS_LINKS.map((item) => {
+                  const body = (
+                    <>
+                      <item.icon className="size-5 text-primary-dark" />
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium">{item.title}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {item.subtitle}
+                        </span>
                       </span>
-                    </span>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </Link>
-                ))}
+                      {item.href ? (
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="h-auto px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          Coming soon
+                        </Badge>
+                      )}
+                    </>
+                  );
+
+                  return item.href ? (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className="flex items-center gap-3 rounded-lg px-2 py-3 hover:bg-muted/50"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div
+                      key={item.title}
+                      className="flex items-center gap-3 rounded-lg px-2 py-3 opacity-70"
+                    >
+                      {body}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

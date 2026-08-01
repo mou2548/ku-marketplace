@@ -18,9 +18,12 @@ import {
   Zap,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { cn } from "@/lib/utils";
 
 type Feature = {
   icon: typeof Check;
@@ -93,12 +96,12 @@ export default function PremiumPage() {
   const [file, setFile] = useState<File | null>(null);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FAF8FF" }}>
-      <SiteHeader active="/account" />
+    <div className="min-h-screen bg-page-background">
+      <SiteHeader />
 
       <main className="mx-auto flex w-full max-w-[1280px] flex-col items-start gap-8 px-8 pt-[127px] pb-12">
         <div className="flex w-full flex-col items-center gap-2 text-center">
-          <h1 className="text-3xl font-bold" style={{ color: "#1D6D41" }}>
+          <h1 className="text-3xl font-bold text-primary-dark">
             Upgrade to Premium
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -108,24 +111,18 @@ export default function PremiumPage() {
 
         <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-4">
           {TIERS.map((tier) => (
-            <div
-              key={tier.name}
-              className="relative flex flex-col gap-4 rounded-2xl border bg-white p-6"
-              style={
-                tier.highlighted
-                  ? { borderColor: "#1D6D41", borderWidth: 2 }
-                  : undefined
-              }
-            >
+            <div key={tier.name} className="relative">
               {tier.highlighted && (
-                <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-1 text-xs font-semibold text-white"
-                  style={{ backgroundColor: "#1D6D41" }}
-                >
+                <Badge className="absolute top-0 left-1/2 z-10 h-auto -translate-x-1/2 -translate-y-1/2 bg-primary-dark px-3 py-1 text-xs font-semibold text-white">
                   POPULAR
-                </span>
+                </Badge>
               )}
-
+              <Card
+                className={cn(
+                  "flex-col gap-4 rounded-2xl p-6 ring-0",
+                  tier.highlighted ? "border-2 border-primary-dark" : "border-border"
+                )}
+              >
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   {tier.label}
@@ -142,14 +139,16 @@ export default function PremiumPage() {
                 {tier.features.map((feature) => (
                   <li
                     key={feature.text}
-                    className="flex items-center gap-2 text-sm"
-                    style={{ color: feature.included ? "#191C1E" : "#3F4940" }}
+                    className={cn(
+                      "flex items-center gap-2 text-sm",
+                      feature.included ? "text-foreground" : "text-muted-foreground"
+                    )}
                   >
                     <feature.icon
-                      className="size-4 shrink-0"
-                      style={{
-                        color: feature.included ? "#1D6D41" : "#BFC9BD",
-                      }}
+                      className={cn(
+                        "size-4 shrink-0",
+                        feature.included ? "text-primary-dark" : "text-border"
+                      )}
                     />
                     {feature.text}
                   </li>
@@ -159,26 +158,23 @@ export default function PremiumPage() {
               <Button
                 variant={tier.highlighted ? "default" : "outline"}
                 disabled={tier.disabled}
-                className="w-full"
-                style={tier.highlighted ? { backgroundColor: "#1D6D41" } : undefined}
+                className={cn("w-full", tier.highlighted && "bg-primary-dark")}
               >
                 {tier.cta}
               </Button>
+              </Card>
             </div>
           ))}
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-8 rounded-2xl bg-white p-8 shadow-sm md:grid-cols-2">
+        <Card className="grid w-full grid-cols-1 gap-8 rounded-3xl p-8 shadow-elevated ring-0 md:grid-cols-2">
           <div className="flex flex-col items-start gap-4">
             <h2 className="font-semibold">Scan to Upgrade</h2>
             <p className="text-sm text-muted-foreground">
               Use your mobile banking app to scan and pay instantly via
               PromptPay.
             </p>
-            <div
-              className="flex items-center justify-center rounded-xl border p-4"
-              style={{ backgroundColor: "#F2F3FF" }}
-            >
+            <div className="flex items-center justify-center rounded-xl border bg-surface-muted p-4">
               <Image
                 src="/images/promptpay-qr.svg"
                 alt="PromptPay QR code"
@@ -204,8 +200,8 @@ export default function PremiumPage() {
                 className="hidden"
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               />
-              <CloudUpload className="size-6" style={{ color: "#1D6D41" }} />
-              <span className="text-sm font-semibold" style={{ color: "#1D6D41" }}>
+              <CloudUpload className="size-6 text-primary-dark" />
+              <span className="text-sm font-semibold text-primary-dark">
                 {file ? file.name : "Attach Transfer Slip"}
               </span>
               {!file && (
@@ -215,11 +211,7 @@ export default function PremiumPage() {
               )}
             </label>
 
-            <Button
-              className="w-full"
-              disabled={!file}
-              style={{ backgroundColor: "#1D6D41" }}
-            >
+            <Button className="w-full bg-primary-dark" disabled={!file}>
               I&apos;ve Paid, Verify Upgrade →
             </Button>
 
@@ -230,7 +222,7 @@ export default function PremiumPage() {
               Cancel
             </Link>
           </div>
-        </div>
+        </Card>
       </main>
 
       <SiteFooter />
