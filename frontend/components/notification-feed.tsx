@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { getStoredNotifications, markAllRead } from "@/lib/notifications";
 
 type Category = "result" | "system";
 
@@ -47,12 +48,12 @@ const NOTIFICATIONS: Notification[] = [
     subtitle: "โมเดลไฟตั้งโต๊ะมินิมอล (Minimal Desk Lamp)",
     time: "2 นาทีที่แล้ว",
     icon: CheckCircle2,
-    iconWrapClassName: "bg-[#F2F3FF]",
+    iconWrapClassName: "bg-surface-muted",
     iconClassName: "text-[#2E8F5A]",
     accentClassName: "border-l-4 border-[#2E8F5A]",
     action: {
       label: "ดูตั๋ว QR Code",
-      className: "bg-[#2E8F5A] text-white hover:bg-[#2E8F5A]/90",
+      className: "bg-primary text-white hover:bg-primary/90",
       icon: QrCode,
     },
   },
@@ -61,17 +62,17 @@ const NOTIFICATIONS: Notification[] = [
     category: "result",
     variant: "expiring",
     title: "แจ้งเตือน: ใกล้หมดเวลารับของ",
-    titleClassName: "text-[#B3465B]",
+    titleClassName: "text-[#B3455A]",
     subtitle:
       "หนังสือเรียนแคลคูลัส 1 (Calculus 1 Textbook) - รับที่ล็อคเกอร์คณะวิศวะ",
     time: "เหลือเวลาอีก 45 นาที",
     icon: TriangleAlert,
-    iconWrapClassName: "bg-[#F2F3FF]",
-    iconClassName: "text-[#B3465B]",
-    accentClassName: "border-l-4 border-[#B3465B]",
+    iconWrapClassName: "bg-surface-muted",
+    iconClassName: "text-[#B3455A]",
+    accentClassName: "border-l-4 border-[#B3455A]",
     action: {
       label: "เปิด Inventory",
-      className: "border border-[#B3465B] text-[#B3465B] hover:bg-[#B3465B]/5",
+      className: "border border-error bg-white text-error hover:bg-error/5",
       icon: PackageOpen,
     },
   },
@@ -84,13 +85,13 @@ const NOTIFICATIONS: Notification[] = [
     subtitle: "กระเป๋าผ้าแคนวาส KU (KU Canvas Tote)",
     time: "เมื่อวาน",
     icon: Frown,
-    iconWrapClassName: "bg-[#DAE2FD] saturate-50",
+    iconWrapClassName: "bg-surface-muted saturate-50",
     iconClassName: "text-muted-foreground",
     accentClassName: "border border-border/20",
     dimmed: true,
     action: {
       label: "หาของแจกฟรีอื่นๆ",
-      className: "bg-[#F4F6F8] text-foreground hover:bg-[#F4F6F8]/70",
+      className: "bg-surface-muted text-foreground hover:bg-surface-muted/70",
     },
   },
   {
@@ -118,11 +119,37 @@ const FILTERS: { label: string; value: "all" | Category }[] = [
 
 export function NotificationFeed() {
   const [filter, setFilter] = useState<"all" | Category>("all");
+  const [liveNotifications, setLiveNotifications] = useState<Notification[]>([]);
 
+  useEffect(() => {
+    // Reads localStorage (unavailable during SSR) — must run post-mount, not
+    // as a lazy useState initializer, or this would hydration-mismatch.
+    const stored = getStoredNotifications();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLiveNotifications(
+      stored.map((n) => ({
+        id: n.id,
+        category: "result" as const,
+        variant: "won" as const,
+        title: n.title,
+        titleClassName: "text-[#2E8F5A]",
+        subtitle: n.subtitle,
+        time: n.time,
+        icon: CheckCircle2,
+        iconWrapClassName: "bg-surface-muted",
+        iconClassName: "text-[#2E8F5A]",
+        accentClassName: "border-l-4 border-[#2E8F5A]",
+        action: null,
+      }))
+    );
+    markAllRead();
+  }, []);
+
+  const allNotifications = [...liveNotifications, ...NOTIFICATIONS];
   const visible =
     filter === "all"
-      ? NOTIFICATIONS
-      : NOTIFICATIONS.filter((n) => n.category === filter);
+      ? allNotifications
+      : allNotifications.filter((n) => n.category === filter);
 
   return (
     <div className="flex flex-col gap-8">
@@ -130,12 +157,12 @@ export function NotificationFeed() {
         value={filter}
         onValueChange={(value) => setFilter(value as "all" | Category)}
       >
-        <TabsList className="h-auto w-fit gap-3 bg-transparent p-0">
+        <TabsList className="h-auto! w-fit gap-3 bg-transparent p-0">
           {FILTERS.map((f) => (
             <TabsTrigger
               key={f.value}
               value={f.value}
-              className="h-10 rounded-full border border-border/30 bg-white px-4 text-sm font-medium tracking-[0.14px] text-muted-foreground data-active:border-transparent data-active:bg-[#2E8F5A] data-active:text-white data-active:shadow-card"
+              className="h-10! rounded-full border border-border/30 bg-white px-4 text-sm font-medium tracking-[0.14px] text-muted-foreground data-active:border-transparent data-active:bg-[#2E8F5A] data-active:text-white data-active:shadow-card"
             >
               {f.label}
             </TabsTrigger>
@@ -150,41 +177,43 @@ export function NotificationFeed() {
             <div
               key={notification.id}
               className={cn(
-                "flex items-center gap-4 rounded-[20px] bg-[#FAF8FF] p-[17px] shadow-card",
+                "flex flex-col items-start gap-4 rounded-2xl bg-page-background p-[17px] shadow-card sm:flex-row sm:items-center",
                 notification.accentClassName,
                 notification.dimmed && "opacity-80"
               )}
             >
-              <div
-                className={cn(
-                  "flex size-16 shrink-0 items-center justify-center rounded-xl",
-                  notification.iconWrapClassName
-                )}
-              >
-                <Icon className={cn("size-6", notification.iconClassName)} />
-              </div>
-
-              <div className="flex flex-1 flex-col gap-1">
-                <h3
+              <div className="flex w-full min-w-0 flex-1 items-center gap-4">
+                <div
                   className={cn(
-                    "text-lg leading-6 font-semibold",
-                    notification.titleClassName
+                    "flex size-16 shrink-0 items-center justify-center rounded-xl",
+                    notification.iconWrapClassName
                   )}
                 >
-                  {notification.title}
-                </h3>
-                <p className="text-sm font-medium tracking-[0.14px] text-muted-foreground">
-                  {notification.subtitle}
-                </p>
-                <span className="text-xs text-muted-foreground/70">
-                  {notification.time}
-                </span>
+                  <Icon className={cn("size-6", notification.iconClassName)} />
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <h3
+                    className={cn(
+                      "text-lg leading-6 font-semibold",
+                      notification.titleClassName
+                    )}
+                  >
+                    {notification.title}
+                  </h3>
+                  <p className="text-sm font-medium tracking-[0.14px] text-muted-foreground">
+                    {notification.subtitle}
+                  </p>
+                  <span className="text-xs text-muted-foreground/70">
+                    {notification.time}
+                  </span>
+                </div>
               </div>
 
               {notification.action ? (
                 <Button
                   className={cn(
-                    "h-10 shrink-0 gap-2 text-sm font-medium tracking-[0.14px]",
+                    "h-10 w-full shrink-0 gap-2 text-sm font-medium tracking-[0.14px] sm:w-auto",
                     notification.action.className
                   )}
                 >
