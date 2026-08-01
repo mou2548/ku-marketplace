@@ -142,7 +142,7 @@
               "raw": "{}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/posts/{{offerId}}/withdraw"
+            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/withdraw"
           }
         },
         {
@@ -254,7 +254,7 @@
               "raw": "{}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/giveaways-tickets/{{ticketId}}/qr/generate"
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/tickets/{{ticketId}}/qr/generate"
           }
         },
         {
@@ -267,7 +267,7 @@
               "raw": "{\n  \"token\": \"mock-qr-token-001\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/giveaways-tickets/{{ticketId}}/qr/scan"
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/tickets/{{ticketId}}/qr/scan"
           }
         }
       ]

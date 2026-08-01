@@ -60,14 +60,21 @@ export class GiveawaysController {
     return this.giveawaysService.forfeit(recipientId, body.confirm === true);
   }
 
-  @Post('giveaways-tickets/:id/qr/generate')
-  qrGenerate(@Param('id') id: string) {
-    return this.giveawaysService.qrGenerate(id);
+  @Post('giveaways/:id/tickets/:ticket_id/qr/generate')
+  qrGenerate(
+    @Param('id') id: string,
+    @Param('ticket_id') ticketId: string,
+  ) {
+    return this.giveawaysService.qrGenerate(id, ticketId);
   }
 
-  @Post('giveaways-tickets/:id/qr/scan')
+  @Post('giveaways/:id/tickets/:ticket_id/qr/scan')
   @HttpCode(HttpStatus.OK)
-  qrScan(@Param('id') id: string, @Body() body: ScanQrPayload) {
-    return this.giveawaysService.qrScan(id, body.token);
+  qrScan(
+    @Param('id') id: string,
+    @Param('ticket_id') ticketId: string,
+    @Body() body: ScanQrPayload,
+  ) {
+    return this.giveawaysService.qrScan(id, ticketId, body.token);
   }
 }

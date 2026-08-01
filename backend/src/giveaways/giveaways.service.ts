@@ -141,19 +141,21 @@ export class GiveawaysService {
     });
   }
 
-  qrGenerate(id: string) {
+  qrGenerate(giveawayId: string, ticketId: string) {
     return this.ok('สร้าง QR สำเร็จ', {
-      ticket_id: id,
+      giveaway_id: giveawayId,
+      ticket_id: ticketId,
       token: 'mock-qr-token-001',
       expires_at: '2026-08-05T18:00:00.000Z',
     });
   }
 
-  qrScan(id: string, token = '') {
+  qrScan(giveawayId: string, ticketId: string, token = '') {
     const valid = token === 'mock-qr-token-001';
 
     return this.ok(valid ? 'ตรวจสอบ QR สำเร็จ' : 'QR ไม่ถูกต้อง', {
-      ticket_id: id,
+      giveaway_id: giveawayId,
+      ticket_id: ticketId,
       token,
       valid,
       status: valid ? 'received' : 'invalid',

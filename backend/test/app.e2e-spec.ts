@@ -55,7 +55,7 @@ describe('AppController (e2e)', () => {
       .send({ delivery_method: 'Shipping' })
       .expect(201);
     await request(server)
-      .post('/posts/offer_001/withdraw')
+      .post('/posts/post_001/offers/offer_001/withdraw')
       .send({})
       .expect(201);
     await request(server)
@@ -106,11 +106,11 @@ describe('AppController (e2e)', () => {
       .send({ confirm: true })
       .expect(200);
     await request(server)
-      .post('/giveaways-tickets/ticket_001/qr/generate')
+      .post('/giveaways/giveaway_001/tickets/ticket_001/qr/generate')
       .send({})
       .expect(201);
     await request(server)
-      .post('/giveaways-tickets/ticket_001/qr/scan')
+      .post('/giveaways/giveaway_001/tickets/ticket_001/qr/scan')
       .send({ token: 'mock-qr-token-001' })
       .expect(200)
       .expect(({ body }) =>

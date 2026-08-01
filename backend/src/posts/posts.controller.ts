@@ -75,9 +75,12 @@ export class PostsController {
     return this.postsService.acceptOffer(postId, offerId, body);
   }
 
-  @Post(':offer_id/withdraw')
-  withdrawOffer(@Param('offer_id') offerId: string) {
-    return this.postsService.withdrawOffer(offerId);
+  @Post(':post_id/offers/:offer_id/withdraw')
+  withdrawOffer(
+    @Param('post_id') postId: string,
+    @Param('offer_id') offerId: string,
+  ) {
+    return this.postsService.withdrawOffer(postId, offerId);
   }
 
   @Post(':post_id/offers/:offer_id/reject')

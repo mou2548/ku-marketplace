@@ -178,11 +178,12 @@ export class PostsService {
     };
   }
 
-  withdrawOffer(offerId: string) {
+  withdrawOffer(postId: string, offerId: string) {
     return {
       success: true,
       message: 'ถอนข้อเสนอสำเร็จ',
       data: {
+        post_id: postId,
         offer_id: offerId,
         status: 'withdrawn',
       },
