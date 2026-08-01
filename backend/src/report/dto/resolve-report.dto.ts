@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ReportStatus } from '../../../generated/prisma/client';
+import { ReportStatus } from '../../common/enums/report.enums';
 
 const RESOLVABLE_STATUSES = [
   ReportStatus.Violation_Confirmed,

@@ -1,57 +1,69 @@
 @host = http://localhost:3001
 
 ### === §7.7 Report & Moderation ===
-### Seeded test users: 1 = regular user, 2 = admin A, 3 = admin B
+###
+### Runs against the mock data seeded by init.sql (docker compose up).
+### Users:  1 = admin (isAdmin), 2-10 = regular users
+### Seeded reports:
+###   #1  Transaction / target_id 1 / reporter 3 / Under_Investigation / handled_by 1
+###       └─ Transaction 1: buyer 3, seller 2  → reported party = seller 2
+###       └─ already has Appeal #1 (by user 2, Pending)
+###   #2  Post / target_id 5 / reporter 6 / Pending
+###       └─ Post 5 → Item 5 → owner 5        → reported party = user 5
+###
+### The reported party is resolved by joining the real tables (see
+### AppealService.resolveReportedUserId), so these ids come from the DB, not
+### from a hardcoded map.
 
 ### 1. POST /reports — no auth header -> expect 401
 POST {{host}}/reports
 Content-Type: application/json
 
 {
-  "report_type": "Post",
-  "target_id": 1,
-  "reason_category": "Fake item"
+  "report_type": "User",
+  "target_id": 4,
+  "reason_category": "Spam"
 }
 
 ### 2. POST /reports — with x-user-id -> expect 201 + status: Pending
-# @name createReport1
+# @name createReport
 POST {{host}}/reports
 Content-Type: application/json
-x-user-id: 1
+x-user-id: 2
 
 {
-  "report_type": "Post",
-  "target_id": 1,
-  "reason_category": "Fake item",
-  "details": "Item photos don't match description",
+  "report_type": "User",
+  "target_id": 4,
+  "reason_category": "Spam",
+  "details": "Sending unsolicited messages in chat",
   "evidence_urls": ["https://example.com/evidence1.jpg"]
 }
 
 ### 3. POST /reports — invalid report_type -> expect 400
 POST {{host}}/reports
 Content-Type: application/json
-x-user-id: 1
+x-user-id: 2
 
 {
   "report_type": "NotARealType",
-  "target_id": 1,
-  "reason_category": "Fake item"
+  "target_id": 4,
+  "reason_category": "Spam"
 }
 
 ### 4. GET /admin/reports — no admin header -> expect 403
 GET {{host}}/admin/reports
-x-user-id: 1
+x-user-id: 2
 
 ### 5. GET /admin/reports — as admin -> expect 200 + list
 GET {{host}}/admin/reports
-x-user-id: 2
+x-user-id: 1
 x-is-admin: true
 
-### 6. POST /admin/reports/:id/resolve — as admin A -> expect 200, status: Violation_Confirmed
-### uses the report created in #2 — run #2 first
-POST {{host}}/admin/reports/{{createReport1.response.body.$.report_id}}/resolve
+### 6. POST /admin/reports/:id/resolve — resolve the report from #2 -> expect 200, Violation_Confirmed
+### run #2 first so the id resolves
+POST {{host}}/admin/reports/{{createReport.response.body.$.report_id}}/resolve
 Content-Type: application/json
-x-user-id: 2
+x-user-id: 1
 x-is-admin: true
 
 {
@@ -59,142 +71,140 @@ x-is-admin: true
   "resolution_note": "Confirmed after reviewing chat history."
 }
 
-### 7. POST /admin/reports/999/resolve — nonexistent report -> expect 404
+### 7. POST /admin/reports/:id/resolve — resolve the SAME report again -> expect 400
+POST {{host}}/admin/reports/{{createReport.response.body.$.report_id}}/resolve
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Report_Dismissed"
+}
+
+### 8. POST /admin/reports/999/resolve — nonexistent report -> expect 404
 POST {{host}}/admin/reports/999/resolve
 Content-Type: application/json
-x-user-id: 2
+x-user-id: 1
 x-is-admin: true
 
 {
   "status": "Violation_Confirmed"
 }
 
-### 8. POST /reports — create a 2nd report to test /restore on
-# @name createReport2
-POST {{host}}/reports
-Content-Type: application/json
-x-user-id: 1
+### === Appeals — reported party resolved by real DB join ===
 
-{
-  "report_type": "Post",
-  "target_id": 2,
-  "reason_category": "Reported unfairly"
-}
-
-### 9. POST /admin/reports/:id/restore — as admin A -> expect 200, status: Report_Dismissed
-### uses the report created in #8 — run #8 first
-POST {{host}}/admin/reports/{{createReport2.response.body.$.report_id}}/restore
-x-user-id: 2
-x-is-admin: true
-
-### === Appeals ===
-
-### 10. POST /appeals — appeal report from #2 (already resolved) -> expect 201
-# @name createAppeal1
+### 9. POST /appeals — wrong user appeals the report from #2 -> expect 403
+### #2 is report_type User with target_id 4, so only user 4 may appeal it.
 POST {{host}}/appeals
 Content-Type: application/json
-x-user-id: 1
+x-user-id: 7
 
 {
-  "report_id": {{createReport1.response.body.$.report_id}},
-  "reason": "I believe this decision was unfair, item was as described.",
+  "report_id": {{createReport.response.body.$.report_id}},
+  "reason": "Not my report"
+}
+
+### 10. POST /appeals — the reported user (4) appeals -> expect 201, status Pending
+# @name createAppeal
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 4
+
+{
+  "report_id": {{createReport.response.body.$.report_id}},
+  "reason": "Those messages were about a legitimate transaction.",
   "evidence_urls": ["https://example.com/appeal-evidence.jpg"]
 }
 
-### 11. POST /appeals — appeal report from #8 (already restored/dismissed) -> expect 201
+### 11. POST /appeals — appeal the same report twice -> expect 400
 POST {{host}}/appeals
 Content-Type: application/json
-x-user-id: 1
+x-user-id: 4
 
 {
-  "report_id": {{createReport2.response.body.$.report_id}},
-  "reason": "Testing appeal on already-restored report"
+  "report_id": {{createReport.response.body.$.report_id}},
+  "reason": "Trying again"
 }
 
-### 12. POST /admin/appeals/:id/decide — same admin who resolved report 1 -> expect 400
-### uses the appeal created in #10 — run #10 first
-POST {{host}}/admin/appeals/{{createAppeal1.response.body.$.appeal_id}}/decide
+### 12. POST /admin/appeals/:id/decide — same admin who resolved the report (1) -> expect 400
+POST {{host}}/admin/appeals/{{createAppeal.response.body.$.appeal_id}}/decide
 Content-Type: application/json
-x-user-id: 2
+x-user-id: 1
 x-is-admin: true
 
 {
   "status": "Approved"
 }
 
-### 13. POST /admin/appeals/:id/decide — different admin (admin B) -> expect 200
-POST {{host}}/admin/appeals/{{createAppeal1.response.body.$.appeal_id}}/decide
+### 13. POST /admin/appeals/:id/decide — a different admin -> expect 200
+### Approving also flips the report to Report_Dismissed (verify with #5).
+POST {{host}}/admin/appeals/{{createAppeal.response.body.$.appeal_id}}/decide
 Content-Type: application/json
-x-user-id: 3
+x-user-id: 9
 x-is-admin: true
 
 {
   "status": "Approved",
-  "resolution_note": "Reviewed chat log, agree the item matched description."
+  "resolution_note": "Reviewed chat log, messages were transaction-related."
 }
 
-### === Appeal ownership fix — Post/Transaction target_id != user_id ===
-### mock owner map (src/common/mock-data/mock-target-owners.ts): Post:10 -> user 1
-
-### 14. POST /reports — report a Post whose real owner is user 1, but post_id (10) != owner's user_id
-# @name createPostReport
-POST {{host}}/reports
+### 14. POST /admin/appeals/:id/decide — decide the SAME appeal again -> expect 400
+### Without this guard the appeal would flip to Rejected while its report stayed
+### Report_Dismissed, and the original handled_by/handled_at would be overwritten.
+POST {{host}}/admin/appeals/{{createAppeal.response.body.$.appeal_id}}/decide
 Content-Type: application/json
-x-user-id: 2
+x-user-id: 10
+x-is-admin: true
 
 {
-  "report_type": "Post",
-  "target_id": 10,
-  "reason_category": "Fake item"
+  "status": "Rejected",
+  "resolution_note": "Attempt to overwrite an already-approved appeal"
 }
 
-### 15. POST /admin/reports/:id/resolve — as admin A -> expect 200, status: Violation_Confirmed
-### run #14 first (Send Request) so {{createPostReport.response.body.$.report_id}} resolves
-POST {{host}}/admin/reports/{{createPostReport.response.body.$.report_id}}/resolve
+### === Reported-party resolution for Post / Transaction reports ===
+### These use the seeded reports, so run them on a fresh `docker compose up`
+### (report #2 must still be unresolved for the appeal window check to pass).
+
+### 15. POST /admin/reports/2/resolve — resolve the seeded Post report -> expect 200
+POST {{host}}/admin/reports/2/resolve
 Content-Type: application/json
-x-user-id: 2
+x-user-id: 1
 x-is-admin: true
 
 {
   "status": "Violation_Confirmed"
 }
 
-### 16. POST /appeals — wrong user (id 10, matches the post_id, NOT the real owner) -> expect 403
-### Before the fix this would have wrongly PASSED because target_id (10) was compared
-### directly against appellantId. Now it should be blocked with 403.
+### 16. POST /appeals — wrong user appeals report 2 -> expect 403
+### Report 2 targets Post 5, whose Item is owned by user 5 — user 4 is unrelated.
 POST {{host}}/appeals
 Content-Type: application/json
-x-user-id: 10
+x-user-id: 4
 
 {
-  "report_id": {{createPostReport.response.body.$.report_id}},
-  "reason": "I own this post (I don't, my user_id just matches the post_id)"
+  "report_id": 2,
+  "reason": "Not my post"
 }
 
-### 17. POST /appeals — real owner (user 1) appeals -> expect 201
-### Before the fix this would have wrongly gotten 403 because target_id (10) != appellantId (1).
+### 17. POST /appeals — the real Post owner (user 5) appeals -> expect 201
+### Resolved via Post 5 -> Item 5 -> owner_id 5.
 POST {{host}}/appeals
 Content-Type: application/json
-x-user-id: 1
+x-user-id: 5
 
 {
-  "report_id": {{createPostReport.response.body.$.report_id}},
-  "reason": "This is my post, the report is wrong"
+  "report_id": 2,
+  "reason": "The description matched the actual condition."
 }
 
-### === Double-decide guard — an already-decided appeal must not be overwritten ===
-
-### 18. POST /admin/appeals/:id/decide — decide the appeal from #13 a SECOND time -> expect 400
-### #13 already approved this appeal (which set its report to Report_Dismissed).
-### Before the fix there was no status check, so this Rejected would have gone through:
-### appeal would end up Rejected while its report stayed Report_Dismissed — contradictory,
-### and handled_by/handled_at of the original decision would be silently overwritten.
-POST {{host}}/admin/appeals/{{createAppeal1.response.body.$.appeal_id}}/decide
+### 18. POST /appeals — reporter of the Transaction report tries to appeal -> expect 403
+### Report 1 targets Transaction 1 (buyer 3, seller 2) and was filed by user 3,
+### so the reported party is the counterparty (seller 2), not the reporter.
+POST {{host}}/appeals
 Content-Type: application/json
-x-user-id: 1
-x-is-admin: true
+x-user-id: 3
 
 {
-  "status": "Rejected",
-  "resolution_note": "Attempt to overwrite an already-approved appeal"
+  "report_id": 1,
+  "reason": "I filed this report myself"
 }

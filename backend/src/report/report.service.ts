@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReportStatus } from '../../generated/prisma/client';
+import { ReportStatus } from '../common/enums/report.enums';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
 
@@ -41,7 +41,9 @@ export class ReportService {
     return report;
   }
 
-  private assertOpen(report: { report_id: number; status: ReportStatus }) {
+  // status comes back as `string | null` — init.sql stores it as VARCHAR(20)
+  // with no NOT NULL, so the DB can't guarantee it's one of the enum values.
+  private assertOpen(report: { report_id: number; status: string | null }) {
     if (
       report.status !== ReportStatus.Pending &&
       report.status !== ReportStatus.Under_Investigation

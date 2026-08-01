@@ -9,16 +9,57 @@ import {
   AppealStatus,
   ReportStatus,
   ReportType,
-} from '../../generated/prisma/client';
+} from '../common/enums/report.enums';
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
-import { resolveTargetOwnerId } from '../common/mock-data/mock-target-owners';
 
 const APPEAL_WINDOW_DAYS = 7;
 
 @Injectable()
 export class AppealService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * `target_id` means a different thing per report_type, so the user the report
+   * was actually filed against has to be resolved differently for each:
+   *   User        → target_id is already the user_id
+   *   Post        → target_id is a post_id; the reported party owns the item
+   *   Transaction → target_id is a transaction_id; the reported party is the
+   *                 counterparty, i.e. whichever side the reporter is not
+   * Returns undefined when the target row no longer exists (deleted post, etc.).
+   */
+  private async resolveReportedUserId(report: {
+    report_type: string;
+    target_id: number;
+    reporter_id: number;
+  }): Promise<number | undefined> {
+    if (report.report_type === ReportType.User) {
+      return report.target_id;
+    }
+
+    if (report.report_type === ReportType.Post) {
+      const post = await this.prisma.post.findUnique({
+        where: { post_id: report.target_id },
+        select: { Item: { select: { owner_id: true } } },
+      });
+      return post?.Item.owner_id;
+    }
+
+    if (report.report_type === ReportType.Transaction) {
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { transaction_id: report.target_id },
+        select: { buyer_id: true, seller_id: true },
+      });
+      if (!transaction) {
+        return undefined;
+      }
+      return transaction.buyer_id === report.reporter_id
+        ? transaction.seller_id
+        : transaction.buyer_id;
+    }
+
+    return undefined;
+  }
 
   async create(appellantId: number, dto: CreateAppealDto) {
     const report = await this.prisma.report.findUnique({
@@ -27,10 +68,7 @@ export class AppealService {
     if (!report) {
       throw new NotFoundException(`Report ${dto.report_id} not found`);
     }
-    const ownerId =
-      report.report_type === ReportType.User
-        ? report.target_id
-        : resolveTargetOwnerId(report.report_type, report.target_id);
+    const ownerId = await this.resolveReportedUserId(report);
 
     if (ownerId === undefined) {
       throw new NotFoundException(
@@ -71,6 +109,9 @@ export class AppealService {
         appellant_id: appellantId,
         reason: dto.reason,
         evidence_urls: dto.evidence_urls,
+        // Appeal.status is NOT NULL with no DB-level default in init.sql,
+        // unlike Report.status — so the starting status must be set here.
+        status: AppealStatus.Pending,
       },
     });
   }

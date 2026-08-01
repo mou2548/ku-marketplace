@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { AppealStatus } from '../../../generated/prisma/client';
+import { AppealStatus } from '../../common/enums/report.enums';
 
 const DECIDABLE_STATUSES = [
   AppealStatus.Approved,

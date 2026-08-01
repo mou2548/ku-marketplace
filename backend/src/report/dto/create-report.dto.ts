@@ -7,7 +7,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { ReportType } from '../../../generated/prisma/client';
+import { ReportType } from '../../common/enums/report.enums';
 
 export class CreateReportDto {
   @IsEnum(ReportType)
