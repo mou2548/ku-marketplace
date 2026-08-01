@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -20,6 +21,7 @@ type Status = "pending" | "won" | "not-selected";
 interface RequestItem {
   id: string;
   title: string;
+  image: string;
   type: string;
   typeIcon: typeof Shuffle;
   status: Status;
@@ -30,6 +32,7 @@ const REQUESTS: RequestItem[] = [
   {
     id: "calculus-textbook",
     title: "Calculus Textbook Vol. 1",
+    image: "/images/product-physics-textbooks.png",
     type: "Random Draw",
     typeIcon: Shuffle,
     status: "pending",
@@ -37,6 +40,7 @@ const REQUESTS: RequestItem[] = [
   {
     id: "desk-succulent",
     title: "Desk Succulent",
+    image: "https://upload.wikimedia.org/wikipedia/commons/8/84/Two_potted_succulents.jpg",
     type: "First-come",
     typeIcon: Zap,
     status: "won",
@@ -44,6 +48,7 @@ const REQUESTS: RequestItem[] = [
   {
     id: "desk-lamp",
     title: "Minimalist Desk Lamp",
+    image: "https://upload.wikimedia.org/wikipedia/commons/0/09/White_desk_light.jpg",
     type: "Random Draw",
     typeIcon: Shuffle,
     status: "not-selected",
@@ -71,12 +76,12 @@ export function GiveawayRequestTabs() {
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as "all" | Status)}
       >
-        <TabsList className="h-auto w-full justify-start gap-4 overflow-x-auto rounded-none border-b border-border/30 bg-transparent p-0">
+        <TabsList className="h-auto! w-full justify-start gap-4 overflow-x-auto rounded-none border-b border-border/30 bg-transparent p-0">
           {TABS.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className="h-auto shrink-0 rounded-none border-x-0 border-t-0 border-b-2 border-transparent px-6 pb-4 text-base whitespace-nowrap text-muted-foreground data-active:border-[#2E8F5A] data-active:bg-transparent data-active:font-medium data-active:text-[#1D6C41] data-active:shadow-none hover:text-foreground"
+              className="h-auto! flex-none rounded-none border-x-0 border-t-0 border-b-2 border-transparent px-6 pb-4 text-base whitespace-nowrap text-muted-foreground data-active:border-primary data-active:bg-transparent data-active:font-medium data-active:text-primary-dark data-active:shadow-none hover:text-foreground"
             >
               {tab.label}
             </TabsTrigger>
@@ -106,8 +111,15 @@ function RequestCard({ request }: { request: RequestItem }) {
         request.status === "not-selected" && "opacity-80 saturate-50"
       )}
     >
-      <div className="relative isolate overflow-hidden rounded-xl bg-[#F2F3FF] shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-        <div className="h-[220px] w-full animate-pulse bg-[#E5E7EB]" />
+      <div className="relative isolate overflow-hidden rounded-xl bg-surface-muted shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+        <div className="relative h-[220px] w-full bg-[#E5E7EB]">
+          <Image
+            src={request.image}
+            alt={request.title}
+            fill
+            className="object-cover"
+          />
+        </div>
         <div className="absolute top-4 right-4">
           {request.status === "pending" && (
             <Badge className="h-auto gap-1 bg-[#FDF3D8] px-4 py-1.5 text-sm text-[#271900] shadow-card">
@@ -122,7 +134,7 @@ function RequestCard({ request }: { request: RequestItem }) {
             </Badge>
           )}
           {request.status === "not-selected" && (
-            <Badge className="h-auto border-border/30 bg-[#E2E7FF] px-4 py-1.5 text-sm text-muted-foreground">
+            <Badge className="h-auto border-border/30 bg-surface-muted px-4 py-1.5 text-sm text-muted-foreground">
               Better Luck Next Time
             </Badge>
           )}
@@ -134,7 +146,7 @@ function RequestCard({ request }: { request: RequestItem }) {
           <h3 className="text-xl leading-7 font-semibold text-foreground">
             {request.title}
           </h3>
-          <Badge className="h-auto w-fit gap-1 rounded-md border-border/30 bg-[#E2E7FF] px-2 py-0.5 text-base text-muted-foreground">
+          <Badge className="h-auto w-fit gap-1 rounded-md border-border/30 bg-surface-muted px-2 py-0.5 text-base text-muted-foreground">
             <TypeIcon className="size-3" />
             {request.type}
           </Badge>
@@ -143,15 +155,18 @@ function RequestCard({ request }: { request: RequestItem }) {
         <div className="flex gap-4 border-t border-border/20 pt-6">
           {request.status === "pending" && (
             <>
-              <Button
-                variant="outline"
-                className="h-10 flex-1 border-[#6F7A6F] text-base"
+              <Link
+                href={`/giveaway/${request.id}`}
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "h-10 flex-1 border-[#6F7A6F] text-base"
+                )}
               >
                 View Post
-              </Button>
+              </Link>
               <Button
                 variant="outline"
-                className="h-10 flex-1 border-[#B3465B] text-base text-[#B3465B] hover:bg-[#B3465B]/5"
+                className="h-10 flex-1 border-[#B3455A] text-base text-[#B3455A] hover:bg-[#B3455A]/5"
               >
                 Cancel
               </Button>
