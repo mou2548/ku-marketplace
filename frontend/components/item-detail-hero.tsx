@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +10,24 @@ interface HeroBadge {
   className: string;
 }
 
-export function ItemDetailHero({ badges }: { badges: HeroBadge[] }) {
+export function ItemDetailHero({
+  badges,
+  image,
+  alt,
+}: {
+  badges: HeroBadge[];
+  image?: string;
+  alt?: string;
+}) {
   return (
     <div className="relative isolate overflow-hidden rounded-3xl bg-white shadow-elevated">
-      <div className="h-[480px] w-full animate-pulse bg-[#E5E7EB]" />
+      {image ? (
+        <div className="relative h-[480px] w-full bg-[#E5E7EB]">
+          <Image src={image} alt={alt ?? ""} fill className="object-cover" />
+        </div>
+      ) : (
+        <div className="h-[480px] w-full animate-pulse bg-[#E5E7EB]" />
+      )}
       <div className="absolute top-4 left-4 flex items-center gap-2">
         {badges.map((badge) => {
           const Icon = badge.icon;

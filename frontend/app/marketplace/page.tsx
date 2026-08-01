@@ -3,93 +3,43 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/page-header";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { ProductCard, type Product } from "@/components/marketplace/product-card";
+import { ProductCard } from "@/components/marketplace/product-card";
+import { PRODUCTS, PRODUCT_CATEGORIES } from "@/lib/marketplace-products";
 
 const TYPE_FILTERS = ["All", "Sell", "Swap", "Sell/Swap"];
-const CATEGORY_FILTERS = [
-  "All",
-  "Books & Textbooks",
-  "Stationery & Supplies",
-  "Electronics",
-  "Clothing & Fashion",
-  "Dorm Essentials",
-];
+const CATEGORY_FILTERS = ["All", ...PRODUCT_CATEGORIES];
 
-const BASE_PRODUCTS: Product[] = [
-  {
-    id: "sony-headphones",
-    image: "/images/product-sony-headphones.png",
-    title: "Sony WH-1000XM4",
-    sellerName: "Nattawut S.",
-    sellerAvatar: "/images/seller-avatar-1.png",
-    sellerBadge: "verified",
-    condition: "LIKE NEW",
-    price: 7200,
-    mode: "buy",
-    liked: true,
-  },
-  {
-    id: "physics-bundle",
-    image: "/images/product-physics-textbooks.png",
-    title: "Physics Bundle",
-    sellerName: "Pitchaya K.",
-    sellerAvatar: "/images/seller-avatar-2.png",
-    sellerBadge: "top-seller",
-    condition: "FAIR",
-    mode: "swap",
-  },
-  {
-    id: "ipad-pro",
-    image: "/images/product-ipad-pro.png",
-    title: "iPad Pro 11-inch",
-    sellerName: "Sarah J.",
-    sellerAvatar: "/images/seller-avatar-3.png",
-    sellerBadge: "swap-champion",
-    condition: "EXCELLENT",
-    price: 15900,
-    mode: "both",
-  },
-  {
-    id: "ku-uniform",
-    image: "/images/product-uniform.png",
-    title: "KU Engineering Uniform (Size L)",
-    sellerName: "Chaya R.",
-    sellerAvatar: "/images/seller-avatar-4.png",
-    sellerBadge: "none",
-    condition: "LIKE NEW",
-    price: 350,
-    mode: "both",
-  },
-];
-
-const PRODUCTS: Product[] = [
-  ...BASE_PRODUCTS,
-  ...BASE_PRODUCTS.map((product) => ({ ...product, id: `${product.id}-2` })),
-];
+function matchesType(mode: (typeof PRODUCTS)[number]["mode"], type: string) {
+  if (type === "All") return true;
+  if (type === "Sell") return mode === "buy" || mode === "both";
+  if (type === "Swap") return mode === "swap" || mode === "both";
+  return mode === "both"; // Sell/Swap
+}
 
 export default function MarketplacePage() {
   const [activeType, setActiveType] = useState(TYPE_FILTERS[0]);
   const [activeCategory, setActiveCategory] = useState(CATEGORY_FILTERS[0]);
 
+  const filteredProducts = PRODUCTS.filter(
+    (product) =>
+      matchesType(product.mode, activeType) &&
+      (activeCategory === "All" || product.category === activeCategory)
+  );
+
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background:
-          "radial-gradient(141.42% 141.42% at 0% 0%, #F0FDF4 0%, rgba(240,253,244,0) 50%), radial-gradient(141.42% 141.42% at 100% 0%, #FFF 0%, rgba(255,255,255,0) 50%), linear-gradient(0deg, #F4F6F8 0%, #F4F6F8 100%), #FFF",
-      }}
-    >
+    <div className="min-h-screen bg-page-background bg-[radial-gradient(141.42%_141.42%_at_0%_0%,#F0FDF4_0%,rgba(240,253,244,0)_50%),radial-gradient(141.42%_141.42%_at_100%_0%,#FFF_0%,rgba(255,255,255,0)_50%)]">
       <SiteHeader />
 
-      <main className="mx-auto flex max-w-[1280px] flex-col gap-4 px-8 pb-16">
+      <main className="mx-auto flex max-w-[1280px] flex-col gap-6 px-8 pt-8 pb-16">
+        <PageHeader title="Marketplace" subtitle="Buy, sell, and swap with the KU community." />
+
         <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-            style={{ color: "#6F7A6F" }}
-          />
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#6F7A6F]" />
           <Input
             placeholder="find something . . ."
             className="h-11 rounded-full border-none bg-white pl-9 shadow-sm"
@@ -97,49 +47,51 @@ export default function MarketplacePage() {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 rounded-full bg-white p-1 shadow-sm">
-            {TYPE_FILTERS.map((type) => (
-              <Button
-                key={type}
-                variant="ghost"
-                className="h-8 rounded-full px-4"
-                style={
-                  activeType === type
-                    ? { backgroundColor: "#F1F5F9", color: "#191C1E" }
-                    : undefined
-                }
-                onClick={() => setActiveType(type)}
-              >
-                {type}
-              </Button>
-            ))}
-          </div>
-          <span className="text-sm text-muted-foreground">156 Items</span>
+          <Tabs value={activeType} onValueChange={(value) => setActiveType(value as string)}>
+            <TabsList className="h-auto! w-fit gap-1 rounded-full bg-white p-1 shadow-sm">
+              {TYPE_FILTERS.map((type) => (
+                <TabsTrigger
+                  key={type}
+                  value={type}
+                  className="h-8! rounded-full px-4 text-sm text-foreground/70 data-active:bg-surface-muted data-active:text-foreground data-active:shadow-none"
+                >
+                  {type}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <span className="text-sm text-muted-foreground">
+            {filteredProducts.length} Items
+          </span>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {CATEGORY_FILTERS.map((category) => {
-            const active = activeCategory === category;
-            return (
-              <Button
+        <Tabs value={activeCategory} onValueChange={(value) => setActiveCategory(value as string)}>
+          <TabsList className="h-auto! w-full justify-start gap-2 overflow-x-auto bg-transparent p-0">
+            {CATEGORY_FILTERS.map((category) => (
+              <TabsTrigger
                 key={category}
-                variant={active ? "default" : "outline"}
-                className="h-9 rounded-full"
-                style={active ? { backgroundColor: "#1D6D41" } : undefined}
-                onClick={() => setActiveCategory(category)}
+                value={category}
+                className="h-9! flex-none rounded-full border border-border bg-transparent px-4 text-sm whitespace-nowrap text-foreground data-active:border-primary-dark data-active:bg-primary-dark data-active:text-white data-active:shadow-none"
               >
                 {category}
-              </Button>
-            );
-          })}
-        </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {PRODUCTS.map((product) => (
+          {filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
+        {filteredProducts.length === 0 && (
+          <p className="py-16 text-center text-muted-foreground">
+            No items match these filters.
+          </p>
+        )}
       </main>
+
+      <SiteFooter />
     </div>
   );
 }
