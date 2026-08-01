@@ -3,67 +3,30 @@
 import { useState } from "react";
 import { Search, SquarePen } from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { CONVERSATIONS, type ChatFilter } from "@/lib/chat-threads";
 
-type Filter = "all" | "negotiating" | "agreed";
-
-interface Conversation {
-  id: string;
-  name: string;
-  time: string;
-  preview: string;
-  tags: { label: string; className: string }[];
-  online?: boolean;
-  dimmed?: boolean;
-  filter: Filter;
-}
-
-// TODO: replace with real conversations from the API
-const CONVERSATIONS: Conversation[] = [
-  {
-    id: "sarah-jenkins",
-    name: "Sarah Jenkins",
-    time: "10:42 AM",
-    preview: "Offer confirmed, agree on meetup spot",
-    tags: [
-      { label: "AGREED", className: "bg-[#FBBF24]/20 text-[#D99E31]" },
-      { label: "Swap", className: "bg-[#DAE2FD]/50 text-muted-foreground" },
-    ],
-    online: true,
-    filter: "agreed",
-  },
-  {
-    id: "david-chen",
-    name: "David Chen",
-    time: "Yesterday",
-    preview: "Would you take 500 THB for the monitor?",
-    tags: [{ label: "NEGOTIATING", className: "bg-[#E2E7FF] text-muted-foreground" }],
-    filter: "negotiating",
-  },
-  {
-    id: "maya-patel",
-    name: "Maya Patel",
-    time: "Oct 12",
-    preview: "Thanks for the quick handoff!",
-    tags: [{ label: "COMPLETED", className: "bg-[#EAEDFF] text-muted-foreground" }],
-    dimmed: true,
-    filter: "agreed",
-  },
-];
-
-const FILTERS: { label: string; value: Filter }[] = [
+const FILTERS: { label: string; value: ChatFilter }[] = [
   { label: "All", value: "all" },
   { label: "Negotiating", value: "negotiating" },
   { label: "Agreed", value: "agreed" },
 ];
 
-export function ChatInbox() {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [selectedId, setSelectedId] = useState("sarah-jenkins");
+export function ChatInbox({
+  selectedId,
+  onSelect,
+  className,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+  className?: string;
+}) {
+  const [filter, setFilter] = useState<ChatFilter>("all");
 
   const visible =
     filter === "all"
@@ -71,7 +34,7 @@ export function ChatInbox() {
       : CONVERSATIONS.filter((c) => c.filter === filter);
 
   return (
-    <aside className="flex h-full w-[400px] shrink-0 flex-col border-r border-border/20 bg-[#FAF8FF]">
+    <aside className={cn("h-full w-full shrink-0 flex-col border-r border-border/20 bg-white md:w-[400px]", className)}>
       <div className="flex flex-col gap-4 border-b border-border/10 px-6 pt-6 pb-2">
         <div className="flex items-center justify-between">
           <h2 className="text-xl leading-7 font-semibold text-foreground">
@@ -92,20 +55,20 @@ export function ChatInbox() {
           <Input
             type="search"
             placeholder="Search conversations..."
-            className="h-11 rounded-full border-0 bg-[#F2F3FF] pr-4 pl-10 text-sm text-foreground placeholder:text-[#6B7280] focus-visible:ring-0"
+            className="h-11 rounded-full border-0 bg-surface-muted pr-4 pl-10 text-sm text-foreground placeholder:text-[#6B7280] focus-visible:ring-0"
           />
         </div>
 
         <Tabs
           value={filter}
-          onValueChange={(value) => setFilter(value as Filter)}
+          onValueChange={(value) => setFilter(value as ChatFilter)}
         >
-          <TabsList className="h-auto w-fit gap-2 overflow-x-auto bg-transparent p-0">
+          <TabsList className="h-auto! w-full max-w-full gap-2 overflow-x-auto bg-transparent p-0">
             {FILTERS.map((f) => (
               <TabsTrigger
                 key={f.value}
                 value={f.value}
-                className="h-auto shrink-0 rounded-full bg-[#F2F3FF] px-4 py-1.5 text-sm font-medium tracking-[0.14px] whitespace-nowrap text-muted-foreground data-active:bg-foreground data-active:text-[#FAF8FF] data-active:shadow-none hover:bg-[#F2F3FF]/70"
+                className="h-auto! flex-none rounded-full bg-surface-muted px-4 py-1.5 text-sm font-medium tracking-[0.14px] whitespace-nowrap text-muted-foreground data-active:bg-foreground data-active:text-white data-active:shadow-none hover:bg-surface-muted/70"
               >
                 {f.label}
               </TabsTrigger>
@@ -119,19 +82,23 @@ export function ChatInbox() {
           <button
             key={conversation.id}
             type="button"
-            onClick={() => setSelectedId(conversation.id)}
+            onClick={() => onSelect(conversation.id)}
             className={cn(
               "flex w-full items-start gap-4 border-l-4 p-6 text-left",
               conversation.id === selectedId
                 ? "border-[#2E8F5A] bg-[#006633]/10"
-                : "border-transparent hover:bg-[#F2F3FF]/50",
+                : "border-transparent hover:bg-surface-muted/50",
               conversation.dimmed && "opacity-80"
             )}
           >
             <div className="relative shrink-0">
-              <div className="size-14 animate-pulse rounded-full border-2 border-[#FAF8FF] bg-[#DAE2FD]" />
+              <Avatar className="size-14 border-2 border-white">
+                <AvatarFallback className="bg-primary-light text-base font-semibold text-primary-dark">
+                  {conversation.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
               {conversation.online && (
-                <span className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-[#FAF8FF] bg-[#10B981]" />
+                <span className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-white bg-[#10B981]" />
               )}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
