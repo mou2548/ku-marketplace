@@ -2,65 +2,57 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { ItemCondition } from '@prisma/client';
 
 @Injectable()
 export class ItemsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getCategories() {
-    return this.prisma.category.findMany({
-      orderBy: { name: 'asc' },
-    });
-  }
-
+  // 1. Get total count of items
   async count() {
     const count = await this.prisma.item.count();
     return { count };
   }
 
+  // 2. Fetch distinct categories from items table
+  async getCategories() {
+    const categories = await this.prisma.item.groupBy({
+      by: ['category'],
+    });
+    return categories.map((c) => c.category);
+  }
+
+  // 3. Create a new item
   async create(createItemDto: CreateItemDto) {
-    const { images, warranty_expiry, category, ...itemData } = createItemDto;
+    const { images, warranty_expiry, ...itemData } = createItemDto;
 
     return this.prisma.item.create({
       data: {
         ...itemData,
-        // Satisfies Prisma's required owner relation in schema
-        owner: {
-          connect: { user_id: 1 },
-        },
+        owner_id: 1, 
         warranty_expiry: warranty_expiry ? new Date(warranty_expiry) : null,
 
-        // Connect category by slug
-        ...(category && {
-          category: {
-            connect: { slug: category },
-          },
-        }),
-
-        // Create images if provided
-        images: images && images.length > 0
-          ? {
-              create: images.map((img) => ({
-                image_url: img.image_url,
-                is_primary: img.is_primary ?? false,
-                display_order: img.display_order ?? 0,
-              })),
-            }
-          : undefined,
+        Item_Image:
+          images && images.length > 0
+            ? {
+                create: images.map((img) => ({
+                  image_url: img.image_url,
+                  is_primary: img.is_primary ?? false,
+                  display_order: img.display_order ?? 0,
+                })),
+              }
+            : undefined,
       },
       include: {
-        images: true,
-        category: true,
+        Item_Image: true,
       },
     });
   }
 
+  // 4. Find all items
   async findAll() {
     return this.prisma.item.findMany({
       include: {
-        images: true,
-        category: true,
+        Item_Image: true,
       },
       orderBy: {
         created_at: 'desc',
@@ -68,12 +60,12 @@ export class ItemsService {
     });
   }
 
+  // 5. Find single item by ID
   async findOne(id: number) {
     const item = await this.prisma.item.findUnique({
       where: { item_id: id },
       include: {
-        images: true,
-        category: true,
+        Item_Image: true,
       },
     });
 
@@ -84,25 +76,20 @@ export class ItemsService {
     return item;
   }
 
+  // 6. Update item
   async update(id: number, updateItemDto: UpdateItemDto) {
-    const { images, category, warranty_expiry, condition, ...itemData } = updateItemDto;
+    const { images, warranty_expiry, ...itemData } = updateItemDto;
 
     try {
       return await this.prisma.item.update({
         where: { item_id: id },
         data: {
           ...itemData,
-          ...(condition && { condition: condition as ItemCondition }),
           ...(warranty_expiry !== undefined && {
             warranty_expiry: warranty_expiry ? new Date(warranty_expiry) : null,
           }),
-          ...(category && {
-            category: {
-              connect: { slug: category },
-            },
-          }),
           ...(images && {
-            images: {
+            Item_Image: {
               deleteMany: {},
               create: images.map((img) => ({
                 image_url: img.image_url,
@@ -113,18 +100,18 @@ export class ItemsService {
           }),
         },
         include: {
-          images: true,
-          category: true,
+          Item_Image: true,
         },
       });
     } catch (error) {
       if (error.code === 'P2025') {
-        throw new NotFoundException(`Item or connected relation with ID ${id} not found`);
+        throw new NotFoundException(`Item with ID ${id} not found`);
       }
       throw error;
     }
   }
 
+  // 7. Delete item
   async remove(id: number) {
     try {
       return await this.prisma.item.delete({
