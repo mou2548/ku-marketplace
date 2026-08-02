@@ -188,7 +188,7 @@ export default async function ProductDetailPage({
                 {canSwap && (
                   <Link
                     href={`/trade/${product.id}`}
-                    className="flex h-12 items-center justify-center gap-2 rounded-full border border-[#2E8F5A] bg-white text-sm font-medium text-[#2E8F5A] hover:bg-surface-muted"
+                    className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#2D7791] text-sm font-medium text-white hover:bg-[#2D7791]/90"
                   >
                     <Repeat className="size-4" />
                     Propose to swap

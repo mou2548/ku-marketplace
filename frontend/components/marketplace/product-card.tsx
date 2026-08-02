@@ -138,7 +138,7 @@ export function ProductCard({ product }: { product: Product }) {
             href={`/trade/${product.id}`}
             className={cn(
               buttonVariants(),
-              "h-9 flex-1 rounded-full bg-foreground hover:bg-foreground/90"
+              "h-9 flex-1 rounded-full bg-[#2D7791] hover:bg-[#2D7791]/90"
             )}
           >
             Propose Swap
