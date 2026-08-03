@@ -1,0 +1,276 @@
+{
+  "info": {
+    "_postman_id": "4fe248dc-4fc8-46aa-8b96-a0d6a96bbcf0",
+    "name": "KU Marketplace API",
+    "description": "Requests for every endpoint defined in prompt.txt. Start the backend before running the collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "postId",
+      "value": "post_001"
+    },
+    {
+      "key": "offerId",
+      "value": "offer_001"
+    },
+    {
+      "key": "giveawayId",
+      "value": "giveaway_001"
+    },
+    {
+      "key": "recipientId",
+      "value": "recipient_001"
+    },
+    {
+      "key": "ticketId",
+      "value": "ticket_001"
+    }
+  ],
+  "item": [
+    {
+      "name": "Posts, Offers & Trade",
+      "item": [
+        {
+          "name": "Create post",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": 145,\n  \"post_type\": \"Both\",\n  \"price\": 250,\n  \"quantity_total\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts"
+          }
+        },
+        {
+          "name": "Get all posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts"
+          }
+        },
+        {
+          "name": "Get post detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          }
+        },
+        {
+          "name": "Update post price",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 300\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          }
+        },
+        {
+          "name": "Delete post",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{postId}}"
+          }
+        },
+        {
+          "name": "Buy post",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delivery_method\": \"Meetup\",\n  \"quantity\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts/{{postId}}/buy"
+          }
+        },
+        {
+          "name": "Create offer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_ids\": [201, 205],\n  \"additional_money\": 100\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts/{{postId}}/offer"
+          }
+        },
+        {
+          "name": "Get post offers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/posts/{{postId}}/offer"
+          }
+        },
+        {
+          "name": "Accept offer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delivery_method\": \"Shipping\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/accept"
+          }
+        },
+        {
+          "name": "Withdraw offer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/withdraw"
+          }
+        },
+        {
+          "name": "Reject offer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/reject"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Giveaway Allocation",
+      "item": [
+        {
+          "name": "Create giveaway",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_name\": \"เสื้อคณะไซส์ M\",\n  \"description\": \"ได้มาแต่ใส่ไม่พอดี ใหม่มาก\",\n  \"pickup_location\": \"หน้าตึกวิศวกรรม 1\",\n  \"allocation_method\": \"Random\",\n  \"pickup_deadline\": \"2026-08-05T18:00:00Z\",\n  \"images\": [\n    {\n      \"image_url\": \"https://example.com/giveaways/img1.jpg\",\n      \"display_order\": 0\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways"
+          }
+        },
+        {
+          "name": "Get giveaway detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}"
+          }
+        },
+        {
+          "name": "Join giveaway",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/join"
+          }
+        },
+        {
+          "name": "Draw giveaway",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/draw"
+          }
+        },
+        {
+          "name": "Select recipients manually",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver_ids\": [3311, 3320, 3325]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/select"
+          }
+        },
+        {
+          "name": "Get giveaway recipients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/recipients"
+          }
+        },
+        {
+          "name": "Forfeit recipient",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways/recipients/{{recipientId}}/forfeit"
+          }
+        },
+        {
+          "name": "Generate ticket QR",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/tickets/{{ticketId}}/qr/generate"
+          }
+        },
+        {
+          "name": "Scan ticket QR",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"mock-qr-token-001\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/tickets/{{ticketId}}/qr/scan"
+          }
+        }
+      ]
+    }
+  ]
+}
