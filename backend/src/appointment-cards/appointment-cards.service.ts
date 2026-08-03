@@ -6,13 +6,12 @@ import { RespondAppointmentDto } from './dto/respond-appointment.dto';
 export class AppointmentCardsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // 4. POST /appointment-cards/:id/respond
   async respondToAppointment(
     appointmentId: number,
     respondAppointmentDto: RespondAppointmentDto,
   ) {
-    const appointment = await this.prisma.appointment_Card.findUnique({
-      where: { appointment_id: appointmentId },
+    const appointment = await this.prisma.appointmentCard.findUnique({
+      where: { appointmentId },
     });
 
     if (!appointment) {
@@ -27,8 +26,8 @@ export class AppointmentCardsService {
       cancel: 'Cancelled',
     };
 
-    return this.prisma.appointment_Card.update({
-      where: { appointment_id: appointmentId },
+    return this.prisma.appointmentCard.update({
+      where: { appointmentId },
       data: {
         status: statusMap[respondAppointmentDto.response],
       },
