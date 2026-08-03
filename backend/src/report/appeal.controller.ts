@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Post,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import { AppealService } from './appeal.service';
 import { CreateAppealDto } from './dto/create-appeal.dto';
@@ -14,8 +15,10 @@ import { MockAuthGuard } from '../common/guards/mock-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
+import { ReportValidationPipe } from '../common/pipes/report-validation.pipe';
 
 @Controller()
+@UsePipes(ReportValidationPipe)
 export class AppealController {
   constructor(private readonly appealService: AppealService) {}
 

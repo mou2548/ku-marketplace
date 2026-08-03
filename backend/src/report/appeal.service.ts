@@ -20,42 +20,42 @@ export class AppealService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * `target_id` means a different thing per report_type, so the user the report
+   * `targetId` means a different thing per reportType, so the user the report
    * was actually filed against has to be resolved differently for each:
-   *   User        → target_id is already the user_id
-   *   Post        → target_id is a post_id; the reported party owns the item
-   *   Transaction → target_id is a transaction_id; the reported party is the
+   *   User        → targetId is already the userId
+   *   Post        → targetId is a postId; the reported party owns the item
+   *   Transaction → targetId is a transactionId; the reported party is the
    *                 counterparty, i.e. whichever side the reporter is not
    * Returns undefined when the target row no longer exists (deleted post, etc.).
    */
   private async resolveReportedUserId(report: {
-    report_type: string;
-    target_id: number;
-    reporter_id: number;
+    reportType: string;
+    targetId: number;
+    reporterId: number;
   }): Promise<number | undefined> {
-    if (report.report_type === ReportType.User) {
-      return report.target_id;
+    if (report.reportType === ReportType.User) {
+      return report.targetId;
     }
 
-    if (report.report_type === ReportType.Post) {
+    if (report.reportType === ReportType.Post) {
       const post = await this.prisma.post.findUnique({
-        where: { post_id: report.target_id },
-        select: { Item: { select: { owner_id: true } } },
+        where: { postId: report.targetId },
+        select: { item: { select: { ownerId: true } } },
       });
-      return post?.Item.owner_id;
+      return post?.item.ownerId;
     }
 
-    if (report.report_type === ReportType.Transaction) {
+    if (report.reportType === ReportType.Transaction) {
       const transaction = await this.prisma.transaction.findUnique({
-        where: { transaction_id: report.target_id },
-        select: { buyer_id: true, seller_id: true },
+        where: { transactionId: report.targetId },
+        select: { buyerId: true, sellerId: true },
       });
       if (!transaction) {
         return undefined;
       }
-      return transaction.buyer_id === report.reporter_id
-        ? transaction.seller_id
-        : transaction.buyer_id;
+      return transaction.buyerId === report.reporterId
+        ? transaction.sellerId
+        : transaction.buyerId;
     }
 
     return undefined;
@@ -63,7 +63,7 @@ export class AppealService {
 
   async create(appellantId: number, dto: CreateAppealDto) {
     const report = await this.prisma.report.findUnique({
-      where: { report_id: dto.report_id },
+      where: { reportId: dto.report_id },
     });
     if (!report) {
       throw new NotFoundException(`Report ${dto.report_id} not found`);
@@ -72,7 +72,7 @@ export class AppealService {
 
     if (ownerId === undefined) {
       throw new NotFoundException(
-        `No owner found for ${report.report_type} ${report.target_id}`,
+        `No owner found for ${report.reportType} ${report.targetId}`,
       );
     }
     if (ownerId !== appellantId) {
@@ -80,13 +80,13 @@ export class AppealService {
         'Only the user the report was filed against can appeal it',
       );
     }
-    if (!report.handled_at) {
+    if (!report.handledAt) {
       throw new BadRequestException(
         'Report has not been resolved yet — nothing to appeal',
       );
     }
 
-    const deadline = new Date(report.handled_at);
+    const deadline = new Date(report.handledAt);
     deadline.setDate(deadline.getDate() + APPEAL_WINDOW_DAYS);
     if (new Date() > deadline) {
       throw new BadRequestException(
@@ -95,7 +95,7 @@ export class AppealService {
     }
 
     const existingAppeal = await this.prisma.appeal.findFirst({
-      where: { report_id: dto.report_id },
+      where: { reportId: dto.report_id },
     });
     if (existingAppeal) {
       throw new BadRequestException(
@@ -105,10 +105,10 @@ export class AppealService {
 
     return this.prisma.appeal.create({
       data: {
-        report_id: dto.report_id,
-        appellant_id: appellantId,
+        reportId: dto.report_id,
+        appellantId: appellantId,
         reason: dto.reason,
-        evidence_urls: dto.evidence_urls,
+        evidenceUrls: dto.evidence_urls,
         // Appeal.status is NOT NULL with no DB-level default in init.sql,
         // unlike Report.status — so the starting status must be set here.
         status: AppealStatus.Pending,
@@ -118,13 +118,13 @@ export class AppealService {
 
   async decide(appealId: number, adminId: number, dto: DecideAppealDto) {
     const appeal = await this.prisma.appeal.findUnique({
-      where: { appeal_id: appealId },
+      where: { appealId },
       include: { report: true },
     });
     if (!appeal) {
       throw new NotFoundException(`Appeal ${appealId} not found`);
     }
-    if (appeal.report.handled_by === adminId) {
+    if (appeal.report.handledBy === adminId) {
       throw new BadRequestException(
         'Appeal must be decided by a different admin than the one who resolved the original report',
       );
@@ -140,21 +140,21 @@ export class AppealService {
 
     return this.prisma.$transaction(async (tx) => {
       const updatedAppeal = await tx.appeal.update({
-        where: { appeal_id: appealId },
+        where: { appealId },
         data: {
           status: dto.status,
-          resolution_note: dto.resolution_note,
-          handled_by: adminId,
-          handled_at: new Date(),
+          resolutionNote: dto.resolution_note,
+          handledBy: adminId,
+          handledAt: new Date(),
         },
       });
 
       if (dto.status === AppealStatus.Approved) {
         await tx.report.update({
-          where: { report_id: appeal.report_id },
+          where: { reportId: appeal.reportId },
           data: {
             status: ReportStatus.Report_Dismissed,
-            resolution_note: 'Report reversed — appeal approved.',
+            resolutionNote: 'Report reversed — appeal approved.',
           },
         });
       }

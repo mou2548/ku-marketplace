@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import { ReportService } from './report.service';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -15,8 +16,10 @@ import { MockAuthGuard } from '../common/guards/mock-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
+import { ReportValidationPipe } from '../common/pipes/report-validation.pipe';
 
 @Controller()
+@UsePipes(ReportValidationPipe)
 export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 

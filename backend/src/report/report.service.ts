@@ -15,25 +15,25 @@ export class ReportService {
   create(reporterId: number, dto: CreateReportDto) {
     return this.prisma.report.create({
       data: {
-        reporter_id: reporterId,
-        report_type: dto.report_type,
-        target_id: dto.target_id,
-        reason_category: dto.reason_category,
+        reporterId: reporterId,
+        reportType: dto.report_type,
+        targetId: dto.target_id,
+        reasonCategory: dto.reason_category,
         details: dto.details,
-        evidence_urls: dto.evidence_urls,
+        evidenceUrls: dto.evidence_urls,
       },
     });
   }
 
   findAll() {
     return this.prisma.report.findMany({
-      orderBy: { created_at: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
   private async findOneOrThrow(reportId: number) {
     const report = await this.prisma.report.findUnique({
-      where: { report_id: reportId },
+      where: { reportId },
     });
     if (!report) {
       throw new NotFoundException(`Report ${reportId} not found`);
@@ -43,13 +43,13 @@ export class ReportService {
 
   // status comes back as `string | null` — init.sql stores it as VARCHAR(20)
   // with no NOT NULL, so the DB can't guarantee it's one of the enum values.
-  private assertOpen(report: { report_id: number; status: string | null }) {
+  private assertOpen(report: { reportId: number; status: string | null }) {
     if (
       report.status !== ReportStatus.Pending &&
       report.status !== ReportStatus.Under_Investigation
     ) {
       throw new BadRequestException(
-        `Report ${report.report_id} has already been decided (status: ${report.status})`,
+        `Report ${report.reportId} has already been decided (status: ${report.status})`,
       );
     }
   }
@@ -58,12 +58,12 @@ export class ReportService {
     const report = await this.findOneOrThrow(reportId);
     this.assertOpen(report);
     return this.prisma.report.update({
-      where: { report_id: reportId },
+      where: { reportId },
       data: {
         status: dto.status,
-        resolution_note: dto.resolution_note,
-        handled_by: adminId,
-        handled_at: new Date(),
+        resolutionNote: dto.resolution_note,
+        handledBy: adminId,
+        handledAt: new Date(),
       },
     });
   }
@@ -72,12 +72,12 @@ export class ReportService {
     const report = await this.findOneOrThrow(reportId);
     this.assertOpen(report);
     return this.prisma.report.update({
-      where: { report_id: reportId },
+      where: { reportId },
       data: {
         status: ReportStatus.Report_Dismissed,
-        resolution_note: 'Post restored — report deemed unfair by admin.',
-        handled_by: adminId,
-        handled_at: new Date(),
+        resolutionNote: 'Post restored — report deemed unfair by admin.',
+        handledBy: adminId,
+        handledAt: new Date(),
       },
     });
   }
