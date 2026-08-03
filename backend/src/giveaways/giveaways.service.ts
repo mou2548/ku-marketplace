@@ -13,7 +13,7 @@ export interface GiveawayImage {
 }
 
 export interface CreateGiveawayPayload {
-  giver_id?: number;
+  giver_id: number;
   item_name?: string;
   description?: string;
   pickup_location?: string;
@@ -23,7 +23,7 @@ export interface CreateGiveawayPayload {
 }
 
 export interface JoinGiveawayPayload {
-  receiver_id?: number;
+  receiver_id: number;
 }
 
 export interface SelectRecipientsPayload {
@@ -71,7 +71,12 @@ export class GiveawaysService {
     ) {
       throw new BadRequestException('allocation_method ไม่ถูกต้อง');
     }
-    const giverId = payload.giver_id ?? 2;
+    const giverId = payload.giver_id;
+    if (!Number.isInteger(giverId) || giverId < 1) {
+      throw new BadRequestException(
+        'giver_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
+      );
+    }
     if (!(await this.prisma.user.findUnique({ where: { userId: giverId } }))) {
       throw new NotFoundException('ไม่พบผู้แจก');
     }
@@ -155,7 +160,12 @@ export class GiveawaysService {
 
   async join(id: string, payload: JoinGiveawayPayload) {
     const giveawayId = this.id(id, 'giveaway');
-    const receiverId = payload.receiver_id ?? 3;
+    const receiverId = payload.receiver_id;
+    if (!Number.isInteger(receiverId) || receiverId < 1) {
+      throw new BadRequestException(
+        'receiver_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
+      );
+    }
     const giveaway = await this.prisma.giveawayPost.findUnique({
       where: { giveawayId },
     });

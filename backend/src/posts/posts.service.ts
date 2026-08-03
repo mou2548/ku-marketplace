@@ -18,13 +18,13 @@ export interface UpdatePostPayload {
 }
 
 export interface BuyPostPayload {
-  buyer_id?: number;
+  buyer_id: number;
   delivery_method?: string;
   quantity?: number;
 }
 
 export interface CreateOfferPayload {
-  proposer_id?: number;
+  proposer_id: number;
   item_ids?: number[];
   additional_money?: number;
 }
@@ -188,8 +188,13 @@ export class PostsService {
   async buyPost(postId: string, payload: BuyPostPayload) {
     const id = this.id(postId, 'post');
     const quantity = payload.quantity ?? 1;
-    const buyerId = payload.buyer_id ?? 3;
+    const buyerId = payload.buyer_id;
     const deliveryMethod = payload.delivery_method ?? 'Meetup';
+    if (!Number.isInteger(buyerId) || buyerId < 1) {
+      throw new BadRequestException(
+        'buyer_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
+      );
+    }
     if (quantity < 1 || !['Meetup', 'Shipping'].includes(deliveryMethod)) {
       throw new BadRequestException('quantity หรือ delivery_method ไม่ถูกต้อง');
     }
@@ -234,7 +239,12 @@ export class PostsService {
 
   async createOffer(postId: string, payload: CreateOfferPayload) {
     const id = this.id(postId, 'post');
-    const proposerId = payload.proposer_id ?? 3;
+    const proposerId = payload.proposer_id;
+    if (!Number.isInteger(proposerId) || proposerId < 1) {
+      throw new BadRequestException(
+        'proposer_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
+      );
+    }
     const itemIds = [...new Set(payload.item_ids ?? [])];
     const post = await this.prisma.post.findUnique({ where: { postId: id } });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
