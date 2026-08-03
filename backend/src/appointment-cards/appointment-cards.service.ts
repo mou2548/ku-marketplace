@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RespondAppointmentDto } from './dto/respond-appointment.dto';
 
@@ -20,16 +20,23 @@ export class AppointmentCardsService {
       );
     }
 
-    const statusMap = {
+    const statusMap: Record<string, string> = {
       confirm: 'Confirmed',
       reject: 'Rejected',
-      cancel: 'Cancelled',
     };
+
+    const newStatus = statusMap[respondAppointmentDto.response];
+
+    if (!newStatus) {
+      throw new BadRequestException(
+        `Invalid response: ${respondAppointmentDto.response}. Response must be 'confirm' or 'reject'.`,
+      );
+    }
 
     return this.prisma.appointmentCard.update({
       where: { appointmentId },
       data: {
-        status: statusMap[respondAppointmentDto.response],
+        status: newStatus,
       },
     });
   }

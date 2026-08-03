@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Request,
 } from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
@@ -21,15 +22,15 @@ export class ItemsController {
     return this.itemsService.findAll();
   }
 
-@Get('categories')
-getCategories() {
-  return this.itemsService.getCategories();
-}
+  @Get('categories')
+  getCategories() {
+    return this.itemsService.getCategories();
+  }
 
-@Get('count')
-count() {
-  return this.itemsService.count();
-}
+  @Get('count')
+  count() {
+    return this.itemsService.count();
+  }
 
   @Get(':item_id')
   findOne(@Param('item_id', ParseIntPipe) itemId: number) {
@@ -45,12 +46,18 @@ count() {
   update(
     @Param('item_id', ParseIntPipe) itemId: number,
     @Body() updateItemDto: UpdateItemDto,
+    @Request() req,
   ) {
-    return this.itemsService.update(itemId, updateItemDto);
+    const userId = req.user?.id ?? 1;
+    return this.itemsService.update(itemId, updateItemDto, userId);
   }
-
+  
   @Delete(':item_id')
-  remove(@Param('item_id', ParseIntPipe) itemId: number) {
-    return this.itemsService.remove(itemId);
+  remove(
+    @Param('item_id', ParseIntPipe) itemId: number,
+    @Request() req,
+  ) {
+    const userId = req.user?.id ?? 1;
+    return this.itemsService.remove(itemId, userId);
   }
 }
