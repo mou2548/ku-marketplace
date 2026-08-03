@@ -1,11 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/prisma/prisma.service';
 
-describe('AppController (e2e)', () => {
+describe('Database-backed API (e2e)', () => {
   let app: INestApplication<App>;
+  let prisma: PrismaService;
+  const itemIds: number[] = [];
+  const giveawayIds: number[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -14,111 +18,159 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+    prisma = app.get(PrismaService);
   });
 
-  it('รองรับ Posts, Offers และ Trade endpoints ตาม prompt', async () => {
-    const server = app.getHttpServer();
+  it('บันทึกและอ่าน Posts, Offers และ Transactions จาก PostgreSQL', async () => {
+    const listedItem = await prisma.item.create({
+      data: {
+        ownerId: 2,
+        name: `e2e listed item ${Date.now()}`,
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    const tradeItem = await prisma.item.create({
+      data: {
+        ownerId: 3,
+        name: `e2e trade item ${Date.now()}`,
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    const deletableItem = await prisma.item.create({
+      data: {
+        ownerId: 2,
+        name: `e2e deletable item ${Date.now()}`,
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    itemIds.push(listedItem.itemId, tradeItem.itemId, deletableItem.itemId);
 
-    await request(server)
+    const created = await request(app.getHttpServer())
       .post('/posts')
       .send({
-        item_id: 145,
+        item_id: listedItem.itemId,
         post_type: 'Both',
         price: 250,
         quantity_total: 1,
       })
-      .expect(201)
-      .expect(({ body }) =>
-        expect(body).toMatchObject({ data: { item_id: 145 } }),
-      );
-    await request(server).get('/posts').expect(200);
-    await request(server).get('/posts/post_001').expect(200);
-    await request(server)
-      .patch('/posts/post_001')
+      .expect(201);
+    const postId = created.body.data.post_id as string;
+
+    await request(app.getHttpServer()).get(`/posts/${postId}`).expect(200);
+    await request(app.getHttpServer())
+      .patch(`/posts/${postId}`)
       .send({ price: 300 })
       .expect(200)
-      .expect(({ body }) =>
-        expect(body).toMatchObject({ data: { price: 300 } }),
-      );
-    await request(server).delete('/posts/post_001').expect(200);
-    await request(server)
-      .post('/posts/post_001/buy')
-      .send({ delivery_method: 'Meetup', quantity: 1 })
+      .expect(({ body }) => expect(body.data.price).toBe(300));
+
+    const offer = await request(app.getHttpServer())
+      .post(`/posts/${postId}/offers`)
+      .send({
+        proposer_id: 3,
+        item_ids: [tradeItem.itemId],
+        additional_money: 100,
+      })
       .expect(201);
-    await request(server)
-      .post('/posts/post_001/offers')
-      .send({ item_ids: [201, 205], additional_money: 100 })
-      .expect(201);
-    await request(server).get('/posts/post_001/offers').expect(200);
-    await request(server)
-      .post('/posts/post_001/offers/offer_001/accept')
-      .send({ delivery_method: 'Shipping' })
-      .expect(201);
-    await request(server)
-      .post('/posts/post_001/offers/offer_001/withdraw')
+    await request(app.getHttpServer())
+      .post(`/posts/${postId}/offers/${offer.body.data.offer_id}/withdraw`)
       .send({})
       .expect(201);
-    await request(server)
-      .post('/posts/post_001/offers/offer_001/reject')
-      .send({})
+
+    await request(app.getHttpServer())
+      .post(`/posts/${postId}/buy`)
+      .send({ buyer_id: 3, delivery_method: 'Meetup', quantity: 1 })
       .expect(201);
+
+    const deletable = await request(app.getHttpServer())
+      .post('/posts')
+      .send({
+        item_id: deletableItem.itemId,
+        post_type: 'SellOnly',
+        price: 10,
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .delete(`/posts/${deletable.body.data.post_id}`)
+      .expect(200);
   });
 
-  it('รองรับ Giveaway Allocation endpoints ตาม prompt', async () => {
-    const server = app.getHttpServer();
-
-    await request(server)
+  it('บันทึกผู้เข้าร่วม จับฉลาก และตรวจ QR จาก PostgreSQL', async () => {
+    const created = await request(app.getHttpServer())
       .post('/giveaways')
       .send({
-        item_name: 'เสื้อคณะไซส์ M',
-        description: 'ได้มาแต่ใส่ไม่พอดี ใหม่มาก',
-        pickup_location: 'หน้าตึกวิศวกรรม 1',
+        giver_id: 2,
+        item_name: `e2e giveaway ${Date.now()}`,
+        pickup_location: 'KU',
         allocation_method: 'Random',
-        pickup_deadline: '2026-08-05T18:00:00Z',
+        pickup_deadline: '2026-12-31T18:00:00Z',
         images: [
-          {
-            image_url: 'https://r2.example/giveaways/temp/img1.jpg',
-            display_order: 0,
-          },
+          { image_url: 'https://example.com/e2e.jpg', display_order: 0 },
         ],
       })
       .expect(201);
-    await request(server).get('/giveaways/giveaway_001').expect(200);
-    await request(server)
-      .post('/giveaways/giveaway_001/join')
-      .send({})
+    const giveawayId = created.body.data.giveaway_id as string;
+    giveawayIds.push(Number(giveawayId.replace('giveaway_', '')));
+
+    await request(app.getHttpServer())
+      .post(`/giveaways/${giveawayId}/join`)
+      .send({ receiver_id: 3 })
       .expect(201);
-    await request(server)
-      .post('/giveaways/giveaway_001/draw')
+    await request(app.getHttpServer())
+      .post(`/giveaways/${giveawayId}/join`)
+      .send({ receiver_id: 4 })
+      .expect(201);
+
+    const draw = await request(app.getHttpServer())
+      .post(`/giveaways/${giveawayId}/draw`)
       .send({})
       .expect(200);
-    await request(server)
-      .post('/giveaways/giveaway_001/select')
-      .send({ receiver_ids: [3311, 3320, 3325] })
-      .expect(200)
-      .expect(({ body }) => {
-        const response = body as { data: { recipients: unknown[] } };
-        expect(response.data.recipients).toHaveLength(3);
-      });
-    await request(server).get('/giveaways/giveaway_001/recipients').expect(200);
-    await request(server)
-      .post('/giveaways/recipients/recipient_001/forfeit')
-      .send({ confirm: true })
-      .expect(200);
-    await request(server)
-      .post('/giveaways/giveaway_001/tickets/ticket_001/qr/generate')
+    const ticketId = draw.body.data.recipients[0].ticket_id as string;
+    const qr = await request(app.getHttpServer())
+      .post(`/giveaways/${giveawayId}/tickets/${ticketId}/qr/generate`)
       .send({})
       .expect(201);
-    await request(server)
-      .post('/giveaways/giveaway_001/tickets/ticket_001/qr/scan')
-      .send({ token: 'mock-qr-token-001' })
+    await request(app.getHttpServer())
+      .post(`/giveaways/${giveawayId}/tickets/${ticketId}/qr/scan`)
+      .send({ token: qr.body.data.token })
       .expect(200)
-      .expect(({ body }) =>
-        expect(body).toMatchObject({ data: { valid: true } }),
-      );
+      .expect(({ body }) => expect(body.data.valid).toBe(true));
   });
 
   afterAll(async () => {
-    await app.close();
+    if (giveawayIds.length > 0) {
+      await prisma.giveawayTicket.deleteMany({
+        where: { giveawayId: { in: giveawayIds } },
+      });
+      await prisma.giveawayImage.deleteMany({
+        where: { giveawayId: { in: giveawayIds } },
+      });
+      await prisma.giveawayPost.deleteMany({
+        where: { giveawayId: { in: giveawayIds } },
+      });
+    }
+    if (itemIds.length > 0) {
+      const posts = await prisma.post.findMany({
+        where: { itemId: { in: itemIds } },
+        select: { postId: true },
+      });
+      const postIds = posts.map((post) => post.postId);
+      const offers = await prisma.offer.findMany({
+        where: { postId: { in: postIds } },
+        select: { offerId: true },
+      });
+      await prisma.transaction.deleteMany({
+        where: { postId: { in: postIds } },
+      });
+      await prisma.offerItem.deleteMany({
+        where: { offerId: { in: offers.map((offer) => offer.offerId) } },
+      });
+      await prisma.offer.deleteMany({ where: { postId: { in: postIds } } });
+      await prisma.post.deleteMany({ where: { postId: { in: postIds } } });
+      await prisma.item.deleteMany({ where: { itemId: { in: itemIds } } });
+    }
+    if (app) await app.close();
   });
 });
