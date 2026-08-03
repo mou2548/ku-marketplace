@@ -27,12 +27,12 @@ export class AuthService {
       throw new ConflictException('อีเมลนี้เคยลงทะเบียนแล้ว');
     }
 
-    const password_hash = await bcrypt.hash(payload.password, 10);
+    const passwordHash = await bcrypt.hash(payload.password, 10);
 
     const otp = await this.otpService.createAndStore(payload.email, {
       email: payload.email,
-      password_hash,
-      phone_number: payload.phone ?? null,
+      passwordHash,
+      phoneNumber: payload.phone ?? null,
     });
 
     await this.mailService.sendOtp(payload.email, otp);
@@ -41,9 +41,8 @@ export class AuthService {
   }
 
   /**
-   * ⚠️ first_name_th / last_name_th เป็น NOT NULL ใน schema จริง
+   * ⚠️ firstNameTh / lastNameTh เป็น NOT NULL ใน schema จริง
    * แต่ flow นี้ยังไม่เก็บชื่อไทยตอนสมัคร — ใส่ placeholder ว่างไปก่อน
-   * ควรคุยกับทีมว่าจะเปลี่ยนเป็น nullable หรือเพิ่มช่องกรอกตอนสมัครแทน
    */
   async verifyRegisterOtp(email: string, otp: string) {
     const pending = await this.otpService.verify(email, otp);
@@ -56,24 +55,24 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         email,
-        password_hash: pending.password_hash,
-        phone_number: pending.phone_number,
-        first_name_en: firstNameEn,
-        last_name_en: '',
-        first_name_th: '',
-        last_name_th: '',
-        email_verified_at: new Date(),
+        passwordHash: pending.passwordHash,
+        phoneNumber: pending.phoneNumber,
+        firstNameEn,
+        lastNameEn: '',
+        firstNameTh: '',
+        lastNameTh: '',
+        emailVerifiedAt: new Date(),
       },
       select: {
-        user_id: true,
+        userId: true,
         email: true,
-        first_name_en: true,
-        isadmin: true,
+        firstNameEn: true,
+        isAdmin: true,
       },
     });
 
     await this.prisma.subscription.create({
-      data: { user_id: user.user_id, tier: 'Free', status: 'Active', start_date: new Date() },
+      data: { userId: user.userId, tier: 'Free', status: 'Active', startDate: new Date() },
     });
 
     const accessToken = this.tokenService.generateAccessToken(user);
@@ -91,21 +90,21 @@ export class AuthService {
       throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
-    const passwordMatches = await bcrypt.compare(payload.password, user.password_hash);
+    const passwordMatches = await bcrypt.compare(payload.password, user.passwordHash);
     if (!passwordMatches) {
       throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
-    const tokenUser = { user_id: user.user_id, email: user.email, isadmin: user.isadmin };
+    const tokenUser = { userId: user.userId, email: user.email, isAdmin: user.isAdmin };
     const accessToken = this.tokenService.generateAccessToken(tokenUser);
     const refreshToken = this.tokenService.generateRefreshToken(tokenUser);
 
     return {
       user: {
-        user_id: user.user_id,
+        userId: user.userId,
         email: user.email,
-        first_name_en: user.first_name_en,
-        isadmin: user.isadmin,
+        firstNameEn: user.firstNameEn,
+        isAdmin: user.isAdmin,
       },
       accessToken,
       refreshToken,

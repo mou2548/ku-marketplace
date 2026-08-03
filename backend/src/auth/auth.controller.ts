@@ -22,7 +22,7 @@ export class AuthController {
   }
 
   @Post('register/verify-otp')
-  async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
+  async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res) {
     const { user, accessToken, refreshToken } = await this.authService.verifyRegisterOtp(
       dto.email,
       dto.otp,
@@ -34,7 +34,7 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res) {
     const { user, accessToken, refreshToken } = await this.authService.login(dto);
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, cookieOptions);
