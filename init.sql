@@ -14,7 +14,7 @@ CREATE TABLE "User" (
     "phone_number" VARCHAR(20),
     "status" VARCHAR(20) DEFAULT 'Active' CHECK("status" IN ('Active', 'Suspended', 'Banned', 'Deleted')),
     "email_verified_at" TIMESTAMP,
-    "isadmin" BOOLEAN DEFAULT FALSE,
+    "isAdmin" BOOLEAN DEFAULT FALSE,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -221,7 +221,7 @@ CREATE TABLE "Subscription_Payment" (
 -- ------------------------------------------
 -- 1. USER (12 Users)
 -- ------------------------------------------
-INSERT INTO "User" ("user_id", "email", "first_name_en", "last_name_en", "first_name_th", "last_name_th", "password_hash", "phone_number", "status", "email_verified_at", "isadmin") VALUES
+INSERT INTO "User" ("user_id", "email", "first_name_en", "last_name_en", "first_name_th", "last_name_th", "password_hash", "phone_number", "status", "email_verified_at", "isAdmin") VALUES
 (1, 'admin.ku@ku.th', 'Admin', 'Marketplace', 'แอดมิน', 'มก', '$2b$10$e84b81c22360b382d6110', '0800000000', 'Active', NOW() - INTERVAL '30 days', TRUE),
 (2, 'somchai.sae@ku.th', 'Somchai', 'Saetang', 'สมชาย', 'แซ่ตั้ง', '$2b$10$e84b81c22360b382d6110', '0812345678', 'Active', NOW() - INTERVAL '25 days', FALSE),
 (3, 'somsri.kew@ku.th', 'Somsri', 'Kaewmanee', 'สมศรี', 'แก้วมณี', '$2b$10$e84b81c22360b382d6110', '0823456789', 'Active', NOW() - INTERVAL '20 days', FALSE),

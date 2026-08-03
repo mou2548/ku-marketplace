@@ -22,7 +22,7 @@ model User {
   phoneNumber     String?          @map("phone_number") @db.VarChar(20)
   status          String?          @default("Active") @db.VarChar(20)
   emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
-  isAdmin         Boolean?         @default(false) @map("isadmin")
+  isAdmin         Boolean?         @default(false) @map("isAdmin")
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   items           Item[]
   offers          Offer[]
@@ -30,6 +30,16 @@ model User {
   sales           Transaction[]    @relation("TransactionSeller")
   giveaways       GiveawayPost[]
   giveawayTickets GiveawayTicket[]
+
+  reportsFiled           Report[]              @relation("ReportReporter")
+  reportsHandled         Report[]              @relation("ReportHandledBy")
+  appealsFiled           Appeal[]              @relation("AppealAppellant")
+  appealsHandled         Appeal[]              @relation("AppealHandledBy")
+  appointmentsProposed   AppointmentCard[]
+  chatMessages           ChatMessage[]
+  subscriptions          Subscription[]
+  subscriptionPayments   SubscriptionPayment[] @relation("SubscriptionPaymentUser")
+  subscriptionPaymentsHandled SubscriptionPayment[] @relation("SubscriptionPaymentHandledBy")
 
   @@map("User")
 }
@@ -50,6 +60,7 @@ model Item {
   owner          User        @relation(fields: [ownerId], references: [userId])
   post           Post?
   offerItems     OfferItem[]
+  images         ItemImage[]
 
   @@map("Item")
 }
@@ -120,6 +131,10 @@ model Transaction {
   offer                           Offer?    @relation(fields: [offerId], references: [offerId])
   buyer                           User      @relation("TransactionBuyer", fields: [buyerId], references: [userId])
   seller                          User      @relation("TransactionSeller", fields: [sellerId], references: [userId])
+  activeReport                    Report?   @relation(fields: [activeReportId], references: [reportId])
+
+  appointmentCards AppointmentCard[]
+  chatRooms        ChatRoom[]
 
   @@map("Transaction")
 }
@@ -137,6 +152,7 @@ model GiveawayPost {
   giver            User             @relation(fields: [giverId], references: [userId])
   images           GiveawayImage[]
   tickets          GiveawayTicket[]
+  chatRooms        ChatRoom[]
 
   @@map("Giveaway_Post")
 }
@@ -163,4 +179,135 @@ model GiveawayTicket {
   receiver   User         @relation(fields: [receiverId], references: [userId])
 
   @@map("Giveaway_Ticket")
+}
+
+model ItemImage {
+  imageId      Int       @id @default(autoincrement()) @map("image_id")
+  itemId       Int       @map("item_id")
+  imageUrl     String    @map("image_url") @db.VarChar(500)
+  isPrimary    Boolean?  @default(false) @map("is_primary")
+  displayOrder Int?      @default(0) @map("display_order")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  item         Item      @relation(fields: [itemId], references: [itemId])
+
+  @@map("Item_Image")
+}
+
+model Report {
+  reportId       Int       @id @default(autoincrement()) @map("report_id")
+  reporterId     Int       @map("reporter_id")
+  reportType     String    @map("report_type") @db.VarChar(20)
+  targetId       Int       @map("target_id")
+  reasonCategory String    @map("reason_category") @db.VarChar(100)
+  details        String?
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String?   @default("Pending") @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note")
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  reporter User  @relation("ReportReporter", fields: [reporterId], references: [userId])
+  handler  User? @relation("ReportHandledBy", fields: [handledBy], references: [userId])
+
+  appeals            Appeal[]
+  activeTransactions Transaction[]
+
+  @@map("Report")
+}
+
+model Appeal {
+  appealId       Int       @id @default(autoincrement()) @map("appeal_id")
+  reportId       Int       @map("report_id")
+  appellantId    Int       @map("appellant_id")
+  reason         String
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String    @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note")
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+
+  report    Report @relation(fields: [reportId], references: [reportId])
+  appellant User   @relation("AppealAppellant", fields: [appellantId], references: [userId])
+  handler   User?  @relation("AppealHandledBy", fields: [handledBy], references: [userId])
+
+  @@map("Appeal")
+}
+
+model AppointmentCard {
+  appointmentId Int       @id @default(autoincrement()) @map("appointment_id")
+  transactionId Int       @map("transaction_id")
+  proposedBy    Int       @map("proposed_by")
+  date          DateTime  @db.Date
+  time          DateTime  @db.Time(6)
+  location      String    @db.VarChar(255)
+  status        String?   @default("Pending") @db.VarChar(20)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [transactionId])
+  proposer    User        @relation(fields: [proposedBy], references: [userId])
+
+  @@map("Appointment_Card")
+}
+
+model ChatRoom {
+  roomId        Int       @id @default(autoincrement()) @map("room_id")
+  transactionId Int?      @map("transaction_id")
+  giveawayId    Int?      @map("giveaway_id")
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  transaction Transaction?  @relation(fields: [transactionId], references: [transactionId])
+  giveaway    GiveawayPost? @relation(fields: [giveawayId], references: [giveawayId])
+  messages    ChatMessage[]
+
+  @@map("Chat_Room")
+}
+
+model ChatMessage {
+  messageId Int       @id @default(autoincrement()) @map("message_id")
+  roomId    Int       @map("room_id")
+  senderId  Int       @map("sender_id")
+  content   String?
+  imageUrls Json?     @map("image_urls")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  room   ChatRoom @relation(fields: [roomId], references: [roomId])
+  sender User     @relation(fields: [senderId], references: [userId])
+
+  @@map("Chat_Message")
+}
+
+model Subscription {
+  subscriptionId     Int       @id @default(autoincrement()) @map("subscription_id")
+  userId             Int       @map("user_id")
+  tier               String    @db.VarChar(20)
+  postsUsedThisMonth Int?      @default(0) @map("posts_used_this_month")
+  status             String?   @default("Active") @db.VarChar(20)
+  startDate          DateTime? @map("start_date") @db.Timestamp(6)
+  endDate            DateTime? @map("end_date") @db.Timestamp(6)
+
+  user     User                  @relation(fields: [userId], references: [userId])
+  payments SubscriptionPayment[]
+
+  @@map("Subscription")
+}
+
+model SubscriptionPayment {
+  paymentId       Int       @id @default(autoincrement()) @map("payment_id")
+  subscriptionId  Int       @map("subscription_id")
+  userId          Int       @map("user_id")
+  amount          Int
+  slipImageUrl    String    @map("slip_image_url") @db.VarChar(500)
+  status          String    @default("Pending") @db.VarChar(25)
+  rejectionReason String?   @map("rejection_reason")
+  handledBy       Int?      @map("handled_by")
+  handledAt       DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [subscriptionId])
+  user         User         @relation("SubscriptionPaymentUser", fields: [userId], references: [userId])
+  handler      User?        @relation("SubscriptionPaymentHandledBy", fields: [handledBy], references: [userId])
+
+  @@map("Subscription_Payment")
 }
