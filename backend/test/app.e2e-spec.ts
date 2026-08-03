@@ -66,6 +66,20 @@ describe('Database-backed API (e2e)', () => {
       .expect(200)
       .expect(({ body }) => expect(body.data.price).toBe(300));
 
+    await request(app.getHttpServer())
+      .post(`/posts/${postId}/buy`)
+      .send({ buyer_id: 2, delivery_method: 'Meetup', quantity: 1 })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post(`/posts/${postId}/offers`)
+      .send({
+        proposer_id: 4,
+        item_ids: [tradeItem.itemId],
+        additional_money: 100,
+      })
+      .expect(403);
+
     const offer = await request(app.getHttpServer())
       .post(`/posts/${postId}/offers`)
       .send({
@@ -77,7 +91,7 @@ describe('Database-backed API (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/posts/${postId}/offers/${offer.body.data.offer_id}/withdraw`)
       .send({})
-      .expect(201);
+      .expect(200);
 
     await request(app.getHttpServer())
       .post(`/posts/${postId}/buy`)
@@ -92,6 +106,10 @@ describe('Database-backed API (e2e)', () => {
         price: 10,
       })
       .expect(201);
+    await request(app.getHttpServer())
+      .post(`/posts/${deletable.body.data.post_id}/offers`)
+      .send({ proposer_id: 3, item_ids: [tradeItem.itemId] })
+      .expect(409);
     await request(app.getHttpServer())
       .delete(`/posts/${deletable.body.data.post_id}`)
       .expect(200);

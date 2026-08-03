@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -205,6 +206,14 @@ export class PostsService {
         include: { item: true },
       });
       if (!post) throw new NotFoundException('ไม่พบโพสต์');
+      if (!['SellOnly', 'Both'].includes(post.postType)) {
+        throw new ConflictException('โพสต์นี้รองรับการแลกเปลี่ยนเท่านั้น');
+      }
+      if (post.item.ownerId === buyerId) {
+        throw new ConflictException(
+          'เจ้าของโพสต์ไม่สามารถซื้อสินค้าของตัวเองได้',
+        );
+      }
       if (post.quantityRemaining < quantity) {
         throw new ConflictException('สินค้าเหลือไม่เพียงพอ');
       }
@@ -246,18 +255,38 @@ export class PostsService {
       );
     }
     const itemIds = [...new Set(payload.item_ids ?? [])];
-    const post = await this.prisma.post.findUnique({ where: { postId: id } });
+    if (itemIds.length === 0) {
+      throw new BadRequestException('ต้องระบุ item_ids อย่างน้อยหนึ่งรายการ');
+    }
+    const post = await this.prisma.post.findUnique({
+      where: { postId: id },
+      include: { item: true },
+    });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
+    if (!['TradeOnly', 'Both'].includes(post.postType)) {
+      throw new ConflictException('โพสต์นี้รองรับการซื้อเท่านั้น');
+    }
+    if (post.item.ownerId === proposerId) {
+      throw new ConflictException(
+        'เจ้าของโพสต์ไม่สามารถเสนอแลกสินค้าของตัวเองได้',
+      );
+    }
     if (
       !(await this.prisma.user.findUnique({ where: { userId: proposerId } }))
     ) {
       throw new NotFoundException('ไม่พบผู้เสนอ');
     }
-    const itemCount = await this.prisma.item.count({
+    const items = await this.prisma.item.findMany({
       where: { itemId: { in: itemIds } },
+      select: { itemId: true, ownerId: true },
     });
-    if (itemCount !== itemIds.length)
+    if (items.length !== itemIds.length)
       throw new NotFoundException('ไม่พบสินค้าที่ใช้เสนอแลกบางรายการ');
+    if (items.some((item) => item.ownerId !== proposerId)) {
+      throw new ForbiddenException(
+        'สินค้าที่ใช้เสนอแลกต้องเป็นของผู้เสนอเท่านั้น',
+      );
+    }
 
     const offer = await this.prisma.offer.create({
       data: {
@@ -326,6 +355,14 @@ export class PostsService {
       if (!offer) throw new NotFoundException('ไม่พบ offer');
       if (offer.status !== 'Pending')
         throw new ConflictException('offer นี้ไม่ได้อยู่ในสถานะ Pending');
+      if (!['TradeOnly', 'Both'].includes(offer.post.postType)) {
+        throw new ConflictException('โพสต์นี้รองรับการซื้อเท่านั้น');
+      }
+      if (offer.proposerId === offer.post.item.ownerId) {
+        throw new ConflictException(
+          'เจ้าของโพสต์ไม่สามารถรับ offer ของตัวเองได้',
+        );
+      }
       if (offer.post.quantityRemaining < 1)
         throw new ConflictException('สินค้าไม่มีเหลือแล้ว');
 
