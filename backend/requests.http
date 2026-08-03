@@ -3,13 +3,17 @@
 ### === §7.7 Report & Moderation ===
 ###
 ### Runs against the mock data seeded by init.sql (docker compose up).
-### Users:  1 = admin (isAdmin), 2-10 = regular users
-### Seeded reports:
+### Users:  1 = admin (isAdmin), 2-12 = regular users
+### Seeded reports (only #1 and #2 are used below; #3-#5 are already decided
+### or unrelated, so they are left alone):
 ###   #1  Transaction / target_id 1 / reporter 3 / Under_Investigation / handled_by 1
 ###       └─ Transaction 1: buyer 3, seller 2  → reported party = seller 2
 ###       └─ already has Appeal #1 (by user 2, Pending)
 ###   #2  Post / target_id 5 / reporter 6 / Pending
 ###       └─ Post 5 → Item 5 → owner 5        → reported party = user 5
+###   #3  User / target_id 11 / Violation_Confirmed  → already has Appeal #2 (Rejected)
+###   #4  Post / target_id 1  / Report_Dismissed
+###   #5  User / target_id 9  / Pending
 ###
 ### The reported party is resolved by joining the real tables (see
 ### AppealService.resolveReportedUserId), so these ids come from the DB, not

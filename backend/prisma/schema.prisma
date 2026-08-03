@@ -19,7 +19,7 @@ model User {
   phone_number                                               String?                @db.VarChar(20)
   status                                                     String?                @default("Active") @db.VarChar(20)
   email_verified_at                                          DateTime?              @db.Timestamp(6)
-  isadmin                                                    Boolean?               @default(false)
+  isAdmin                                                    Boolean?               @default(false)
   created_at                                                 DateTime?              @default(now()) @db.Timestamp(6)
   appeals_filed                                              Appeal[]               @relation("AppealAppellant")
   appeals_handled                                            Appeal[]               @relation("AppealHandledBy")
