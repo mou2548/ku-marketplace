@@ -4,267 +4,310 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../generated/prisma"
-  moduleFormat = "cjs"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// --- §4.1 User ---
-// Same shape as feature/backend-reportandappeal (report/appeal relations
-// included below) so the two branches' schemas merge cleanly later.
 model User {
-  user_id       Int      @id @default(autoincrement())
-  email         String   @unique @db.VarChar(255)
-  first_name_en String   @db.VarChar(100)
-  last_name_en  String   @db.VarChar(100)
-  first_name_th String   @db.VarChar(100)
-  last_name_th  String   @db.VarChar(100)
-  password_hash String   @db.VarChar(255)
-  phone_number  String?  @db.VarChar(20)
-  status        String   @default("Active") @db.VarChar(20)
-  isAdmin       Boolean  @default(false)
-  created_at    DateTime @default(now())
+  userId          Int              @id @default(autoincrement()) @map("user_id")
+  email           String           @unique @db.VarChar(255)
+  firstNameEn     String           @map("first_name_en") @db.VarChar(100)
+  lastNameEn      String           @map("last_name_en") @db.VarChar(100)
+  firstNameTh     String           @map("first_name_th") @db.VarChar(100)
+  lastNameTh      String           @map("last_name_th") @db.VarChar(100)
+  passwordHash    String           @map("password_hash") @db.VarChar(255)
+  phoneNumber     String?          @map("phone_number") @db.VarChar(20)
+  status          String?          @default("Active") @db.VarChar(20)
+  emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
+  isAdmin         Boolean?         @default(false) @map("isAdmin")
+  createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  items           Item[]
+  offers          Offer[]
+  purchases       Transaction[]    @relation("TransactionBuyer")
+  sales           Transaction[]    @relation("TransactionSeller")
+  giveaways       GiveawayPost[]
+  giveawayTickets GiveawayTicket[]
 
-  reports_filed   Report[] @relation("ReportReporter")
-  reports_handled Report[] @relation("ReportHandledBy")
-  appeals_filed   Appeal[] @relation("AppealAppellant")
-  appeals_handled Appeal[] @relation("AppealHandledBy")
+  reportsFiled           Report[]              @relation("ReportReporter")
+  reportsHandled         Report[]              @relation("ReportHandledBy")
+  appealsFiled           Appeal[]              @relation("AppealAppellant")
+  appealsHandled         Appeal[]              @relation("AppealHandledBy")
+  appointmentsProposed   AppointmentCard[]
+  chatMessages           ChatMessage[]
+  subscriptions          Subscription[]
+  subscriptionPayments   SubscriptionPayment[] @relation("SubscriptionPaymentUser")
+  subscriptionPaymentsHandled SubscriptionPayment[] @relation("SubscriptionPaymentHandledBy")
 
-  items_owned            Item[]
-  offers_proposed        Offer[]
-  transactions_as_buyer  Transaction[] @relation("TransactionBuyer")
-  transactions_as_seller Transaction[] @relation("TransactionSeller")
-}
-
-// --- §4.9 Report / Appeal (carried over from feature/backend-reportandappeal
-// so this branch's migration doesn't drop tables that branch already created) ---
-enum ReportType {
-  Post
-  User
-  Transaction
-}
-
-enum ReportStatus {
-  Pending
-  Under_Investigation
-  Violation_Confirmed
-  Report_Dismissed
-}
-
-model Report {
-  report_id       Int          @id @default(autoincrement())
-  reporter_id     Int
-  reporter        User         @relation("ReportReporter", fields: [reporter_id], references: [user_id])
-  report_type     ReportType
-  target_id       Int
-  reason_category String       @db.VarChar(100)
-  details         String?
-  evidence_urls   Json?
-  status          ReportStatus @default(Pending)
-  handled_by      Int?
-  handler         User?        @relation("ReportHandledBy", fields: [handled_by], references: [user_id])
-  resolution_note String?
-  handled_at      DateTime?
-  created_at      DateTime     @default(now())
-
-  appeals      Appeal[]
-  transactions Transaction[]
-}
-
-enum AppealStatus {
-  Pending
-  Under_Review
-  Approved
-  Rejected
-}
-
-model Appeal {
-  appeal_id       Int          @id @default(autoincrement())
-  report_id       Int
-  report          Report       @relation(fields: [report_id], references: [report_id])
-  appellant_id    Int
-  appellant       User         @relation("AppealAppellant", fields: [appellant_id], references: [user_id])
-  reason          String
-  evidence_urls   Json?
-  status          AppealStatus @default(Pending)
-  handled_by      Int?
-  handler         User?        @relation("AppealHandledBy", fields: [handled_by], references: [user_id])
-  resolution_note String?
-  created_at      DateTime     @default(now())
-  handled_at      DateTime?
-}
-
-// --- §4.2 Item ---
-enum ItemCategory {
-  Books
-  Electronics
-  Fashion
-  Stationery
-  DormSupplies
-  Sports
-  SpecializedEquipment
-  Vehicles
-  EventTickets
-  Other
-}
-
-enum ItemCondition {
-  New
-  Very_Good
-  Good
-  Acceptable
-}
-
-enum ItemStatus {
-  Unlisted
-  Listed
-  Transferred
+  @@map("User")
 }
 
 model Item {
-  item_id  Int    @id @default(autoincrement())
-  owner_id Int
-  owner    User   @relation(fields: [owner_id], references: [user_id])
-  name     String @db.VarChar(255)
+  itemId         Int         @id @default(autoincrement()) @map("item_id")
+  ownerId        Int         @map("owner_id")
+  name           String      @db.VarChar(255)
+  category       String      @db.VarChar(50)
+  condition      String      @db.VarChar(50)
+  description    String?
+  status         String?     @default("Unlisted") @db.VarChar(20)
+  courseName     String?     @map("course_name") @db.VarChar(100)
+  brandModel     String?     @map("brand_model") @db.VarChar(100)
+  warrantyExpiry DateTime?   @map("warranty_expiry") @db.Date
+  size           String?     @db.VarChar(20)
+  createdAt      DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  owner          User        @relation(fields: [ownerId], references: [userId])
+  post           Post?
+  offerItems     OfferItem[]
+  images         ItemImage[]
 
-  category    ItemCategory
-  condition   ItemCondition
-  description String?
-  status      ItemStatus    @default(Unlisted)
-
-  // §10 open issue #4: NOT NULL in the doc but only required for the Books
-  // category at the application layer — must stay nullable at the DB level.
-  course_name     String?   @db.VarChar(100)
-  brand_model     String?   @db.VarChar(100)
-  warranty_expiry DateTime? @db.Date
-  size            String?   @db.VarChar(20)
-
-  created_at DateTime @default(now())
-
-  posts       Post[]
-  offer_items OfferItem[]
-}
-
-// --- §4.4 Post ---
-enum PostType {
-  SellOnly
-  TradeOnly
-  Both
+  @@map("Item")
 }
 
 model Post {
-  post_id Int @id @default(autoincrement())
+  postId            Int           @id @default(autoincrement()) @map("post_id")
+  itemId            Int           @unique @map("item_id")
+  postType          String        @map("post_type") @db.VarChar(20)
+  price             Decimal       @db.Decimal(10, 2)
+  quantityTotal     Int           @default(1) @map("quantity_total")
+  quantityRemaining Int           @default(1) @map("quantity_remaining")
+  createdAt         DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  item              Item          @relation(fields: [itemId], references: [itemId])
+  offers            Offer[]
+  transactions      Transaction[]
 
-  // §10 open issue #3: not @unique — a lifetime-unique item_id would block
-  // re-listing an item after it's unlisted. "One active post per item" is
-  // enforced at the application layer instead.
-  item_id Int
-  item    Item @relation(fields: [item_id], references: [item_id])
-
-  post_type          PostType
-  price              Decimal  @db.Decimal(10, 2)
-  quantity_total     Int      @default(1)
-  quantity_remaining Int      @default(1)
-  created_at         DateTime @default(now())
-
-  offers       Offer[]
-  transactions Transaction[]
-}
-
-// --- §4.5 Offer / Offer_Item ---
-enum OfferStatus {
-  Pending
-  Accepted
-  Rejected
-  Cancelled
-  Withdrawn
+  @@map("Post")
 }
 
 model Offer {
-  offer_id         Int         @id @default(autoincrement())
-  post_id          Int
-  post             Post        @relation(fields: [post_id], references: [post_id])
-  proposer_id      Int
-  proposer         User        @relation(fields: [proposer_id], references: [user_id])
-  additional_money Decimal     @default(0.00) @db.Decimal(10, 2)
-  status           OfferStatus @default(Pending)
-  created_at       DateTime    @default(now())
+  offerId         Int           @id @default(autoincrement()) @map("offer_id")
+  postId          Int           @map("post_id")
+  proposerId      Int           @map("proposer_id")
+  additionalMoney Decimal?      @default(0) @map("additional_money") @db.Decimal(10, 2)
+  status          String?       @default("Pending") @db.VarChar(20)
+  createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  post            Post          @relation(fields: [postId], references: [postId])
+  proposer        User          @relation(fields: [proposerId], references: [userId])
+  items           OfferItem[]
+  transactions    Transaction[]
 
-  offer_items  OfferItem[]
-  transactions Transaction[]
+  @@map("Offer")
 }
 
 model OfferItem {
-  offer_id Int
-  offer    Offer @relation(fields: [offer_id], references: [offer_id])
-  item_id  Int
-  item     Item  @relation(fields: [item_id], references: [item_id])
+  offerId Int   @map("offer_id")
+  itemId  Int   @map("item_id")
+  offer   Offer @relation(fields: [offerId], references: [offerId])
+  item    Item  @relation(fields: [itemId], references: [itemId])
 
-  @@id([offer_id, item_id])
+  @@id([offerId, itemId])
   @@map("Offer_Item")
 }
 
-// --- §4.6 / §7.4 / §8.3 / §8.6 / §8.7 Transaction ---
-enum TransactionStatus {
-  Pending
-  Processing
-  Completed
-  Cancelled
-}
-
-enum DeliveryMethod {
-  Meetup
-  Shipping
-}
-
 model Transaction {
-  transaction_id Int  @id @default(autoincrement())
-  post_id        Int
-  post           Post @relation(fields: [post_id], references: [post_id])
+  transactionId                   Int       @id @default(autoincrement()) @map("transaction_id")
+  postId                          Int       @map("post_id")
+  offerId                         Int?      @map("offer_id")
+  buyerId                         Int       @map("buyer_id")
+  sellerId                        Int       @map("seller_id")
+  quantity                        Int?      @default(1)
+  status                          String?   @default("Pending") @db.VarChar(20)
+  activeReportId                  Int?      @map("active_report_id")
+  deliveryMethod                  String    @map("delivery_method") @db.VarChar(20)
+  slipImageUrl                    String?   @map("slip_image_url") @db.VarChar(500)
+  trackingNumber                  String?   @map("tracking_number") @db.VarChar(100)
+  estimatedDeliveryDate           DateTime? @map("estimated_delivery_date") @db.Date
+  paymentConfirmedByBuyerAt       DateTime? @map("payment_confirmed_by_buyer_at") @db.Timestamp(6)
+  paymentConfirmedBySellerAt      DateTime? @map("payment_confirmed_by_seller_at") @db.Timestamp(6)
+  itemReceivedConfirmedByBuyerAt  DateTime? @map("item_received_confirmed_by_buyer_at") @db.Timestamp(6)
+  itemReceivedConfirmedBySellerAt DateTime? @map("item_received_confirmed_by_seller_at") @db.Timestamp(6)
+  itemReturnConfirmedAt           DateTime? @map("item_return_confirmed_at") @db.Timestamp(6)
+  cancellationRequestedBy         Int?      @map("cancellation_requested_by")
+  refundSlipUrl                   String?   @map("refund_slip_url") @db.VarChar(500)
+  refundConfirmedByBuyer          Boolean?  @default(false) @map("refund_confirmed_by_buyer")
+  createdAt                       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  post                            Post      @relation(fields: [postId], references: [postId])
+  offer                           Offer?    @relation(fields: [offerId], references: [offerId])
+  buyer                           User      @relation("TransactionBuyer", fields: [buyerId], references: [userId])
+  seller                          User      @relation("TransactionSeller", fields: [sellerId], references: [userId])
+  activeReport                    Report?   @relation(fields: [activeReportId], references: [reportId])
 
-  // NULL when bought outright (no offer/trade involved) — §4.6
-  offer_id Int?
-  offer    Offer? @relation(fields: [offer_id], references: [offer_id])
+  appointmentCards AppointmentCard[]
+  chatRooms        ChatRoom[]
 
-  buyer_id  Int
-  buyer     User @relation("TransactionBuyer", fields: [buyer_id], references: [user_id])
-  seller_id Int
-  seller    User @relation("TransactionSeller", fields: [seller_id], references: [user_id])
+  @@map("Transaction")
+}
 
-  quantity Int               @default(1)
-  status   TransactionStatus @default(Pending)
+model GiveawayPost {
+  giveawayId       Int              @id @default(autoincrement()) @map("giveaway_id")
+  itemName         String           @map("item_name") @db.VarChar(255)
+  description      String?
+  pickupLocation   String           @map("pickup_location") @db.VarChar(255)
+  giverId          Int              @map("giver_id")
+  allocationMethod String           @map("allocation_method") @db.VarChar(20)
+  pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
+  status           String?          @default("Active") @db.VarChar(20)
+  createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  giver            User             @relation(fields: [giverId], references: [userId])
+  images           GiveawayImage[]
+  tickets          GiveawayTicket[]
+  chatRooms        ChatRoom[]
 
-  // Dispute status is a parallel dimension (§8.4) — now a real FK since the
-  // Report model lives in this schema too.
-  active_report_id Int?
-  active_report    Report? @relation(fields: [active_report_id], references: [report_id])
+  @@map("Giveaway_Post")
+}
 
-  delivery_method               DeliveryMethod
-  slip_image_url                String?        @db.VarChar(500)
-  tracking_number               String?        @db.VarChar(100)
-  estimated_delivery_date       DateTime?      @db.Date
-  payment_confirmed_by_buyer_at DateTime?
+model GiveawayImage {
+  imageId      Int          @id @default(autoincrement()) @map("image_id")
+  giveawayId   Int          @map("giveaway_id")
+  imageUrl     String       @map("image_url") @db.VarChar(500)
+  displayOrder Int?         @default(0) @map("display_order")
+  createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
+  giveaway     GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
 
-  // Not in the §4.6 table as written, but required to implement the §8.6
-  // state machine: Completed needs BOTH "seller confirmed payment received"
-  // AND "buyer confirmed delivery received" as independent conditions —
-  // one buyer-side timestamp alone can't represent both.
-  payment_received_by_seller_at  DateTime?
-  delivery_confirmed_by_buyer_at DateTime?
+  @@map("Giveaway_Image")
+}
 
-  // §8.7 cancel-request flow during Processing
-  cancel_requested_by Int?
-  cancel_requested_at DateTime?
+model GiveawayTicket {
+  ticketId   Int          @id @default(autoincrement()) @map("ticket_id")
+  giveawayId Int          @map("giveaway_id")
+  receiverId Int          @map("receiver_id")
+  qrToken    String?      @unique @map("qr_token") @db.VarChar(255)
+  status     String?      @default("Waiting") @db.VarChar(20)
+  updatedAt  DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
+  giveaway   GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
+  receiver   User         @relation(fields: [receiverId], references: [userId])
 
-  // §10 open issue #2: evidence-tracking only, per the payment philosophy —
-  // recording that the two parties refunded each other off-platform, not a
-  // real money-moving action or a new transaction status.
-  refund_slip_url     String?   @db.VarChar(500)
-  refund_confirmed_at DateTime?
+  @@map("Giveaway_Ticket")
+}
 
-  created_at DateTime @default(now())
+model ItemImage {
+  imageId      Int       @id @default(autoincrement()) @map("image_id")
+  itemId       Int       @map("item_id")
+  imageUrl     String    @map("image_url") @db.VarChar(500)
+  isPrimary    Boolean?  @default(false) @map("is_primary")
+  displayOrder Int?      @default(0) @map("display_order")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  item         Item      @relation(fields: [itemId], references: [itemId])
+
+  @@map("Item_Image")
+}
+
+model Report {
+  reportId       Int       @id @default(autoincrement()) @map("report_id")
+  reporterId     Int       @map("reporter_id")
+  reportType     String    @map("report_type") @db.VarChar(20)
+  targetId       Int       @map("target_id")
+  reasonCategory String    @map("reason_category") @db.VarChar(100)
+  details        String?
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String?   @default("Pending") @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note")
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  reporter User  @relation("ReportReporter", fields: [reporterId], references: [userId])
+  handler  User? @relation("ReportHandledBy", fields: [handledBy], references: [userId])
+
+  appeals            Appeal[]
+  activeTransactions Transaction[]
+
+  @@map("Report")
+}
+
+model Appeal {
+  appealId       Int       @id @default(autoincrement()) @map("appeal_id")
+  reportId       Int       @map("report_id")
+  appellantId    Int       @map("appellant_id")
+  reason         String
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String    @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note")
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+
+  report    Report @relation(fields: [reportId], references: [reportId])
+  appellant User   @relation("AppealAppellant", fields: [appellantId], references: [userId])
+  handler   User?  @relation("AppealHandledBy", fields: [handledBy], references: [userId])
+
+  @@map("Appeal")
+}
+
+model AppointmentCard {
+  appointmentId Int       @id @default(autoincrement()) @map("appointment_id")
+  transactionId Int       @map("transaction_id")
+  proposedBy    Int       @map("proposed_by")
+  date          DateTime  @db.Date
+  time          DateTime  @db.Time(6)
+  location      String    @db.VarChar(255)
+  status        String?   @default("Pending") @db.VarChar(20)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [transactionId])
+  proposer    User        @relation(fields: [proposedBy], references: [userId])
+
+  @@map("Appointment_Card")
+}
+
+model ChatRoom {
+  roomId        Int       @id @default(autoincrement()) @map("room_id")
+  transactionId Int?      @map("transaction_id")
+  giveawayId    Int?      @map("giveaway_id")
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  transaction Transaction?  @relation(fields: [transactionId], references: [transactionId])
+  giveaway    GiveawayPost? @relation(fields: [giveawayId], references: [giveawayId])
+  messages    ChatMessage[]
+
+  @@map("Chat_Room")
+}
+
+model ChatMessage {
+  messageId Int       @id @default(autoincrement()) @map("message_id")
+  roomId    Int       @map("room_id")
+  senderId  Int       @map("sender_id")
+  content   String?
+  imageUrls Json?     @map("image_urls")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  room   ChatRoom @relation(fields: [roomId], references: [roomId])
+  sender User     @relation(fields: [senderId], references: [userId])
+
+  @@map("Chat_Message")
+}
+
+model Subscription {
+  subscriptionId     Int       @id @default(autoincrement()) @map("subscription_id")
+  userId             Int       @map("user_id")
+  tier               String    @db.VarChar(20)
+  postsUsedThisMonth Int?      @default(0) @map("posts_used_this_month")
+  status             String?   @default("Active") @db.VarChar(20)
+  startDate          DateTime? @map("start_date") @db.Timestamp(6)
+  endDate            DateTime? @map("end_date") @db.Timestamp(6)
+
+  user     User                  @relation(fields: [userId], references: [userId])
+  payments SubscriptionPayment[]
+
+  @@map("Subscription")
+}
+
+model SubscriptionPayment {
+  paymentId       Int       @id @default(autoincrement()) @map("payment_id")
+  subscriptionId  Int       @map("subscription_id")
+  userId          Int       @map("user_id")
+  amount          Int
+  slipImageUrl    String    @map("slip_image_url") @db.VarChar(500)
+  status          String    @default("Pending") @db.VarChar(25)
+  rejectionReason String?   @map("rejection_reason")
+  handledBy       Int?      @map("handled_by")
+  handledAt       DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [subscriptionId])
+  user         User         @relation("SubscriptionPaymentUser", fields: [userId], references: [userId])
+  handler      User?        @relation("SubscriptionPaymentHandledBy", fields: [handledBy], references: [userId])
+
+  @@map("Subscription_Payment")
 }

@@ -12,15 +12,15 @@ export class TransactionService {
   findAllForUser(userId: number) {
     return this.prisma.transaction.findMany({
       where: {
-        OR: [{ buyer_id: userId }, { seller_id: userId }],
+        OR: [{ buyerId: userId }, { sellerId: userId }],
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
   private async findOneOrThrow(transactionId: number) {
     const transaction = await this.prisma.transaction.findUnique({
-      where: { transaction_id: transactionId },
+      where: { transactionId },
     });
     if (!transaction) {
       throw new NotFoundException(`Transaction ${transactionId} not found`);
@@ -30,7 +30,7 @@ export class TransactionService {
 
   async findOneForUser(transactionId: number, userId: number) {
     const transaction = await this.findOneOrThrow(transactionId);
-    if (transaction.buyer_id !== userId && transaction.seller_id !== userId) {
+    if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
       throw new ForbiddenException('You are not a party to this transaction');
     }
     return transaction;
