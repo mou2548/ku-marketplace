@@ -1,6 +1,13 @@
-@host = http://localhost:4000/api
+### Set PORT in backend/.env to match (main.ts falls back to 3000).
+### NOTE: the app has no setGlobalPrefix, and controllers are @Controller('auth'),
+### @Controller('posts'), ... — so paths are /auth/..., NOT /api/auth/...
+@host = http://localhost:4000
 
-### 1. Request OTP
+### =====================================================================
+### Auth & Membership
+### =====================================================================
+
+### A1. Request OTP
 POST {{host}}/auth/register/request-otp
 Content-Type: application/json
 
@@ -9,7 +16,7 @@ Content-Type: application/json
   "password": "test1234"
 }
 
-### 2. Verify OTP (เอา OTP จาก terminal backend log มาแทน)
+### A2. Verify OTP (เอา OTP จาก terminal backend log มาแทน)
 POST {{host}}/auth/register/verify-otp
 Content-Type: application/json
 
@@ -18,7 +25,7 @@ Content-Type: application/json
   "otp": "000000"
 }
 
-### 3. Login (ใช้ email/password ที่สมัครผ่าน OTP flow ข้างบนแล้วเท่านั้น)
+### A3. Login (ใช้ email/password ที่สมัครผ่าน OTP flow ข้างบนแล้วเท่านั้น)
 POST {{host}}/auth/login
 Content-Type: application/json
 
@@ -27,11 +34,229 @@ Content-Type: application/json
   "password": "test1234"
 }
 
-### 4. Login ผิดรหัสผ่าน -> expect 401
+### A4. Login ผิดรหัสผ่าน -> expect 401
 POST {{host}}/auth/login
 Content-Type: application/json
 
 {
   "email": "test.new@ku.th",
   "password": "wrong-password"
+}
+
+### =====================================================================
+### §7.7 Report & Moderation
+### =====================================================================
+###
+### Runs against the mock data seeded by init.sql (docker compose up).
+### Users:  1 = admin (isAdmin), 2-12 = regular users
+### Seeded reports (only #1 and #2 are used below; #3-#5 are already decided
+### or unrelated, so they are left alone):
+###   #1  Transaction / target_id 1 / reporter 3 / Under_Investigation / handled_by 1
+###       └─ Transaction 1: buyer 3, seller 2  → reported party = seller 2
+###       └─ already has Appeal #1 (by user 2, Pending)
+###   #2  Post / target_id 5 / reporter 6 / Pending
+###       └─ Post 5 → Item 5 → owner 5        → reported party = user 5
+###   #3  User / target_id 11 / Violation_Confirmed  → already has Appeal #2 (Rejected)
+###   #4  Post / target_id 1  / Report_Dismissed
+###   #5  User / target_id 9  / Pending
+###
+### The reported party is resolved by joining the real tables (see
+### AppealService.resolveReportedUserId), so these ids come from the DB.
+###
+### Request bodies use snake_case (those are the DTO field names). Responses
+### come straight from Prisma, whose model fields are camelCase — hence
+### `$.reportId` / `$.appealId` in the chained references below.
+
+### 1. POST /reports — no auth header -> expect 401
+POST {{host}}/reports
+Content-Type: application/json
+
+{
+  "report_type": "User",
+  "target_id": 4,
+  "reason_category": "Spam"
+}
+
+### 2. POST /reports — with x-user-id -> expect 201 + status: Pending
+# @name createReport
+POST {{host}}/reports
+Content-Type: application/json
+x-user-id: 2
+
+{
+  "report_type": "User",
+  "target_id": 4,
+  "reason_category": "Spam",
+  "details": "Sending unsolicited messages in chat",
+  "evidence_urls": ["https://example.com/evidence1.jpg"]
+}
+
+### 3. POST /reports — invalid report_type -> expect 400
+POST {{host}}/reports
+Content-Type: application/json
+x-user-id: 2
+
+{
+  "report_type": "NotARealType",
+  "target_id": 4,
+  "reason_category": "Spam"
+}
+
+### 4. GET /admin/reports — no admin header -> expect 403
+GET {{host}}/admin/reports
+x-user-id: 2
+
+### 5. GET /admin/reports — as admin -> expect 200 + list
+GET {{host}}/admin/reports
+x-user-id: 1
+x-is-admin: true
+
+### 6. POST /admin/reports/:id/resolve — resolve the report from #2 -> expect 200
+### run #2 first so the id resolves
+POST {{host}}/admin/reports/{{createReport.response.body.$.reportId}}/resolve
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Violation_Confirmed",
+  "resolution_note": "Confirmed after reviewing chat history."
+}
+
+### 7. POST /admin/reports/:id/resolve — resolve the SAME report again -> expect 400
+POST {{host}}/admin/reports/{{createReport.response.body.$.reportId}}/resolve
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Report_Dismissed"
+}
+
+### 8. POST /admin/reports/999/resolve — nonexistent report -> expect 404
+POST {{host}}/admin/reports/999/resolve
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Violation_Confirmed"
+}
+
+### === Appeals — reported party resolved by real DB join ===
+
+### 9. POST /appeals — wrong user appeals the report from #2 -> expect 403
+### #2 is report_type User with target_id 4, so only user 4 may appeal it.
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 7
+
+{
+  "report_id": {{createReport.response.body.$.reportId}},
+  "reason": "Not my report"
+}
+
+### 10. POST /appeals — the reported user (4) appeals -> expect 201, status Pending
+# @name createAppeal
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 4
+
+{
+  "report_id": {{createReport.response.body.$.reportId}},
+  "reason": "Those messages were about a legitimate transaction.",
+  "evidence_urls": ["https://example.com/appeal-evidence.jpg"]
+}
+
+### 11. POST /appeals — appeal the same report twice -> expect 400
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 4
+
+{
+  "report_id": {{createReport.response.body.$.reportId}},
+  "reason": "Trying again"
+}
+
+### 12. POST /admin/appeals/:id/decide — same admin who resolved the report (1) -> expect 400
+POST {{host}}/admin/appeals/{{createAppeal.response.body.$.appealId}}/decide
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Approved"
+}
+
+### 13. POST /admin/appeals/:id/decide — a different admin -> expect 200
+### Approving also flips the report to Report_Dismissed (verify with #5).
+POST {{host}}/admin/appeals/{{createAppeal.response.body.$.appealId}}/decide
+Content-Type: application/json
+x-user-id: 9
+x-is-admin: true
+
+{
+  "status": "Approved",
+  "resolution_note": "Reviewed chat log, messages were transaction-related."
+}
+
+### 14. POST /admin/appeals/:id/decide — decide the SAME appeal again -> expect 400
+### Without this guard the appeal would flip to Rejected while its report stayed
+### Report_Dismissed, and the original handledBy/handledAt would be overwritten.
+POST {{host}}/admin/appeals/{{createAppeal.response.body.$.appealId}}/decide
+Content-Type: application/json
+x-user-id: 10
+x-is-admin: true
+
+{
+  "status": "Rejected",
+  "resolution_note": "Attempt to overwrite an already-approved appeal"
+}
+
+### === Reported-party resolution for Post / Transaction reports ===
+### These use the seeded reports, so run them on a fresh `docker compose up`
+### (report #2 must still be unresolved for the appeal window check to pass).
+
+### 15. POST /admin/reports/2/resolve — resolve the seeded Post report -> expect 200
+POST {{host}}/admin/reports/2/resolve
+Content-Type: application/json
+x-user-id: 1
+x-is-admin: true
+
+{
+  "status": "Violation_Confirmed"
+}
+
+### 16. POST /appeals — wrong user appeals report 2 -> expect 403
+### Report 2 targets Post 5, whose Item is owned by user 5 — user 4 is unrelated.
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 4
+
+{
+  "report_id": 2,
+  "reason": "Not my post"
+}
+
+### 17. POST /appeals — the real Post owner (user 5) appeals -> expect 201
+### Resolved via Post 5 -> Item 5 -> ownerId 5.
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 5
+
+{
+  "report_id": 2,
+  "reason": "The description matched the actual condition."
+}
+
+### 18. POST /appeals — reporter of the Transaction report tries to appeal -> expect 403
+### Report 1 targets Transaction 1 (buyer 3, seller 2) and was filed by user 3,
+### so the reported party is the counterparty (seller 2), not the reporter.
+POST {{host}}/appeals
+Content-Type: application/json
+x-user-id: 3
+
+{
+  "report_id": 1,
+  "reason": "I filed this report myself"
 }
