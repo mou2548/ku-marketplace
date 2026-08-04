@@ -23,19 +23,14 @@ export class ItemsService {
     return categories.map((c) => c.category);
   }
 
-  async create(createItemDto: CreateItemDto) {
-    const {
-      images,
-      warranty_expiry,
-      course_name,
-      brand_model,
-      ...itemData
-    } = createItemDto as any;
+  async create(createItemDto: CreateItemDto, userId: number) {
+    const { images, warranty_expiry, course_name, brand_model, ...itemData } =
+      createItemDto as any;
 
     return this.prisma.item.create({
       data: {
         ...itemData,
-        ownerId: 1,
+        ownerId: userId,
         courseName: course_name ?? itemData.courseName,
         brandModel: brand_model ?? itemData.brandModel,
         warrantyExpiry: warranty_expiry ? new Date(warranty_expiry) : null,
@@ -92,16 +87,13 @@ export class ItemsService {
     }
 
     if (item.ownerId !== userId) {
-      throw new ForbiddenException('You are not authorized to update this item');
+      throw new ForbiddenException(
+        'You are not authorized to update this item',
+      );
     }
 
-    const {
-      images,
-      warranty_expiry,
-      course_name,
-      brand_model,
-      ...itemData
-    } = updateItemDto as any;
+    const { images, warranty_expiry, course_name, brand_model, ...itemData } =
+      updateItemDto as any;
 
     return this.prisma.item.update({
       where: { itemId: id },
@@ -139,7 +131,9 @@ export class ItemsService {
     }
 
     if (item.ownerId !== userId) {
-      throw new ForbiddenException('You are not authorized to delete this item');
+      throw new ForbiddenException(
+        'You are not authorized to delete this item',
+      );
     }
 
     return this.prisma.item.delete({

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,7 +12,11 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async getOrCreateChatRoom(transactionId: number) {
+  /**
+   * Only the buyer and the seller may read or write inside a transaction —
+   * everything under /transactions/:id goes through here first.
+   */
+  private async assertParticipant(transactionId: number, userId: number) {
     const transaction = await this.prisma.transaction.findUnique({
       where: { transactionId },
     });
@@ -21,6 +26,16 @@ export class TransactionsService {
         `Transaction with ID ${transactionId} not found`,
       );
     }
+
+    if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
+      throw new ForbiddenException('You are not part of this transaction');
+    }
+
+    return transaction;
+  }
+
+  private async getOrCreateChatRoom(transactionId: number, userId: number) {
+    await this.assertParticipant(transactionId, userId);
 
     let room = await this.prisma.chatRoom.findFirst({
       where: { transactionId },
@@ -35,8 +50,8 @@ export class TransactionsService {
     return room;
   }
 
-  async getChatHistory(transactionId: number) {
-    const room = await this.getOrCreateChatRoom(transactionId);
+  async getChatHistory(transactionId: number, userId: number) {
+    const room = await this.getOrCreateChatRoom(transactionId, userId);
 
     return this.prisma.chatMessage.findMany({
       where: { roomId: room.roomId },
@@ -47,6 +62,7 @@ export class TransactionsService {
   async sendMessage(
     transactionId: number,
     createMessageDto: CreateMessageDto,
+    userId: number,
   ) {
     const { content, image_urls } = createMessageDto;
 
@@ -56,12 +72,12 @@ export class TransactionsService {
       );
     }
 
-    const room = await this.getOrCreateChatRoom(transactionId);
+    const room = await this.getOrCreateChatRoom(transactionId, userId);
 
     return this.prisma.chatMessage.create({
       data: {
         roomId: room.roomId,
-        senderId: 1,
+        senderId: userId,
         content: content || null,
         imageUrls: image_urls ?? undefined,
       },
@@ -71,23 +87,16 @@ export class TransactionsService {
   async createAppointment(
     transactionId: number,
     createAppointmentDto: CreateAppointmentDto,
+    userId: number,
   ) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { transactionId },
-    });
-
-    if (!transaction) {
-      throw new NotFoundException(
-        `Transaction with ID ${transactionId} not found`,
-      );
-    }
+    await this.assertParticipant(transactionId, userId);
 
     const { date, time, location } = createAppointmentDto;
 
     return this.prisma.appointmentCard.create({
       data: {
         transactionId,
-        proposedBy: 1,
+        proposedBy: userId,
         date: new Date(date),
         time: new Date(`${date}T${time}:00Z`),
         location,
