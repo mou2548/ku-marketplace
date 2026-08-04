@@ -260,3 +260,268 @@ x-user-id: 3
   "report_id": 1,
   "reason": "I filed this report myself"
 }
+
+### =====================================================================
+### §7.4 Transactions, Fulfillment & Payment
+### =====================================================================
+###
+### AUTH: these endpoints use the real JwtAuthGuard, so every request needs
+###   Authorization: Bearer <accessToken>
+### Get one by logging in (A3 above) and copying `accessToken` from the response.
+###
+### ⚠️ The seeded mock users CANNOT log in — their password_hash in init.sql is a
+### 28-character placeholder, not a real 60-character bcrypt hash. So either:
+###   a) register a fresh user via A1/A2, then seed a transaction for them, or
+###   b) mint a token locally:
+###      node -e "console.log(require('jsonwebtoken').sign({userId:3,email:'x@ku.th',isAdmin:false},process.env.ACCESS_TOKEN_SECRET,{expiresIn:'15m'}))"
+###      (run from backend/ with ACCESS_TOKEN_SECRET loaded from .env)
+###
+### Seeded transactions (docker compose up):
+###   #1 Meetup   buyer 3  seller 2  Processing  (paid)     → QR flow
+###   #2 Meetup   buyer 6  seller 2  Completed
+###   #3 Shipping buyer 8  seller 5  Pending                → payment + ship flow
+###   #4 Shipping buyer 10 seller 6  Processing
+###   #5 Meetup   buyer 4  seller 5  Cancelled              → refund flow
+###   #6 Meetup   buyer 2  seller 7  Completed
+###
+### Paste your token here once and every request below picks it up.
+@token = PASTE_ACCESS_TOKEN_HERE
+
+### T1. GET /transactions — no token -> expect 401
+GET {{host}}/transactions
+
+### T2. GET /transactions — garbage token -> expect 401
+GET {{host}}/transactions
+Authorization: Bearer garbage
+
+### T3. GET /transactions — only the caller's own transactions come back
+GET {{host}}/transactions
+Authorization: Bearer {{token}}
+
+### T4. GET /transactions/1 — a party to it -> expect 200
+GET {{host}}/transactions/1
+Authorization: Bearer {{token}}
+
+### T5. GET /transactions/1 — a non-party -> expect 403
+GET {{host}}/transactions/1
+Authorization: Bearer {{token}}
+
+### T6. GET /transactions/999 — nonexistent -> expect 404
+GET {{host}}/transactions/999
+Authorization: Bearer {{token}}
+
+### --- Payment (§8.6) — run against tx 3, which starts Pending ---
+
+### T7. POST /payment-slip — as the SELLER -> expect 403 (buyer-only action)
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "slip_image_url": "https://r2.example.com/slips/3_slip.jpg"
+}
+
+### T8. POST /payment-slip — empty body -> expect 400
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{}
+
+### T9. POST /payment-slip — as the buyer (8) -> expect 200, Pending → Processing
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "slip_image_url": "https://r2.example.com/slips/3_slip.jpg"
+}
+
+### T10. POST /payment-slip — again, no longer Pending -> expect 400
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "slip_image_url": "https://r2.example.com/slips/3_slip.jpg"
+}
+
+### T11. POST /confirm-payment-received — as the buyer -> expect 403 (seller-only)
+POST {{host}}/transactions/3/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T12. POST /confirm-payment-received — as the seller (5) -> expect 200
+### Status stays Processing: this is only the 1st of the 2 conditions for Completed.
+POST {{host}}/transactions/3/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T13. POST /confirm-payment-received — again -> expect 400
+POST {{host}}/transactions/3/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### --- Shipping delivery (§8.6) — continues on tx 3 ---
+
+### T14. POST /ship — as the buyer -> expect 403 (seller-only)
+POST {{host}}/transactions/3/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "2026-08-10"
+}
+
+### T15. POST /ship — malformed date -> expect 400
+POST {{host}}/transactions/3/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "not-a-date"
+}
+
+### T16. POST /confirm-delivery — before the seller shipped -> expect 400
+POST {{host}}/transactions/3/confirm-delivery
+Authorization: Bearer {{token}}
+
+### T17. POST /ship — as the seller (5) -> expect 200, still Processing
+POST {{host}}/transactions/3/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "2026-08-10"
+}
+
+### T18. POST /ship on a Meetup transaction (tx 1) -> expect 400
+POST {{host}}/transactions/1/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "2026-08-10"
+}
+
+### T19. POST /confirm-delivery — as the buyer (8) -> expect 200
+### 2nd condition met → status becomes Completed and the Item becomes Transferred (§8.2).
+POST {{host}}/transactions/3/confirm-delivery
+Authorization: Bearer {{token}}
+
+### T20. POST /confirm-delivery — again -> expect 400
+POST {{host}}/transactions/3/confirm-delivery
+Authorization: Bearer {{token}}
+
+### --- Meetup QR (§8.6) — tx 1 is Meetup, Processing, already paid ---
+### The SELLER holds the QR on screen and the BUYER scans it, which is what
+### proves the goods physically changed hands.
+
+### T21. POST /qr/generate — as the buyer -> expect 403 (seller-only)
+POST {{host}}/transactions/1/qr/generate
+Authorization: Bearer {{token}}
+
+### T22. POST /qr/generate — on a Shipping transaction (tx 3) -> expect 400
+POST {{host}}/transactions/3/qr/generate
+Authorization: Bearer {{token}}
+
+### T23. POST /qr/generate — as the seller (2) -> expect 200
+### Returns { token, url, expiresInSeconds: 900 }. The token lives in Redis under
+### qr_token:1 and is single-use. Copy it into T25/T26 below.
+# @name generateQr
+POST {{host}}/transactions/1/qr/generate
+Authorization: Bearer {{token}}
+
+### T24. POST /qr/scan — as the seller -> expect 403 (only the buyer may scan)
+POST {{host}}/transactions/1/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "{{generateQr.response.body.$.token}}"
+}
+
+### T25. POST /qr/scan — wrong token -> expect 400
+POST {{host}}/transactions/1/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "wrong-token"
+}
+
+### T26. POST /qr/scan — as the buyer (3) with the right token -> expect 200
+### → Completed + Item Transferred, and the token is deleted from Redis.
+POST {{host}}/transactions/1/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "{{generateQr.response.body.$.token}}"
+}
+
+### T27. POST /qr/scan — replay the same token -> expect 400
+POST {{host}}/transactions/1/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "{{generateQr.response.body.$.token}}"
+}
+
+### --- Refund evidence (§10 issue #2) — tx 5 is Cancelled ---
+### These record that the two parties settled up off-platform. They move no
+### money, grant nobody the power to force a refund, and never change `status`.
+### Requires the buyer to have actually paid before it was cancelled, so seed:
+###   UPDATE "Transaction" SET payment_confirmed_by_buyer_at = NOW() WHERE transaction_id = 5;
+
+### T28. POST /refund-slip — on a Processing transaction (tx 4) -> expect 400
+POST {{host}}/transactions/4/refund-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "refund_slip_url": "https://r2.example.com/slips/4_refund.jpg"
+}
+
+### T29. POST /refund-slip — as the buyer -> expect 403 (seller refunds)
+POST {{host}}/transactions/5/refund-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "refund_slip_url": "https://r2.example.com/slips/5_refund.jpg"
+}
+
+### T30. POST /confirm-refund — before any slip was uploaded -> expect 400
+POST {{host}}/transactions/5/confirm-refund
+Authorization: Bearer {{token}}
+
+### T31. POST /refund-slip — as the seller (5) -> expect 200, status stays Cancelled
+POST {{host}}/transactions/5/refund-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "refund_slip_url": "https://r2.example.com/slips/5_refund.jpg"
+}
+
+### T32. POST /confirm-refund — as the seller -> expect 403 (buyer confirms)
+POST {{host}}/transactions/5/confirm-refund
+Authorization: Bearer {{token}}
+
+### T33. POST /confirm-refund — as the buyer (4) -> expect 200, status stays Cancelled
+POST {{host}}/transactions/5/confirm-refund
+Authorization: Bearer {{token}}
+
+### T34. POST /confirm-refund — again -> expect 400
+POST {{host}}/transactions/5/confirm-refund
+Authorization: Bearer {{token}}
+
+### --- NOT IMPLEMENTED YET ---
+### POST /transactions/{id}/cancel-request and .../respond are blocked pending a
+### team decision: init.sql has only `cancellation_requested_by`, with no column
+### for the reason, the request time, or whether it was accepted/rejected — all
+### three of which §8.7 needs (a rejected request must keep the confirm buttons
+### locked, and "no response within the window" needs a timestamp to measure).
