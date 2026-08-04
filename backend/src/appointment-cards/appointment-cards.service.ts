@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RespondAppointmentDto } from './dto/respond-appointment.dto';
 
@@ -9,14 +14,35 @@ export class AppointmentCardsService {
   async respondToAppointment(
     appointmentId: number,
     respondAppointmentDto: RespondAppointmentDto,
+    userId: number,
   ) {
     const appointment = await this.prisma.appointmentCard.findUnique({
       where: { appointmentId },
+      include: { transaction: true },
     });
 
     if (!appointment) {
       throw new NotFoundException(
         `Appointment card with ID ${appointmentId} not found`,
+      );
+    }
+
+    const { transaction } = appointment;
+    if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
+      throw new ForbiddenException('You are not part of this transaction');
+    }
+
+    // The card is an offer to the other side — the proposer answering their own
+    // proposal would confirm a meeting nobody agreed to.
+    if (appointment.proposedBy === userId) {
+      throw new BadRequestException(
+        'The user who proposed this appointment cannot respond to it',
+      );
+    }
+
+    if (appointment.status !== 'Pending') {
+      throw new BadRequestException(
+        `Appointment ${appointmentId} has already been answered (status: ${appointment.status})`,
       );
     }
 

@@ -7,11 +7,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemsService } from './items.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
 
 @Controller('items')
 export class ItemsController {
@@ -38,26 +41,30 @@ export class ItemsController {
   }
 
   @Post()
-  create(@Body() createItemDto: CreateItemDto) {
-    return this.itemsService.create(createItemDto);
+  @UseGuards(JwtAuthGuard)
+  create(
+    @Body() createItemDto: CreateItemDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.itemsService.create(createItemDto, user.userId);
   }
 
   @Patch(':item_id')
+  @UseGuards(JwtAuthGuard)
   update(
     @Param('item_id', ParseIntPipe) itemId: number,
     @Body() updateItemDto: UpdateItemDto,
-    @Request() req,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    const userId = req.user?.id ?? 1;
-    return this.itemsService.update(itemId, updateItemDto, userId);
+    return this.itemsService.update(itemId, updateItemDto, user.userId);
   }
-  
+
   @Delete(':item_id')
+  @UseGuards(JwtAuthGuard)
   remove(
     @Param('item_id', ParseIntPipe) itemId: number,
-    @Request() req,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    const userId = req.user?.id ?? 1;
-    return this.itemsService.remove(itemId, userId);
+    return this.itemsService.remove(itemId, user.userId);
   }
 }
