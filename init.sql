@@ -218,14 +218,14 @@ CREATE TABLE "Subscription_Payment" (
 );
 
 -- ==========================================
--- RICH MOCK DATA FOR KU MARKETPLACE (UPDATED SCHEMA)
+-- RICH MOCK DATA FOR KU MARKETPLACE (UPDATED SCHEMA & QUOTED COLUMNS)
 -- ==========================================
 
 -- ------------------------------------------
 -- 1. USERS (นิสิต 14 คน + Admin 1 คน)
 -- Password ของทุกคนคือ: password123
 -- ------------------------------------------
-INSERT INTO "User" (user_id, email, first_name_en, last_name_en, first_name_th, last_name_th, password_hash, phone_number, status, email_verified_at, isAdmin) VALUES
+INSERT INTO "User" ("user_id", "email", "first_name_en", "last_name_en", "first_name_th", "last_name_th", "password_hash", "phone_number", "status", "email_verified_at", "isAdmin") VALUES
 (1, 'admin.ku@ku.th', 'Admin', 'Marketplace', 'แอดมิน', 'มก', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '0800000000', 'Active', NOW(), TRUE),
 (2, 'somchai.s@ku.th', 'Somchai', 'Saetang', 'สมชาย', 'แซ่ตั้ง', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '0812345678', 'Active', NOW(), FALSE),
 (3, 'somsri.k@ku.th', 'Somsri', 'Kaewmanee', 'สมศรี', 'แก้วมณี', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '0823456789', 'Active', NOW(), FALSE),
@@ -247,7 +247,7 @@ SELECT setval(pg_get_serial_sequence('"User"', 'user_id'), 15);
 -- ------------------------------------------
 -- 16. SUBSCRIPTIONS & 17. PAYMENTS
 -- ------------------------------------------
-INSERT INTO "Subscription" (subscription_id, user_id, tier, posts_used_this_month, status, start_date, end_date) VALUES
+INSERT INTO "Subscription" ("subscription_id", "user_id", "tier", "posts_used_this_month", "status", "start_date", "end_date") VALUES
 (1, 1, 'Diamond', 0, 'Active', NOW(), NOW() + INTERVAL '1 year'),
 (2, 2, 'Gold', 4, 'Active', NOW() - INTERVAL '15 days', NOW() + INTERVAL '15 days'),
 (3, 3, 'Silver', 2, 'Active', NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days'),
@@ -266,7 +266,7 @@ INSERT INTO "Subscription" (subscription_id, user_id, tier, posts_used_this_mont
 
 SELECT setval(pg_get_serial_sequence('"Subscription"', 'subscription_id'), 15);
 
-INSERT INTO "Subscription_Payment" (payment_id, subscription_id, user_id, amount, slip_image_url, status, handled_by) VALUES
+INSERT INTO "Subscription_Payment" ("payment_id", "subscription_id", "user_id", "amount", "slip_image_url", "status", "handled_by") VALUES
 (1, 2, 2, 199, 'https://picsum.photos/id/10/600/800', 'Verified', 1),
 (2, 3, 3, 99, 'https://picsum.photos/id/11/600/800', 'Verified', 1),
 (3, 5, 5, 499, 'https://picsum.photos/id/12/600/800', 'Verified', 1),
@@ -278,7 +278,7 @@ SELECT setval(pg_get_serial_sequence('"Subscription_Payment"', 'payment_id'), 5)
 -- ------------------------------------------
 -- 2. ITEMS (สินค้า 20 ชิ้น)
 -- ------------------------------------------
-INSERT INTO "Item" (item_id, owner_id, name, category, condition, description, status, course_name, brand_model, warranty_expiry, size) VALUES
+INSERT INTO "Item" ("item_id", "owner_id", "name", "category", "condition", "description", "status", "course_name", "brand_model", "warranty_expiry", "size") VALUES
 (1, 2, 'หนังสือ Calculus 1', 'Books', 'Good', 'มีรอยไฮไลท์เล็กน้อย สภาพดีมาก', 'Listed', '01417111', 'KU Press', NULL, NULL),
 (2, 2, 'เสื้อนิสิตชาย แขนยาว', 'Clothing', 'Good', 'ใส่สอบ 2 ครั้ง', 'Listed', NULL, 'มุมทอง', NULL, 'L'),
 (3, 3, 'iPad Air 5 64GB', 'Electronics', 'Good', 'มีรอยเคสกัดนิดหน่อย อุปกรณ์ครบ', 'Listed', NULL, 'Apple iPad Air 5', '2025-10-01', NULL),
@@ -305,7 +305,7 @@ SELECT setval(pg_get_serial_sequence('"Item"', 'item_id'), 20);
 -- ------------------------------------------
 -- 3. ITEM IMAGES
 -- ------------------------------------------
-INSERT INTO "Item_Image" (item_id, image_url, is_primary) VALUES
+INSERT INTO "Item_Image" ("item_id", "image_url", "is_primary") VALUES
 (1, 'https://picsum.photos/id/1010/800/600', TRUE),
 (2, 'https://picsum.photos/id/1011/800/600', TRUE),
 (3, 'https://picsum.photos/id/1012/800/600', TRUE), (3, 'https://picsum.photos/id/1013/800/600', FALSE),
@@ -328,7 +328,7 @@ INSERT INTO "Item_Image" (item_id, image_url, is_primary) VALUES
 -- ------------------------------------------
 -- 4. POSTS (โพสต์ขาย 17 โพสต์)
 -- ------------------------------------------
-INSERT INTO "Post" (post_id, item_id, post_type, price, quantity_total, quantity_remaining) VALUES
+INSERT INTO "Post" ("post_id", "item_id", "post_type", "price", "quantity_total", "quantity_remaining") VALUES
 (1, 1, 'SellOnly', 250.00, 1, 1),
 (2, 2, 'SellOnly', 150.00, 1, 1),
 (3, 3, 'Both', 12000.00, 1, 1),   -- ขายและรับเทรด
@@ -353,7 +353,7 @@ SELECT setval(pg_get_serial_sequence('"Post"', 'post_id'), 17);
 -- 5. OFFERS & 6. OFFER_ITEMS (ข้อเสนอเทรด)
 -- ------------------------------------------
 -- Offer 1: อนันต์ (4) เอาหูฟัง (Item 4) + เงิน 5000 ไปเทรดกับ iPad (Post 3 ของสมศรี)
-INSERT INTO "Offer" (offer_id, post_id, proposer_id, additional_money, status) VALUES 
+INSERT INTO "Offer" ("offer_id", "post_id", "proposer_id", "additional_money", "status") VALUES 
 (1, 3, 4, 5000.00, 'Pending'),
 -- Offer 2: สมศรี (3) เอาสายชาร์จ (Item 16) ไปเทรดกับ กล่องสุ่ม (Post 14)
 (2, 14, 3, 100.00, 'Rejected'),
@@ -362,13 +362,13 @@ INSERT INTO "Offer" (offer_id, post_id, proposer_id, additional_money, status) V
 
 SELECT setval(pg_get_serial_sequence('"Offer"', 'offer_id'), 3);
 
-INSERT INTO "Offer_Item" (offer_id, item_id) VALUES
+INSERT INTO "Offer_Item" ("offer_id", "item_id") VALUES
 (1, 4), (2, 16), (3, 11);
 
 -- ------------------------------------------
 -- 8. TRANSACTIONS (การซื้อขาย)
 -- ------------------------------------------
-INSERT INTO "Transaction" (transaction_id, post_id, offer_id, buyer_id, seller_id, quantity, status, delivery_method, slip_image_url) VALUES
+INSERT INTO "Transaction" ("transaction_id", "post_id", "offer_id", "buyer_id", "seller_id", "quantity", "status", "delivery_method", "slip_image_url") VALUES
 (1, 1, NULL, 3, 2, 1, 'Processing', 'Meetup', 'https://picsum.photos/id/200/600/800'),
 (2, 8, NULL, 4, 8, 1, 'Completed', 'Shipping', 'https://picsum.photos/id/201/600/800'),
 (3, 5, NULL, 11, 5, 1, 'Pending', 'Meetup', NULL),
@@ -376,15 +376,15 @@ INSERT INTO "Transaction" (transaction_id, post_id, offer_id, buyer_id, seller_i
 (5, 11, NULL, 14, 12, 1, 'Processing', 'Shipping', 'https://picsum.photos/id/203/600/800');
 
 -- อัปเดตข้อมูลเพิ่มเติมให้ Transaction บางอัน
-UPDATE "Transaction" SET tracking_number = 'TH123456789' WHERE transaction_id = 2;
-UPDATE "Transaction" SET cancellation_reason = 'ผู้ขายส่งผิดเล่ม', cancellation_requested_by = 12 WHERE transaction_id = 4;
+UPDATE "Transaction" SET "tracking_number" = 'TH123456789' WHERE "transaction_id" = 2;
+UPDATE "Transaction" SET "cancellation_reason" = 'ผู้ขายส่งผิดเล่ม', "cancellation_requested_by" = 12 WHERE "transaction_id" = 4;
 
 SELECT setval(pg_get_serial_sequence('"Transaction"', 'transaction_id'), 5);
 
 -- ------------------------------------------
 -- 9. APPOINTMENT CARDS (ใบนัดรับของ)
 -- ------------------------------------------
-INSERT INTO "Appointment_Card" (appointment_id, transaction_id, proposed_by, date, time, location, status) VALUES
+INSERT INTO "Appointment_Card" ("appointment_id", "transaction_id", "proposed_by", "date", "time", "location", "status") VALUES
 (1, 1, 2, '2026-08-15', '13:00:00', 'หอสมุดกลาง มก.', 'Confirmed'),
 (2, 3, 5, '2026-08-20', '16:00:00', 'บาร์ใหม่ โรงอาหารกลาง 1', 'Pending');
 
@@ -393,18 +393,18 @@ SELECT setval(pg_get_serial_sequence('"Appointment_Card"', 'appointment_id'), 2)
 -- ------------------------------------------
 -- 7. REPORTS & 15. APPEALS (การร้องเรียน)
 -- ------------------------------------------
-INSERT INTO "Report" (report_id, reporter_id, report_type, target_id, reason_category, details, evidence_urls, status, handled_by) VALUES
+INSERT INTO "Report" ("report_id", "reporter_id", "report_type", "target_id", "reason_category", "details", "evidence_urls", "status", "handled_by") VALUES
 (1, 11, 'Transaction', 5, 'Damaged Item', 'จักรยานเบรคพัง ขี่ไม่ได้เลยครับ ไม่ตรงปก', '["https://picsum.photos/id/300/800/600"]'::jsonb, 'Under_Investigation', 1),
 (2, 2, 'User', 10, 'Scam/Fraud', 'นายภูริต หลอกให้โอนเงินแล้วบล็อกแชตหนี', '["https://picsum.photos/id/301/800/600"]'::jsonb, 'Violation_Confirmed', 1),
 (3, 14, 'Transaction', 5, 'Late Shipping', 'เลยกำหนดมา 7 วันแล้วผู้ขายยังไม่ส่งของ', NULL, 'Pending', NULL);
 
 -- ผูก Report เข้ากับ Transaction 
-UPDATE "Transaction" SET active_report_id = 1 WHERE transaction_id = 3;
-UPDATE "Transaction" SET active_report_id = 3 WHERE transaction_id = 5;
+UPDATE "Transaction" SET "active_report_id" = 1 WHERE "transaction_id" = 3;
+UPDATE "Transaction" SET "active_report_id" = 3 WHERE "transaction_id" = 5;
 
 SELECT setval(pg_get_serial_sequence('"Report"', 'report_id'), 3);
 
-INSERT INTO "Appeal" (appeal_id, report_id, appellant_id, reason, evidence_urls, status) VALUES
+INSERT INTO "Appeal" ("appeal_id", "report_id", "appellant_id", "reason", "evidence_urls", "status") VALUES
 (1, 1, 5, 'ผมแจ้งใน description แล้วว่าเบรคหลังหลวมต้องไปซ่อมเองครับ', '["https://picsum.photos/id/305/800/600"]'::jsonb, 'Pending');
 
 SELECT setval(pg_get_serial_sequence('"Appeal"', 'appeal_id'), 1);
@@ -412,14 +412,14 @@ SELECT setval(pg_get_serial_sequence('"Appeal"', 'appeal_id'), 1);
 -- ------------------------------------------
 -- 10. GIVEAWAY POSTS & 12. IMAGES
 -- ------------------------------------------
-INSERT INTO "Giveaway_Post" (giveaway_id, item_name, description, pickup_location, giver_id, allocation_method, pickup_deadline, status) VALUES
+INSERT INTO "Giveaway_Post" ("giveaway_id", "item_name", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "status") VALUES
 (1, 'ชีทสรุป ฟิสิกส์ 1', 'แจกฟรี ปริ้นท์เกินมา', 'ตึกศร.3', 2, 'FirstCome', '2026-08-10 17:00:00', 'Closed'),
 (2, 'เสื้อช็อปวิศวะ ไซส์ M', 'เรียนจบแล้วส่งต่อครับ', 'ลานเกียร์', 8, 'Random', '2026-08-25 18:00:00', 'Active'),
 (3, 'กล่องข้าว Super Lock', 'ไม่ได้ใช้แล้ว สภาพยังดี', 'หอพักหญิง', 11, 'FirstCome', '2026-08-15 12:00:00', 'Active');
 
 SELECT setval(pg_get_serial_sequence('"Giveaway_Post"', 'giveaway_id'), 3);
 
-INSERT INTO "Giveaway_Image" (giveaway_id, image_url, display_order) VALUES
+INSERT INTO "Giveaway_Image" ("giveaway_id", "image_url", "display_order") VALUES
 (1, 'https://picsum.photos/id/401/800/600', 1),
 (2, 'https://picsum.photos/id/402/800/600', 1),
 (3, 'https://picsum.photos/id/403/800/600', 1);
@@ -427,7 +427,7 @@ INSERT INTO "Giveaway_Image" (giveaway_id, image_url, display_order) VALUES
 -- ------------------------------------------
 -- 11. GIVEAWAY TICKETS (คิวรับของฟรี)
 -- ------------------------------------------
-INSERT INTO "Giveaway_Ticket" (ticket_id, giveaway_id, receiver_id, qr_token, status) VALUES
+INSERT INTO "Giveaway_Ticket" ("ticket_id", "giveaway_id", "receiver_id", "qr_token", "status") VALUES
 (1, 1, 4, 'GW-1-TOKEN-AAA', 'Received'),
 (2, 2, 5, 'GW-2-TOKEN-BBB', 'Waiting'),
 (3, 2, 6, 'GW-2-TOKEN-CCC', 'Waiting'),
@@ -438,14 +438,14 @@ SELECT setval(pg_get_serial_sequence('"Giveaway_Ticket"', 'ticket_id'), 4);
 -- ------------------------------------------
 -- 13. CHAT ROOMS & 14. CHAT MESSAGES
 -- ------------------------------------------
-INSERT INTO "Chat_Room" (room_id, transaction_id, giveaway_id) VALUES
+INSERT INTO "Chat_Room" ("room_id", "transaction_id", "giveaway_id") VALUES
 (1, 1, NULL), -- ห้องแชตซื้อขายหนังสือ
 (2, 3, NULL), -- ห้องแชตซื้อขายจักรยาน
 (3, NULL, 2); -- ห้องแชตกลุ่มแจกเสื้อช็อป
 
 SELECT setval(pg_get_serial_sequence('"Chat_Room"', 'room_id'), 3);
 
-INSERT INTO "Chat_Message" (message_id, room_id, sender_id, content) VALUES
+INSERT INTO "Chat_Message" ("message_id", "room_id", "sender_id", "content") VALUES
 (1, 1, 3, 'พี่คะ โอนเงินเรียบร้อยแล้วนะคะ'),
 (2, 1, 2, 'ได้รับแล้วครับ สะดวกนัดรับวันไหนครับ?'),
 (3, 1, 3, 'วันพฤหัสบดีที่ 15 ได้ไหมคะ ที่หอสมุด'),
