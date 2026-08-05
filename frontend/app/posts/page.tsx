@@ -1,5 +1,5 @@
 async function getPosts() {
-  const res = await fetch('http://localhost:3001/posts', { cache: 'no-store' });
+  const res = await fetch('http://localhost:3000/posts', { cache: 'no-store' });
   if (!res.ok) {
     throw new Error('Failed to fetch posts');
   }

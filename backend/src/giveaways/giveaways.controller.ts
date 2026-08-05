@@ -11,6 +11,7 @@ import { GiveawaysService } from './giveaways.service';
 import type {
   CreateGiveawayPayload,
   ForfeitPayload,
+  JoinGiveawayPayload,
   ScanQrPayload,
   SelectRecipientsPayload,
 } from './giveaways.service';
@@ -30,8 +31,8 @@ export class GiveawaysController {
   }
 
   @Post('giveaways/:id/join')
-  join(@Param('id') id: string) {
-    return this.giveawaysService.join(id);
+  join(@Param('id') id: string, @Body() body: JoinGiveawayPayload) {
+    return this.giveawaysService.join(id, body);
   }
 
   @Post('giveaways/:id/draw')
@@ -61,10 +62,7 @@ export class GiveawaysController {
   }
 
   @Post('giveaways/:id/tickets/:ticket_id/qr/generate')
-  qrGenerate(
-    @Param('id') id: string,
-    @Param('ticket_id') ticketId: string,
-  ) {
+  qrGenerate(@Param('id') id: string, @Param('ticket_id') ticketId: string) {
     return this.giveawaysService.qrGenerate(id, ticketId);
   }
 

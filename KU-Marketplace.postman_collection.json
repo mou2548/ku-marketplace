@@ -8,11 +8,23 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3001"
+      "value": "http://localhost:3000"
     },
     {
       "key": "postId",
+      "value": "post_003"
+    },
+    {
+      "key": "buyPostId",
       "value": "post_001"
+    },
+    {
+      "key": "offerPostId",
+      "value": "post_003"
+    },
+    {
+      "key": "deletePostId",
+      "value": "post_010"
     },
     {
       "key": "offerId",
@@ -20,15 +32,23 @@
     },
     {
       "key": "giveawayId",
-      "value": "giveaway_001"
+      "value": "giveaway_002"
     },
     {
       "key": "recipientId",
-      "value": "recipient_001"
+      "value": "recipient_003"
     },
     {
       "key": "ticketId",
-      "value": "ticket_001"
+      "value": "ticket_003"
+    },
+    {
+      "key": "manualGiveawayId",
+      "value": "giveaway_003"
+    },
+    {
+      "key": "qrToken",
+      "value": ""
     }
   ],
   "item": [
@@ -42,7 +62,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"item_id\": 145,\n  \"post_type\": \"Both\",\n  \"price\": 250,\n  \"quantity_total\": 1\n}",
+              "raw": "{\n  \"item_id\": 10,\n  \"post_type\": \"Both\",\n  \"price\": 250,\n  \"quantity_total\": 1\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/posts"
@@ -82,7 +102,7 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/posts/{{postId}}"
+            "url": "{{baseUrl}}/posts/{{deletePostId}}"
           }
         },
         {
@@ -92,10 +112,10 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"delivery_method\": \"Meetup\",\n  \"quantity\": 1\n}",
+              "raw": "{\n  \"buyer_id\": 3,\n  \"delivery_method\": \"Meetup\",\n  \"quantity\": 1\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/posts/{{postId}}/buy"
+            "url": "{{baseUrl}}/posts/{{buyPostId}}/buy"
           }
         },
         {
@@ -105,10 +125,10 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"item_ids\": [201, 205],\n  \"additional_money\": 100\n}",
+              "raw": "{\n  \"proposer_id\": 4,\n  \"item_ids\": [4],\n  \"additional_money\": 100\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/posts/{{postId}}/offer"
+            "url": "{{baseUrl}}/posts/{{offerPostId}}/offers"
           }
         },
         {
@@ -116,7 +136,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/posts/{{postId}}/offer"
+            "url": "{{baseUrl}}/posts/{{offerPostId}}/offers"
           }
         },
         {
@@ -129,7 +149,7 @@
               "raw": "{\n  \"delivery_method\": \"Shipping\"\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/accept"
+            "url": "{{baseUrl}}/posts/{{offerPostId}}/offers/{{offerId}}/accept"
           }
         },
         {
@@ -142,7 +162,7 @@
               "raw": "{}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/withdraw"
+            "url": "{{baseUrl}}/posts/{{offerPostId}}/offers/{{offerId}}/withdraw"
           }
         },
         {
@@ -155,7 +175,7 @@
               "raw": "{}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/posts/{{postId}}/offers/{{offerId}}/reject"
+            "url": "{{baseUrl}}/posts/{{offerPostId}}/offers/{{offerId}}/reject"
           }
         }
       ]
@@ -170,7 +190,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"item_name\": \"เสื้อคณะไซส์ M\",\n  \"description\": \"ได้มาแต่ใส่ไม่พอดี ใหม่มาก\",\n  \"pickup_location\": \"หน้าตึกวิศวกรรม 1\",\n  \"allocation_method\": \"Random\",\n  \"pickup_deadline\": \"2026-08-05T18:00:00Z\",\n  \"images\": [\n    {\n      \"image_url\": \"https://example.com/giveaways/img1.jpg\",\n      \"display_order\": 0\n    }\n  ]\n}",
+              "raw": "{\n  \"giver_id\": 2,\n  \"item_name\": \"เสื้อคณะไซส์ M\",\n  \"description\": \"ได้มาแต่ใส่ไม่พอดี ใหม่มาก\",\n  \"pickup_location\": \"หน้าตึกวิศวกรรม 1\",\n  \"allocation_method\": \"Random\",\n  \"pickup_deadline\": \"2026-08-05T18:00:00Z\",\n  \"images\": [\n    {\n      \"image_url\": \"https://example.com/giveaways/img1.jpg\",\n      \"display_order\": 0\n    }\n  ]\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/giveaways"
@@ -191,7 +211,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"receiver_id\": 4\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/giveaways/{{giveawayId}}/join"
@@ -217,10 +237,10 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receiver_ids\": [3311, 3320, 3325]\n}",
+              "raw": "{\n  \"receiver_ids\": [3]\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": "{{baseUrl}}/giveaways/{{giveawayId}}/select"
+            "url": "{{baseUrl}}/giveaways/{{manualGiveawayId}}/select"
           }
         },
         {
@@ -255,7 +275,19 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/giveaways/{{giveawayId}}/tickets/{{ticketId}}/qr/generate"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('qrToken', response.data.token);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Scan ticket QR",
@@ -264,7 +296,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"mock-qr-token-001\"\n}",
+              "raw": "{\n  \"token\": \"{{qrToken}}\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/giveaways/{{giveawayId}}/tickets/{{ticketId}}/qr/scan"

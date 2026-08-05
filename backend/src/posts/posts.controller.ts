@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -76,6 +78,7 @@ export class PostsController {
   }
 
   @Post(':post_id/offers/:offer_id/withdraw')
+  @HttpCode(HttpStatus.OK)
   withdrawOffer(
     @Param('post_id') postId: string,
     @Param('offer_id') offerId: string,
@@ -84,6 +87,7 @@ export class PostsController {
   }
 
   @Post(':post_id/offers/:offer_id/reject')
+  @HttpCode(HttpStatus.OK)
   rejectOffer(
     @Param('post_id') postId: string,
     @Param('offer_id') offerId: string,
