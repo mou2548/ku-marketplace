@@ -67,7 +67,7 @@ export function ProductCard({ product }: { product: Product }) {
           className="absolute top-2 right-2 z-10 size-8 rounded-full bg-white/90 shadow-sm hover:bg-white"
         >
           <Heart
-            className={cn("size-4", liked ? "text-red-500" : "text-[#6F7A6F]")}
+            className={cn("size-4", liked ? "text-red-500" : "text-muted-foreground")}
             fill={liked ? "currentColor" : "none"}
           />
         </Button>
@@ -138,7 +138,7 @@ export function ProductCard({ product }: { product: Product }) {
             href={`/trade/${product.id}`}
             className={cn(
               buttonVariants(),
-              "h-9 flex-1 rounded-full bg-[#2D7791] hover:bg-[#2D7791]/90"
+              "h-9 flex-1 rounded-full bg-teal-dark hover:bg-teal-dark/90"
             )}
           >
             Propose Swap

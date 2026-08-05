@@ -56,7 +56,7 @@ export default function OfferAlertPage() {
                 {OFFER_ALERT.theirs}
               </span>
             </div>
-            <ArrowLeftRight className="size-6 shrink-0 text-[#2E8F5A]" />
+            <ArrowLeftRight className="size-6 shrink-0 text-primary" />
             <div className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-surface-muted p-3">
               <div className="relative size-20 overflow-hidden rounded-lg border border-border/30 bg-white">
                 <Image
@@ -76,7 +76,7 @@ export default function OfferAlertPage() {
           <div className="flex gap-4 border-t border-border/20 pt-6">
             <Button
               variant="outline"
-              className="h-12 flex-1 gap-2 border-[#B3455A] text-[#B3455A] hover:bg-[#B3455A]/5"
+              className="h-12 flex-1 gap-2 border-error text-error hover:bg-error/5"
             >
               <X className="size-4" />
               Decline

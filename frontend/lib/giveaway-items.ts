@@ -27,13 +27,28 @@ export type GiveawayItem = GiveawayItemBase &
       }
   );
 
+// `badgeClass` lives here for the same reason `icon` does: it's per-type UI that
+// was being redeclared per-page. These stay arbitrary-value classes rather than
+// globals.css tokens because they're per-context badge colors, not brand colors.
 export const GIVEAWAY_REQUEST_TYPE_META: Record<
   GiveawayRequestType,
-  { label: string; icon: LucideIcon }
+  { label: string; icon: LucideIcon; badgeClass: string }
 > = {
-  "first-come": { label: "First-come, First-served", icon: Zap },
-  random: { label: "Random Draw", icon: Shuffle },
-  manual: { label: "Manual Selection", icon: Hand },
+  "first-come": {
+    label: "First-come, First-served",
+    icon: Zap,
+    badgeClass: "bg-[#FFBE3B]/20 text-[#6F4E00]",
+  },
+  random: {
+    label: "Random Draw",
+    icon: Shuffle,
+    badgeClass: "bg-[#FFB2BA]/30 text-[#7C2A39]",
+  },
+  manual: {
+    label: "Manual Selection",
+    icon: Hand,
+    badgeClass: "bg-primary-light text-primary-dark",
+  },
 };
 
 // TODO: replace with real giveaway items from the API

@@ -14,7 +14,7 @@ export default function TradeSuccessPage() {
 
       <main className="flex flex-1 flex-col items-center gap-8 px-6 py-12">
         <div className="flex flex-col items-center gap-4">
-          <div className="flex size-16 items-center justify-center rounded-full bg-primary">
+          <div className="flex size-16 items-center justify-center rounded-full bg-primary-dark">
             <Check className="size-8 text-white" strokeWidth={3} />
           </div>
           <div className="flex flex-col items-center gap-1 text-center">

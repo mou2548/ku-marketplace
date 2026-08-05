@@ -87,7 +87,7 @@ export default function Home() {
                 </Label>
                 <div className="relative">
                   <Mail
-                    className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-[#6F7A6F]"
+                    className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground"
                   />
                   <Input
                     id="username"
@@ -105,7 +105,7 @@ export default function Home() {
                 </Label>
                 <div className="relative">
                   <Lock
-                    className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-[#6F7A6F]"
+                    className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground"
                   />
                   <Input
                     id="password"
@@ -118,7 +118,7 @@ export default function Home() {
               </div>
 
               {mode === "login" && state?.error && (
-                <p className="text-center text-sm text-[#B3455A]">{state.error}</p>
+                <p className="text-center text-sm text-error">{state.error}</p>
               )}
 
               {mode === "register" && (
@@ -128,7 +128,7 @@ export default function Home() {
                   </Label>
                   <div className="relative">
                     <Lock
-                      className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-[#6F7A6F]"
+                      className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground"
                     />
                     <Input
                       id="confirm-password"

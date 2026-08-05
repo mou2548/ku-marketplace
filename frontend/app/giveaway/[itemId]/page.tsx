@@ -59,13 +59,13 @@ export default async function GiveawayItemDetailPage({
                   {
                     label: item.category,
                     className:
-                      "border border-border/20 bg-white/90 text-[#2E8F5A]",
+                      "border border-border/20 bg-white/90 text-primary-dark",
                   },
                   {
                     icon: typeMeta.icon,
                     label: typeMeta.label,
                     className:
-                      "border border-[#7C5800]/20 bg-[#FDF3D8] text-[#5E4200]",
+                      "border border-warning-dark/20 bg-warning-bg text-warning-dark",
                   },
                 ]}
               />
@@ -165,16 +165,16 @@ export default async function GiveawayItemDetailPage({
               )}
 
               {item.requestType === "random" && (
-                <div className="flex flex-col gap-4 rounded-3xl border-2 border-[#004B24]/10 bg-white p-6 shadow-elevated">
+                <div className="flex flex-col gap-4 rounded-3xl border-2 border-primary-dark/10 bg-white p-6 shadow-elevated">
                   <h2 className="text-xl leading-7 font-semibold text-foreground">
                     ลงทะเบียนสุ่มรับของ (Enter Random Draw)
                   </h2>
 
-                  <div className="flex flex-col gap-1 rounded-3xl border border-[#004B24]/5 bg-[#006633]/10 p-4">
-                    <span className="text-xs font-medium text-[#005228]">
+                  <div className="flex flex-col gap-1 rounded-3xl border border-primary-dark/5 bg-primary/10 p-4">
+                    <span className="text-xs font-medium text-primary-dark">
                       สุ่มผู้โชคดีในอีก:
                     </span>
-                    <span className="flex items-center gap-2 text-2xl leading-8 font-semibold text-[#2E8F5A]">
+                    <span className="flex items-center gap-2 text-2xl leading-8 font-semibold text-primary">
                       <Clock className="size-5" />
                       {item.drawClosesIn}
                     </span>
@@ -190,9 +190,9 @@ export default async function GiveawayItemDetailPage({
                     </span>
                   </div>
 
-                  <div className="flex items-start gap-2 rounded-3xl border border-[#FFB2BA]/20 bg-[#FFD9DC]/10 p-4">
-                    <Info className="size-4 shrink-0 text-[#742433]" />
-                    <p className="text-xs leading-4 font-medium text-[#7C2A39]">
+                  <div className="flex items-start gap-2 rounded-3xl border border-error-bg/20 bg-error-bg/10 p-4">
+                    <Info className="size-4 shrink-0 text-error-dark" />
+                    <p className="text-xs leading-4 font-medium text-error-dark">
                       ผู้ชนะจะถูกสุ่มโดยระบบและประกาศผลผ่านทาง Chat
                       ของแอปพลิเคชัน KU Marketplace
                     </p>
@@ -226,7 +226,7 @@ export default async function GiveawayItemDetailPage({
                         <span className="font-medium tracking-[0.14px] text-muted-foreground">
                           Currently in queue
                         </span>
-                        <span className="font-bold tracking-[0.14px] text-[#7C5800]">
+                        <span className="font-bold tracking-[0.14px] text-warning-dark">
                           {item.queueCount}
                         </span>
                       </div>

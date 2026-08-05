@@ -39,7 +39,7 @@ export const CONVERSATIONS: Conversation[] = [
     time: "10:42 AM",
     preview: "Offer confirmed, agree on meetup spot",
     tags: [
-      { label: "AGREED", className: "bg-[#FBBF24]/20 text-[#D99E31]" },
+      { label: "AGREED", className: "bg-warning-bg text-warning-dark" },
       { label: "Swap", className: "bg-surface-muted text-muted-foreground" },
     ],
     online: true,

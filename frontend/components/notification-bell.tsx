@@ -21,7 +21,7 @@ export function NotificationBell() {
     <Link
       href="/notifications"
       aria-label="Notifications"
-      className="relative flex size-8 items-center justify-center rounded-full text-primary-dark hover:bg-[#F4F6F8]"
+      className="relative flex size-8 items-center justify-center rounded-full text-primary-dark hover:bg-surface-muted"
     >
       <Bell className="size-4" />
       {unreadCount > 0 && (

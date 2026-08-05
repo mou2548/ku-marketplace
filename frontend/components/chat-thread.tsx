@@ -63,7 +63,7 @@ export function ChatThread({
             <span className="truncate text-lg font-normal text-foreground">
               {thread.name}
             </span>
-            <span className="truncate text-sm font-medium text-primary">
+            <span className="truncate text-sm font-medium text-primary-dark">
               {thread.status}
             </span>
           </div>
@@ -161,7 +161,7 @@ export function ChatThread({
               className={cn(
                 "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-card sm:max-w-[70%]",
                 message.from === "me"
-                  ? "rounded-br-sm bg-primary text-white"
+                  ? "rounded-br-sm bg-primary-dark text-white"
                   : "rounded-bl-sm bg-surface-muted text-foreground"
               )}
             >
@@ -183,7 +183,7 @@ export function ChatThread({
         {/* Meetup card is a message in the thread, not a floating panel — and only
             exists once a spot has actually been agreed. */}
         {thread.meetupLocation && !cancelled && (
-          <div className="flex w-full max-w-[320px] flex-col gap-3 self-center rounded-2xl bg-primary p-3 shadow-card">
+          <div className="flex w-full max-w-[320px] flex-col gap-3 self-center rounded-2xl bg-primary-dark p-3 shadow-card">
             <div className="overflow-hidden rounded-xl bg-white">
               <div className="relative h-36 w-full bg-surface-muted">
                 <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />

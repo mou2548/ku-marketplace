@@ -57,7 +57,7 @@ export function MobileNav({
                   "rounded-lg px-3 py-3 text-base",
                   link.href === active
                     ? "bg-primary-light font-medium text-primary-dark"
-                    : "text-muted-foreground hover:bg-[#F4F6F8]"
+                    : "text-muted-foreground hover:bg-surface-muted"
                 )}
               >
                 {link.label}

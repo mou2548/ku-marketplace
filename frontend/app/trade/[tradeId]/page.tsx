@@ -111,7 +111,7 @@ export default function OfferTradePage({
             {
               icon: BadgeCheck,
               label: TARGET_ITEM.condition,
-              className: "bg-[#FFBE3B]/90 text-[#6F4E00]",
+              className: "bg-white/90 text-teal-dark",
             },
           ]}
         />
@@ -136,7 +136,7 @@ export default function OfferTradePage({
               <h3 className="text-xl font-semibold text-foreground">
                 {TARGET_ITEM.owner.name}
               </h3>
-              <BadgeCheck className="size-[18px] text-[#2E8F5A]" />
+              <BadgeCheck className="size-[18px] text-primary" />
             </div>
             <span className="text-xs font-medium text-muted-foreground">
               Engineering Student • {TARGET_ITEM.owner.rating} Rating
@@ -184,7 +184,7 @@ export default function OfferTradePage({
 
         <div className="flex flex-col gap-4 rounded-3xl border-2 border-dashed border-border/50 bg-surface-muted p-6">
           <div className="flex items-center gap-2">
-            <ArrowLeftRight className="size-5 text-[#7C5800]" />
+            <ArrowLeftRight className="size-5 text-warning-dark" />
             <h3 className="text-xl font-semibold text-foreground">
               Trade Preferences
             </h3>
@@ -217,11 +217,11 @@ export default function OfferTradePage({
                 className={cn(
                   "flex w-full items-center gap-4 rounded-3xl p-4 text-left transition-colors",
                   item.selected
-                    ? "border-2 border-[#2E8F5A] bg-[#2E8F5A]/5"
+                    ? "border-2 border-primary bg-primary/5"
                     : "border border-border/30 bg-white hover:bg-surface-muted"
                 )}
               >
-                <div className="relative size-20 shrink-0 overflow-hidden rounded-2xl bg-[#E5E7EB]">
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-2xl bg-surface-muted">
                   <Image src={item.image} alt={item.title} fill className="object-cover" />
                 </div>
                 <div className="flex flex-1 flex-col gap-0.5">
@@ -238,7 +238,7 @@ export default function OfferTradePage({
                   </span>
                 </div>
                 {item.selected ? (
-                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2E8F5A] shadow-card">
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-dark shadow-card">
                     <Check className="size-3.5 text-white" strokeWidth={3} />
                   </div>
                 ) : (
@@ -254,7 +254,7 @@ export default function OfferTradePage({
             </span>
             <Link
               href={`/offers/${tradeId}`}
-              className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#2E8F5A] text-lg font-semibold text-white shadow-card hover:bg-[#2E8F5A]/90"
+              className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary-dark text-lg font-semibold text-white shadow-card hover:bg-primary-dark/90"
             >
               Send Trade Offer
               <Send className="size-4" />

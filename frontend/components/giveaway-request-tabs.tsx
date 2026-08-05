@@ -106,13 +106,13 @@ function RequestCard({ request }: { request: RequestItem }) {
       className={cn(
         "flex flex-col gap-6 rounded-3xl border p-6 shadow-elevated",
         request.status === "won"
-          ? "border-[#004B24]/30 bg-[#004B24]/[0.02]"
-          : "border-[#E2E8F0] bg-white",
+          ? "border-primary-dark/30 bg-primary-dark/[0.02]"
+          : "border-border bg-white",
         request.status === "not-selected" && "opacity-80 saturate-50"
       )}
     >
       <div className="relative isolate overflow-hidden rounded-xl bg-surface-muted shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-        <div className="relative h-[220px] w-full bg-[#E5E7EB]">
+        <div className="relative h-[220px] w-full bg-surface-muted">
           <Image
             src={request.image}
             alt={request.title}
@@ -122,13 +122,13 @@ function RequestCard({ request }: { request: RequestItem }) {
         </div>
         <div className="absolute top-4 right-4">
           {request.status === "pending" && (
-            <Badge className="h-auto gap-1 bg-[#FDF3D8] px-4 py-1.5 text-sm text-[#271900] shadow-card">
+            <Badge className="h-auto gap-1 bg-warning-bg px-4 py-1.5 text-sm text-warning-dark shadow-card">
               <Clock className="size-3" />
               Pending Review
             </Badge>
           )}
           {request.status === "won" && (
-            <Badge className="h-auto gap-1 bg-[#2E8F5A] px-4 py-1.5 text-sm text-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
+            <Badge className="h-auto gap-1 bg-primary-dark px-4 py-1.5 text-sm text-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)]">
               <CheckCircle2 className="size-3" />
               You Won!
             </Badge>
@@ -159,14 +159,14 @@ function RequestCard({ request }: { request: RequestItem }) {
                 href={`/giveaway/${request.id}`}
                 className={cn(
                   buttonVariants({ variant: "outline" }),
-                  "h-10 flex-1 border-[#6F7A6F] text-base"
+                  "h-10 flex-1 border-muted-foreground text-base"
                 )}
               >
                 View Post
               </Link>
               <Button
                 variant="outline"
-                className="h-10 flex-1 border-[#B3455A] text-base text-[#B3455A] hover:bg-[#B3455A]/5"
+                className="h-10 flex-1 border-error text-base text-error hover:bg-error/5"
               >
                 Cancel
               </Button>
@@ -185,7 +185,7 @@ function RequestCard({ request }: { request: RequestItem }) {
             <Button
               variant="outline"
               disabled
-              className="h-10 w-full border-[#6F7A6F]/40 text-base text-[#6F7A6F]"
+              className="h-10 w-full border-muted-foreground/40 text-base text-muted-foreground"
             >
               Closed
             </Button>

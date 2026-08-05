@@ -22,11 +22,11 @@ export function ItemDetailHero({
   return (
     <div className="relative isolate overflow-hidden rounded-3xl bg-white shadow-elevated">
       {image ? (
-        <div className="relative h-[480px] w-full bg-[#E5E7EB]">
+        <div className="relative h-[480px] w-full bg-surface-muted">
           <Image src={image} alt={alt ?? ""} fill className="object-cover" />
         </div>
       ) : (
-        <div className="h-[480px] w-full animate-pulse bg-[#E5E7EB]" />
+        <div className="h-[480px] w-full animate-pulse bg-surface-muted" />
       )}
       <div className="absolute top-4 left-4 flex items-center gap-2">
         {badges.map((badge) => {

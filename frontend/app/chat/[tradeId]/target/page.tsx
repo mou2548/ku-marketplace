@@ -42,7 +42,7 @@ export default function ChatTargetPage({
           </p>
         </div>
 
-        <div className="relative flex h-40 w-full items-center justify-center overflow-hidden rounded-3xl bg-[#E5E7EB]">
+        <div className="relative flex h-40 w-full items-center justify-center overflow-hidden rounded-3xl bg-surface-muted">
           <MapPin className="size-8 text-primary-dark" />
         </div>
 
@@ -64,7 +64,7 @@ export default function ChatTargetPage({
                 <div
                   className={cn(
                     "flex size-10 shrink-0 items-center justify-center rounded-full",
-                    isSelected ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                    isSelected ? "bg-primary-dark text-white" : "bg-muted text-muted-foreground"
                   )}
                 >
                   <MapPin className="size-5" />
@@ -74,7 +74,7 @@ export default function ChatTargetPage({
                   <span className="text-xs text-muted-foreground">{spot.sub}</span>
                 </div>
                 {isSelected && (
-                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-dark text-white">
                     <Check className="size-3.5" strokeWidth={3} />
                   </div>
                 )}

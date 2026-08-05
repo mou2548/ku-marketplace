@@ -66,7 +66,7 @@ export default function AddItemPage() {
             </Button>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl bg-[#F6F8F7] p-4">
+          <div className="flex flex-col gap-3 rounded-xl bg-surface-muted p-4">
             <span className="text-xs font-semibold text-muted-foreground">
               Recent Inventory Items
             </span>
@@ -113,17 +113,17 @@ export default function AddItemPage() {
             <h2 className="text-base font-bold text-foreground">Listing Preview</h2>
 
             <Card className="flex-col gap-0 overflow-hidden rounded-2xl p-0 shadow-card ring-0">
-              <div className="flex aspect-[4/3.8] w-full items-center justify-center bg-[#E8F1F3] text-[#B0C7CC]">
+              <div className="flex aspect-[4/3.8] w-full items-center justify-center bg-surface-muted text-muted-foreground/40">
                 <ImageIcon className="size-16 stroke-[1.25]" />
               </div>
 
               <div className="flex flex-col gap-2.5 p-5">
-                <div className="h-4 w-3/5 animate-pulse rounded-md bg-[#E8F1F3]" />
-                <div className="h-3 w-1/5 animate-pulse rounded-md bg-[#E8F1F3]" />
-                <div className="mb-2 h-3 w-2/5 animate-pulse rounded-md bg-[#E8F1F3]" />
+                <div className="h-4 w-3/5 animate-pulse rounded-md bg-surface-muted" />
+                <div className="h-3 w-1/5 animate-pulse rounded-md bg-surface-muted" />
+                <div className="mb-2 h-3 w-2/5 animate-pulse rounded-md bg-surface-muted" />
                 <div className="flex items-center gap-2 pt-1">
-                  <div className="size-6 animate-pulse rounded-full bg-[#E8F1F3]" />
-                  <div className="h-3 w-16 animate-pulse rounded-md bg-[#E8F1F3]" />
+                  <div className="size-6 animate-pulse rounded-full bg-surface-muted" />
+                  <div className="h-3 w-16 animate-pulse rounded-md bg-surface-muted" />
                 </div>
               </div>
             </Card>

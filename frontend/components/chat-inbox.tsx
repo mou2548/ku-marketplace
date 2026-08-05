@@ -44,7 +44,7 @@ export function ChatInbox({
             variant="ghost"
             size="icon"
             aria-label="New message"
-            className="size-8 bg-[#006633]/30 text-[#2E8F5A] hover:bg-[#006633]/40"
+            className="size-8 bg-primary-light text-primary-dark hover:bg-primary-light/70"
           >
             <SquarePen className="size-4" />
           </Button>
@@ -55,7 +55,7 @@ export function ChatInbox({
           <Input
             type="search"
             placeholder="Search conversations..."
-            className="h-11 rounded-full border-0 bg-surface-muted pr-4 pl-10 text-sm text-foreground placeholder:text-[#6B7280] focus-visible:ring-0"
+            className="h-11 rounded-full border-0 bg-surface-muted pr-4 pl-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
           />
         </div>
 
@@ -86,7 +86,7 @@ export function ChatInbox({
             className={cn(
               "flex w-full items-start gap-4 border-l-4 p-6 text-left",
               conversation.id === selectedId
-                ? "border-[#2E8F5A] bg-[#006633]/10"
+                ? "border-primary bg-primary/10"
                 : "border-transparent hover:bg-surface-muted/50",
               conversation.dimmed && "opacity-80"
             )}
@@ -98,7 +98,7 @@ export function ChatInbox({
                 </AvatarFallback>
               </Avatar>
               {conversation.online && (
-                <span className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-white bg-[#10B981]" />
+                <span className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-white bg-primary-dark" />
               )}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -110,7 +110,7 @@ export function ChatInbox({
                   className={cn(
                     "shrink-0 text-xs",
                     conversation.id === selectedId
-                      ? "text-[#2E8F5A]"
+                      ? "text-primary-dark"
                       : "text-muted-foreground"
                   )}
                 >

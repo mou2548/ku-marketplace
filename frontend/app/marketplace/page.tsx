@@ -39,7 +39,7 @@ export default function MarketplacePage() {
         <PageHeader title="Marketplace" subtitle="Buy, sell, and swap with the KU community." />
 
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#6F7A6F]" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="find something . . ."
             className="h-11 rounded-full border-none bg-white pl-9 shadow-sm"

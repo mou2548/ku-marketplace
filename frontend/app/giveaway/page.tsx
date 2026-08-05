@@ -10,12 +10,6 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { GIVEAWAY_ITEMS, GIVEAWAY_REQUEST_TYPE_META } from "@/lib/giveaway-items";
 
-const TYPE_CLASS: Record<string, string> = {
-  "first-come": "bg-[#FFBE3B]/20 text-[#6F4E00]",
-  random: "bg-[#FFB2BA]/30 text-[#7C2A39]",
-  manual: "bg-primary-light text-primary-dark",
-};
-
 export default function GiveawayPage() {
   return (
     <div className="flex min-h-full flex-col bg-page-background">
@@ -26,14 +20,14 @@ export default function GiveawayPage() {
           <h1 className="text-4xl leading-[1.15] font-bold tracking-[-0.02em] text-primary-dark sm:text-5xl">
             Giveaway Items
           </h1>
-          <p className="max-w-[672px] text-lg text-[#64748B]">
+          <p className="max-w-[672px] text-lg text-muted-foreground">
             Find items shared by the KU community. Connect with peers and
             give items a second life through our curated giveaway program.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <div className="relative min-w-[240px] flex-1">
-              <Search className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[#0A0A0A]" />
+              <Search className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-foreground" />
               <Input
                 type="search"
                 placeholder="find something . . ."
@@ -68,7 +62,7 @@ export default function GiveawayPage() {
                 key={item.id}
                 className="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-card"
               >
-                <div className="relative h-[276px] w-full bg-[#E5E7EB]">
+                <div className="relative h-[276px] w-full bg-surface-muted">
                   <Image
                     src={item.image}
                     alt={item.name}
@@ -81,7 +75,7 @@ export default function GiveawayPage() {
                     <Badge
                       className={cn(
                         "h-auto w-fit px-3 py-1",
-                        TYPE_CLASS[item.requestType]
+                        typeMeta.badgeClass
                       )}
                     >
                       {typeMeta.label}

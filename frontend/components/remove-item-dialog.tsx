@@ -48,7 +48,7 @@ export function RemoveItemDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Keep Item</AlertDialogCancel>
           <AlertDialogAction
-            className="bg-[#BA1A1A] text-white hover:bg-[#BA1A1A]/90"
+            className="bg-error text-white hover:bg-error/90"
             onClick={() => {
               onConfirm();
               setOpen(false);

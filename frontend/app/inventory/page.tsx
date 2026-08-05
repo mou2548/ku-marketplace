@@ -171,13 +171,13 @@ export default function InventoryPage() {
 
           <div className="flex flex-wrap items-center gap-4 lg:gap-6">
             <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl border border-border px-5 py-3 text-center">
-              <span className="text-xl font-semibold text-primary lg:text-2xl">
+              <span className="text-xl font-semibold text-primary-dark lg:text-2xl">
                 {totalItemsCount}
               </span>
               <span className="text-xs font-medium text-muted-foreground">Total Items</span>
             </div>
             <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl border border-border px-5 py-3 text-center">
-              <span className="text-xl font-semibold text-primary lg:text-2xl">
+              <span className="text-xl font-semibold text-primary-dark lg:text-2xl">
                 {listingItems}
               </span>
               <span className="text-xs font-medium text-muted-foreground">
@@ -185,7 +185,7 @@ export default function InventoryPage() {
               </span>
             </div>
             <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl border border-border px-5 py-3 text-center">
-              <span className="text-xl font-semibold text-primary lg:text-2xl">
+              <span className="text-xl font-semibold text-primary-dark lg:text-2xl">
                 {successfulSwapsCount}
               </span>
               <span className="text-xs leading-tight font-medium whitespace-pre-line text-muted-foreground">
@@ -195,7 +195,7 @@ export default function InventoryPage() {
 
             <Link
               href="/inventory/add"
-              className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-white shadow-card transition-all hover:bg-primary-dark"
+              className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary-dark px-6 text-sm font-semibold text-white shadow-card transition-all hover:bg-primary-dark"
             >
               <Plus className="size-4" />
               Add Item
@@ -220,7 +220,7 @@ export default function InventoryPage() {
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative h-12 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-[#6F7A6F]" />
+              <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search inventory..."
@@ -264,7 +264,7 @@ export default function InventoryPage() {
             <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10 transition-transform duration-500 group-hover:scale-110">
               <Plus className="size-7 text-primary" />
             </div>
-            <h3 className="mb-1 text-xl font-semibold text-primary">Upload Item</h3>
+            <h3 className="mb-1 text-xl font-semibold text-primary-dark">Upload Item</h3>
             <p className="max-w-[180px] text-xs leading-relaxed font-medium text-muted-foreground">
               Add new items to your locker for trading
             </p>
@@ -282,7 +282,7 @@ export default function InventoryPage() {
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <Badge className="absolute top-4 right-4 z-10 h-auto gap-1 bg-primary/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
+                <Badge className="absolute top-4 right-4 z-10 h-auto gap-1 bg-primary-dark/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
                   <Tag className="size-3" />
                   {item.status}
                 </Badge>
@@ -293,7 +293,7 @@ export default function InventoryPage() {
 
               <div className="flex flex-1 flex-col justify-between gap-3 p-5">
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-semibold tracking-wider text-primary uppercase">
+                  <span className="text-[11px] font-semibold tracking-wider text-primary-dark uppercase">
                     {item.category}
                   </span>
                   <h3 className="line-clamp-1 text-lg font-medium text-primary-dark transition-colors group-hover:text-primary">
@@ -307,7 +307,7 @@ export default function InventoryPage() {
                 <div className="flex flex-col gap-1.5 border-t border-border/20 pt-2">
                   {item.lookingFor && (
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <span className="font-bold text-primary">Looking for:</span>
+                      <span className="font-bold text-primary-dark">Looking for:</span>
                       <span className="max-w-[140px] truncate font-medium">
                         {item.lookingFor}
                       </span>
@@ -326,7 +326,7 @@ export default function InventoryPage() {
 
               <div className="absolute inset-0 z-20 flex flex-col justify-between bg-white/95 p-5 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold text-primary">{item.category}</span>
+                  <span className="text-xs font-semibold text-primary-dark">{item.category}</span>
                   <h4 className="text-lg font-semibold text-primary-dark">{item.name}</h4>
                   <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
                     <p>
@@ -383,7 +383,7 @@ export default function InventoryPage() {
                   setSelectedCategory("All");
                   setSearchQuery("");
                 }}
-                className="mt-4 bg-primary/10 text-xs font-semibold text-primary hover:bg-primary hover:text-white"
+                className="mt-4 bg-primary-dark/10 text-xs font-semibold text-primary-dark hover:bg-primary-dark hover:text-white"
               >
                 Clear Filters
               </Button>

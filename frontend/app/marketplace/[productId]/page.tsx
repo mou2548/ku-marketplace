@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 const CONDITION_CLASS: Record<string, string> = {
   "LIKE NEW": "bg-primary-light text-primary-dark",
   EXCELLENT: "bg-primary-light text-primary-dark",
-  FAIR: "bg-[#D99E30]/15 text-[#D99E30]",
+  FAIR: "bg-warning/15 text-warning",
 };
 
 export default async function ProductDetailPage({
@@ -122,7 +122,7 @@ export default async function ProductDetailPage({
                 </div>
 
                 {product.mode !== "swap" && (
-                  <p className="text-5xl font-bold tracking-[-0.96px] text-[#2E8F5A]">
+                  <p className="text-5xl font-bold tracking-[-0.96px] text-primary">
                     ฿{(product.price ?? 0).toLocaleString("en-US")}
                   </p>
                 )}
@@ -188,7 +188,7 @@ export default async function ProductDetailPage({
                 {canSwap && (
                   <Link
                     href={`/trade/${product.id}`}
-                    className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#2D7791] text-sm font-medium text-white hover:bg-[#2D7791]/90"
+                    className="flex h-12 items-center justify-center gap-2 rounded-full bg-teal-dark text-sm font-medium text-white hover:bg-teal-dark/90"
                   >
                     <Repeat className="size-4" />
                     Propose to swap

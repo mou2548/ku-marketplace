@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const VERIFIED_TIER_CLASSES = {
-  default: "text-[#2E8F5A]",
-  gold: "text-[#7C5800]",
+  default: "text-primary",
+  gold: "text-warning-dark",
 } as const;
 
 export function OwnerCard({
@@ -36,7 +36,7 @@ export function OwnerCard({
       </div>
       <Button
         variant="outline"
-        className="shrink-0 border-[#2E8F5A] px-4 text-sm font-medium tracking-[0.14px] text-[#2E8F5A] hover:bg-[#2E8F5A]/5"
+        className="shrink-0 border-primary-dark px-4 text-sm font-medium tracking-[0.14px] text-primary-dark hover:bg-primary-dark/5"
       >
         View Profile
       </Button>

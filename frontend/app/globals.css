@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* This app is light-theme only and defines no .dark token block. The variant is
+   kept anyway: shadcn's ui/* primitives ship `dark:` utilities, and Tailwind v4
+   would otherwise resolve those against prefers-color-scheme, half-theming the
+   app for anyone whose OS is in dark mode. Nothing sets .dark, so this keeps
+   every `dark:` rule inert. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -53,48 +58,53 @@
   --color-teal: var(--teal);
   --color-teal-light: var(--teal-light);
   --color-warning: var(--warning);
+  --color-warning-dark: var(--warning-dark);
   --color-warning-bg: var(--warning-bg);
   --color-error: var(--error);
+  --color-error-dark: var(--error-dark);
   --color-error-bg: var(--error-bg);
   --color-page-background: var(--page-background);
   --color-surface-muted: var(--surface-muted);
+
+  /* Layer scale. SiteHeader is the ceiling for in-page content: a z-10 card
+     overlay painting over the sticky header was a real bug (2026-07-31). */
+  --z-index-card-overlay: 10;
+  --z-index-sticky: 20;
+  --z-index-header: 50;
+  --z-index-dialog: 100;
 }
 
 :root {
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #1d6d41;
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
   --foreground: #1B231E;
   --card: oklch(1 0 0);
   --card-foreground: #1B231E;
   --popover: oklch(1 0 0);
   --popover-foreground: #1B231E;
+
+  /* Brand green. --primary is 4.04:1 on white — fill/chrome and large or bold
+     labels only. Any normal-size text or link uses --primary-dark (6.33:1). */
   --primary: #2E8F5A;
   --primary-foreground: #FFFFFF;
   --primary-dark: #1D6D41;
   --primary-light: #DCEFE3;
+
+  /* Same split as the green: --teal is 2.87:1 on white and fails every WCAG
+     threshold, so it is decorative fill only. Links and icons that carry
+     meaning use --teal-dark (4.87:1). */
   --teal-dark: #2C7A93;
   --teal: #4FA3BD;
   --teal-light: #E1F1F5;
+
+  /* --warning / --error are fills; their -dark variants are the readable text
+     colors (2.14:1 and 4.43:1 on their own -bg would both fail AA). */
   --warning: #D99E30;
+  --warning-dark: #7C5800;
   --warning-bg: #FDF3DA;
   --error: #B3455A;
+  --error-dark: #7C2A39;
   --error-bg: #FBE4E8;
+
   --page-background: #F2FAF5;
   --surface-muted: #F1F5F9;
   --secondary: oklch(0.97 0 0);
@@ -120,40 +130,6 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: #2E8F5A;
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: #2E8F5A;
-  --primary-foreground: #FFFFFF;
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: #2E8F5A;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #2E8F5A;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: #2E8F5A;
 }
 

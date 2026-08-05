@@ -91,7 +91,7 @@ export function TradeReviewCard() {
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm text-muted-foreground",
                   selected
-                    ? "border-[#FBBF24] bg-[#FDF3D8]"
+                    ? "border-[#FBBF24] bg-warning-bg"
                     : "border-transparent bg-surface-muted hover:bg-surface-muted/70"
                 )}
               >
@@ -105,7 +105,7 @@ export function TradeReviewCard() {
 
       <Textarea
         placeholder="Add optional comments..."
-        className="min-h-[80px] resize-none bg-[#F4F6F8]"
+        className="min-h-[80px] resize-none bg-surface-muted"
       />
 
       <div className="flex gap-4">

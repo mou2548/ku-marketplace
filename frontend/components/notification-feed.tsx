@@ -44,16 +44,16 @@ const NOTIFICATIONS: Notification[] = [
     category: "result",
     variant: "won",
     title: "ขอแสดงความยินดี! คุณได้รับสิทธิ์รับของ",
-    titleClassName: "text-[#2E8F5A]",
+    titleClassName: "text-primary-dark",
     subtitle: "โมเดลไฟตั้งโต๊ะมินิมอล (Minimal Desk Lamp)",
     time: "2 นาทีที่แล้ว",
     icon: CheckCircle2,
     iconWrapClassName: "bg-surface-muted",
-    iconClassName: "text-[#2E8F5A]",
-    accentClassName: "border-l-4 border-[#2E8F5A]",
+    iconClassName: "text-primary",
+    accentClassName: "border-l-4 border-primary",
     action: {
       label: "ดูตั๋ว QR Code",
-      className: "bg-primary text-white hover:bg-primary/90",
+      className: "bg-primary-dark text-white hover:bg-primary-dark/90",
       icon: QrCode,
     },
   },
@@ -62,14 +62,14 @@ const NOTIFICATIONS: Notification[] = [
     category: "result",
     variant: "expiring",
     title: "แจ้งเตือน: ใกล้หมดเวลารับของ",
-    titleClassName: "text-[#B3455A]",
+    titleClassName: "text-error",
     subtitle:
       "หนังสือเรียนแคลคูลัส 1 (Calculus 1 Textbook) - รับที่ล็อคเกอร์คณะวิศวะ",
     time: "เหลือเวลาอีก 45 นาที",
     icon: TriangleAlert,
     iconWrapClassName: "bg-surface-muted",
-    iconClassName: "text-[#B3455A]",
-    accentClassName: "border-l-4 border-[#B3455A]",
+    iconClassName: "text-error",
+    accentClassName: "border-l-4 border-error",
     action: {
       label: "เปิด Inventory",
       className: "border border-error bg-white text-error hover:bg-error/5",
@@ -104,8 +104,8 @@ const NOTIFICATIONS: Notification[] = [
       "ระบบจะปิดปรับปรุงชั่วคราวเพื่ออัปเดตฟีเจอร์ใหม่ ในวันที่ 15 พ.ย. เวลา 02:00 - 04:00 น.",
     time: "3 วันที่แล้ว",
     icon: Info,
-    iconWrapClassName: "bg-[#FFBE3B]/20",
-    iconClassName: "text-[#7C5800]",
+    iconWrapClassName: "bg-warning-bg",
+    iconClassName: "text-warning-dark",
     accentClassName: "border border-border/20",
     action: null,
   },
@@ -132,13 +132,13 @@ export function NotificationFeed() {
         category: "result" as const,
         variant: "won" as const,
         title: n.title,
-        titleClassName: "text-[#2E8F5A]",
+        titleClassName: "text-primary-dark",
         subtitle: n.subtitle,
         time: n.time,
         icon: CheckCircle2,
         iconWrapClassName: "bg-surface-muted",
-        iconClassName: "text-[#2E8F5A]",
-        accentClassName: "border-l-4 border-[#2E8F5A]",
+        iconClassName: "text-primary",
+        accentClassName: "border-l-4 border-primary",
         action: null,
       }))
     );
@@ -162,7 +162,7 @@ export function NotificationFeed() {
             <TabsTrigger
               key={f.value}
               value={f.value}
-              className="h-10! rounded-full border border-border/30 bg-white px-4 text-sm font-medium tracking-[0.14px] text-muted-foreground data-active:border-transparent data-active:bg-[#2E8F5A] data-active:text-white data-active:shadow-card"
+              className="h-10! rounded-full border border-border/30 bg-white px-4 text-sm font-medium tracking-[0.14px] text-muted-foreground data-active:border-transparent data-active:bg-primary-dark data-active:text-white data-active:shadow-card"
             >
               {f.label}
             </TabsTrigger>
@@ -227,7 +227,7 @@ export function NotificationFeed() {
                   variant="ghost"
                   size="icon"
                   aria-label="More options"
-                  className="size-10 shrink-0 text-muted-foreground hover:bg-[#F4F6F8]"
+                  className="size-10 shrink-0 text-muted-foreground hover:bg-surface-muted"
                 >
                   <MoreVertical className="size-4" />
                 </Button>

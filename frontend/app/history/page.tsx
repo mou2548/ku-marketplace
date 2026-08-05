@@ -105,7 +105,7 @@ const STATUS_META: Record<
     label: "Completed",
     icon: CheckCircle2,
     className: "bg-primary-light text-primary-dark",
-    accent: "bg-primary",
+    accent: "bg-primary-dark",
   },
   cancelled: {
     label: "Cancelled",

@@ -58,7 +58,7 @@ export function QrWaitingCard({ tradeId }: { tradeId: string }) {
       </div>
 
       <Badge className="h-auto gap-2 bg-surface-muted px-4 py-2 text-sm font-medium tracking-[0.14px] text-muted-foreground">
-        <Loader2 className="size-3.5 animate-spin text-[#7C5800]" />
+        <Loader2 className="size-3.5 animate-spin text-warning-dark" />
         รอการสแกน...
       </Badge>
 

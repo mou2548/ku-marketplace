@@ -30,34 +30,31 @@ const CATEGORIES = [
   "Other",
 ];
 
-/** Copy for the distribution-method picker — the core decision on this page. */
+/** Copy for the distribution-method picker — the core decision on this page.
+ *  Badge colors are NOT here: they come from GIVEAWAY_REQUEST_TYPE_META. */
 const METHODS: {
   value: GiveawayRequestType;
   title: string;
   summary: string;
   detail: string;
-  badgeClass: string;
 }[] = [
   {
     value: "first-come",
     title: "ใครขอก่อนได้ก่อน",
     summary: "First-come, First-served",
     detail: "ระบบจัดคิวอัตโนมัติ คนที่กดขอคนแรกได้เลย เหมาะกับของที่มีหลายชิ้น",
-    badgeClass: "bg-[#FFBE3B]/20 text-[#6F4E00]",
   },
   {
     value: "random",
     title: "สุ่มผู้โชคดี",
     summary: "Random Draw",
     detail: "เปิดให้ลงทะเบียนตามเวลาที่กำหนด แล้วระบบสุ่มผู้ได้รับ ยุติธรรมกับทุกคน",
-    badgeClass: "bg-[#FFB2BA]/30 text-[#7C2A39]",
   },
   {
     value: "manual",
     title: "เลือกผู้รับเอง",
     summary: "Manual Selection",
     detail: "อ่านเหตุผลของผู้ขอแล้วเลือกเอง เหมาะกับของที่อยากให้คนที่จำเป็นจริงๆ",
-    badgeClass: "bg-primary-light text-primary-dark",
   },
 ];
 
@@ -71,7 +68,6 @@ export default function NewGiveawayPage() {
   const [pickup, setPickup] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
 
-  const selectedMethod = METHODS.find((m) => m.value === method);
   const methodMeta = method ? GIVEAWAY_REQUEST_TYPE_META[method] : null;
   const canSubmit = name.trim() !== "" && description.trim() !== "" && method !== null;
 
@@ -212,7 +208,10 @@ export default function NewGiveawayPage() {
                           {m.title}
                         </span>
                         <Badge
-                          className={cn("h-auto px-2 py-0.5 text-[11px]", m.badgeClass)}
+                          className={cn(
+                            "h-auto px-2 py-0.5 text-[11px]",
+                            GIVEAWAY_REQUEST_TYPE_META[m.value].badgeClass
+                          )}
                         >
                           {m.summary}
                         </Badge>
@@ -332,12 +331,9 @@ export default function NewGiveawayPage() {
               </div>
               <div className="flex flex-1 flex-col justify-between gap-6 p-6">
                 <div className="flex flex-col gap-2">
-                  {methodMeta && selectedMethod ? (
+                  {methodMeta ? (
                     <Badge
-                      className={cn(
-                        "h-auto w-fit px-3 py-1",
-                        selectedMethod.badgeClass
-                      )}
+                      className={cn("h-auto w-fit px-3 py-1", methodMeta.badgeClass)}
                     >
                       {methodMeta.label}
                     </Badge>
