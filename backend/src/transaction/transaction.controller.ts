@@ -14,6 +14,8 @@ import { UploadPaymentSlipDto } from './dto/upload-payment-slip.dto';
 import { ShipTransactionDto } from './dto/ship-transaction.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
+import { RequestCancellationDto } from './dto/request-cancellation.dto';
+import { RespondCancellationDto } from './dto/respond-cancellation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
@@ -123,5 +125,39 @@ export class TransactionController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.transactionService.confirmRefund(id, user.userId);
+  }
+
+  /**
+   * §8.3 / §8.7 — ask to cancel. From Pending this cancels outright; from
+   * Processing it only records the request and locks both confirm buttons until
+   * the other party answers.
+   */
+  @Post(':id/cancel-request')
+  @HttpCode(200)
+  requestCancellation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: RequestCancellationDto,
+  ) {
+    return this.transactionService.requestCancellation(id, user.userId, dto);
+  }
+
+  /**
+   * §8.7 — the other party answers. Approved cancels; Rejected opens a
+   * Transaction report for an admin and leaves the buttons locked.
+   *
+   * The API doc writes this as .../cancel-request/{req_id}/respond, but there is
+   * no cancellation-request table to give {req_id} a value — a transaction can
+   * only ever have one request (init.sql tracks it in columns on Transaction),
+   * so the id is dropped. Agreed with the team.
+   */
+  @Post(':id/cancel-request/respond')
+  @HttpCode(200)
+  respondToCancellation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: RespondCancellationDto,
+  ) {
+    return this.transactionService.respondToCancellation(id, user.userId, dto);
   }
 }

@@ -9,14 +9,18 @@ import type { Transaction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import {
+  CancellationResponse,
   DeliveryMethod,
   ItemStatus,
   TransactionStatus,
 } from '../common/enums/transaction.enums';
+import { ReportStatus, ReportType } from '../common/enums/report.enums';
 import { UploadPaymentSlipDto } from './dto/upload-payment-slip.dto';
 import { ShipTransactionDto } from './dto/ship-transaction.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
+import { RequestCancellationDto } from './dto/request-cancellation.dto';
+import { RespondCancellationDto } from './dto/respond-cancellation.dto';
 
 type TransactionRow = Transaction;
 
@@ -380,6 +384,167 @@ export class TransactionService {
     return this.prisma.transaction.update({
       where: { transactionId },
       data: { refundConfirmedByBuyer: true },
+    });
+  }
+
+  private assertIsParty(transaction: TransactionRow, userId: number) {
+    if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
+      throw new ForbiddenException('You are not a party to this transaction');
+    }
+  }
+
+  /**
+   * §8.3 — cancelling releases the item back to the marketplace, EXCEPT once it
+   * has been Transferred: that is terminal and never rewinds, even if the
+   * transaction is cancelled afterwards (§8.2).
+   */
+  private async releaseItem(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    postId: number,
+  ) {
+    const post = await tx.post.findUnique({
+      where: { postId },
+      select: { itemId: true, item: { select: { status: true } } },
+    });
+    if (!post || post.item.status === ItemStatus.Transferred) {
+      return;
+    }
+    await tx.item.update({
+      where: { itemId: post.itemId },
+      data: { status: ItemStatus.Listed },
+    });
+  }
+
+  /**
+   * §8.3 / §8.7 — asking to cancel behaves completely differently per status:
+   *
+   *   Pending    no money has actually moved yet, so either side may cancel
+   *              unilaterally and it takes effect immediately.
+   *   Processing the buyer has already paid, so cancelling REQUIRES the other
+   *              side's consent. All this does is record the request, which
+   *              also locks both confirm buttons until it is answered.
+   *
+   * Only one request per transaction: a rejected one keeps its record so the
+   * buttons stay locked pending an admin ruling, and an approved one has
+   * already ended the transaction.
+   */
+  async requestCancellation(
+    transactionId: number,
+    userId: number,
+    dto: RequestCancellationDto,
+  ) {
+    const transaction = await this.findOneOrThrow(transactionId);
+    this.assertIsParty(transaction, userId);
+
+    if (transaction.cancellationRequestedBy !== null) {
+      throw new BadRequestException(
+        'A cancellation has already been requested on this transaction',
+      );
+    }
+
+    if (transaction.status === TransactionStatus.Pending) {
+      return this.prisma.$transaction(async (tx) => {
+        const cancelled = await tx.transaction.update({
+          where: { transactionId },
+          data: {
+            status: TransactionStatus.Cancelled,
+            cancellationRequestedBy: userId,
+            cancellationReason: dto.reason,
+            cancellationRequestedAt: new Date(),
+            // No counterparty consent is needed at this stage, so the request
+            // is settled the moment it is made.
+            cancellationResponse: CancellationResponse.Approved,
+          },
+        });
+        await this.releaseItem(tx, cancelled.postId);
+        return cancelled;
+      });
+    }
+
+    if (transaction.status === TransactionStatus.Processing) {
+      return this.prisma.transaction.update({
+        where: { transactionId },
+        data: {
+          cancellationRequestedBy: userId,
+          cancellationReason: dto.reason,
+          cancellationRequestedAt: new Date(),
+          cancellationResponse: CancellationResponse.Pending,
+        },
+      });
+    }
+
+    throw new BadRequestException(
+      `Only Pending or Processing transactions can be cancelled (current: ${transaction.status})`,
+    );
+  }
+
+  /**
+   * §8.7 — the other party answers.
+   *
+   *   Approved  → Cancelled, and the item goes back on the market.
+   *   Rejected  → NOT cancelled and NOT auto-resolved. The dispute goes to an
+   *               admin: a Transaction report is opened and linked via
+   *               activeReportId, and the confirm buttons stay locked (the
+   *               cancellation record is kept, which is what keeps them locked).
+   *
+   * The requester never answers their own request — that is the whole point of
+   * requiring consent.
+   */
+  async respondToCancellation(
+    transactionId: number,
+    userId: number,
+    dto: RespondCancellationDto,
+  ) {
+    const transaction = await this.findOneOrThrow(transactionId);
+    this.assertIsParty(transaction, userId);
+
+    if (
+      transaction.cancellationRequestedBy === null ||
+      transaction.cancellationResponse !== CancellationResponse.Pending
+    ) {
+      throw new BadRequestException(
+        'There is no pending cancellation request on this transaction',
+      );
+    }
+    if (transaction.cancellationRequestedBy === userId) {
+      throw new ForbiddenException(
+        'The other party must respond to your cancellation request',
+      );
+    }
+
+    if (dto.response === CancellationResponse.Approved) {
+      return this.prisma.$transaction(async (tx) => {
+        const cancelled = await tx.transaction.update({
+          where: { transactionId },
+          data: {
+            status: TransactionStatus.Cancelled,
+            cancellationResponse: CancellationResponse.Approved,
+          },
+        });
+        await this.releaseItem(tx, cancelled.postId);
+        return cancelled;
+      });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const report = await tx.report.create({
+        data: {
+          reporterId: transaction.cancellationRequestedBy as number,
+          reportType: ReportType.Transaction,
+          targetId: transactionId,
+          reasonCategory: 'Cancellation rejected',
+          details: transaction.cancellationReason,
+          status: ReportStatus.Under_Investigation,
+        },
+      });
+
+      return tx.transaction.update({
+        where: { transactionId },
+        data: {
+          cancellationResponse: CancellationResponse.Rejected,
+          activeReportId: report.reportId,
+        },
+      });
     });
   }
 }
