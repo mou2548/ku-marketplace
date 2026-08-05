@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Clock, MessageCircle, Star, ThumbsUp, UserCheck } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -108,13 +109,25 @@ export function TradeReviewCard() {
         className="min-h-[80px] resize-none bg-surface-muted"
       />
 
+      {/* These are the page's only exits now that the success page's own nav
+          row is gone — a bare Button here would strand the user. */}
       <div className="flex gap-4">
-        <Button variant="outline" className="h-11 flex-1 text-sm font-medium">
+        <Link
+          href="/marketplace"
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "h-11 flex-1 text-sm font-medium"
+          )}
+        >
           Skip
-        </Button>
-        <Button className="h-11 flex-1 text-sm font-medium">
+        </Link>
+        {/* TODO: POST rating/selectedTags/comment to the API before navigating */}
+        <Link
+          href="/history"
+          className={cn(buttonVariants(), "h-11 flex-1 text-sm font-medium")}
+        >
           Submit Review
-        </Button>
+        </Link>
       </div>
     </div>
   );
