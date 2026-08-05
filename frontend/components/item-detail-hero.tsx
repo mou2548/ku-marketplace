@@ -14,16 +14,24 @@ export function ItemDetailHero({
   badges,
   image,
   alt,
+  unoptimized,
 }: {
   badges: HeroBadge[];
   image?: string;
   alt?: string;
+  unoptimized?: boolean;
 }) {
   return (
     <div className="relative isolate overflow-hidden rounded-3xl bg-white shadow-elevated">
       {image ? (
         <div className="relative h-[480px] w-full bg-[#E5E7EB]">
-          <Image src={image} alt={alt ?? ""} fill className="object-cover" />
+          <Image
+            src={image}
+            alt={alt ?? ""}
+            fill
+            unoptimized={unoptimized}
+            className="object-cover"
+          />
         </div>
       ) : (
         <div className="h-[480px] w-full animate-pulse bg-[#E5E7EB]" />

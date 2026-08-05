@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, Gift, ImagePlus } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
@@ -19,6 +20,7 @@ import {
   GIVEAWAY_REQUEST_TYPE_META,
   type GiveawayRequestType,
 } from "@/lib/giveaway-items";
+import { giveawaysApi, type AllocationMethod } from "@/lib/giveaways-api";
 
 // TODO: replace with the real category list from the API
 const CATEGORIES = [
@@ -62,6 +64,7 @@ const METHODS: {
 ];
 
 export default function NewGiveawayPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [description, setDescription] = useState("");
@@ -70,10 +73,34 @@ export default function NewGiveawayPage() {
   const [itemsAvailable, setItemsAvailable] = useState("");
   const [pickup, setPickup] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [pickupDeadline, setPickupDeadline] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedMethod = METHODS.find((m) => m.value === method);
   const methodMeta = method ? GIVEAWAY_REQUEST_TYPE_META[method] : null;
-  const canSubmit = name.trim() !== "" && description.trim() !== "" && method !== null;
+  const canSubmit = name.trim() !== "" && description.trim() !== "" && pickup.trim() !== "" && pickupDeadline !== "" && method !== null;
+
+  async function submitGiveaway() {
+    if (!canSubmit || !method) return;
+    setIsSubmitting(true);
+    setError(null);
+    const allocationMethods: Record<GiveawayRequestType, AllocationMethod> = {
+      random: "Random", manual: "Manual", "first-come": "FirstCome",
+    };
+    try {
+      const giveaway = await giveawaysApi.create({
+        item_name: name.trim(), description: description.trim(), pickup_location: pickup.trim(),
+        allocation_method: allocationMethods[method],
+        pickup_deadline: new Date(pickupDeadline).toISOString(),
+        images: imageUrl.trim() ? [{ image_url: imageUrl.trim(), display_order: 0 }] : [],
+      });
+      router.push(`/giveaway/${giveaway.giveaway_id}`);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Unable to create giveaway. Please try again.");
+    } finally { setIsSubmitting(false); }
+  }
 
   return (
     <div className="flex min-h-full flex-col bg-page-background">
@@ -120,6 +147,19 @@ export default function NewGiveawayPage() {
                   </>
                 )}
               </label>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="image-url" className="text-sm font-semibold">
+                  Image URL (ตาม API proposal)
+                </Label>
+                <Input
+                  id="image-url"
+                  type="url"
+                  value={imageUrl}
+                  onChange={(event) => setImageUrl(event.target.value)}
+                  placeholder="https://r2.../giveaways/temp/img1.jpg"
+                  className="h-11 rounded-xl"
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -283,6 +323,19 @@ export default function NewGiveawayPage() {
               />
             </div>
 
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="pickup-deadline" className="text-sm font-semibold">
+                Pickup deadline
+              </Label>
+              <Input
+                id="pickup-deadline"
+                type="datetime-local"
+                value={pickupDeadline}
+                onChange={(event) => setPickupDeadline(event.target.value)}
+                className="h-11 rounded-xl"
+              />
+            </div>
+
             <div className="flex flex-col gap-3 border-t border-border/20 pt-6 sm:flex-row">
               <Link
                 href="/giveaway"
@@ -293,25 +346,27 @@ export default function NewGiveawayPage() {
               >
                 ยกเลิก
               </Link>
-              {/* TODO: POST to the API — for now this just returns to the manager list */}
-              <Link
-                href="/giveaway/manager"
-                aria-disabled={!canSubmit}
-                tabIndex={canSubmit ? undefined : -1}
+              <button
+                type="button"
+                onClick={submitGiveaway}
+                disabled={!canSubmit || isSubmitting}
                 className={cn(
                   buttonVariants(),
                   "h-12 w-full gap-2 sm:flex-1",
-                  !canSubmit && "pointer-events-none opacity-50"
+                  (!canSubmit || isSubmitting) && "pointer-events-none opacity-50"
                 )}
               >
                 <Gift className="size-4" />
-                โพสต์แจกของ
-              </Link>
+                {isSubmitting ? "กำลังโพสต์..." : "โพสต์แจกของ"}
+              </button>
             </div>
             {!canSubmit && (
               <p className="-mt-2 text-center text-xs text-muted-foreground">
                 กรอกชื่อของ รายละเอียด และเลือกวิธีแจก เพื่อโพสต์ได้
               </p>
+            )}
+            {error && (
+              <p className="-mt-2 text-center text-xs text-destructive">{error}</p>
             )}
           </Card>
 

@@ -12,14 +12,26 @@ import {
 } from "lucide-react";
 
 import { ItemDetailHero } from "@/components/item-detail-hero";
-import { OwnerCard } from "@/components/owner-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { SuccessDialog } from "@/components/success-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { GIVEAWAY_REQUEST_TYPE_META, getGiveawayItem } from "@/lib/giveaway-items";
+import {
+  GIVEAWAY_REQUEST_TYPE_META,
+  type GiveawayRequestType,
+} from "@/lib/giveaway-items";
+import { giveawaysApi, type AllocationMethod } from "@/lib/giveaways-api";
+
+const REQUEST_TYPE_BY_ALLOCATION_METHOD: Record<
+  AllocationMethod,
+  GiveawayRequestType
+> = {
+  Random: "random",
+  Manual: "manual",
+  FirstCome: "first-come",
+};
 
 export default async function GiveawayItemDetailPage({
   params,
@@ -27,10 +39,25 @@ export default async function GiveawayItemDetailPage({
   params: Promise<{ itemId: string }>;
 }) {
   const { itemId } = await params;
-  const item = getGiveawayItem(itemId);
-  if (!item) notFound();
 
-  const typeMeta = GIVEAWAY_REQUEST_TYPE_META[item.requestType];
+  let giveaway;
+  try {
+    giveaway = await giveawaysApi.detail(itemId);
+  } catch {
+    notFound();
+  }
+
+  const requestType = REQUEST_TYPE_BY_ALLOCATION_METHOD[giveaway.allocation_method];
+  const typeMeta = GIVEAWAY_REQUEST_TYPE_META[requestType];
+  const pickupDeadlineLabel = new Date(giveaway.pickup_deadline).toLocaleString("th-TH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  async function joinGiveaway() {
+    "use server";
+    await giveawaysApi.join(itemId);
+  }
 
   return (
     <div className="flex min-h-full flex-col bg-page-background">
@@ -43,24 +70,16 @@ export default async function GiveawayItemDetailPage({
               Giveaway
             </Link>
             <ChevronRight className="size-3" />
-            <Link href="/giveaway" className="hover:text-foreground">
-              {item.category}
-            </Link>
-            <ChevronRight className="size-3" />
-            <span className="text-foreground">{item.name}</span>
+            <span className="text-foreground">{giveaway.item_name}</span>
           </nav>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_328px]">
             <div className="flex flex-col gap-6">
               <ItemDetailHero
-                image={item.image}
-                alt={item.name}
+                image={giveaway.images[0]?.image_url}
+                alt={giveaway.item_name}
+                unoptimized
                 badges={[
-                  {
-                    label: item.category,
-                    className:
-                      "border border-border/20 bg-white/90 text-[#2E8F5A]",
-                  },
                   {
                     icon: typeMeta.icon,
                     label: typeMeta.label,
@@ -73,7 +92,7 @@ export default async function GiveawayItemDetailPage({
               <Card className="flex-col gap-6 rounded-3xl p-8 shadow-elevated ring-0">
                 <div className="flex items-start justify-between gap-4">
                   <h1 className="text-[32px] leading-10 font-semibold tracking-[-0.32px] text-foreground">
-                    {item.name}
+                    {giveaway.item_name}
                   </h1>
                   <div className="flex items-start gap-2">
                     <Button
@@ -95,33 +114,23 @@ export default async function GiveawayItemDetailPage({
                   </div>
                 </div>
 
-                <OwnerCard
-                  name={item.owner.name}
-                  verified={item.owner.verified}
-                  verifiedTier={item.owner.verifiedTier}
-                />
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  จุดนัดรับ: {giveaway.pickup_location} • ปิดรับภายใน {pickupDeadlineLabel}
+                </p>
 
                 <div className="flex flex-col gap-4">
                   <h3 className="text-xl leading-7 font-semibold text-foreground">
                     Description
                   </h3>
-                  {Array.isArray(item.description) ? (
-                    <div className="flex flex-col gap-1.5 text-base leading-[26px] text-muted-foreground">
-                      {item.description.map((line) => (
-                        <p key={line}>{line}</p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-base leading-[26px] text-muted-foreground">
-                      {item.description}
-                    </p>
-                  )}
+                  <p className="text-base leading-[26px] text-muted-foreground">
+                    {giveaway.description}
+                  </p>
                 </div>
               </Card>
             </div>
 
             <aside className="flex flex-col gap-4">
-              {item.requestType === "manual" && (
+              {requestType === "manual" && (
                 <>
                   <Card className="flex-col gap-6 rounded-3xl p-6 shadow-elevated ring-0">
                     <h2 className="text-xl leading-7 font-semibold text-foreground">
@@ -147,7 +156,11 @@ export default async function GiveawayItemDetailPage({
                         การกดยืนยันแสดงว่าคุณยอมรับว่าระบบจะแจ้งเตือนผู้ให้
                         และผลการตัดสินใจขึ้นอยู่กับผู้ให้เท่านั้น
                       </p>
-                      <SuccessDialog triggerClassName="h-12 w-full gap-4 text-base" itemName={item.name}>
+                      <SuccessDialog
+                        triggerClassName="h-12 w-full gap-4 text-base"
+                        itemName={giveaway.item_name}
+                        onConfirm={joinGiveaway}
+                      >
                         <Send className="size-4" />
                         ส่งคำขอ (Submit Request)
                       </SuccessDialog>
@@ -164,7 +177,7 @@ export default async function GiveawayItemDetailPage({
                 </>
               )}
 
-              {item.requestType === "random" && (
+              {requestType === "random" && (
                 <div className="flex flex-col gap-4 rounded-3xl border-2 border-[#004B24]/10 bg-white p-6 shadow-elevated">
                   <h2 className="text-xl leading-7 font-semibold text-foreground">
                     ลงทะเบียนสุ่มรับของ (Enter Random Draw)
@@ -172,11 +185,11 @@ export default async function GiveawayItemDetailPage({
 
                   <div className="flex flex-col gap-1 rounded-3xl border border-[#004B24]/5 bg-[#006633]/10 p-4">
                     <span className="text-xs font-medium text-[#005228]">
-                      สุ่มผู้โชคดีในอีก:
+                      ปิดรับลงทะเบียนภายใน:
                     </span>
                     <span className="flex items-center gap-2 text-2xl leading-8 font-semibold text-[#2E8F5A]">
                       <Clock className="size-5" />
-                      {item.drawClosesIn}
+                      {pickupDeadlineLabel}
                     </span>
                   </div>
 
@@ -186,7 +199,7 @@ export default async function GiveawayItemDetailPage({
                       ผู้เข้าร่วมปัจจุบัน:
                     </span>
                     <span className="text-sm font-bold tracking-[0.14px] text-foreground">
-                      {item.participants} คน
+                      {giveaway.participant_count} คน
                     </span>
                   </div>
 
@@ -198,14 +211,18 @@ export default async function GiveawayItemDetailPage({
                     </p>
                   </div>
 
-                  <SuccessDialog triggerClassName="h-12 w-full gap-2 text-sm font-bold shadow-[0_10px_15px_-3px_rgba(0,75,36,0.2),0_4px_6px_-4px_rgba(0,75,36,0.2)]" itemName={item.name}>
+                  <SuccessDialog
+                    triggerClassName="h-12 w-full gap-2 text-sm font-bold shadow-[0_10px_15px_-3px_rgba(0,75,36,0.2),0_4px_6px_-4px_rgba(0,75,36,0.2)]"
+                    itemName={giveaway.item_name}
+                    onConfirm={joinGiveaway}
+                  >
                     <UserPlus className="size-4" />
                     ลงทะเบียนลุ้นรับสิทธิ์ (Enter Draw)
                   </SuccessDialog>
                 </div>
               )}
 
-              {item.requestType === "first-come" && (
+              {requestType === "first-come" && (
                 <>
                   <Card className="flex-col gap-6 rounded-3xl border border-border/20 p-6 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] ring-0">
                     <h2 className="text-xl leading-7 font-semibold text-foreground">
@@ -215,19 +232,19 @@ export default async function GiveawayItemDetailPage({
                     <div className="flex flex-col gap-4 rounded-xl border border-border/20 bg-surface-muted p-4">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium tracking-[0.14px] text-muted-foreground">
-                          Items available
+                          ผู้ลงทะเบียนแล้ว
                         </span>
                         <span className="font-bold tracking-[0.14px] text-foreground">
-                          {item.itemsAvailable}
+                          {giveaway.participant_count} คน
                         </span>
                       </div>
                       <div className="h-px w-full bg-border/30" />
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium tracking-[0.14px] text-muted-foreground">
-                          Currently in queue
+                          จุดนัดรับ
                         </span>
                         <span className="font-bold tracking-[0.14px] text-[#7C5800]">
-                          {item.queueCount}
+                          {giveaway.pickup_location}
                         </span>
                       </div>
                     </div>
@@ -237,7 +254,11 @@ export default async function GiveawayItemDetailPage({
                       ระบบจะบันทึกคิวของคุณทันที
                     </p>
 
-                    <SuccessDialog triggerClassName="h-12 w-full gap-4 text-base" itemName={item.name}>
+                    <SuccessDialog
+                      triggerClassName="h-12 w-full gap-4 text-base"
+                      itemName={giveaway.item_name}
+                      onConfirm={joinGiveaway}
+                    >
                       <UserPlus className="size-4" />
                       ลงทะเบียนรับสิทธิ์ (Claim Now)
                     </SuccessDialog>
