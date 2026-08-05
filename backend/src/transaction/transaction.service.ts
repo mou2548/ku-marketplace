@@ -86,14 +86,28 @@ export class TransactionService {
   }
 
   /**
-   * §8.7 — once either party asks to cancel, the confirm buttons stay locked
-   * until that request is answered or an admin rules on the dispute. Without
-   * this a party could race a pending cancellation by confirming anyway.
+   * §8.7 — the confirm buttons stay locked while a cancellation is unsettled,
+   * so nobody can race it by confirming anyway. There are exactly two unsettled
+   * states, and both have to end for the transaction to move again:
+   *
+   *   response Pending                    waiting on the other party
+   *   response Rejected + activeReportId  waiting on an admin
+   *
+   * Checking `cancellationRequestedBy !== null` instead would lock the
+   * transaction forever, because that column is never cleared once set.
    */
   private assertNoPendingCancellation(transaction: TransactionRow) {
-    if (transaction.cancellationRequestedBy !== null) {
+    if (transaction.cancellationResponse === CancellationResponse.Pending) {
       throw new BadRequestException(
-        'A cancellation request is pending on this transaction — resolve it first',
+        'A cancellation request is pending on this transaction — the other party must respond first',
+      );
+    }
+    if (
+      transaction.cancellationResponse === CancellationResponse.Rejected &&
+      transaction.activeReportId !== null
+    ) {
+      throw new BadRequestException(
+        'A rejected cancellation is under admin review — wait for the ruling',
       );
     }
   }
@@ -394,19 +408,38 @@ export class TransactionService {
   }
 
   /**
-   * §8.3 — cancelling releases the item back to the marketplace, EXCEPT once it
-   * has been Transferred: that is terminal and never rewinds, even if the
-   * transaction is cancelled afterwards (§8.2).
+   * §8.3 — cancelling puts everything the transaction was holding back on the
+   * market:
+   *
+   *  - the reserved stock. Buying decrements Post.quantityRemaining
+   *    (posts.service.ts `buy`), so cancelling has to add the same amount back
+   *    or the stock is lost for good.
+   *  - the item's Listed status, EXCEPT once it is Transferred — that is
+   *    terminal and never rewinds, even if the transaction is cancelled
+   *    afterwards (§8.2).
+   *
+   * `quantity` is nullable in the schema, so callers pass `?? 1` to match the
+   * column default.
    */
-  private async releaseItem(
+  private async releaseReservation(
     tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
     postId: number,
+    quantity: number,
   ) {
     const post = await tx.post.findUnique({
       where: { postId },
       select: { itemId: true, item: { select: { status: true } } },
     });
-    if (!post || post.item.status === ItemStatus.Transferred) {
+    if (!post) {
+      return;
+    }
+
+    await tx.post.update({
+      where: { postId },
+      data: { quantityRemaining: { increment: quantity } },
+    });
+
+    if (post.item.status === ItemStatus.Transferred) {
       return;
     }
     await tx.item.update({
@@ -456,7 +489,11 @@ export class TransactionService {
             cancellationResponse: CancellationResponse.Approved,
           },
         });
-        await this.releaseItem(tx, cancelled.postId);
+        await this.releaseReservation(
+          tx,
+          cancelled.postId,
+          cancelled.quantity ?? 1,
+        );
         return cancelled;
       });
     }
@@ -521,7 +558,11 @@ export class TransactionService {
             cancellationResponse: CancellationResponse.Approved,
           },
         });
-        await this.releaseItem(tx, cancelled.postId);
+        await this.releaseReservation(
+          tx,
+          cancelled.postId,
+          cancelled.quantity ?? 1,
+        );
         return cancelled;
       });
     }
@@ -545,6 +586,61 @@ export class TransactionService {
           activeReportId: report.reportId,
         },
       });
+    });
+  }
+
+  /**
+   * §8.7 — turns an admin's ruling on a rejected cancellation into an actual
+   * transaction state change. Called by ReportService when a report is closed,
+   * because resolving the report is the admin action the spec describes
+   * ("ปุ่มยืนยันยังล็อกอยู่จนแอดมินตัดสิน").
+   *
+   * Without this the transaction is bricked: the confirm endpoints stay locked
+   * on the open dispute, requestCancellation refuses (one request per
+   * transaction) and respondToCancellation refuses (no longer Pending).
+   *
+   * Two outcomes, mirroring the two ways a report can close:
+   *
+   *   upheld    the requester was right, so the cancellation takes effect —
+   *             Cancelled, and the stock and item go back on the market.
+   *   dismissed the requester was wrong, so the transaction carries on. The
+   *             dispute link is cleared, which is what unlocks the confirm
+   *             buttons; the Rejected record itself is kept as history.
+   *
+   * No-op for reports that are not a cancellation dispute.
+   */
+  async settleCancellationDispute(reportId: number, upheld: boolean) {
+    const transaction = await this.prisma.transaction.findFirst({
+      where: {
+        activeReportId: reportId,
+        cancellationResponse: CancellationResponse.Rejected,
+      },
+    });
+    if (!transaction) {
+      return;
+    }
+
+    if (!upheld) {
+      await this.prisma.transaction.update({
+        where: { transactionId: transaction.transactionId },
+        data: { activeReportId: null },
+      });
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const cancelled = await tx.transaction.update({
+        where: { transactionId: transaction.transactionId },
+        data: {
+          status: TransactionStatus.Cancelled,
+          cancellationResponse: CancellationResponse.Approved,
+        },
+      });
+      await this.releaseReservation(
+        tx,
+        cancelled.postId,
+        cancelled.quantity ?? 1,
+      );
     });
   }
 }
