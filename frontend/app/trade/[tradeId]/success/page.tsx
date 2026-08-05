@@ -1,11 +1,8 @@
-import Link from "next/link";
 import { Check } from "lucide-react";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { TradeReviewCard } from "@/components/trade-review-card";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export default function TradeSuccessPage() {
   return (
@@ -28,21 +25,6 @@ export default function TradeSuccessPage() {
         </div>
 
         <TradeReviewCard />
-
-        <div className="flex w-full max-w-[440px] flex-col gap-3 sm:flex-row">
-          <Link
-            href="/history"
-            className={cn(buttonVariants({ variant: "outline" }), "h-12 flex-1")}
-          >
-            View in History
-          </Link>
-          <Link
-            href="/marketplace"
-            className={cn(buttonVariants(), "h-12 flex-1")}
-          >
-            Back to Marketplace
-          </Link>
-        </div>
       </main>
 
       <SiteFooter />
