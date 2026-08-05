@@ -124,6 +124,11 @@ model Transaction {
   itemReceivedConfirmedBySellerAt DateTime? @map("item_received_confirmed_by_seller_at") @db.Timestamp(6)
   itemReturnConfirmedAt           DateTime? @map("item_return_confirmed_at") @db.Timestamp(6)
   cancellationRequestedBy         Int?      @map("cancellation_requested_by")
+  // Added in init.sql by the DB owner for §8.7; these three lines are just this
+  // file catching up. Verified against `prisma db pull` — identical output.
+  cancellationReason              String?   @map("cancellation_reason")
+  cancellationRequestedAt         DateTime? @map("cancellation_requested_at") @db.Timestamp(6)
+  cancellationResponse            String?   @map("cancellation_response") @db.VarChar(20)
   refundSlipUrl                   String?   @map("refund_slip_url") @db.VarChar(500)
   refundConfirmedByBuyer          Boolean?  @default(false) @map("refund_confirmed_by_buyer")
   createdAt                       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)

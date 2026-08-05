@@ -260,3 +260,431 @@ x-user-id: 3
   "report_id": 1,
   "reason": "I filed this report myself"
 }
+
+
+### =====================================================================
+### §7.4 Transactions, Fulfillment & Payment
+### =====================================================================
+###
+### AUTH — every endpoint below is behind the real JwtAuthGuard, so each request
+### needs:  Authorization: Bearer <accessToken>
+###
+### ⚠️ The seeded users cannot log in yet. init.sql says the password is
+### "password123" but the hash it stores does not actually match it (it is a
+### placeholder hash copied from elsewhere). Until that is fixed, mint a token
+### locally — run from backend/ with .env loaded:
+###
+###   node -e "console.log(require('jsonwebtoken').sign({userId:11,email:'x@ku.th',isAdmin:false},process.env.ACCESS_TOKEN_SECRET,{expiresIn:'30m'}))"
+###
+### Swap userId for whichever party the request needs, then paste below.
+### (The correct hash for "password123" is
+###  $2b$10$JxMkK98B.uO8UPGOQbQW9ezvclE0FNyDyw1oNNk/vk0ewuNHq8c/a — reported to the team.)
+###
+### Seeded transactions (docker compose up):
+###   #1  post 1  buyer 3   seller 2   Processing      Meetup    → cancel-request flow
+###   #2  post 8  buyer 4   seller 8   Completed       Shipping
+###   #3  post 5  buyer 11  seller 5   Pending         Meetup    → payment + QR flow
+###   #4  post 9  buyer 12  seller 11  Pending Refund  Shipping
+###   #5  post 11 buyer 14  seller 12  Processing      Shipping  → ship + delivery flow
+###
+### Run the groups in order — each one walks a transaction through its states.
+### `docker compose down -v && docker compose up -d` resets everything.
+
+@token = PASTE_TOKEN_HERE
+
+### T1. GET /transactions — no token -> expect 401
+GET {{host}}/transactions
+
+### T2. GET /transactions — garbage token -> expect 401
+GET {{host}}/transactions
+Authorization: Bearer garbage
+
+### T3. GET /transactions — only the caller's own transactions come back
+GET {{host}}/transactions
+Authorization: Bearer {{token}}
+
+### T4. GET /transactions/1 — as a party (buyer 3 or seller 2) -> expect 200
+GET {{host}}/transactions/1
+Authorization: Bearer {{token}}
+
+### T5. GET /transactions/1 — as an unrelated user (e.g. 9) -> expect 403
+GET {{host}}/transactions/1
+Authorization: Bearer {{token}}
+
+### T6. GET /transactions/999 — nonexistent -> expect 404
+GET {{host}}/transactions/999
+Authorization: Bearer {{token}}
+
+### --- Payment §8.6 — tx 3 starts Pending (buyer 11, seller 5) ---
+
+### T7. POST /payment-slip — as seller 5 -> expect 403 (buyer-only)
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "slip_image_url": "https://r2.example.com/slips/3_slip.jpg"
+}
+
+### T8. POST /payment-slip — empty body -> expect 400
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{}
+
+### T9. POST /payment-slip — as buyer 11 -> expect 200, Pending → Processing
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "slip_image_url": "https://r2.example.com/slips/3_slip.jpg"
+}
+
+### T10. POST /payment-slip — again, no longer Pending -> expect 400
+POST {{host}}/transactions/3/payment-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "slip_image_url": "https://r2.example.com/slips/3_slip.jpg"
+}
+
+### T11. POST /confirm-payment-received — as buyer 11 -> expect 403 (seller-only)
+POST {{host}}/transactions/3/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T12. POST /confirm-payment-received — as seller 5 -> expect 200
+### Stays Processing on purpose: this is only the 1st of the 2 conditions for Completed.
+POST {{host}}/transactions/3/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T13. POST /confirm-payment-received — again -> expect 400
+POST {{host}}/transactions/3/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### --- Meetup QR §8.6 — continues on tx 3 ---
+### The SELLER shows the QR, the BUYER scans it. That direction is what proves
+### the goods physically changed hands.
+
+### T14. POST /qr/generate — as buyer 11 -> expect 403 (seller-only)
+POST {{host}}/transactions/3/qr/generate
+Authorization: Bearer {{token}}
+
+### T15. POST /qr/generate — as seller 5 -> expect 200
+### Returns { token, url, expiresInSeconds: 900 }. Stored in Redis at qr_token:3.
+# @name generateQr
+POST {{host}}/transactions/3/qr/generate
+Authorization: Bearer {{token}}
+
+### T16. POST /qr/scan — as seller 5 -> expect 403 (only the buyer may scan)
+POST {{host}}/transactions/3/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "{{generateQr.response.body.$.token}}"
+}
+
+### T17. POST /qr/scan — wrong token -> expect 400
+POST {{host}}/transactions/3/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "wrong-token"
+}
+
+### T18. POST /qr/scan — as buyer 11 with the right token -> expect 200
+### 2nd condition met → status Completed, Item → Transferred (§8.2),
+### and the token is deleted from Redis.
+POST {{host}}/transactions/3/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "{{generateQr.response.body.$.token}}"
+}
+
+### T19. POST /qr/scan — replay the same token -> expect 400
+POST {{host}}/transactions/3/qr/scan
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "token": "{{generateQr.response.body.$.token}}"
+}
+
+### --- Shipping §8.6 — tx 5 is Processing (buyer 14, seller 12) ---
+
+### T20. POST /confirm-payment-received — as seller 12 -> expect 200
+POST {{host}}/transactions/5/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T21. POST /ship — as buyer 14 -> expect 403 (seller-only)
+POST {{host}}/transactions/5/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "2026-08-20"
+}
+
+### T22. POST /ship — malformed date -> expect 400
+POST {{host}}/transactions/5/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "not-a-date"
+}
+
+### T23. POST /confirm-delivery — before the seller shipped -> expect 400
+POST {{host}}/transactions/5/confirm-delivery
+Authorization: Bearer {{token}}
+
+### T24. POST /ship — as seller 12 -> expect 200, still Processing
+### Handing a parcel to a courier is not the buyer receiving it.
+POST {{host}}/transactions/5/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "2026-08-20"
+}
+
+### T25. POST /ship — on a Meetup transaction (tx 1) -> expect 400
+POST {{host}}/transactions/1/ship
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tracking_number": "TH1234567890",
+  "estimated_delivery_date": "2026-08-20"
+}
+
+### T26. POST /confirm-delivery — as buyer 14 -> expect 200 → Completed
+POST {{host}}/transactions/5/confirm-delivery
+Authorization: Bearer {{token}}
+
+### T27. POST /confirm-delivery — again -> expect 400
+POST {{host}}/transactions/5/confirm-delivery
+Authorization: Bearer {{token}}
+
+### --- Cancellation §8.3 / §8.7 ---
+### From Pending either side may cancel outright, because no money has moved.
+### From Processing the buyer has already paid, so it needs the other side's
+### consent — and the request alone locks every confirm button.
+###
+### tx 3 and 5 are Completed by now, so seed a fresh Pending row for the
+### unilateral case:
+###   INSERT INTO "Transaction" (post_id, buyer_id, seller_id, status, delivery_method)
+###   VALUES (2, 7, 2, 'Pending', 'Meetup') RETURNING transaction_id;
+### It comes back as id 6 on a fresh database. Adjust below if yours differs.
+
+### T28. POST /cancel-request — as an unrelated user -> expect 403
+POST {{host}}/transactions/6/cancel-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "Not my transaction"
+}
+
+### T29. POST /cancel-request — no reason -> expect 400
+### The reason is required: it is the main evidence if this ends in a dispute.
+POST {{host}}/transactions/6/cancel-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{}
+
+### T30. POST /cancel-request — as buyer 7 while Pending -> expect 200
+### Cancels immediately (cancellationResponse comes back "Approved" — no consent
+### needed at this stage) and the Item is released back to Listed.
+POST {{host}}/transactions/6/cancel-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "เปลี่ยนใจ ยังไม่ได้โอนเงิน"
+}
+
+### T31. POST /cancel-request — again -> expect 400 (one request per transaction)
+POST {{host}}/transactions/6/cancel-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "Trying again"
+}
+
+### --- Cancellation needing consent — tx 1 is Processing (buyer 3, seller 2) ---
+
+### T32. POST /cancel-request/respond — with no request open -> expect 400
+POST {{host}}/transactions/1/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Approved"
+}
+
+### T33. POST /cancel-request — as buyer 3 while Processing -> expect 200
+### NOT cancelled: status stays Processing and cancellationResponse is "Pending".
+POST {{host}}/transactions/1/cancel-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "ผู้ขายไม่มาตามนัด"
+}
+
+### T34. POST /confirm-payment-received — as seller 2 -> expect 400
+### §8.7: an open cancellation request locks the confirm buttons.
+POST {{host}}/transactions/1/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T35. POST /qr/generate — as seller 2 -> expect 400 (same lock)
+POST {{host}}/transactions/1/qr/generate
+Authorization: Bearer {{token}}
+
+### T36. POST /cancel-request/respond — as buyer 3, who made the request -> expect 403
+POST {{host}}/transactions/1/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Approved"
+}
+
+### T37. POST /cancel-request/respond — invalid value -> expect 400
+POST {{host}}/transactions/1/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Maybe"
+}
+
+### T38. POST /cancel-request/respond — "Pending" is the waiting state, not a decision -> expect 400
+POST {{host}}/transactions/1/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Pending"
+}
+
+### T39. POST /cancel-request/respond — as seller 2, Rejected -> expect 200
+### §8.7: rejection does NOT cancel and does NOT auto-resolve. A Transaction
+### report is opened (status Under_Investigation) and linked via activeReportId
+### so an admin rules on it — and the confirm buttons stay locked meanwhile.
+POST {{host}}/transactions/1/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Rejected"
+}
+
+### T40. POST /confirm-payment-received — as seller 2 -> expect 400
+### Still locked after the rejection, pending the admin decision.
+POST {{host}}/transactions/1/confirm-payment-received
+Authorization: Bearer {{token}}
+
+### T41. POST /cancel-request/respond — answer again -> expect 400
+POST {{host}}/transactions/1/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Approved"
+}
+
+### T42. GET /admin/reports — confirm the auto-created dispute report
+### Expect one with reason_category "Cancellation rejected", report_type
+### Transaction, target_id 1, status Under_Investigation, and details carrying
+### the cancellation reason from T33.
+GET {{host}}/admin/reports
+x-user-id: 1
+x-is-admin: true
+
+### --- Approving a cancellation (the other branch of T39) ---
+### Needs a second Processing transaction. Seed one:
+###   INSERT INTO "Transaction" (post_id, buyer_id, seller_id, status, delivery_method)
+###   VALUES (10, 7, 4, 'Processing', 'Meetup') RETURNING transaction_id;
+### Then request as one party and approve as the other: status → Cancelled and
+### the Item goes back to Listed.
+
+### T43. POST /cancel-request — as seller 4 -> expect 200, response "Pending"
+POST {{host}}/transactions/7/cancel-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "reason": "ของหมดสต็อก ขออภัย"
+}
+
+### T44. POST /cancel-request/respond — as buyer 7, Approved -> expect 200
+### → Cancelled, and the Item is released back to Listed.
+POST {{host}}/transactions/7/cancel-request/respond
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "response": "Approved"
+}
+
+### --- Refund evidence (§10 issue #2) ---
+### These record that the two parties settled up off-platform. They move no
+### money, let nobody force a refund, and never change `status`.
+### Only valid on a Cancelled transaction where the buyer had actually paid:
+###   UPDATE "Transaction" SET payment_confirmed_by_buyer_at = NOW() WHERE transaction_id = 6;
+
+### T45. POST /refund-slip — on a Processing transaction (tx 1) -> expect 400
+POST {{host}}/transactions/1/refund-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "refund_slip_url": "https://r2.example.com/slips/1_refund.jpg"
+}
+
+### T46. POST /refund-slip — as buyer 7 -> expect 403 (the seller refunds)
+POST {{host}}/transactions/6/refund-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "refund_slip_url": "https://r2.example.com/slips/6_refund.jpg"
+}
+
+### T47. POST /confirm-refund — before any slip was uploaded -> expect 400
+POST {{host}}/transactions/6/confirm-refund
+Authorization: Bearer {{token}}
+
+### T48. POST /refund-slip — as seller 2 -> expect 200, status stays Cancelled
+POST {{host}}/transactions/6/refund-slip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "refund_slip_url": "https://r2.example.com/slips/6_refund.jpg"
+}
+
+### T49. POST /confirm-refund — as seller 2 -> expect 403 (the buyer confirms)
+POST {{host}}/transactions/6/confirm-refund
+Authorization: Bearer {{token}}
+
+### T50. POST /confirm-refund — as buyer 7 -> expect 200, status stays Cancelled
+POST {{host}}/transactions/6/confirm-refund
+Authorization: Bearer {{token}}
+
+### T51. POST /confirm-refund — again -> expect 400
+POST {{host}}/transactions/6/confirm-refund
+Authorization: Bearer {{token}}
