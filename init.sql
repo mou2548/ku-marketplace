@@ -225,7 +225,7 @@ CREATE TABLE "Subscription_Payment" (
 -- 1. USERS (นิสิต 14 คน + Admin 1 คน)
 -- Password ของทุกคนคือ: password123
 -- ------------------------------------------
-INSERT INTO "User" (user_id, email, first_name_en, last_name_en, first_name_th, last_name_th, password_hash, phone_number, status, email_verified_at, isAdmin) VALUES
+INSERT INTO "User" (user_id, email, first_name_en, last_name_en, first_name_th, last_name_th, password_hash, phone_number, status, email_verified_at, "isAdmin") VALUES
 (1, 'admin.ku@ku.th', 'Admin', 'Marketplace', 'แอดมิน', 'มก', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '0800000000', 'Active', NOW(), TRUE),
 (2, 'somchai.s@ku.th', 'Somchai', 'Saetang', 'สมชาย', 'แซ่ตั้ง', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '0812345678', 'Active', NOW(), FALSE),
 (3, 'somsri.k@ku.th', 'Somsri', 'Kaewmanee', 'สมศรี', 'แก้วมณี', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '0823456789', 'Active', NOW(), FALSE),
