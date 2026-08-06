@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ExternalLink,
   LocateFixed,
+  ImageOff,
   MapPin,
   MoreVertical,
   Phone,
@@ -21,6 +22,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  CHAT_IMAGE_TTL_DAYS,
+  MAX_IMAGES_PER_MESSAGE,
+  isChatImageExpired,
+} from "@/lib/chat-threads";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/lib/chat-threads";
 
@@ -167,6 +173,37 @@ export function ChatThread({
             >
               {message.text}
             </div>
+
+            {/* §6.2 — after seven days the image is gone from storage and a
+                notice stands in its place. The message text stays, because the
+                thread is evidence for §7. */}
+            {message.images && message.images.length > 0 && (
+              isChatImageExpired(message.sentAt) ? (
+                <div className="flex max-w-[85%] items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-surface-muted px-4 py-3 sm:max-w-[70%]">
+                  <ImageOff className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    รูปภาพหมดอายุการแสดงผลแล้ว (เก็บไว้ {CHAT_IMAGE_TTL_DAYS} วัน)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex max-w-[85%] flex-wrap gap-2 sm:max-w-[70%]">
+                  {message.images.slice(0, MAX_IMAGES_PER_MESSAGE).map((src) => (
+                    <div
+                      key={src}
+                      className="relative size-28 overflow-hidden rounded-2xl border border-border/30 bg-surface-muted"
+                    >
+                      <Image
+                        src={src}
+                        alt="รูปภาพในแชท"
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
             <span className="px-1 text-[11px] text-muted-foreground">
               {message.time}
             </span>

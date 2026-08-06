@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { BadgeCheck, Bell, Camera, ChevronRight, ShieldCheck } from "lucide-react";
+import {
+  BadgeCheck,
+  Bell,
+  Camera,
+  ChevronRight,
+  ShieldCheck,
+  UserCog,
+  UserX,
+} from "lucide-react";
 
 import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +38,18 @@ const SETTINGS_LINKS = [
     subtitle: "Password and 2FA settings",
     href: null,
   },
+  {
+    icon: UserCog,
+    title: "แก้ไขโปรไฟล์",
+    subtitle: "นามสกุลและชื่อภาษาไทย (ชื่อจริงภาษาอังกฤษถูกล็อกตาม §1.3)",
+    href: "/account/edit",
+  },
+  {
+    icon: UserX,
+    title: "ลบบัญชี",
+    subtitle: "ทำได้เมื่อไม่มีธุรกรรมค้างอยู่",
+    href: "/account/delete",
+  },
 ];
 
 export default function AccountPage() {
@@ -56,7 +76,7 @@ export default function AccountPage() {
                 <p className="font-semibold">Mike R.</p>
                 <p className="text-sm text-muted-foreground">mike.r@ku.edu</p>
               </div>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" render={<Link href="/account/edit" />} className="w-full">
                 Edit Profile
               </Button>
             </Card>

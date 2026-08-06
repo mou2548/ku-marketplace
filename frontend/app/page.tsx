@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,7 @@ export default function Home() {
 
               <Button
                 type="submit"
+                render={mode === "register" ? <Link href="/auth/register" /> : undefined}
                 disabled={mode === "login" && isPending}
                 className="h-14 w-full rounded-full bg-primary-dark text-lg"
               >
@@ -152,6 +154,15 @@ export default function Home() {
                     : "Register"}
                 <ArrowRight className="size-5" />
               </Button>
+
+              {mode === "login" && (
+                <Link
+                  href="/auth/forgot"
+                  className="text-center text-sm text-muted-foreground hover:text-foreground"
+                >
+                  ลืมรหัสผ่าน?
+                </Link>
+              )}
 
               <p className="text-center text-sm text-muted-foreground">
                 By continuing, you agree to the{" "}

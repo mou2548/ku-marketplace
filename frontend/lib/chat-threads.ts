@@ -1,10 +1,33 @@
 export type ChatFilter = "all" | "negotiating" | "agreed";
 
+/**
+ * §6.1 — up to five images per message.
+ * §6.2 — images are compressed on upload and stop displaying after seven days,
+ * to keep object-storage cost flat as the archive grows. Text is unaffected:
+ * the chat history is evidence for §7 disputes and must survive.
+ */
+export const MAX_IMAGES_PER_MESSAGE = 5;
+export const CHAT_IMAGE_TTL_DAYS = 7;
+
+export function isChatImageExpired(
+  sentAt: string | undefined,
+  now: Date = new Date()
+): boolean {
+  if (!sentAt) return false;
+  const ageDays =
+    (now.getTime() - new Date(sentAt).getTime()) / (1000 * 60 * 60 * 24);
+  return ageDays > CHAT_IMAGE_TTL_DAYS;
+}
+
 export interface ChatMessage {
   id: string;
   from: "me" | "them";
   text: string;
   time: string;
+  /** §6.1 — at most MAX_IMAGES_PER_MESSAGE entries. */
+  images?: string[];
+  /** Absolute timestamp, needed to age images out under §6.2. */
+  sentAt?: string;
 }
 
 export interface Conversation {
@@ -68,6 +91,23 @@ export const CONVERSATIONS: Conversation[] = [
           from: "me",
           text: "ยังอยู่ครับ สนใจมารับได้เลย",
           time: "10:22 AM",
+        },
+        {
+          id: "m2b",
+          from: "me",
+          text: "นี่รูปสภาพจริงครับ",
+          time: "10:24 AM",
+          images: ["/images/product-physics-textbooks.png"],
+          sentAt: "2026-08-06T10:24:00+07:00",
+        },
+        {
+          id: "m2c",
+          from: "them",
+          text: "รูปสลิปที่โอนไปรอบก่อนค่ะ",
+          time: "9:10 AM",
+          images: ["/images/promptpay-qr.svg"],
+          // Older than the §6.2 window — renders as an expiry notice.
+          sentAt: "2026-07-20T09:10:00+07:00",
         },
         {
           id: "m3",
