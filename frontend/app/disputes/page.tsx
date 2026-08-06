@@ -19,41 +19,21 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { REPORT_RATE_LIMIT, REPORT_REASONS } from "@/lib/reports";
 import { cn } from "@/lib/utils";
 
-// TODO: replace with the real 5 dispute reasons + evidence requirements from the API (proposal §7.5.3)
-const REASONS = [
-  {
-    id: "no-payment",
-    icon: Ban,
-    label: "ไม่จ่ายเงินหรือส่งสลิปปลอม",
-    sub: "Payment not received, or a fake transfer slip",
-  },
-  {
-    id: "no-item",
-    icon: PackageX,
-    label: "ไม่ส่งสินค้าหรือไม่รับสินค้า",
-    sub: "Item not sent, or not received at handover",
-  },
-  {
-    id: "not-as-described",
-    icon: AlertTriangle,
-    label: "สินค้าไม่ตรงตามที่ตกลงหรือเป็นของปลอม",
-    sub: "Item doesn't match what was agreed, or is counterfeit",
-  },
-  {
-    id: "cancel-failed",
-    icon: RefreshCcw,
-    label: "ยกเลิกธุรกรรมไม่สำเร็จ",
-    sub: "Cancellation request wasn't honored by the other party",
-  },
-  {
-    id: "refund-not-honored",
-    icon: ShieldAlert,
-    label: "ตกลงคืนเงินแล้วแต่ไม่ได้รับคืนจริง",
-    sub: "A refund was agreed but never actually sent",
-  },
-];
+/**
+ * Icons stay here because they are a display choice; the reason list itself
+ * lives in lib/reports.ts so the admin console labels the same five reasons
+ * the reporter picked from (§7.1).
+ */
+const REASON_ICONS: Record<string, typeof Ban> = {
+  "no-payment": Ban,
+  "no-item": PackageX,
+  "not-as-described": AlertTriangle,
+  "cancel-failed": RefreshCcw,
+  "refund-not-honored": ShieldAlert,
+};
 
 function DisputeForm() {
   const searchParams = useSearchParams();
@@ -75,8 +55,9 @@ function DisputeForm() {
 
       <div className="flex flex-col gap-3">
         <Label className="text-sm font-medium">Reason</Label>
-        {REASONS.map((reason) => {
+        {REPORT_REASONS.map((reason) => {
           const selected = selectedReason === reason.id;
+          const Icon = REASON_ICONS[reason.id] ?? AlertTriangle;
           return (
             <button
               key={reason.id}
@@ -95,7 +76,7 @@ function DisputeForm() {
                   selected ? "bg-error text-white" : "bg-muted text-muted-foreground"
                 )}
               >
-                <reason.icon className="size-5" />
+                <Icon className="size-5" />
               </div>
               <div className="flex flex-1 flex-col">
                 <span className="text-sm font-semibold text-foreground">{reason.label}</span>
@@ -147,6 +128,15 @@ function DisputeForm() {
           </span>
         </label>
       </div>
+
+      {/* §7.3 — a technical brake against bot spam and stuck fingers. It is
+          not a judgement on the reporter: §7.2 forbids the system from scoring
+          anyone's credibility. */}
+      <p className="rounded-2xl bg-surface-muted px-4 py-3 text-xs text-muted-foreground">
+        รายงานได้สูงสุด {REPORT_RATE_LIMIT.maxReports} ครั้งภายใน{" "}
+        {REPORT_RATE_LIMIT.windowMinutes} นาที
+        เกินกว่านั้นระบบจะบล็อกการรายงานชั่วคราว
+      </p>
 
       <div className="flex gap-4 border-t border-border/20 pt-6">
         <Link
