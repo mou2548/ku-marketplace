@@ -22,26 +22,60 @@ import { cn } from "@/lib/utils";
 const MIN_PHOTOS = 1;
 const MAX_PHOTOS = 5;
 
+export interface ItemFormDefaults {
+  name: string;
+  category: ProductCategory | null;
+  condition: ItemCondition | null;
+  description: string;
+  existingPhotoCount: number;
+  subjectName: string;
+  brandModel: string;
+  hasWarranty: boolean;
+  warrantyExpiry: string;
+  size: string;
+}
+
 /**
- * §2.1–§2.2 — creating an inventory item.
+ * §2.1–§2.2 — the item form, used both to create and to edit.
+ *
+ * Editing shares this form on purpose: §2.3.1 gives an unlisted item's owner
+ * free rein over *every* field, so an edit screen with a narrower set of
+ * inputs would silently be a different rule. The only difference is that an
+ * existing item already has photos on file, so the 1-photo minimum can be met
+ * without re-uploading.
  *
  * Two things the earlier version got wrong and this fixes: it asked for a
  * price (price is post data per §2.1, set later in /inventory/[id]/post), and
  * it skipped the per-category required fields in the §2.2 table.
  */
-export function AddItemForm() {
-  const [name, setName] = useState("");
+export function AddItemForm({
+  mode = "create",
+  defaults,
+}: {
+  mode?: "create" | "edit";
+  defaults?: ItemFormDefaults;
+}) {
+  const [name, setName] = useState(defaults?.name ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
-  const [category, setCategory] = useState<ProductCategory | null>(null);
-  const [condition, setCondition] = useState<ItemCondition | null>(null);
-  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<ProductCategory | null>(
+    defaults?.category ?? null
+  );
+  const [condition, setCondition] = useState<ItemCondition | null>(
+    defaults?.condition ?? null
+  );
+  const [description, setDescription] = useState(defaults?.description ?? "");
+  const [saved, setSaved] = useState(false);
 
   // §2.2 extras
-  const [subjectName, setSubjectName] = useState("");
-  const [brandModel, setBrandModel] = useState("");
-  const [hasWarranty, setHasWarranty] = useState(false);
-  const [warrantyExpiry, setWarrantyExpiry] = useState("");
-  const [size, setSize] = useState("");
+  const [subjectName, setSubjectName] = useState(defaults?.subjectName ?? "");
+  const [brandModel, setBrandModel] = useState(defaults?.brandModel ?? "");
+  const [hasWarranty, setHasWarranty] = useState(defaults?.hasWarranty ?? false);
+  const [warrantyExpiry, setWarrantyExpiry] = useState(
+    defaults?.warrantyExpiry ?? ""
+  );
+  const [size, setSize] = useState(defaults?.size ?? "");
+
+  const existingPhotoCount = defaults?.existingPhotoCount ?? 0;
 
   const requiredExtras: readonly string[] =
     category && category in REQUIRED_CATEGORY_FIELDS
@@ -57,7 +91,7 @@ export function AddItemForm() {
 
   const canSubmit =
     name.trim() !== "" &&
-    photos.length >= MIN_PHOTOS &&
+    photos.length + existingPhotoCount >= MIN_PHOTOS &&
     category !== null &&
     condition !== null &&
     extrasFilled;
@@ -65,11 +99,21 @@ export function AddItemForm() {
   return (
     <Card className="flex-col gap-6 rounded-2xl p-6 shadow-card ring-0 lg:p-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">เพิ่มสินค้าเข้าคลัง</h1>
+        <h1 className="text-2xl font-bold text-foreground">
+          {mode === "edit" ? "แก้ไขข้อมูลสินค้า" : "เพิ่มสินค้าเข้าคลัง"}
+        </h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          ยังไม่ต้องตั้งราคาตอนนี้ — ราคาและเงื่อนไขแลกเปลี่ยนตั้งตอนสร้างโพสต์
+          {mode === "edit"
+            ? "สินค้าที่ยังไม่ประกาศขายแก้ไขได้ทุกช่อง"
+            : "ยังไม่ต้องตั้งราคาตอนนี้ — ราคาและเงื่อนไขแลกเปลี่ยนตั้งตอนสร้างโพสต์"}
         </p>
       </div>
+
+      {existingPhotoCount > 0 && photos.length === 0 && (
+        <p className="rounded-2xl bg-surface-muted px-4 py-3 text-xs text-muted-foreground">
+          มีรูปเดิมอยู่ {existingPhotoCount} รูป — อัปโหลดใหม่เฉพาะเมื่อต้องการแทนที่
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
         <Label className="text-xs font-semibold">
@@ -276,12 +320,21 @@ export function AddItemForm() {
         />
       </div>
 
-      {/* TODO: POST the item; it starts life as unlisted (§2.3.1). */}
+      {saved && (
+        <p className="rounded-2xl bg-primary-light/40 px-4 py-3 text-center text-sm text-primary-dark">
+          บันทึกแล้ว
+        </p>
+      )}
+
+      {/* TODO: POST a new item (starts unlisted per §2.3.1) or PATCH the
+          existing one; the server re-checks the item is still unlisted and
+          unlocked before accepting an edit. */}
       <Button
         disabled={!canSubmit}
+        onClick={() => setSaved(true)}
         className="mt-2 h-12 w-full rounded-full bg-primary-dark text-sm font-semibold shadow-card"
       >
-        บันทึกเข้าคลัง
+        {mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกเข้าคลัง"}
       </Button>
 
       <Link

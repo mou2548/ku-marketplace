@@ -6,12 +6,21 @@ import { User } from "lucide-react";
 
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell } from "@/components/notification-bell";
+import { CURRENT_USER_ID } from "@/lib/items";
+import { offersReceivedBy } from "@/lib/offers";
+
+// §2.4 — offers live outside History because a trade only exists once an offer
+// is accepted. The badge is what makes that queue visible rather than buried.
+// TODO: derive from the API per signed-in user.
+const PENDING_OFFER_COUNT = offersReceivedBy(CURRENT_USER_ID).filter(
+  (offer) => offer.status === "pending"
+).length;
 
 const NAV_LINKS = [
   { label: "Home", href: "/marketplace" },
   { label: "Giveaway", href: "/giveaway" },
   { label: "Inventory", href: "/inventory" },
-  { label: "Offers", href: "/offers" },
+  { label: "Offers", href: "/offers", badge: PENDING_OFFER_COUNT },
   { label: "Messages", href: "/chat" },
   { label: "History", href: "/history" },
 ] as const;
@@ -52,6 +61,11 @@ export function SiteHeader() {
             }
           >
             {link.label}
+            {"badge" in link && link.badge > 0 && (
+              <span className="ml-1.5 flex min-w-5 items-center justify-center rounded-full bg-primary-dark px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                {link.badge}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

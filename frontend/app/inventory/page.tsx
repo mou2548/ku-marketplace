@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   FolderMinus,
   Lock,
+  Pencil,
   Plus,
   Search,
   SlidersHorizontal,
@@ -236,6 +237,9 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5 border-t border-border/20 pt-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    สภาพ: {ITEM_CONDITION_LABELS[item.condition].th}
+                  </span>
                   {/* §2.1 — price and wants belong to the post, never the item */}
                   {post && post.wants.length > 0 && (
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -256,38 +260,25 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <div className="absolute inset-0 z-20 flex flex-col justify-between bg-white/95 p-5 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold text-primary-dark">{item.category}</span>
-                  <h4 className="text-lg font-semibold text-primary-dark">{item.name}</h4>
-                  <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-                    <p>
-                      <strong className="text-primary-dark">Condition:</strong>{" "}
-                      {ITEM_CONDITION_LABELS[item.condition].th}
-                    </p>
-                    <p>
-                      <strong className="text-primary-dark">Status:</strong>{" "}
-                      {ITEM_STATUS_LABELS[item.status].th}
-                    </p>
-                    {post && post.wants.length > 0 && (
-                      <p>
-                        <strong className="text-primary-dark">Looking for:</strong>{" "}
-                        {post.wants.join(", ")}
-                      </p>
-                    )}
-                    {post?.price !== undefined && (
-                      <p>
-                        <strong className="text-primary-dark">Listed at:</strong> ฿
-                        {post.price.toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {/* §3.1 — price and terms are set on the post, so an unlisted
-                      item's primary action is "create one". */}
-                  {item.status === "unlisted" && !locked && (
+              {/* Actions used to live in a hover-only overlay, which made them
+                  unreachable on touch devices — the primary device for this
+                  app. They are part of the card now. */}
+              <div className="flex flex-col gap-2 border-t border-border/20 p-5 pt-4">
+                {locked ? (
+                  /* §2.3 — a live trade freezes everything: no edit, no delete,
+                     no new post, regardless of unlisted/listed. */
+                  <p className="rounded-full bg-warning-bg px-4 py-2.5 text-center text-xs font-medium text-warning-dark">
+                    อยู่ระหว่างธุรกรรม แก้ไขหรือลบไม่ได้
+                  </p>
+                ) : item.status === "transferred" ? (
+                  /* §2.3.3 — terminal. Kept as a record, never re-listed. */
+                  <p className="rounded-full bg-surface-muted px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">
+                    โอนเจ้าของแล้ว
+                  </p>
+                ) : item.status === "unlisted" ? (
+                  <>
+                    {/* §3.1 — price and terms are set on the post, so an
+                        unlisted item's primary action is "create one". */}
                     <Link
                       href={`/inventory/${item.id}/post`}
                       className={cn(
@@ -297,28 +288,61 @@ export default function InventoryPage() {
                     >
                       ประกาศขาย / แลกเปลี่ยน
                     </Link>
-                  )}
-                  {/* §2.3 — a locked item cannot be deleted while its trade
-                      runs; §2.3.3 keeps transferred items as a permanent record */}
-                  {canDeleteItem(item) ? (
-                    <RemoveItemDialog
-                      itemName={item.name}
-                      onConfirm={() => deleteItem(item.id)}
-                      triggerClassName={cn(
-                        buttonVariants({ variant: "outline" }),
-                        "h-10 w-full rounded-full border-border text-xs font-semibold text-muted-foreground hover:border-primary-dark hover:text-primary-dark"
+                    <div className="flex gap-2">
+                      {/* §2.3.1 — an unlisted item is fully editable. */}
+                      <Link
+                        href={`/inventory/${item.id}/edit`}
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "h-10 flex-1 gap-1.5 rounded-full text-xs font-semibold"
+                        )}
+                      >
+                        <Pencil className="size-3.5" />
+                        แก้ไข
+                      </Link>
+                      <RemoveItemDialog
+                        itemName={item.name}
+                        onConfirm={() => deleteItem(item.id)}
+                        triggerClassName={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "h-10 flex-1 rounded-full border-border text-xs font-semibold text-muted-foreground hover:border-error hover:text-error"
+                        )}
+                      >
+                        ลบ
+                      </RemoveItemDialog>
+                    </div>
+                  </>
+                ) : (
+                  /* §2.3.2 — listed: only price and terms may change, and the
+                     post can be withdrawn to go back to unlisted. Deleting is
+                     still allowed (§3.4 even permits it while offers are
+                     pending; those offers are cancelled and their senders
+                     notified). */
+                  <>
+                    <Link
+                      href={`/inventory/${item.id}/post/edit`}
+                      className={cn(
+                        buttonVariants(),
+                        "h-10 w-full gap-1.5 rounded-full bg-primary-dark text-xs font-semibold"
                       )}
                     >
-                      Remove Item
-                    </RemoveItemDialog>
-                  ) : (
-                    <p className="rounded-full bg-surface-muted px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">
-                      {locked
-                        ? "กำลังอยู่ในธุรกรรม ลบไม่ได้"
-                        : "โอนเจ้าของแล้ว ลบไม่ได้"}
-                    </p>
-                  )}
-                </div>
+                      <Pencil className="size-3.5" />
+                      จัดการโพสต์
+                    </Link>
+                    {canDeleteItem(item) && (
+                      <RemoveItemDialog
+                        itemName={item.name}
+                        onConfirm={() => deleteItem(item.id)}
+                        triggerClassName={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "h-10 w-full rounded-full border-border text-xs font-semibold text-muted-foreground hover:border-error hover:text-error"
+                        )}
+                      >
+                        ลบสินค้า
+                      </RemoveItemDialog>
+                    )}
+                  </>
+                )}
               </div>
             </Card>
             );
