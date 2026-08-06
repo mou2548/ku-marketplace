@@ -8,6 +8,7 @@ export interface GiveawayImagePayload {
 }
 
 export interface CreateGiveawayPayload {
+  giver_id: number;
   item_name: string;
   description: string;
   pickup_location: string;
@@ -19,13 +20,15 @@ export interface CreateGiveawayPayload {
 export interface GiveawayDetail {
   giveaway_id: string;
   item_name: string;
-  description: string;
+  description: string | null;
   pickup_location: string;
+  giver_id: number;
   allocation_method: AllocationMethod;
-  pickup_deadline: string;
+  pickup_deadline: string | null;
   participant_count: number;
-  status: string;
+  status: string | null;
   images: GiveawayImagePayload[];
+  created_at: string | null;
 }
 
 interface ApiResponse<T> {
@@ -53,7 +56,11 @@ export const giveawaysApi = {
       body: JSON.stringify(payload),
     }),
   detail: (id: string) => request<GiveawayDetail>(`/giveaways/${id}`),
-  join: (id: string) => request<{ ticket_id: string; status: string }>(`/giveaways/${id}/join`, { method: "POST" }),
+  join: (id: string, receiver_id: number) =>
+    request<{ ticket_id: string; status: string }>(`/giveaways/${id}/join`, {
+      method: "POST",
+      body: JSON.stringify({ receiver_id }),
+    }),
   draw: (id: string) => request(`/giveaways/${id}/draw`, { method: "POST" }),
   select: (id: string, receiver_ids: number[]) =>
     request(`/giveaways/${id}/select`, { method: "POST", body: JSON.stringify({ receiver_ids }) }),

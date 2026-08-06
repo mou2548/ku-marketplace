@@ -11,10 +11,10 @@ import {
   Users,
 } from "lucide-react";
 
+import { GiveawayJoinAction } from "@/components/giveaway-join-action";
 import { ItemDetailHero } from "@/components/item-detail-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { SuccessDialog } from "@/components/success-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,15 +49,12 @@ export default async function GiveawayItemDetailPage({
 
   const requestType = REQUEST_TYPE_BY_ALLOCATION_METHOD[giveaway.allocation_method];
   const typeMeta = GIVEAWAY_REQUEST_TYPE_META[requestType];
-  const pickupDeadlineLabel = new Date(giveaway.pickup_deadline).toLocaleString("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
-  async function joinGiveaway() {
-    "use server";
-    await giveawaysApi.join(itemId);
-  }
+  const pickupDeadlineLabel = giveaway.pickup_deadline
+    ? new Date(giveaway.pickup_deadline).toLocaleString("th-TH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "ไม่ได้ระบุ";
 
   return (
     <div className="flex min-h-full flex-col bg-page-background">
@@ -156,14 +153,14 @@ export default async function GiveawayItemDetailPage({
                         การกดยืนยันแสดงว่าคุณยอมรับว่าระบบจะแจ้งเตือนผู้ให้
                         และผลการตัดสินใจขึ้นอยู่กับผู้ให้เท่านั้น
                       </p>
-                      <SuccessDialog
+                      <GiveawayJoinAction
+                        giveawayId={giveaway.giveaway_id}
                         triggerClassName="h-12 w-full gap-4 text-base"
                         itemName={giveaway.item_name}
-                        onConfirm={joinGiveaway}
                       >
                         <Send className="size-4" />
                         ส่งคำขอ (Submit Request)
-                      </SuccessDialog>
+                      </GiveawayJoinAction>
                     </div>
                   </Card>
 
@@ -211,14 +208,14 @@ export default async function GiveawayItemDetailPage({
                     </p>
                   </div>
 
-                  <SuccessDialog
+                  <GiveawayJoinAction
+                    giveawayId={giveaway.giveaway_id}
                     triggerClassName="h-12 w-full gap-2 text-sm font-bold shadow-[0_10px_15px_-3px_rgba(0,75,36,0.2),0_4px_6px_-4px_rgba(0,75,36,0.2)]"
                     itemName={giveaway.item_name}
-                    onConfirm={joinGiveaway}
                   >
                     <UserPlus className="size-4" />
                     ลงทะเบียนลุ้นรับสิทธิ์ (Enter Draw)
-                  </SuccessDialog>
+                  </GiveawayJoinAction>
                 </div>
               )}
 
@@ -254,14 +251,14 @@ export default async function GiveawayItemDetailPage({
                       ระบบจะบันทึกคิวของคุณทันที
                     </p>
 
-                    <SuccessDialog
+                    <GiveawayJoinAction
+                      giveawayId={giveaway.giveaway_id}
                       triggerClassName="h-12 w-full gap-4 text-base"
                       itemName={giveaway.item_name}
-                      onConfirm={joinGiveaway}
                     >
                       <UserPlus className="size-4" />
                       ลงทะเบียนรับสิทธิ์ (Claim Now)
-                    </SuccessDialog>
+                    </GiveawayJoinAction>
                   </Card>
 
                   <div className="flex items-start gap-4 rounded-3xl border-2 border-dashed border-border/50 p-6">

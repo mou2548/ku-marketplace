@@ -18,12 +18,14 @@ export function SuccessDialog({
   triggerClassName,
   itemName,
   onConfirm,
+  disabled,
   children,
 }: {
   triggerClassName?: string;
   itemName: string;
   /** Called when the dialog opens — should perform the API call (e.g. join). */
   onConfirm?: () => Promise<void>;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -60,7 +62,7 @@ export function SuccessDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button className={triggerClassName} />}>
+      <DialogTrigger render={<Button className={triggerClassName} disabled={disabled} />}>
         {children}
       </DialogTrigger>
       <DialogContent showCloseButton={false} className="text-center">

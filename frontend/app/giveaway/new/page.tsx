@@ -66,6 +66,7 @@ const METHODS: {
 export default function NewGiveawayPage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [giverId, setGiverId] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState<GiveawayRequestType | null>(null);
@@ -80,7 +81,15 @@ export default function NewGiveawayPage() {
 
   const selectedMethod = METHODS.find((m) => m.value === method);
   const methodMeta = method ? GIVEAWAY_REQUEST_TYPE_META[method] : null;
-  const canSubmit = name.trim() !== "" && description.trim() !== "" && pickup.trim() !== "" && pickupDeadline !== "" && method !== null;
+  const parsedGiverId = Number(giverId);
+  const isGiverIdValid = Number.isInteger(parsedGiverId) && parsedGiverId > 0;
+  const canSubmit =
+    name.trim() !== "" &&
+    description.trim() !== "" &&
+    pickup.trim() !== "" &&
+    pickupDeadline !== "" &&
+    method !== null &&
+    isGiverIdValid;
 
   async function submitGiveaway() {
     if (!canSubmit || !method) return;
@@ -91,6 +100,7 @@ export default function NewGiveawayPage() {
     };
     try {
       const giveaway = await giveawaysApi.create({
+        giver_id: parsedGiverId,
         item_name: name.trim(), description: description.trim(), pickup_location: pickup.trim(),
         allocation_method: allocationMethods[method],
         pickup_deadline: new Date(pickupDeadline).toISOString(),
@@ -171,6 +181,21 @@ export default function NewGiveawayPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="เช่น หนังสือเรียนแคลคูลัส 1"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="giver-id" className="text-sm font-semibold">
+                Giver ID (ตาม API proposal)
+              </Label>
+              <Input
+                id="giver-id"
+                type="number"
+                min={1}
+                value={giverId}
+                onChange={(event) => setGiverId(event.target.value)}
+                placeholder="เช่น 2 (user_id ของผู้แจก)"
                 className="h-11 rounded-xl"
               />
             </div>
