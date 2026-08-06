@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   FolderMinus,
+  Lock,
   Plus,
   Search,
   SlidersHorizontal,
@@ -20,127 +21,44 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ITEM_CONDITION_LABELS,
+  ITEM_STATUS_LABELS,
+  canDeleteItem,
+  isItemLocked,
+  myItems,
+  type ItemStatus,
+} from "@/lib/items";
+import { getPostByItemId } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 
-type ItemStatus = "Listed" | "Available to Swap" | "Bundles";
-type ItemCategory = "Textbooks" | "Electronics" | "Stationery";
+const TABS = [
+  "All Items",
+  "Unlisted",
+  "Listed",
+  "Transferred",
+] as const;
 
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: ItemCategory;
-  status: ItemStatus;
-  description: string;
-  lookingFor: string | null;
-  price: number | null;
-  image: string;
-  condition: string;
-}
-
-// TODO: replace with the real signed-in user's inventory from the API
-const INITIAL_INVENTORY_ITEMS: InventoryItem[] = [
-  {
-    id: "item-1",
-    name: "Calculus: Early Transcendentals",
-    category: "Textbooks",
-    status: "Listed",
-    description:
-      "Used for 1 term, excellent condition. Perfect for engineering/science students.",
-    lookingFor: "Calculator (Casio fx-991EX)",
-    price: 650,
-    image:
-      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400&auto=format&fit=crop",
-    condition: "Excellent",
-  },
-  {
-    id: "item-2",
-    name: "Sony WH-1000XM4",
-    category: "Electronics",
-    status: "Listed",
-    description:
-      "Battery working perfectly (30+ hours). Noise cancellation is top notch.",
-    lookingFor: "Cash / iPad Pro trade",
-    price: 7200,
-    image:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=400&auto=format&fit=crop",
-    condition: "Like New",
-  },
-  {
-    id: "item-3",
-    name: "Lab Coat (Size M)",
-    category: "Stationery",
-    status: "Available to Swap",
-    description: "Clean, used only twice for chemistry labs. No stains.",
-    lookingFor: "Engineering drawing tools",
-    price: null,
-    image:
-      "https://upload.wikimedia.org/wikipedia/commons/d/d8/Lab_coat_and_scrubs.jpg",
-    condition: "Very Good",
-  },
-  {
-    id: "item-4",
-    name: "KU Engineering Uniform (Size L)",
-    category: "Stationery",
-    status: "Available to Swap",
-    description:
-      "Kasetsart University engineering workshop shirt. Comfortable material.",
-    lookingFor: "Any engineering textbooks",
-    price: 350,
-    image:
-      "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?q=80&w=400&auto=format&fit=crop",
-    condition: "Good",
-  },
-  {
-    id: "item-5",
-    name: "Casio Scientific fx-991EX",
-    category: "Electronics",
-    status: "Available to Swap",
-    description:
-      "Highly recommended for engineering math and stats. Solar + Battery.",
-    lookingFor: "Physics textbooks",
-    price: 800,
-    image:
-      "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=400&auto=format&fit=crop",
-    condition: "Like New",
-  },
-  {
-    id: "item-6",
-    name: "Drafting Table A2",
-    category: "Stationery",
-    status: "Available to Swap",
-    description: "Portable drafting board for architecture and drawing lessons.",
-    lookingFor: "Mechanical Pencil Set",
-    price: 450,
-    image:
-      "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?q=80&w=400&auto=format&fit=crop",
-    condition: "Good",
-  },
-  {
-    id: "item-7",
-    name: "Minimalist Desk Lamp",
-    category: "Electronics",
-    status: "Bundles",
-    description:
-      "Warm-light LED desk lamp, USB powered. Great for late-night studying.",
-    lookingFor: "Stationery pack",
-    price: 250,
-    image:
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=400&auto=format&fit=crop",
-    condition: "Excellent",
-  },
-];
-
-const TABS = ["All Items", "Available to Swap", "Listed", "Bundles"] as const;
-const CATEGORIES: ItemCategory[] = ["Textbooks", "Electronics", "Stationery"];
+/** Tab label → the §2.3 status it filters on. "All Items" filters nothing. */
+const TAB_STATUS: Record<(typeof TABS)[number], ItemStatus | null> = {
+  "All Items": null,
+  Unlisted: "unlisted",
+  Listed: "listed",
+  Transferred: "transferred",
+};
 
 export default function InventoryPage() {
   const [selectedTab, setSelectedTab] = useState<(typeof TABS)[number]>("All Items");
-  const [selectedCategory, setSelectedCategory] = useState<ItemCategory | "All">("All");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [items, setItems] = useState(INITIAL_INVENTORY_ITEMS);
+  const [items, setItems] = useState(myItems);
+
+  // Only categories actually present — the full 10 from §2.2 would overflow
+  // the filter row with chips that match nothing.
+  const categories = [...new Set(items.map((item) => item.category))];
 
   const totalItemsCount = items.length;
-  const listingItems = items.filter((item) => item.status === "Listed").length;
+  const listingItems = items.filter((item) => item.status === "listed").length;
   // TODO: replace with the real completed-swap count from the API
   const successfulSwapsCount = 12;
 
@@ -149,14 +67,15 @@ export default function InventoryPage() {
   }
 
   const filteredItems = items.filter((item) => {
-    if (selectedTab !== "All Items" && item.status !== selectedTab) return false;
+    const tabStatus = TAB_STATUS[selectedTab];
+    if (tabStatus !== null && item.status !== tabStatus) return false;
     if (selectedCategory !== "All" && item.category !== selectedCategory) return false;
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
       const matchName = item.name.toLowerCase().includes(query);
-      const matchDesc = item.description.toLowerCase().includes(query);
-      const matchLooking = item.lookingFor?.toLowerCase().includes(query) ?? false;
-      if (!matchName && !matchDesc && !matchLooking) return false;
+      const matchDesc = item.description?.toLowerCase().includes(query) ?? false;
+      const wants = getPostByItemId(item.id)?.wants.join(" ").toLowerCase() ?? "";
+      if (!matchName && !matchDesc && !wants.includes(query)) return false;
     }
     return true;
   });
@@ -232,7 +151,7 @@ export default function InventoryPage() {
 
             <Tabs
               value={selectedCategory}
-              onValueChange={(value) => setSelectedCategory(value as ItemCategory | "All")}
+              onValueChange={setSelectedCategory}
             >
               <TabsList className="h-auto! w-full max-w-full gap-2 overflow-x-auto bg-transparent p-0">
                 <TabsTrigger
@@ -242,7 +161,7 @@ export default function InventoryPage() {
                   <SlidersHorizontal className="size-3.5" />
                   Categories
                 </TabsTrigger>
-                {CATEGORIES.map((category) => (
+                {categories.map((category) => (
                   <TabsTrigger
                     key={category}
                     value={category}
@@ -270,24 +189,36 @@ export default function InventoryPage() {
             </p>
           </Link>
 
-          {filteredItems.map((item) => (
+          {filteredItems.map((item) => {
+            const post = getPostByItemId(item.id);
+            const locked = isItemLocked(item);
+
+            return (
             <Card
               key={item.id}
               className="group relative flex-col gap-0 overflow-hidden rounded-3xl p-0 ring-0 transition-all duration-500 hover:shadow-xl hover:shadow-primary-dark/5"
             >
               <div className="relative h-44 w-full overflow-hidden bg-surface-muted">
                 <Image
-                  src={item.image}
+                  src={item.images[0]}
                   alt={item.name}
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 <Badge className="absolute top-4 right-4 z-10 h-auto gap-1 bg-primary-dark/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
                   <Tag className="size-3" />
-                  {item.status}
+                  {ITEM_STATUS_LABELS[item.status].en}
                 </Badge>
+                {/* §2.3 — the lock comes from having a live trade, not from the
+                    status, so it is a separate badge on purpose. */}
+                {locked && (
+                  <Badge className="absolute top-4 left-4 z-10 h-auto gap-1 bg-warning-dark/90 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
+                    <Lock className="size-3" />
+                    In trade
+                  </Badge>
+                )}
                 <Badge className="absolute bottom-3 left-4 z-10 h-auto gap-0 bg-black/55 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase backdrop-blur-md">
-                  {item.condition}
+                  {ITEM_CONDITION_LABELS[item.condition].en}
                 </Badge>
               </div>
 
@@ -305,19 +236,20 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5 border-t border-border/20 pt-2">
-                  {item.lookingFor && (
+                  {/* §2.1 — price and wants belong to the post, never the item */}
+                  {post && post.wants.length > 0 && (
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <span className="font-bold text-primary-dark">Looking for:</span>
                       <span className="max-w-[140px] truncate font-medium">
-                        {item.lookingFor}
+                        {post.wants.join(", ")}
                       </span>
                     </div>
                   )}
-                  {item.price && (
+                  {post?.price !== undefined && (
                     <div className="flex items-baseline gap-0.5 text-sm font-semibold text-primary-dark">
-                      <span className="text-xs font-normal">Est. Value:</span>
+                      <span className="text-xs font-normal">Listed at:</span>
                       <span className="text-base font-bold">
-                        ฿{item.price.toLocaleString()}
+                        ฿{post.price.toLocaleString()}
                       </span>
                     </div>
                   )}
@@ -330,41 +262,54 @@ export default function InventoryPage() {
                   <h4 className="text-lg font-semibold text-primary-dark">{item.name}</h4>
                   <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
                     <p>
-                      <strong className="text-primary-dark">Condition:</strong> {item.condition}
+                      <strong className="text-primary-dark">Condition:</strong>{" "}
+                      {ITEM_CONDITION_LABELS[item.condition].th}
                     </p>
                     <p>
-                      <strong className="text-primary-dark">Status:</strong> {item.status}
+                      <strong className="text-primary-dark">Status:</strong>{" "}
+                      {ITEM_STATUS_LABELS[item.status].th}
                     </p>
-                    {item.lookingFor && (
+                    {post && post.wants.length > 0 && (
                       <p>
                         <strong className="text-primary-dark">Looking for:</strong>{" "}
-                        {item.lookingFor}
+                        {post.wants.join(", ")}
                       </p>
                     )}
-                    {item.price && (
+                    {post?.price !== undefined && (
                       <p>
-                        <strong className="text-primary-dark">Estimated value:</strong> ฿
-                        {item.price}
+                        <strong className="text-primary-dark">Listed at:</strong> ฿
+                        {post.price.toLocaleString()}
                       </p>
                     )}
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <RemoveItemDialog
-                    itemName={item.name}
-                    onConfirm={() => deleteItem(item.id)}
-                    triggerClassName={cn(
-                      buttonVariants({ variant: "outline" }),
-                      "h-10 w-full rounded-full border-border text-xs font-semibold text-muted-foreground hover:border-primary-dark hover:text-primary-dark"
-                    )}
-                  >
-                    Remove Item
-                  </RemoveItemDialog>
+                  {/* §2.3 — a locked item cannot be deleted while its trade
+                      runs; §2.3.3 keeps transferred items as a permanent record */}
+                  {canDeleteItem(item) ? (
+                    <RemoveItemDialog
+                      itemName={item.name}
+                      onConfirm={() => deleteItem(item.id)}
+                      triggerClassName={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "h-10 w-full rounded-full border-border text-xs font-semibold text-muted-foreground hover:border-primary-dark hover:text-primary-dark"
+                      )}
+                    >
+                      Remove Item
+                    </RemoveItemDialog>
+                  ) : (
+                    <p className="rounded-full bg-surface-muted px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">
+                      {locked
+                        ? "กำลังอยู่ในธุรกรรม ลบไม่ได้"
+                        : "โอนเจ้าของแล้ว ลบไม่ได้"}
+                    </p>
+                  )}
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
 
           {filteredItems.length === 0 && (
             <Card className="col-span-full flex-col items-center justify-center gap-1 rounded-3xl p-8 py-16 text-center ring-0">
