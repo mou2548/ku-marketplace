@@ -232,11 +232,18 @@ export function nextActionFor(
         ? { href: `/trade/${trade.id}/qr`, label: "แสดง QR ส่งมอบ" }
         : null;
     case "awaiting-shipment":
-      // TODO(phase 2): /trade/[id]/shipping — §4.3.1
-      return null;
+      return trade.myRole === "seller"
+        ? { href: `/trade/${trade.id}/shipping`, label: "แจ้งเลขพัสดุ" }
+        : null;
     case "awaiting-parcel-confirmation":
-      // TODO(phase 2): /trade/[id]/shipping/confirm — §4.3.3
-      return null;
+      // §4.3.3 — this points at the tracking page, NOT straight at the
+      // irreversible confirm. Reaching that takes one more deliberate step.
+      return { href: `/trade/${trade.id}/shipping`, label: "ดูสถานะพัสดุ" };
+    case "cancel-pending":
+      // §4.7 — only the side that has to answer gets an action.
+      return trade.cancelRequest && trade.cancelRequest.requestedBy !== trade.myRole
+        ? { href: `/trade/${trade.id}/cancel/respond`, label: "ตอบคำขอยกเลิก" }
+        : null;
     default:
       return null;
   }
@@ -409,6 +416,67 @@ export const TRADES: Trade[] = [
     slipImage: "/images/promptpay-qr.svg",
     counterpartyName: "Pimchanok D.",
     myRole: "seller",
+  },
+  {
+    // Seller owes a tracking number — entry point for §4.3.1.
+    id: "trade-10",
+    buyerId: "user-warisara",
+    sellerId: "user-me",
+    postItemId: "item-7",
+    offeredItemIds: [],
+    status: "processing",
+    dispute: "none",
+    deliveryMethod: "shipping",
+    createdAt: "2026-08-05T09:00:00+07:00",
+    slipUploadedAt: "2026-08-05T09:15:00+07:00",
+    slipImage: "/images/promptpay-qr.svg",
+    paymentConfirmedAt: "2026-08-05T10:00:00+07:00",
+    counterpartyName: "Warisara P.",
+    myRole: "seller",
+  },
+  {
+    // Parcel in transit, buyer yet to confirm. Shipped 9 days ago, so the §4.5
+    // handover clock is past its 7-day nudge but short of the 14-day report.
+    id: "trade-11",
+    buyerId: "user-me",
+    sellerId: "user-ratchanon",
+    postItemId: "item-11",
+    offeredItemIds: [],
+    status: "processing",
+    dispute: "none",
+    deliveryMethod: "shipping",
+    createdAt: "2026-07-27T09:00:00+07:00",
+    slipUploadedAt: "2026-07-27T09:30:00+07:00",
+    slipImage: "/images/promptpay-qr.svg",
+    paymentConfirmedAt: "2026-07-27T11:00:00+07:00",
+    shipment: {
+      courier: "ไปรษณีย์ไทย",
+      trackingNumber: "EX447120933TH",
+      shippedAt: "2026-07-28T14:00:00+07:00",
+    },
+    counterpartyName: "Ratchanon S.",
+    myRole: "buyer",
+  },
+  {
+    // §4.7 — the other side asked to cancel and it is our turn to answer.
+    // Both confirmations are frozen while this sits unanswered.
+    id: "trade-12",
+    buyerId: "user-me",
+    sellerId: "user-kanyarat",
+    postItemId: "item-10",
+    offeredItemIds: [],
+    status: "processing",
+    dispute: "none",
+    deliveryMethod: "meetup",
+    createdAt: "2026-08-04T10:00:00+07:00",
+    slipUploadedAt: "2026-08-04T10:20:00+07:00",
+    slipImage: "/images/promptpay-qr.svg",
+    cancelRequest: {
+      requestedBy: "seller",
+      requestedAt: "2026-08-05T19:00:00+07:00",
+    },
+    counterpartyName: "Kanyarat T.",
+    myRole: "buyer",
   },
 ];
 

@@ -39,8 +39,7 @@ export function PaymentReviewActions({
     router.push(
       deliveryMethod === "meetup"
         ? `/trade/${tradeId}/qr`
-        : // TODO(phase 2): /trade/[id]/shipping once §4.3.1 exists.
-          `/trade/${tradeId}/qr`
+        : `/trade/${tradeId}/shipping`
     );
   }
 
@@ -76,8 +75,9 @@ export function PaymentReviewActions({
             <DialogTitle className="text-lg">ยืนยันการรับเงิน?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            หลังยืนยัน ระบบจะแสดง QR Code สำหรับส่งมอบสินค้าให้ทันที
-            ธุรกรรมยังอยู่ในสถานะ Processing จนกว่าผู้ซื้อจะสแกนยืนยันรับของ
+            {deliveryMethod === "meetup"
+              ? "หลังยืนยัน ระบบจะแสดง QR Code สำหรับส่งมอบสินค้าให้ทันที ธุรกรรมยังอยู่ในสถานะ Processing จนกว่าผู้ซื้อจะสแกนยืนยันรับของ"
+              : "หลังยืนยัน ให้กรอกเลขพัสดุและบริษัทขนส่ง ธุรกรรมยังอยู่ในสถานะ Processing จนกว่าผู้ซื้อจะกดยืนยันรับพัสดุ"}
           </p>
           <Button onClick={confirmReceipt} className="h-12 w-full bg-primary-dark">
             ยืนยัน

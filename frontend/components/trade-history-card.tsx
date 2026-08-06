@@ -18,6 +18,7 @@ import { getItem } from "@/lib/items";
 import {
   DISPUTE_STATUS_LABELS,
   TRADE_STATUS_LABELS,
+  canCancelUnilaterally,
   isTradeLive,
   nextActionFor,
   type Trade,
@@ -161,11 +162,15 @@ export function TradeHistoryCard({ trade }: { trade: Trade }) {
               </Link>
             )}
 
-            {/* TODO(phase 2): a processing trade needs /cancel/request instead —
-                §4.7 requires both sides to agree once money may have moved. */}
+            {/* §2.4.1 vs §4.7 — a pending trade cancels outright, a processing
+                one can only ask the other side. Different destinations. */}
             {isTradeLive(trade) && (
               <Link
-                href={`/trade/${trade.id}/cancel`}
+                href={
+                  canCancelUnilaterally(trade)
+                    ? `/trade/${trade.id}/cancel`
+                    : `/trade/${trade.id}/cancel/request`
+                }
                 className={cn(
                   buttonVariants({ variant: "outline" }),
                   "h-11 px-5 text-sm whitespace-nowrap"
