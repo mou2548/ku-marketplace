@@ -24,7 +24,7 @@
 .DS_Store
 *.pem
 CLAUDE.md
-
+.claude
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -45,5 +45,3 @@ CLAUDE.md
 /picforgen
 color.png
 /UI_Marketplace (1)
-
-
