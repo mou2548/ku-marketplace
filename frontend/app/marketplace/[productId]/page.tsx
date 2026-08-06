@@ -6,14 +6,14 @@ import {
   Bookmark,
   ChevronRight,
   Repeat,
-  ShoppingBag,
 } from "lucide-react";
 
+import { BuyNowActions } from "@/components/buy-now-actions";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getProduct } from "@/lib/marketplace-products";
 import { cn } from "@/lib/utils";
@@ -174,16 +174,13 @@ export default async function ProductDetailPage({
               </div>
 
               <div className="flex flex-col gap-4 pt-2">
-                {/* TODO: point at a real checkout once payments exist — until then
-                    buying is arranged with the seller in chat. */}
+                {/* §3.1.1/§3.1.3 — the buy button only exists on posts whose
+                    mode offers a price. §3.5 handles what happens on press. */}
                 {canBuy && (
-                  <Link
-                    href="/chat"
-                    className={cn(buttonVariants(), "h-12 gap-2 text-sm font-medium")}
-                  >
-                    <ShoppingBag className="size-4" />
-                    Buy now
-                  </Link>
+                  <BuyNowActions
+                    productId={product.id}
+                    price={product.price ?? 0}
+                  />
                 )}
                 {canSwap && (
                   <Link

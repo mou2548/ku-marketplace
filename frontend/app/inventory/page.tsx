@@ -285,6 +285,19 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
+                  {/* §3.1 — price and terms are set on the post, so an unlisted
+                      item's primary action is "create one". */}
+                  {item.status === "unlisted" && !locked && (
+                    <Link
+                      href={`/inventory/${item.id}/post`}
+                      className={cn(
+                        buttonVariants(),
+                        "h-10 w-full rounded-full bg-primary-dark text-xs font-semibold"
+                      )}
+                    >
+                      ประกาศขาย / แลกเปลี่ยน
+                    </Link>
+                  )}
                   {/* §2.3 — a locked item cannot be deleted while its trade
                       runs; §2.3.3 keeps transferred items as a permanent record */}
                   {canDeleteItem(item) ? (

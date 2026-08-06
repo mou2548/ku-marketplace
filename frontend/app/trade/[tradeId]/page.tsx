@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -73,6 +75,7 @@ export default function OfferTradePage({
   const { tradeId } = use(params);
   const [items, setItems] = useState(INITIAL_INVENTORY);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [topUp, setTopUp] = useState("");
 
   const toggleItem = (index: number) =>
     setItems((prev) =>
@@ -249,8 +252,33 @@ export default function OfferTradePage({
           </div>
 
           <SheetFooter className="gap-4 border-t border-border/20 p-6">
+            {/* §3.2 — an offer may carry cash on top of the items. Without
+                this field a swap that needs balancing has to be negotiated in
+                chat and never appears in the trade record. */}
+            <div className="flex flex-col gap-1.5 px-2">
+              <Label htmlFor="top-up" className="text-sm font-medium">
+                เพิ่มเงินให้อีก (ไม่บังคับ)
+              </Label>
+              <div className="relative">
+                <span className="absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">
+                  ฿
+                </span>
+                <Input
+                  id="top-up"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={topUp}
+                  onChange={(event) => setTopUp(event.target.value)}
+                  placeholder="0"
+                  className="h-12 rounded-xl bg-surface-muted pl-8"
+                />
+              </div>
+            </div>
+
             <span className="px-2 text-base text-muted-foreground">
               {selectedCount} items selected
+              {Number(topUp) > 0 && ` + ฿${Number(topUp).toLocaleString()}`}
             </span>
             <Link
               href={`/offers/${tradeId}`}
