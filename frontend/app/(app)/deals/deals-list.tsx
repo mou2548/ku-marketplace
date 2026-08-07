@@ -1,0 +1,348 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Gift, Handshake, MessagesSquare, Store } from "lucide-react";
+
+import { LinkButton } from "@/components/kit/button";
+import { CountdownPill } from "@/components/kit/countdown-pill";
+import { EmptyState } from "@/components/kit/empty-state";
+import { StatusBadge } from "@/components/kit/status-badge";
+import { Surface } from "@/components/kit/surface";
+import { TONE_WASH } from "@/components/kit/tone";
+import type { GiveawayTicket, Offer, Transaction } from "@/lib/api/types";
+import { deadlineFor } from "@/lib/inbox";
+import {
+  OFFER_STATUS,
+  resolveTransactionActor,
+  TICKET_STATUS,
+  TRANSACTION_STATUS,
+  type TransactionStatus,
+} from "@/lib/status";
+import { cn } from "@/lib/utils";
+
+/**
+ * History, not conversation.
+ *
+ * The chat moved to `/chat` when the rooms were unified, which left this screen
+ * free to do the job its name implies: every transaction the student has ever
+ * been part of, in full, with nothing filtered away by default.
+ *
+ * A record you cannot find is not a record, so cancelled and refunded deals are
+ * as visible as completed ones — those are exactly the ones people come looking
+ * for.
+ */
+
+type Lens = "all" | "buying" | "selling";
+type StatusFilter = "all" | TransactionStatus;
+
+const LENSES: Array<{ id: Lens; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "buying", label: "Buying" },
+  { id: "selling", label: "Selling" },
+];
+
+const STATUSES: StatusFilter[] = [
+  "all",
+  "Pending",
+  "Processing",
+  "Completed",
+  "Cancelled",
+  "Pending Refund",
+  "Refunded",
+];
+
+export function DealsList({
+  transactions,
+  offers,
+  tickets,
+  viewerId,
+}: {
+  transactions: Transaction[];
+  offers: Offer[];
+  tickets: GiveawayTicket[];
+  viewerId: number;
+}) {
+  const [lens, setLens] = useState<Lens>("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
+
+  const rows = useMemo(() => {
+    return transactions
+      .filter((tx) => {
+        const isBuyer = tx.buyer_id === viewerId;
+        if (tx.buyer_id !== viewerId && tx.seller_id !== viewerId) return false;
+        if (lens === "buying" && !isBuyer) return false;
+        if (lens === "selling" && isBuyer) return false;
+        if (status !== "all" && tx.status !== status) return false;
+        return true;
+      })
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  }, [transactions, lens, status, viewerId]);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+          History
+        </h1>
+        <p className="text-[0.875rem] text-ink-muted">
+          Every deal you have been part of, including the ones that were
+          cancelled or refunded.
+        </p>
+      </header>
+
+      <div className="flex flex-wrap gap-4">
+        <Filters
+          label="Side"
+          options={LENSES.map((l) => ({ id: l.id, label: l.label }))}
+          value={lens}
+          onChange={(v) => setLens(v as Lens)}
+        />
+        <Filters
+          label="Status"
+          options={STATUSES.map((s) => ({
+            id: s,
+            label: s === "all" ? "All" : TRANSACTION_STATUS[s].label,
+          }))}
+          value={status}
+          onChange={(v) => setStatus(v as StatusFilter)}
+        />
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={<Handshake className="size-6" />}
+          title="Nothing matches those filters"
+          description="Clear a filter, or start something in the market — a room opens by itself when you buy or when an offer is accepted."
+          action={
+            <LinkButton href="/">
+              <Store className="size-4" />
+              Go to the market
+            </LinkButton>
+          }
+        />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {rows.map((tx) => (
+            <li key={tx.transaction_id}>
+              <DealRow tx={tx} viewerId={viewerId} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {tickets.length > 0 ? (
+        <section className="flex flex-col gap-2 border-t border-line pt-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[1.125rem] font-semibold">Giveaways</h2>
+            <Link
+              href="/giveaway"
+              className="text-[0.875rem] font-medium text-ink-brand hover:underline"
+            >
+              See all
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {tickets.map((ticket) => (
+              <li key={ticket.ticket_id}>
+                <Link href={`/giveaway/ticket/${ticket.ticket_id}`}>
+                  <Surface
+                    as="div"
+                    shape="card"
+                    elevation="flat"
+                    interactive
+                    className="flex items-center gap-3 p-4"
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-gold-100 text-gold-600">
+                      <Gift aria-hidden className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">
+                        {ticket.giveaway.item_name}
+                      </p>
+                      <p className="truncate text-[0.8125rem] text-ink-muted">
+                        from {ticket.giveaway.giver.name} · collect at{" "}
+                        {ticket.giveaway.pickup_location}
+                      </p>
+                    </div>
+                    <StatusBadge status={TICKET_STATUS[ticket.status]} size="sm" />
+                  </Surface>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {offers.length > 0 ? (
+        <section className="flex flex-col gap-2 border-t border-line pt-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[1.125rem] font-semibold">Offers</h2>
+            <Link
+              href="/offers"
+              className="text-[0.875rem] font-medium text-ink-brand hover:underline"
+            >
+              See all
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {offers.map((offer) => (
+              <li key={offer.offer_id}>
+                <Link href={`/offers/${offer.offer_id}`}>
+                  <Surface
+                    as="div"
+                    shape="card"
+                    elevation="flat"
+                    interactive
+                    className="flex items-center gap-3 p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">
+                        {offer.post.item.name}
+                      </p>
+                      <p className="truncate text-[0.8125rem] text-ink-muted">
+                        {offer.proposer_id === viewerId
+                          ? `You offered ${offer.items.length} items`
+                          : `${offer.proposer.name} offered ${offer.items.length} items`}
+                        {offer.additional_money > 0
+                          ? ` + ฿${offer.additional_money.toLocaleString("en-GB")}`
+                          : ""}
+                      </p>
+                    </div>
+                    <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />
+                  </Surface>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function Filters({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: Array<{ id: string; label: string }>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="text-[0.6875rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+        {label}
+      </legend>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            aria-pressed={value === o.id}
+            onClick={() => onChange(o.id)}
+            className={cn(
+              "min-h-9 rounded-pill px-3 text-[0.8125rem] font-medium",
+              "transition-colors duration-[--dur-fast]",
+              value === o.id
+                ? "bg-brand text-on-brand shadow-raised"
+                : "bg-surface-sunken text-ink-secondary shadow-sunken hover:bg-gray-200",
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * One row carries the whole record: what, with whom, how it was handed over,
+ * how much, where it got to, and whose move it is. The previous version showed
+ * a name and a status pill, which is not a history — it is a teaser.
+ */
+function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
+  const viewer = tx.buyer_id === viewerId ? "buyer" : "seller";
+  const prompt = resolveTransactionActor(tx, viewer);
+  const deadline = deadlineFor(tx);
+  const other = viewer === "buyer" ? tx.seller : tx.buyer;
+  const isTrade = tx.offer_id != null;
+
+  const facts: Array<[string, string]> = [
+    ["Deal", `#${tx.transaction_id}`],
+    ["Type", isTrade ? "Trade" : "Sale"],
+    ["Handover", tx.delivery_method],
+    [
+      "Amount",
+      tx.final_amount > 0 ? `฿${tx.final_amount.toLocaleString("en-GB")}` : "None",
+    ],
+    [
+      "Started",
+      new Date(tx.created_at).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    ],
+  ];
+  if (tx.tracking_number) facts.push(["Tracking", tx.tracking_number]);
+
+  return (
+    <Surface shape="card" className="flex flex-col gap-3 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{tx.post.item.name}</p>
+          <p className="truncate text-[0.8125rem] text-ink-muted">
+            {viewer === "buyer" ? "Bought from" : "Sold to"} {other.name}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {deadline ? <CountdownPill deadline={deadline} /> : null}
+          <StatusBadge status={TRANSACTION_STATUS[tx.status]} size="sm" />
+        </div>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-6">
+        {facts.map(([label, value]) => (
+          <div key={label} className="flex flex-col">
+            <dt className="text-[0.6875rem] tracking-[0.06em] text-ink-muted uppercase">
+              {label}
+            </dt>
+            <dd data-numeric className="truncate text-[0.875rem] font-medium">
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+        {prompt.actor ? (
+          <span
+            className={cn(
+              "rounded-pill px-2.5 py-1 text-[0.8125rem] font-medium",
+              TONE_WASH[prompt.tone],
+            )}
+          >
+            {prompt.label}
+          </span>
+        ) : (
+          <span className="text-[0.8125rem] text-ink-muted">{prompt.label}</span>
+        )}
+
+        <LinkButton
+          variant="secondary"
+          size="sm"
+          href={`/deals/${tx.transaction_id}`}
+        >
+          <MessagesSquare className="size-4" />
+          Go to chat
+        </LinkButton>
+      </div>
+    </Surface>
+  );
+}
