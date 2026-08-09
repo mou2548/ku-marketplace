@@ -17,6 +17,7 @@ import {
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { OfferSummary } from "@/components/kit/offer-summary";
 import type { Offer } from "@/lib/api/types";
+import { describeOffer, offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
 
 /**
@@ -49,6 +50,7 @@ export function OffersInbox({
       <TabPanel id="received">
         <OfferList
           offers={received}
+          viewerId={viewerId}
           direction="received"
           emptyTitle="No one has offered you a trade yet"
           emptyDescription="When someone offers a trade on one of your posts, it lands here with their whole stack visible"
@@ -58,6 +60,7 @@ export function OffersInbox({
       <TabPanel id="sent">
         <OfferList
           offers={sent}
+          viewerId={viewerId}
           direction="sent"
           emptyTitle="You have not made any offers yet"
           emptyDescription="Find a post that accepts trades, then put items from your inventory on the table"
@@ -69,11 +72,13 @@ export function OffersInbox({
 
 function OfferList({
   offers,
+  viewerId,
   direction,
   emptyTitle,
   emptyDescription,
 }: {
   offers: Offer[];
+  viewerId: number;
   direction: "sent" | "received";
   emptyTitle: string;
   emptyDescription: string;
@@ -98,43 +103,60 @@ function OfferList({
 
   return (
     <ul className="flex flex-col gap-2 pt-4">
-      {offers.map((offer) => (
-        <li key={offer.offer_id}>
-          <Link href={`/offers/${offer.offer_id}`}>
-            <Surface as="div" shape="card" interactive className="flex flex-col gap-3 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{offer.post.item.name}</p>
-                  <p className="text-[0.8125rem] text-ink-muted">
-                    {direction === "sent"
-                      ? `Offered on ${offer.post.seller.name}`
-                      : "Someone offered a trade"}
-                  </p>
+      {offers.map((offer) => {
+        const sides = offerSides(offer, viewerId);
+
+        return (
+          <li key={offer.offer_id}>
+            <Link href={`/offers/${offer.offer_id}`}>
+              <Surface as="div" shape="card" interactive className="flex flex-col gap-3 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  {/* Who and about what. The old version led with the post's
+                      item name, which on a received offer is your own thing —
+                      so the row opened by telling you something you know. */}
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">
+                      {direction === "sent"
+                        ? `Your offer to ${sides.counterparty.name}`
+                        : `${sides.counterparty.name} wants to trade`}
+                    </p>
+                    <p className="truncate text-[0.8125rem] text-ink-muted">
+                      {direction === "sent" ? "for their " : "for your "}
+                      {offer.post.item.name}
+                    </p>
+                  </div>
+                  <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />
                 </div>
-                <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />
-              </div>
 
-              {/* The piles themselves, with photos — fairness is judged by
-                  looking, not by reading a count (research P3, principle 6). */}
-              <OfferSummary
-                offered={offer.items}
-                wanted={[offer.post.item]}
-                additionalMoney={offer.additional_money}
-                size="sm"
-              />
-
-              {direction === "received" ? (
-                <TrustBadge
-                  name={offer.proposer.name}
-                  isVerified={offer.proposer.isVerified}
-                  faculty={offer.proposer.faculty}
+                {/* The piles themselves, with photos — fairness is judged by
+                    looking, not by reading a count (research P3, principle 6). */}
+                <OfferSummary
+                  youGet={sides.youGet}
+                  youGive={sides.youGive}
+                  money={sides.money}
+                  moneyDirection={sides.moneyDirection}
                   size="sm"
                 />
-              ) : null}
-            </Surface>
-          </Link>
-        </li>
-      ))}
+
+                {/* And the same thing in words, for anyone who would rather
+                    read it than decode two rows of thumbnails. */}
+                <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                  {describeOffer(sides)}
+                </p>
+
+                {direction === "received" ? (
+                  <TrustBadge
+                    name={sides.counterparty.name}
+                    isVerified={sides.counterparty.isVerified}
+                    faculty={sides.counterparty.faculty}
+                    size="sm"
+                  />
+                ) : null}
+              </Surface>
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

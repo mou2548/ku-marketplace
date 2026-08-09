@@ -38,7 +38,7 @@ export default function EditProfilePage() {
         Edit profile
       </h1>
 
-      <Surface shape="card" elevation="flat" className="flex gap-3 bg-gray-100 p-4">
+      <Surface shape="card" elevation="flat" className="flex gap-3 bg-gray-100 border-l-4 border-l-line-strong p-4">
         <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
         <div className="flex flex-col gap-1">
           <p className="text-[0.875rem] font-medium">

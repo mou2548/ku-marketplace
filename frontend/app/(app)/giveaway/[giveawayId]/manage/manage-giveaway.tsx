@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Dices, ScanLine, Users } from "lucide-react";
+import { ScanLine, Users } from "lucide-react";
 
-import { Button, LinkButton } from "@/components/kit/button";
+import { Button } from "@/components/kit/button";
 import { Checkbox } from "@/components/kit/choice";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
+import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { QrScanner } from "@/components/kit/qr-scanner";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
@@ -15,6 +17,11 @@ import type { Entrant } from "@/lib/api/fixtures";
 import type { GiveawayPost } from "@/lib/api/types";
 import { ALLOCATION_METHOD } from "@/lib/status";
 
+/**
+ * Manual giveaways only — the route 404s for the other two methods, because
+ * FirstCome allocates on registration and Random is drawn by the system, and
+ * neither leaves a giver anything to decide.
+ */
 export function ManageGiveaway({
   giveaway,
   entrants,
@@ -27,7 +34,6 @@ export function ManageGiveaway({
   const [busy, setBusy] = useState(false);
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
-  const isManual = giveaway.allocation_method === "Manual";
 
   const deadline = giveaway.registered_deadline
     ? {
@@ -67,17 +73,10 @@ export function ManageGiveaway({
         </div>
       </header>
 
-      {/* Say plainly whose job the draw is. A giver who chose Random should not
-          be hunting for a button that does not belong to them. */}
-      <Surface
-        shape="card"
-        elevation="flat"
-        className={isManual ? "bg-tone-trade-bg p-4" : "bg-tone-info-bg p-4"}
-      >
+      <Surface shape="card" elevation="flat" className="bg-tone-trade-bg border-l-4 border-l-tone-trade-solid p-4">
         <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
-          {isManual
-            ? "You chose to pick recipients yourself. Select them below once registration closes, and a chat room opens for each one."
-            : `${method.hint}. You do not need to do anything here — the system runs the draw when registration closes.`}
+          You chose to pick recipients yourself. Select them below once
+          registration closes, and a chat room opens for each one.
         </p>
       </Surface>
 
@@ -104,16 +103,14 @@ export function ManageGiveaway({
                 <Surface
                   as="div"
                   shape="card"
-                  elevation="flat"
+                  elevation="raised"
                   className="flex items-center gap-3 p-4"
                 >
-                  {isManual ? (
-                    <Checkbox
-                      isSelected={picked.has(e.receiver_id)}
-                      onChange={() => toggle(e.receiver_id)}
-                      aria-label={`Select ${e.user.name}`}
-                    />
-                  ) : null}
+                  <Checkbox
+                    isSelected={picked.has(e.receiver_id)}
+                    onChange={() => toggle(e.receiver_id)}
+                    aria-label={`Select ${e.user.name}`}
+                  />
 
                   <div className="min-w-0 flex-1">
                     <TrustBadge
@@ -141,36 +138,39 @@ export function ManageGiveaway({
       </section>
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <LinkButton
-          variant="secondary"
-          href={`/giveaway/${giveaway.giveaway_id}`}
-        >
-          <ScanLine className="size-4" />
-          Scan a ticket
-        </LinkButton>
+        {/* This used to link to the public detail page, which is not a
+            scanner. The handover is closed by reading the recipient's rotating
+            QR, so the scanner itself belongs here. */}
+        <OverlayTrigger>
+          <Button variant="secondary">
+            <ScanLine className="size-4" />
+            Scan a ticket
+          </Button>
 
-        {isManual ? (
-          <Button
-            isDisabled={picked.size === 0}
-            isLoading={busy}
-            onPress={() =>
-              run(
-                `Selected ${picked.size} recipient${picked.size === 1 ? "" : "s"}. Chat rooms are open.`,
-              )
-            }
+          <Overlay
+            title="Scan a recipient's ticket"
+            description="The QR rotates every 15 minutes, so ask them to open it now rather than sending a screenshot."
           >
-            <Users className="size-4" />
-            Confirm {picked.size} recipient{picked.size === 1 ? "" : "s"}
-          </Button>
-        ) : (
-          <Button
-            isLoading={busy}
-            onPress={() => run("Draw complete. Winners have been notified.")}
-          >
-            <Dices className="size-4" />
-            Run the draw now
-          </Button>
-        )}
+            <QrScanner
+              title="Scan to confirm the handover"
+              hint="Point the camera at the recipient's ticket QR"
+              onScan={() => toast.show("Ticket accepted. Handover recorded.")}
+            />
+          </Overlay>
+        </OverlayTrigger>
+
+        <Button
+          isDisabled={picked.size === 0}
+          isLoading={busy}
+          onPress={() =>
+            run(
+              `Selected ${picked.size} recipient${picked.size === 1 ? "" : "s"}. Chat rooms are open.`,
+            )
+          }
+        >
+          <Users className="size-4" />
+          Confirm {picked.size} recipient{picked.size === 1 ? "" : "s"}
+        </Button>
       </div>
     </div>
   );

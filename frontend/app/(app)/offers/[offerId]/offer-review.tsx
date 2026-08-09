@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, MapPin, Truck, Undo2, X } from "lucide-react";
 
@@ -11,41 +12,38 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
-import type { Offer } from "@/lib/api/types";
+import type { Item, Offer } from "@/lib/api/types";
+import { describeOffer, offerSides } from "@/lib/offers";
 import type { DeliveryMethod } from "@/lib/status";
 import { OFFER_STATUS } from "@/lib/status";
 
+/** The bench takes inventory slots; an offer carries full items. */
+const toSlot = (item: Item) => ({
+  item_id: item.item_id,
+  name: item.name,
+  quantity: item.quantity,
+  condition: item.condition,
+  category: item.category,
+  image_url: item.images.find((i) => i.is_primary)?.image_url ?? null,
+});
+
 export function OfferReview({
   offer,
-  isOwner,
+  viewerId,
 }: {
   offer: Offer;
-  isOwner: boolean;
+  viewerId: number;
 }) {
   const router = useRouter();
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
   const [busy, setBusy] = useState(false);
 
+  // Both sides come from one derivation, shared with the inbox, so the piles
+  // cannot land in one arrangement on the list and the opposite one here.
+  const sides = offerSides(offer, viewerId);
+  const isOwner = !sides.viewerIsProposer;
   const pending = offer.status === "Pending";
-  const offered = offer.items.map((i) => ({
-    item_id: i.item_id,
-    name: i.name,
-    quantity: i.quantity,
-    condition: i.condition,
-    category: i.category,
-    image_url: i.images[0]?.image_url ?? null,
-  }));
-  const wanted = [
-    {
-      item_id: offer.post.item.item_id,
-      name: offer.post.item.name,
-      quantity: 1,
-      condition: offer.post.item.condition,
-      category: offer.post.item.category,
-      image_url: offer.post.item.images[0]?.image_url ?? null,
-    },
-  ];
 
   async function respond(message: string, next?: string) {
     setBusy(true);
@@ -59,32 +57,53 @@ export function OfferReview({
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
+          {/* Same two lines as the card the viewer tapped to get here. */}
           <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-            {isOwner ? "Someone offered you a trade" : "Your offer"}
+            {isOwner
+              ? `${sides.counterparty.name} wants to trade`
+              : `Your offer to ${sides.counterparty.name}`}
           </h1>
+          {/* The post is the thing being argued over and had no route out of
+              this screen. The inbox card is one big link, so the second
+              destination belongs here. */}
           <p className="text-[0.875rem] text-ink-muted">
-            Post: {offer.post.item.name}
+            {isOwner ? "for your " : "for their "}
+            <Link
+              href={`/market/${offer.post_id}`}
+              className="font-medium text-ink-brand hover:underline"
+            >
+              {offer.post.item.name}
+            </Link>
           </p>
         </div>
         <StatusBadge status={OFFER_STATUS[offer.status]} />
       </header>
 
       <TrustBadge
-        name={isOwner ? offer.proposer.name : offer.post.seller.name}
-        isVerified={isOwner ? offer.proposer.isVerified : offer.post.seller.isVerified}
-        faculty={isOwner ? offer.proposer.faculty : offer.post.seller.faculty}
-        year={isOwner ? offer.proposer.year : offer.post.seller.year}
+        name={sides.counterparty.name}
+        isVerified={sides.counterparty.isVerified}
+        faculty={sides.counterparty.faculty}
+        year={sides.counterparty.year}
       />
+
+      {/* The deal in one sentence, above the bench rather than below it. This
+          is the plain-language answer to "who gives what"; it has no business
+          sitting under two item grids where it needs scrolling to reach. */}
+      <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+        {describeOffer(sides)}
+      </p>
 
       {/* The bench, read-only. Sides are labelled from the viewer's
           perspective, so "You give" always means what leaves your hands. */}
       <TradeBench
         inventory={[]}
-        offered={isOwner ? wanted : offered}
-        onOfferedChange={() => {}}
-        wanted={isOwner ? offered : wanted}
-        additionalMoney={offer.additional_money}
+        youGet={sides.youGet.map(toSlot)}
+        youGive={sides.youGive.map(toSlot)}
+        onYouGiveChange={() => {}}
+        additionalMoney={sides.money}
         onAdditionalMoneyChange={() => {}}
+        moneyDirection={sides.moneyDirection}
+        counterpartyName={sides.counterparty.name}
         minSlots={0}
         isReadOnly
       />
@@ -118,7 +137,13 @@ export function OfferReview({
                     <Button
                       isLoading={busy}
                       onPress={() =>
-                        respond("Offer accepted. A chat room has been opened for you.", "/deals/504")
+                        // UI mock: accepting returns a new transaction id. 5 is
+                        // the fixture trade where the viewer is the seller, so
+                        // this lands in a room rather than on a 404.
+                        respond(
+                          "Offer accepted. A chat room has been opened for you.",
+                          "/history/5",
+                        )
                       }
                     >
                       Confirm acceptance

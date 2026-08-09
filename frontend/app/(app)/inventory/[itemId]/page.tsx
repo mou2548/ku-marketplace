@@ -86,7 +86,7 @@ export default async function ItemDetailPage({
             <ul className="mt-3 grid grid-cols-4 gap-2">
               {item.images.map((img) => (
                 <li key={img.image_id}>
-                  <Surface shape="slot" elevation="flat" className="overflow-hidden">
+                  <Surface shape="slot" elevation="sunken" fill="sunken" className="overflow-hidden">
                     <PostImage
                       src={img.image_url}
                       alt=""
@@ -112,7 +112,7 @@ export default async function ItemDetailPage({
               </span>
             </div>
 
-            <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em] sm:text-[1.875rem]">
+            <h1 className="text-display">
               {item.name}
             </h1>
           </div>
@@ -168,7 +168,7 @@ export default async function ItemDetailPage({
             <Surface
               shape="card"
               elevation="flat"
-              className="flex flex-col gap-3 bg-brand-subtle p-4"
+              className="flex flex-col gap-3 bg-brand-subtle border-l-4 border-l-brand p-4"
             >
               <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
                 This item is not listed. Nobody can see it but you, and it can

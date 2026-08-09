@@ -84,7 +84,7 @@ export function buildInbox(
     const entry: InboxEntry = {
       kind: "transaction",
       id: tx.transaction_id,
-      href: `/deals/${tx.transaction_id}`,
+      href: `/history/${tx.transaction_id}`,
       title: tx.post.item.name,
       prompt,
       deadline: deadlineFor(tx),

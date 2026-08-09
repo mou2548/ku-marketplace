@@ -72,7 +72,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           instructions and show their QR — a broadcast, not a conversation. */}
       <Surface
         shape="card"
-        elevation="flat"
+        elevation="raised"
         className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
       >
         <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">

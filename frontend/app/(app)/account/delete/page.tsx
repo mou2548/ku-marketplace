@@ -40,7 +40,7 @@ export default function DeleteAccountPage() {
       <Surface
         shape="card"
         elevation="flat"
-        className="flex gap-3 bg-tone-danger-bg p-4"
+        className="flex gap-3 bg-tone-danger-bg border-l-4 border-l-tone-danger-solid p-4"
       >
         <AlertTriangle
           aria-hidden

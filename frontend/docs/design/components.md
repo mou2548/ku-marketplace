@@ -20,6 +20,32 @@ Status: `tsc` clean, `eslint` clean, `next build` green.
    traps. The keyboard path is not optional.
 4. **Mobile is the base.** Write the 360px layout first, then `sm:` / `md:` / `lg:`.
 5. **Server Components by default.** `"use client"` only where interaction requires it.
+6. **Elevation is decided by role, not by taste.** See the table below.
+
+### Elevation by role
+
+CLAUDE.md §3 opens with "The old UI failed because it was *flat*", and an audit
+found `elevation="flat"` was the most-used value in the codebase — 22 call
+sites against 3 for `floating`. The tokens were all there; the screens were not
+spending them. A surface picks its elevation from what it *is*:
+
+| Role | Elevation | Fill |
+|---|---|---|
+| The page itself | — | `--bg-page` |
+| A container sitting directly on the page | `raised` | `surface`, or `plate` on a game surface |
+| A rail or summary panel | `raised` | `plate` + `noise` |
+| A row or cell nested inside another surface | `flat` or `sunken` | `sunken` |
+| A tinted inline notice (`bg-tone-*-bg`) | `flat` + a 2px tone left rail | the tone wash |
+| A well an item drops into | `sunken` | `sunken` |
+| Dialog, sheet, popover, toast | `floating` / `--shadow-overlay` | `surface` |
+
+A tinted notice is the one case that stays flat on purpose: a wash already
+separates it from the page, and giving it a shadow as well makes it read as a
+card the user can act on. It gets a tone-coloured left rail instead, so it is
+annotated rather than blank.
+
+**Texture** (§3.3): `noise` belongs on game and rail surfaces — never behind
+body text. `texture-grid` belongs on heroes, banners, and empty states.
 
 Client components in this set: `button`, `field`, `countdown-pill`,
 `inventory-slot`, `trade-bench`, `overlay`, `qr-ticket`, `appointment-card`, `slip`.

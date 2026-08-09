@@ -20,6 +20,5 @@ export default async function OfferPage({
   const offer = offers.find((o) => o.offer_id === Number(offerId));
   if (!offer) notFound();
 
-  const isOwner = offer.post.seller.user_id === VIEWER_ID;
-  return <OfferReview offer={offer} isOwner={isOwner} />;
+  return <OfferReview offer={offer} viewerId={VIEWER_ID} />;
 }

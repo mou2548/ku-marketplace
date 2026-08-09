@@ -79,7 +79,7 @@ export function ReportForm({
               <CountdownPill deadline={deadline} />
             </div>
           ) : null}
-          <LinkButton variant="secondary" href={`/deals/${transactionId}`}>
+          <LinkButton variant="secondary" href={`/history/${transactionId}`}>
             Back to the chat
           </LinkButton>
         </Surface>
@@ -93,7 +93,7 @@ export function ReportForm({
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
     toast.show("Report submitted. An admin will review it and let you know.");
-    router.push(`/deals/${transactionId}`);
+    router.push(`/history/${transactionId}`);
   }
 
   return (

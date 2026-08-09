@@ -41,6 +41,18 @@ export default async function PostDetailPage({
   if (post.item.course_name) specs.push(["Course code", post.item.course_name]);
   if (post.item.brand_model) specs.push(["Model", post.item.brand_model]);
   if (post.item.size) specs.push(["Size", post.item.size]);
+  // Remaining warranty is a reason to buy and the inventory screen already
+  // showed it; the buyer is the one it actually matters to.
+  if (post.item.warranty_expiry) {
+    specs.push([
+      "Warranty until",
+      new Date(post.item.warranty_expiry).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    ]);
+  }
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
@@ -85,7 +97,7 @@ export default async function PostDetailPage({
             </span>
           </div>
 
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em] sm:text-[1.875rem]">
+          <h1 className="text-display">
             {post.item.name}
           </h1>
 
@@ -124,7 +136,7 @@ export default async function PostDetailPage({
           <Surface
             shape="card"
             elevation="flat"
-            className="flex gap-3 bg-tone-trade-bg p-4"
+            className="flex gap-3 bg-tone-trade-bg border-l-4 border-l-tone-trade-solid p-4"
           >
             <Package aria-hidden className="mt-0.5 size-5 shrink-0 text-tone-trade-fg" />
             <div>

@@ -1,14 +1,9 @@
-import {
-  getMyTickets,
-  getOffers,
-  getTransactions,
-  VIEWER_ID,
-} from "@/lib/api/fixtures";
+import { getMyTickets, getTransactions, VIEWER_ID } from "@/lib/api/fixtures";
 
-import { DealsList } from "./deals-list";
+import { HistoryList } from "./history-list";
 
 /**
- * E8 — deals and history in one place.
+ * E8 — history in one place.
  *
  * The old app had `/chat`, `/history`, and `/trade/[id]` as three unrelated
  * destinations for the same objects. History is not a place; it is a filter on
@@ -18,23 +13,21 @@ import { DealsList } from "./deals-list";
  *
  * Revised 2026-08-07: a giveaway you entered is a commitment with a progress
  * state exactly like a purchase, and it was previously only visible on the
- * giveaway page. Everything a student has going on now lands here — purchases,
- * trades, offers, and giveaway entries — because "where do I see all my
- * activity" should have one answer.
+ * giveaway page, so it lands here too. Offers went the other way — they were
+ * duplicated from `/offers` and are now only there, because an offer is not a
+ * deal until it is accepted.
  */
-export const metadata = { title: "Deals - KU Marketplace" };
+export const metadata = { title: "History - KU Marketplace" };
 
 export default async function DealsPage() {
-  const [transactions, offers, tickets] = await Promise.all([
+  const [transactions, tickets] = await Promise.all([
     getTransactions(),
-    getOffers(),
     getMyTickets(),
   ]);
 
   return (
-    <DealsList
+    <HistoryList
       transactions={transactions}
-      offers={offers}
       tickets={tickets}
       viewerId={VIEWER_ID}
     />

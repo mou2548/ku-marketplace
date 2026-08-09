@@ -2,18 +2,18 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Gift, Handshake, MessagesSquare, Store } from "lucide-react";
+import { Handshake, MessagesSquare, Store } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TONE_WASH } from "@/components/kit/tone";
-import type { GiveawayTicket, Offer, Transaction } from "@/lib/api/types";
+import type { GiveawayTicket, Transaction } from "@/lib/api/types";
 import { deadlineFor } from "@/lib/inbox";
 import {
-  OFFER_STATUS,
   resolveTransactionActor,
   TICKET_STATUS,
   TRANSACTION_STATUS,
@@ -31,6 +31,11 @@ import { cn } from "@/lib/utils";
  * A record you cannot find is not a record, so cancelled and refunded deals are
  * as visible as completed ones — those are exactly the ones people come looking
  * for.
+ *
+ * Offers are deliberately absent. They had a section here as well as a whole
+ * tab of their own at `/offers`, so the same row appeared twice with different
+ * actions attached. An offer is not yet a deal; it lives in the inbox until it
+ * becomes one.
  */
 
 type Lens = "all" | "buying" | "selling";
@@ -52,14 +57,12 @@ const STATUSES: StatusFilter[] = [
   "Refunded",
 ];
 
-export function DealsList({
+export function HistoryList({
   transactions,
-  offers,
   tickets,
   viewerId,
 }: {
   transactions: Transaction[];
-  offers: Offer[];
   tickets: GiveawayTicket[];
   viewerId: number;
 }) {
@@ -149,12 +152,19 @@ export function DealsList({
                   <Surface
                     as="div"
                     shape="card"
-                    elevation="flat"
+                    elevation="raised"
                     interactive
                     className="flex items-center gap-3 p-4"
                   >
-                    <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-gold-100 text-gold-600">
-                      <Gift aria-hidden className="size-4" />
+                    {/* The photo the giveaway already carries, rather than a
+                        generic gift icon on every row. */}
+                    <span className="block w-14 shrink-0 overflow-hidden rounded-slot">
+                      <PostImage
+                        src={ticket.giveaway.images[0]?.image_url}
+                        alt=""
+                        aspectRatio={1}
+                        sizes="56px"
+                      />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">
@@ -174,49 +184,6 @@ export function DealsList({
         </section>
       ) : null}
 
-      {offers.length > 0 ? (
-        <section className="flex flex-col gap-2 border-t border-line pt-5">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[1.125rem] font-semibold">Offers</h2>
-            <Link
-              href="/offers"
-              className="text-[0.875rem] font-medium text-ink-brand hover:underline"
-            >
-              See all
-            </Link>
-          </div>
-          <ul className="flex flex-col gap-2">
-            {offers.map((offer) => (
-              <li key={offer.offer_id}>
-                <Link href={`/offers/${offer.offer_id}`}>
-                  <Surface
-                    as="div"
-                    shape="card"
-                    elevation="flat"
-                    interactive
-                    className="flex items-center gap-3 p-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">
-                        {offer.post.item.name}
-                      </p>
-                      <p className="truncate text-[0.8125rem] text-ink-muted">
-                        {offer.proposer_id === viewerId
-                          ? `You offered ${offer.items.length} items`
-                          : `${offer.proposer.name} offered ${offer.items.length} items`}
-                        {offer.additional_money > 0
-                          ? ` + ฿${offer.additional_money.toLocaleString("en-GB")}`
-                          : ""}
-                      </p>
-                    </div>
-                    <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />
-                  </Surface>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </div>
   );
 }
@@ -234,7 +201,7 @@ function Filters({
 }) {
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="text-[0.6875rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+      <legend className="text-overline text-ink-muted uppercase">
         {label}
       </legend>
       <div className="flex flex-wrap gap-1.5">
@@ -294,11 +261,39 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
   return (
     <Surface shape="card" className="flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-semibold">{tx.post.item.name}</p>
-          <p className="truncate text-[0.8125rem] text-ink-muted">
-            {viewer === "buyer" ? "Bought from" : "Sold to"} {other.name}
-          </p>
+        {/* A row of pure type is unreadable at a glance in a product where
+            every record has a photograph attached to it. */}
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <Link
+            href={`/market/${tx.post_id}`}
+            aria-hidden
+            tabIndex={-1}
+            className="block w-16 shrink-0 overflow-hidden rounded-slot"
+          >
+            <PostImage
+              src={
+                tx.post.item.images.find((i) => i.is_primary)?.image_url ??
+                tx.post.item.images[0]?.image_url
+              }
+              alt=""
+              aspectRatio={1}
+              sizes="64px"
+            />
+          </Link>
+
+          <div className="min-w-0">
+            {/* The item was a dead string; it is the one thing on the row a
+                student wants to open. */}
+            <Link
+              href={`/market/${tx.post_id}`}
+              className="block truncate font-semibold hover:underline"
+            >
+              {tx.post.item.name}
+            </Link>
+            <p className="truncate text-[0.8125rem] text-ink-muted">
+              {viewer === "buyer" ? "Bought from" : "Sold to"} {other.name}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -337,7 +332,7 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
         <LinkButton
           variant="secondary"
           size="sm"
-          href={`/deals/${tx.transaction_id}`}
+          href={`/history/${tx.transaction_id}`}
         >
           <MessagesSquare className="size-4" />
           Go to chat

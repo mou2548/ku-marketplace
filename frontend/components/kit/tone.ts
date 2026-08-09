@@ -41,6 +41,16 @@ export const TONE_TEXT: Record<Tone, string> = {
   trade: "text-tone-trade-fg",
 };
 
+/** A solid left rail — the per-sender accent on a group chat bubble. */
+export const TONE_RAIL_LEFT: Record<Tone, string> = {
+  neutral: "border-l-tone-neutral-solid",
+  info: "border-l-tone-info-solid",
+  success: "border-l-tone-success-solid",
+  warning: "border-l-tone-warning-solid",
+  danger: "border-l-tone-danger-solid",
+  trade: "border-l-tone-trade-solid",
+};
+
 export const TONE_DOT: Record<Tone, string> = {
   neutral: "bg-tone-neutral-solid",
   info: "bg-tone-info-solid",

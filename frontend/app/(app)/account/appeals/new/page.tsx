@@ -35,7 +35,7 @@ export default function NewAppealPage() {
         Submit an appeal
       </h1>
 
-      <Surface shape="card" elevation="flat" className="bg-tone-info-bg p-4">
+      <Surface shape="card" elevation="flat" className="bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
         <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
           A different admin from the one who made the original decision reviews
           your appeal. Say what the decision got wrong and what evidence has not

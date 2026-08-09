@@ -24,7 +24,7 @@ export function DealQr({
       <LinkButton
         variant="ghost"
         size="sm"
-        href={`/deals/${transactionId}`}
+        href={`/history/${transactionId}`}
         className="self-start"
       >
         <ArrowLeft className="size-4" />

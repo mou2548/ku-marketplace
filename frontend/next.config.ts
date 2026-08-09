@@ -24,7 +24,10 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // --- Auth ---
-      { source: "/auth/register", destination: "/register", permanent: true },
+      // Registering is a tab on /login now, not a route: two URLs rendering the
+      // same shell meant a full navigation to move between two adjacent forms.
+      { source: "/register", destination: "/login", permanent: true },
+      { source: "/auth/register", destination: "/login", permanent: true },
       { source: "/auth/otp/verify", destination: "/verify", permanent: true },
       { source: "/auth/forgot", destination: "/forgot", permanent: true },
       { source: "/auth/reset", destination: "/reset", permanent: true },
@@ -52,42 +55,45 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
 
-      // --- Deals: twelve routes collapse into one screen (D1) ---
+      // --- History: twelve routes collapse into one screen (D1) ---
+      // The screen is called History now, and so is its URL. /deals was the
+      // name for one afternoon; anything already sent keeps working.
+      { source: "/deals", destination: "/history", permanent: true },
+      { source: "/deals/:path*", destination: "/history/:path*", permanent: true },
       // /chat is a real screen again: the unified inbox. The old per-trade
       // chat URL points at the deal, which now redirects into its room.
-      { source: "/chat/:tradeId/target", destination: "/deals/:tradeId", permanent: true },
-      { source: "/history", destination: "/deals", permanent: true },
-      { source: "/trade/qr", destination: "/deals", permanent: true },
-      { source: "/trade/:tradeId", destination: "/deals/:tradeId", permanent: true },
-      { source: "/trade/:tradeId/payment", destination: "/deals/:tradeId", permanent: true },
+      { source: "/chat/:tradeId/target", destination: "/history/:tradeId", permanent: true },
+      { source: "/trade/qr", destination: "/history", permanent: true },
+      { source: "/trade/:tradeId", destination: "/history/:tradeId", permanent: true },
+      { source: "/trade/:tradeId/payment", destination: "/history/:tradeId", permanent: true },
       {
         source: "/trade/:tradeId/payment/review",
-        destination: "/deals/:tradeId",
+        destination: "/history/:tradeId",
         permanent: true,
       },
-      { source: "/trade/:tradeId/shipping", destination: "/deals/:tradeId", permanent: true },
+      { source: "/trade/:tradeId/shipping", destination: "/history/:tradeId", permanent: true },
       {
         source: "/trade/:tradeId/shipping/confirm",
-        destination: "/deals/:tradeId",
+        destination: "/history/:tradeId",
         permanent: true,
       },
-      { source: "/trade/:tradeId/cancel", destination: "/deals/:tradeId", permanent: true },
+      { source: "/trade/:tradeId/cancel", destination: "/history/:tradeId", permanent: true },
       {
         source: "/trade/:tradeId/cancel/request",
-        destination: "/deals/:tradeId",
+        destination: "/history/:tradeId",
         permanent: true,
       },
       {
         source: "/trade/:tradeId/cancel/respond",
-        destination: "/deals/:tradeId",
+        destination: "/history/:tradeId",
         permanent: true,
       },
-      { source: "/trade/:tradeId/success", destination: "/deals/:tradeId", permanent: true },
-      { source: "/trade/:tradeId/qr", destination: "/deals/:tradeId/qr", permanent: true },
-      { source: "/trade/:tradeId/scan", destination: "/deals/:tradeId/scan", permanent: true },
+      { source: "/trade/:tradeId/success", destination: "/history/:tradeId", permanent: true },
+      { source: "/trade/:tradeId/qr", destination: "/history/:tradeId/qr", permanent: true },
+      { source: "/trade/:tradeId/scan", destination: "/history/:tradeId/scan", permanent: true },
 
       // --- Moderation ---
-      { source: "/disputes", destination: "/deals", permanent: true },
+      { source: "/disputes", destination: "/history", permanent: true },
       { source: "/appeals/new", destination: "/account/appeals/new", permanent: true },
 
       // --- Giveaway ---

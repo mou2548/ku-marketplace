@@ -178,9 +178,15 @@ as check marks and coloured squares in tables and headings — write "done" or
 ## 10. Workflow rules
 
 1. **Propose a plan before editing code.** Every time, no exceptions.
-2. **Commits are allowed. Pushing requires explicit permission — always ask first.**
-3. Never commit `.claude/`, `CLAUDE.md`, or anything under `fornewdesign/`.
-4. Never add an AI assistant as a commit author, co-author, or trailer.
-5. **When the context budget runs low, stop and say so.** Do not rush to finish a
+2. **Never guess. Ask.** If anything is unclear — which screen is meant, which
+   behaviour is wanted, which value is correct, which file to touch — stop and
+   ask the user. Do not infer it from context, do not pick the likeliest option,
+   do not proceed on an assumption and flag it afterwards. A question costs a
+   minute; a wrong assumption costs a rewrite. This outranks any instinct to keep
+   momentum.
+3. **Commits are allowed. Pushing requires explicit permission — always ask first.**
+4. Never commit `.claude/`, `CLAUDE.md`, or anything under `fornewdesign/`.
+5. Never add an AI assistant as a commit author, co-author, or trailer.
+6. **When the context budget runs low, stop and say so.** Do not rush to finish a
    phase with the remaining tokens; the user decides whether to continue.
-6. Work one phase at a time. Report what changed at the end of each.
+7. Work one phase at a time. Report what changed at the end of each.

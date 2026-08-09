@@ -182,28 +182,34 @@
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.
-     Maps Item.condition: New | Good | Acceptable | Poor.
+     Maps all five Item.condition grades:
+     New | Very Good | Good | Acceptable | Poor.
+
+     One ramp, green to red, strictly monotonic. The first pass put New on
+     gold and Poor on amber, with Very Good lighter than Good — so the worse
+     grade looked better and the worst grade read as "caution" rather than
+     "worn". Hue now carries the grade and nothing else does.
      -------------------------------------------------------------------- */
-  --rarity-new-edge: var(--gold-400);
-  --rarity-new-glow: rgb(216 169 58 / 0.35);
-  --rarity-new-fg: var(--gold-600);
+  --rarity-new-edge: var(--green-600);
+  --rarity-new-glow: rgb(46 143 90 / 0.32);
+  --rarity-new-fg: var(--green-700);
 
   /* Very Good sits between New and Good — the seed's fifth grade. */
   --rarity-verygood-edge: var(--green-400);
-  --rarity-verygood-glow: rgb(107 202 150 / 0.32);
+  --rarity-verygood-glow: rgb(107 202 150 / 0.30);
   --rarity-verygood-fg: var(--green-700);
 
-  --rarity-good-edge: var(--green-500);
-  --rarity-good-glow: rgb(58 181 114 / 0.30);
-  --rarity-good-fg: var(--green-700);
+  --rarity-good-edge: var(--amber-400);
+  --rarity-good-glow: rgb(240 156 0 / 0.26);
+  --rarity-good-fg: var(--amber-700);
 
-  --rarity-acceptable-edge: var(--gray-400);
-  --rarity-acceptable-glow: rgb(148 160 154 / 0.28);
-  --rarity-acceptable-fg: var(--gray-600);
+  --rarity-acceptable-edge: var(--amber-600);
+  --rarity-acceptable-glow: rgb(189 123 0 / 0.24);
+  --rarity-acceptable-fg: var(--amber-800);
 
-  --rarity-poor-edge: var(--amber-600);
-  --rarity-poor-glow: rgb(189 123 0 / 0.24);
-  --rarity-poor-fg: var(--amber-800);
+  --rarity-poor-edge: var(--rose-500);
+  --rarity-poor-glow: rgb(190 50 75 / 0.26);
+  --rarity-poor-fg: var(--rose-600);
 }
 
 /* =========================================================================
@@ -444,6 +450,57 @@
   --color-tone-trade-fg: var(--tone-trade-fg);
   --color-tone-trade-solid: var(--tone-trade-solid);
 
+  /* The type scale, as utilities. It was defined in :root but never exposed
+     here, so `text-display` was not a class anybody could write — which is why
+     every call site spells out four literal classes and why the two display
+     sizes went unused. `text-display` now carries size, leading, tracking and
+     weight in one token, per the Tailwind v4 --text-*--* convention above. */
+  --text-display-lg: var(--text-display-lg);
+  --text-display-lg--line-height: var(--text-display-lg--line-height);
+  --text-display-lg--letter-spacing: var(--text-display-lg--letter-spacing);
+  --text-display-lg--font-weight: var(--text-display-lg--font-weight);
+
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--text-display--line-height);
+  --text-display--letter-spacing: var(--text-display--letter-spacing);
+  --text-display--font-weight: var(--text-display--font-weight);
+
+  --text-h1: var(--text-h1);
+  --text-h1--line-height: var(--text-h1--line-height);
+  --text-h1--letter-spacing: var(--text-h1--letter-spacing);
+  --text-h1--font-weight: var(--text-h1--font-weight);
+
+  --text-h2: var(--text-h2);
+  --text-h2--line-height: var(--text-h2--line-height);
+  --text-h2--letter-spacing: var(--text-h2--letter-spacing);
+  --text-h2--font-weight: var(--text-h2--font-weight);
+
+  --text-h3: var(--text-h3);
+  --text-h3--line-height: var(--text-h3--line-height);
+  --text-h3--letter-spacing: var(--text-h3--letter-spacing);
+  --text-h3--font-weight: var(--text-h3--font-weight);
+
+  --text-body-lg: var(--text-body-lg);
+  --text-body-lg--line-height: var(--text-body-lg--line-height);
+  --text-body-lg--font-weight: var(--text-body-lg--font-weight);
+
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--text-body--line-height);
+  --text-body--font-weight: var(--text-body--font-weight);
+
+  --text-body-sm: var(--text-body-sm);
+  --text-body-sm--line-height: var(--text-body-sm--line-height);
+  --text-body-sm--font-weight: var(--text-body-sm--font-weight);
+
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--text-caption--line-height);
+  --text-caption--font-weight: var(--text-caption--font-weight);
+
+  --text-overline: var(--text-overline);
+  --text-overline--line-height: var(--text-overline--line-height);
+  --text-overline--letter-spacing: var(--text-overline--letter-spacing);
+  --text-overline--font-weight: var(--text-overline--font-weight);
+
   --radius-slot: var(--radius-slot);
   --radius-control: var(--radius-control);
   --radius-chip: var(--radius-chip);
@@ -456,6 +513,15 @@
   --shadow-floating: var(--shadow-floating);
   --shadow-overlay: var(--shadow-overlay);
   --shadow-sunken: var(--shadow-sunken);
+  /* Reachable as `shadow-rarity` so anything that carries a condition — a slot,
+     a feed card — can take the edge without the [box-shadow:…] escape hatch. */
+  --shadow-rarity: var(--shadow-rarity);
+
+  --color-rarity-new: var(--rarity-new-edge);
+  --color-rarity-verygood: var(--rarity-verygood-edge);
+  --color-rarity-good: var(--rarity-good-edge);
+  --color-rarity-acceptable: var(--rarity-acceptable-edge);
+  --color-rarity-poor: var(--rarity-poor-edge);
 
   --ease-out: var(--ease-out);
   --ease-spring: var(--ease-spring);

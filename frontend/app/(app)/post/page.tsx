@@ -15,15 +15,29 @@ export const metadata = { title: "Post something - KU Marketplace" };
  * Then the first fix only got halfway — it listed your items but bounced you
  * into a second screen to actually publish. So this is one page: pick what you
  * own, set the terms, publish, done.
+ *
+ * Giveaways arrive here for the same reason. `/giveaway/new` was a third form
+ * that ignored the inventory entirely; `?type=giveaway` now opens this screen
+ * with that kind preselected. Read on the server, so no client hook and no
+ * Suspense boundary is needed for a query string.
  */
-export default async function PostPage() {
-  const [items, posts] = await Promise.all([getMyItems(), getPosts()]);
+export default async function PostPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const [{ type }, items, posts] = await Promise.all([
+    searchParams,
+    getMyItems(),
+    getPosts(),
+  ]);
   const listedItemIds = new Set(posts.map((p) => p.item_id));
 
   return (
     <PostComposer
       items={items.filter((i) => i.status !== "Transferred")}
       listedItemIds={[...listedItemIds]}
+      initialKind={type === "giveaway" ? "Giveaway" : "SellOnly"}
     />
   );
 }

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { MasonryGrid, MasonryItem } from "@/components/kit/masonry-grid";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostCard } from "@/components/kit/post-card";
+import { Surface } from "@/components/kit/surface";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
 import type { ItemCategory, Post } from "@/lib/api/types";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
@@ -32,7 +33,7 @@ type Segment = "all" | "sell" | "trade";
 
 const SEGMENTS: Array<{ id: Segment; label: string }> = [
   { id: "all", label: "All" },
-  { id: "sell", label: "Buy and sell" },
+  { id: "sell", label: "Sell" },
   { id: "trade", label: "Trade" },
 ];
 
@@ -90,7 +91,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   const filterControls = (
     <div className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-[0.6875rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+        <legend className="mb-1 text-overline text-ink-muted uppercase">
           Category
         </legend>
         <div className="flex flex-wrap gap-1.5">
@@ -107,7 +108,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-[0.6875rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+        <legend className="mb-1 text-overline text-ink-muted uppercase">
           Condition
         </legend>
         <div className="flex flex-wrap gap-1.5">
@@ -196,7 +197,19 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
       </div>
 
       <div className="flex gap-6">
-        <aside className="hidden w-64 shrink-0 lg:block xl:w-72">{filterControls}</aside>
+        {/* The rail was bare chips on the page background — the exact "lone
+            hairline, no depth" failure CLAUDE.md §3.1 names. It is a panel. */}
+        <aside className="hidden w-64 shrink-0 lg:block xl:w-72">
+          <Surface
+            as="div"
+            shape="panel"
+            fill="plate"
+            noise
+            className="sticky top-20 p-4"
+          >
+            {filterControls}
+          </Surface>
+        </aside>
 
         <div className="min-w-0 flex-1">
           {filtered.length === 0 ? (

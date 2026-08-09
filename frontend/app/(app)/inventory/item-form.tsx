@@ -3,6 +3,10 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import {
+  parseDate,
+  type DateValue,
+} from "@internationalized/date";
 import { ImagePlus, Save, X } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
@@ -12,29 +16,34 @@ import {
   SelectField,
   SelectOption,
 } from "@/components/kit/choice";
+import { DatePickerField } from "@/components/kit/date-picker";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import type { Item, ItemCategory } from "@/lib/api/types";
+import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 
 /**
- * Suggestions, not a closed taxonomy: `init.sql` stores readable category
- * names and the design document lists different slugs. The field accepts what
- * the database already contains.
+ * Best first, worst last — the order the rarity ramp runs in, so the colour of
+ * the border a student is choosing goes one way down the list.
  */
-const CATEGORY_OPTIONS = [
-  "Books",
-  "Clothing",
-  "Electronics",
-  "Home & Living",
-  "Bags",
-  "Vehicles",
-  "Sports",
-  "Stationery",
-  "Tickets",
-  "Other",
+const CONDITION_ORDER: ItemCondition[] = [
+  "New",
+  "Very Good",
+  "Good",
+  "Acceptable",
+  "Poor",
 ];
+
+/** What each grade means, in the words a seller has to be honest in. */
+const CONDITION_HINT: Record<ItemCondition, string> = {
+  New: "Never used, tags or seal still on",
+  "Very Good": "Used a handful of times, nothing you would point out",
+  Good: "Used, works perfectly, no visible damage",
+  Acceptable: "Works fine, but clearly shows its use",
+  Poor: "Has faults worth declaring: cracks, noise, missing parts",
+};
 
 /**
  * One form, two modes. Create and edit differ only in their starting values and
@@ -70,16 +79,23 @@ export function ItemForm({
   const [courseName, setCourseName] = useState(item?.course_name ?? "");
   const [brandModel, setBrandModel] = useState(item?.brand_model ?? "");
   const [size, setSize] = useState(item?.size ?? "");
+  const [warranty, setWarranty] = useState<DateValue | null>(
+    item?.warranty_expiry ? parseDate(item.warranty_expiry.slice(0, 10)) : null,
+  );
   const [previews, setPreviews] = useState<string[]>(
     item?.images.map((i) => i.image_url) ?? [],
   );
   const [busy, setBusy] = useState(false);
 
-  // Category-specific fields, per the schema's optional columns. Showing all of
-  // them all the time is how a six-field form becomes a ten-field wall.
-  const needsCourse = category === "books" || category === "stationery";
-  const needsBrand = category === "electronics" || category === "specialized";
-  const needsSize = category === "clothing";
+  // Category-specific fields, per the schema's optional columns (lib/categories.ts).
+  // Showing all of them all the time is how a six-field form becomes a
+  // ten-field wall; showing none of them, which is what the previous
+  // lowercase-slug comparison did against a picker that emits "Books", is
+  // worse — a shirt could not record its size at all.
+  const needsCourse = hasExtraField(category, "course_name");
+  const needsBrand = hasExtraField(category, "brand_model");
+  const needsWarranty = hasExtraField(category, "warranty_expiry");
+  const needsSize = hasExtraField(category, "size");
 
   const canSave = name.trim().length > 0 && Number(quantity) > 0;
 
@@ -202,10 +218,28 @@ export function ItemForm({
         />
       ) : null}
 
-      {needsSize ? (
-        <TextInput label="Size" value={size} onChange={setSize} placeholder="M" />
+      {needsWarranty ? (
+        <DatePickerField
+          label="Warranty expires"
+          value={warranty}
+          onChange={setWarranty}
+          hint="Leave empty if it is out of warranty or never had one"
+        />
       ) : null}
 
+      {needsSize ? (
+        <TextInput
+          label="Size"
+          value={size}
+          onChange={setSize}
+          placeholder="e.g. M, 42, or 15 inch"
+          hint="Whatever the label says. This is the question every buyer asks first."
+        />
+      ) : null}
+
+      {/* Rendered from the map rather than hand-written, which is how this
+          form came to offer four grades while the market filtered on five —
+          "Very Good" was missing, and it is the grade the seed uses most. */}
       <RadioGroupField
         label="Condition"
         value={condition}
@@ -213,18 +247,11 @@ export function ItemForm({
         variant="card"
         hint="Condition shows as the border colour of the item, in your inventory and in the market. Be honest and the meetup goes smoothly."
       >
-        <Radio value="New" description="Never used, tags or seal still on">
-          {ITEM_CONDITION.New.label}
-        </Radio>
-        <Radio value="Good" description="Used, works perfectly, no visible damage">
-          {ITEM_CONDITION.Good.label}
-        </Radio>
-        <Radio value="Acceptable" description="Works fine, but clearly shows its use">
-          {ITEM_CONDITION.Acceptable.label}
-        </Radio>
-        <Radio value="Poor" description="Has faults worth declaring: cracks, noise, missing parts">
-          {ITEM_CONDITION.Poor.label}
-        </Radio>
+        {CONDITION_ORDER.map((value) => (
+          <Radio key={value} value={value} description={CONDITION_HINT[value]}>
+            {ITEM_CONDITION[value].label}
+          </Radio>
+        ))}
       </RadioGroupField>
 
       <TextAreaField

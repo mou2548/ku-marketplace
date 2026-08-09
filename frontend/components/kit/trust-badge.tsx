@@ -16,9 +16,27 @@ export interface TrustBadgeProps {
   faculty?: string | null;
   year?: number | null;
   avatarUrl?: string | null;
-  size?: "sm" | "md";
+  /**
+   * `lg` stacks the avatar above the name and is for the one screen where the
+   * person is the subject rather than an attribution — the account rail. At
+   * `sm` and `md` the badge stays inline, because everywhere else it is a
+   * caption on something else.
+   */
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
+
+const AVATAR_SIZE: Record<NonNullable<TrustBadgeProps["size"]>, string> = {
+  sm: "size-6 text-[0.6875rem]",
+  md: "size-9 text-[0.8125rem]",
+  lg: "size-16 text-[1.25rem]",
+};
+
+const NAME_SIZE: Record<NonNullable<TrustBadgeProps["size"]>, string> = {
+  sm: "text-[0.75rem]",
+  md: "text-[0.875rem]",
+  lg: "text-[1.25rem] leading-[1.3] font-semibold",
+};
 
 export function TrustBadge({
   name,
@@ -31,14 +49,21 @@ export function TrustBadge({
 }: TrustBadgeProps) {
   const initials = name.trim().slice(0, 2);
   const meta = [faculty, year ? `Year ${year}` : null].filter(Boolean).join(" · ");
+  const stacked = size === "lg";
 
   return (
-    <span className={cn("flex items-center gap-2", className)}>
+    <span
+      className={cn(
+        "flex",
+        stacked ? "flex-col items-start gap-3" : "items-center gap-2",
+        className,
+      )}
+    >
       <span
         aria-hidden
         className={cn(
           "grid shrink-0 place-items-center overflow-hidden rounded-pill bg-brand-subtle font-semibold text-ink-brand",
-          size === "sm" ? "size-6 text-[0.6875rem]" : "size-9 text-[0.8125rem]",
+          AVATAR_SIZE[size],
         )}
         style={
           avatarUrl
@@ -49,11 +74,11 @@ export function TrustBadge({
         {avatarUrl ? null : initials}
       </span>
 
-      <span className="flex min-w-0 flex-col">
+      <span className={cn("flex min-w-0 flex-col", stacked && "gap-1")}>
         <span
           className={cn(
             "flex items-center gap-1 truncate font-medium",
-            size === "sm" ? "text-[0.75rem]" : "text-[0.875rem]",
+            NAME_SIZE[size],
           )}
         >
           {name}
@@ -63,15 +88,24 @@ export function TrustBadge({
                 aria-hidden
                 className={cn(
                   "shrink-0 text-brand",
-                  size === "sm" ? "size-3.5" : "size-4",
+                  size === "sm" && "size-3.5",
+                  size === "md" && "size-4",
+                  stacked && "size-5",
                 )}
               />
               <span className="sr-only">Verified with a KU email address</span>
             </>
           ) : null}
         </span>
-        {meta && size === "md" ? (
-          <span className="truncate text-[0.75rem] leading-[1.4] text-ink-muted">
+        {meta && size !== "sm" ? (
+          <span
+            className={cn(
+              "truncate text-ink-muted",
+              stacked
+                ? "text-[0.875rem] leading-[1.65]"
+                : "text-[0.75rem] leading-[1.4]",
+            )}
+          >
             {meta}
           </span>
         ) : null}

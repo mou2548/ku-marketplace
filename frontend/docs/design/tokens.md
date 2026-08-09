@@ -108,7 +108,31 @@ one place to change, 24 enum values, zero raw enum strings in JSX.
 
 Every `*-fg` on its own `*-bg` clears 4.5:1.
 
-### Mapping to be implemented in `lib/status.ts`
+### Severity contract
+
+A tone is a severity, not a mood. The rule is written out in full at the top of
+`lib/status.ts` and every table there is judged against it:
+
+| Tone | Means |
+|---|---|
+| danger | Terminal failure, or a state that costs the viewer something |
+| warning | Waiting on a human, or a clock running down |
+| info | The system is moving and nobody is blocked |
+| success | A good outcome that has actually happened |
+| neutral | A no-op: archived, or ended by the viewer's own choice with nothing lost |
+| trade | A category accent, never a severity |
+
+Two consequences worth stating, because the first pass got both wrong:
+availability is not success (an open giveaway has achieved nothing yet), and
+money returned is not failure (a refunded deal is simply over).
+
+`StatusBadge` defaults to `variant="auto"`, which paints **danger solid and every
+other tone as a wash**. When all six tones washed, a cancelled deal and a
+completed one were the same weight of pastel and severity did not survive a
+glance down a list. There is now exactly one loud thing on a screen: the thing
+that went wrong.
+
+### Mapping implemented in `lib/status.ts`
 
 Derived from `DatabaseSchema.pdf`. Each status also gets a plain-language sentence and
 an icon — never colour alone (research principle 4, WCAG 1.4.1).
@@ -125,7 +149,7 @@ an icon — never colour alone (research principle 4, WCAG 1.4.1).
 | | `Accepted` | success | Accepted |
 | | `Rejected` | danger | Declined |
 | | `Cancelled` / `Withdrawn` | neutral | Offer withdrawn *(collapsed — risk R6)* |
-| `item.status` | `Unlisted` | neutral | Not listed |
+| `item.status` | `Unlisted` | neutral | Unlisted |
 | | `Listed` | info | Listed |
 | | `Transferred` | success | Handed over |
 | `post_type` | `SellOnly` | success | For sale |
@@ -134,8 +158,18 @@ an icon — never colour alone (research principle 4, WCAG 1.4.1).
 | `ticket.status` | `Registered` | info | Registered |
 | | `Waiting` | warning | Ready to collect |
 | | `Received` | success | Collected |
-| | `Not_Selected` | neutral | Not selected |
+| | `Not_Selected` | danger | Not selected |
 | | `Expired` | danger | Pickup window closed |
+| `giveaway.status` | `Active` | info | Open for entries |
+| | `Closed` | warning | Entries closed |
+| | `Completed` | success | Finished |
+| `user.status` | `Active` | success | Active |
+| | `Suspended` | danger | Suspended |
+| | `Banned` | danger | Banned |
+| | `Deleted` | neutral | Closed |
+| `subscription.status` | `Active` | success | Active |
+| | `Expired` | warning | Expired |
+| | `Cancelled` | neutral | Cancelled |
 | `report.status` | `Pending` | warning | Awaiting review |
 | | `Under_Investigation` | info | Under investigation |
 | | `Violation_Confirmed` | danger | Violation confirmed |
@@ -154,18 +188,37 @@ the state, the badge's second line is the actor.
 ## 6. Rarity — `Item.condition` as a game signal
 
 Research P3 and principle "game DNA, modern execution". The inventory slot border
-colour *is* the condition. No text needed at a glance.
+colour *is* the condition, at a glance.
+
+**One ramp, green to red, strictly monotonic** — all five grades the seed
+actually stores, in order:
 
 | Condition | Edge | Glow | Text |
 |---|---|---|---|
-| `New` | gold-400 `#D8A93A` | 35% gold | gold-600 (4.97) |
-| `Good` | green-500 `#3AB572` | 30% green | green-700 (5.88) |
-| `Acceptable` | gray-400 `#94A09A` | 28% gray | gray-600 (6.12) |
-| `Poor` | amber-600 `#BD7B00` | 24% amber | amber-800 (7.46) |
+| `New` | green-600 `#2E8F5A` | 32% green | green-700 (5.88) |
+| `Very Good` | green-400 `#6BCA96` | 30% green | green-700 (5.88) |
+| `Good` | amber-400 `#F7B63E` | 26% amber | amber-700 (5.20) |
+| `Acceptable` | amber-600 `#BD7B00` | 24% amber | amber-800 (7.46) |
+| `Poor` | rose-500 `#BE324B` | 26% rose | rose-600 (7.93) |
+
+The first pass put `New` on gold and `Poor` on amber, and had `Very Good`
+lighter than `Good` — so the worse grade looked better, the worst grade read as
+"caution" rather than "worn", and the top grade sat off the axis entirely. Hue
+now carries the grade and nothing else does.
+
+`New` and `Very Good` share green-700 as their text colour; the edge and the
+word differ, which is enough because the colour is never the only signal.
+
+The edges below green-600 do not clear 3:1 as standalone graphical objects —
+green-400 is 2.00 and amber-400 is around 2.2. That is deliberate: forcing every
+step above 3:1 collapses the ramp into three visually adjacent darks and the
+five grades stop being separable from each other, which is the whole job. The
+edge is decorative reinforcement, not the carrier — the condition is always
+also present as the word, in the slot's accessible name, and in the condition
+chip on every detail screen.
 
 Applied as `--slot-edge` / `--slot-glow` on the slot element, consumed by
-`--shadow-rarity` layered over `--shadow-sunken`. Colour is never the only signal —
-the condition is also in the slot's accessible name.
+`--shadow-rarity` layered over `--shadow-sunken`.
 
 ---
 

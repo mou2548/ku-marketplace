@@ -63,12 +63,20 @@ export interface InventorySlotProps
    * only after opening the item.
    */
   badge?: React.ReactNode;
+  /**
+   * Print the item name under the well. Off in the inventory grid, where the
+   * slot is a thumbnail you are about to open anyway; on for the trade bench,
+   * where "who is giving what" is the entire question and the name previously
+   * existed only in the accessible name.
+   */
+  showName?: boolean;
 }
 
 export function InventorySlot({
   item,
   isPlaced = false,
   badge,
+  showName = false,
   className,
   ...props
 }: InventorySlotProps) {
@@ -85,55 +93,76 @@ export function InventorySlot({
         } as React.CSSProperties
       }
       className={cn(
-        "group relative aspect-square cursor-grab rounded-slot bg-surface-sunken",
-        "shadow-sunken [box-shadow:var(--shadow-sunken),var(--shadow-rarity)]",
+        "group cursor-grab rounded-slot",
         "transition-transform duration-[--dur-fast] ease-[--ease-spring]",
         "hover:-translate-y-0.5 data-[pressed]:scale-95",
         "data-[selected]:-translate-y-1 data-[selected]:brightness-105",
         "data-[dragging]:opacity-40",
+        showName ? "flex flex-col gap-1.5" : "relative aspect-square",
         isPlaced && "pointer-events-none opacity-35 grayscale",
         className,
       )}
     >
-      {item.image_url ? (
-        <Image
-          src={item.image_url}
-          alt=""
-          fill
-          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
-          className="rounded-slot object-cover p-1"
-        />
-      ) : (
-        <span
-          aria-hidden
-          className="absolute inset-0 grid place-items-center text-[0.6875rem] font-semibold tracking-[0.09em] text-ink-disabled uppercase"
-        >
-          {item.category.slice(0, 3)}
-        </span>
-      )}
-
-      {item.quantity > 1 ? (
-        <span
-          aria-hidden
-          data-numeric
-          className="absolute right-1 bottom-1 rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white"
-        >
-          ×{item.quantity}
-        </span>
-      ) : null}
-
-      {badge ? (
-        <span className="pointer-events-none absolute top-1.5 right-1.5 z-[1] max-w-[calc(100%-0.75rem)] truncate">
-          {badge}
-        </span>
-      ) : null}
-
-      {/* Rarity rim. Separate element so it can animate independently of the
-          image without repainting it. */}
+      {/* The well. Its own element only when a caption sits below it, so the
+          sunken fill and the rarity shadow stay square either way. */}
       <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-slot ring-1 ring-[var(--slot-edge)] ring-inset"
-      />
+        className={cn(
+          "bg-surface-sunken",
+          "shadow-sunken [box-shadow:var(--shadow-sunken),var(--shadow-rarity)]",
+          showName
+            ? "relative block aspect-square rounded-slot"
+            : "absolute inset-0 rounded-slot",
+        )}
+      >
+        {item.image_url ? (
+          <Image
+            src={item.image_url}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
+            className="rounded-slot object-cover p-1"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="absolute inset-0 grid place-items-center text-overline text-ink-disabled uppercase"
+          >
+            {item.category.slice(0, 3)}
+          </span>
+        )}
+
+        {item.quantity > 1 ? (
+          <span
+            aria-hidden
+            data-numeric
+            className="absolute right-1 bottom-1 rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white"
+          >
+            ×{item.quantity}
+          </span>
+        ) : null}
+
+        {badge ? (
+          <span className="pointer-events-none absolute top-1.5 right-1.5 z-[1] max-w-[calc(100%-0.75rem)] truncate">
+            {badge}
+          </span>
+        ) : null}
+
+        {/* Rarity rim. Separate element so it can animate independently of the
+            image without repainting it. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-slot ring-1 ring-[var(--slot-edge)] ring-inset"
+        />
+      </span>
+
+      {showName ? (
+        <span
+          aria-hidden
+          className="line-clamp-2 px-0.5 text-[0.75rem] leading-[1.4] text-ink-secondary"
+        >
+          {item.name}
+        </span>
+      ) : null}
     </GridListItem>
   );
 }

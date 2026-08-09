@@ -72,7 +72,7 @@ export function DeliveryCard({
     <Surface
       shape="card"
       elevation="flat"
-      className={cn("flex flex-col gap-3 bg-tone-info-bg p-4", className)}
+      className={cn("flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4", className)}
     >
       <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-info-fg">
         {tracking ? (

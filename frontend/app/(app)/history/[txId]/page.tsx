@@ -5,7 +5,7 @@ import { getRooms, getTransaction } from "@/lib/api/fixtures";
 /**
  * A deal and its chat room are the same conversation, so there is one screen
  * for them and it lives at `/chat/[roomId]`. This route stays because it was
- * the URL before the rooms were unified, and because `/deals` links to a
+ * the URL before the rooms were unified, and because `/history` links to a
  * transaction id rather than a room id.
  */
 export default async function DealPage({

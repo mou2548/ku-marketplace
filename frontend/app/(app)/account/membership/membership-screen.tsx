@@ -8,6 +8,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { SlipUploader } from "@/components/kit/slip";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { TwoColumn } from "@/components/kit/two-column";
 import type { Membership, MembershipTier } from "@/lib/api/fixtures";
 import { cn } from "@/lib/utils";
 
@@ -56,35 +57,67 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
   const current = TIERS.find((t) => t.tier === selected);
 
-  return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Membership
-        </h1>
-        {membership.tier !== "Free" ? (
-          <p className="text-[0.875rem] text-ink-muted">
-            You are on {membership.tier}
-            {membership.expires_at
-              ? `, valid until ${new Date(membership.expires_at).toLocaleDateString(
-                  "en-GB",
-                  { day: "numeric", month: "short", year: "numeric" },
-                )}`
-              : ""}
+  /**
+   * Where you stand, on the left. The three tiers are a comparison and want the
+   * width; the one line that says which of them you are already on does not,
+   * and as a header above them it scrolled away exactly when you needed it.
+   */
+  const rail = (
+    <>
+      <Surface shape="card" className="flex flex-col gap-3 p-4">
+        <p className="text-overline text-ink-muted uppercase">
+          Your membership
+        </p>
+
+        <p className="flex items-center gap-2 text-[1.125rem] font-semibold">
+          {membership.tier !== "Free" ? (
+            <Crown aria-hidden className="size-5 text-gold-600" />
+          ) : null}
+          {membership.tier}
+        </p>
+
+        {membership.expires_at ? (
+          <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+            Valid until{" "}
+            <span data-numeric className="font-medium text-ink-secondary">
+              {new Date(membership.expires_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
           </p>
-        ) : null}
-      </header>
+        ) : (
+          <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+            The free tier: 5 live posts, and everything the marketplace does.
+          </p>
+        )}
+      </Surface>
 
       {membership.pending_review ? (
-        <Surface shape="card" elevation="flat" className="bg-tone-warning-bg p-4">
+        <Surface shape="card" elevation="flat" className="bg-tone-warning-bg border-l-4 border-l-tone-warning-solid p-4">
           <p className="text-[0.9375rem] leading-[1.7] text-tone-warning-fg">
             Your slip is with an admin. Your tier changes as soon as it is
             approved, and you do not need to send it again.
           </p>
         </Surface>
       ) : null}
+    </>
+  );
 
-      <ul className="grid gap-3 md:grid-cols-3">
+  return (
+    <TwoColumn rail={rail} railSide="left" railFirst>
+      <header className="flex flex-col gap-1">
+        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+          Membership
+        </h1>
+        <p className="text-[0.9375rem] leading-[1.7] text-ink-muted">
+          Six months at a time. Transfer, upload the slip, and an admin switches
+          your tier.
+        </p>
+      </header>
+
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {TIERS.map((t) => {
           const isCurrent = membership.tier === t.tier;
           const isSelected = selected === t.tier;
@@ -164,6 +197,6 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           />
         </Overlay>
       </OverlayTrigger>
-    </div>
+    </TwoColumn>
   );
 }

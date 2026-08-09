@@ -243,6 +243,81 @@ export const ITEMS: Item[] = [
     created_at: ago(30 * DAY),
     images: [IMG(11, "https://picsum.photos/id/1062/800/600", 10)],
   },
+  /**
+   * Items 11-14 belong to the viewer and are UI mocks, not seed rows.
+   *
+   * Two things could not be reviewed without them: nothing in the seed has a
+   * quantity above one, so the stack badge on an inventory slot never drew;
+   * and the viewer owned only SellOnly posts, so nobody could offer them a
+   * trade and the Offers inbox stayed empty from both sides.
+   */
+  {
+    item_id: 11,
+    owner_id: 2,
+    name: "ปากกาหมึกเจล 0.5 มม. (แพ็ก 3 ด้าม)",
+    quantity: 3,
+    category: "Stationery",
+    condition: "New",
+    description: "ซื้อมาเป็นแพ็กใหญ่ ใช้ไม่หมด แบ่งขายครับ",
+    status: "Unlisted",
+    brand_model: "Pentel EnerGel",
+    created_at: ago(9 * DAY),
+    images: [IMG(12, "https://picsum.photos/id/119/800/600", 11)],
+  },
+  {
+    item_id: 12,
+    owner_id: 2,
+    name: "สมุดโน้ต A5 ปกแข็ง",
+    quantity: 5,
+    category: "Stationery",
+    condition: "New",
+    description: "เหลือจากงานรับน้อง ยังไม่ได้แกะห่อ",
+    status: "Listed",
+    brand_model: "KU Co-op",
+    created_at: ago(8 * DAY),
+    images: [IMG(13, "https://picsum.photos/id/20/800/600", 12)],
+  },
+  {
+    item_id: 13,
+    owner_id: 2,
+    name: "ชีทสรุปแคลคูลัส 2 (01417112)",
+    quantity: 12,
+    category: "Books",
+    condition: "Very Good",
+    description: "ปริ้นท์เผื่อไว้เยอะ เหลือแจกจ่ายได้อีกหลายเล่ม",
+    status: "Listed",
+    course_name: "01417112",
+    created_at: ago(7 * DAY),
+    images: [IMG(14, "https://picsum.photos/id/159/800/600", 13)],
+  },
+  {
+    // Flow 1's terminal item state. Without one the viewer owns, the third
+    // badge on the inventory grid had never rendered.
+    item_id: 15,
+    owner_id: 2,
+    name: "ตู้เก็บของพลาสติก 3 ชั้น",
+    quantity: 1,
+    category: "Home & Living",
+    condition: "Good",
+    description: "ส่งมอบให้รุ่นน้องไปแล้วตอนย้ายหอ",
+    status: "Transferred",
+    brand_model: "SUPERWARE",
+    created_at: ago(40 * DAY),
+    images: [IMG(16, "https://picsum.photos/id/1060/800/600", 15)],
+  },
+  {
+    item_id: 14,
+    owner_id: 2,
+    name: "คีย์บอร์ดไร้สาย Logitech K380",
+    quantity: 1,
+    category: "Electronics",
+    condition: "Good",
+    description: "ต่อบลูทูธได้ 3 เครื่อง ปุ่มยังแน่นดีครับ",
+    status: "Listed",
+    brand_model: "Logitech K380",
+    created_at: ago(6 * DAY),
+    images: [IMG(15, "https://picsum.photos/id/48/800/600", 14)],
+  },
 ];
 
 const itemById = (id: number) => ITEMS.find((i) => i.item_id === id)!;
@@ -334,6 +409,42 @@ export const POSTS: Post[] = [
     item: itemById(8),
     seller: USERS[7],
   },
+  // --- UI mocks: the viewer's own posts that accept trades, so offers can
+  // arrive. Every seed post of theirs was SellOnly.
+  {
+    post_id: 9,
+    item_id: 14,
+    post_type: "TradeOnly",
+    price: 0,
+    quantity_remaining: 1,
+    description: "ไม่ขายครับ อยากได้เมาส์หรือฮับ USB-C แลก",
+    wanted_item_offer: "เมาส์ไร้สาย หรือ USB-C hub",
+    created_at: ago(6 * DAY),
+    item: itemById(14),
+    seller: USERS[2],
+  },
+  {
+    post_id: 10,
+    item_id: 13,
+    post_type: "Both",
+    price: 60,
+    quantity_remaining: 12,
+    description: "ขายเล่มละ 60 หรือแลกกับชีทวิชาอื่นก็ได้",
+    wanted_item_offer: "ชีทสรุปฟิสิกส์ 2 หรือเคมี 1",
+    created_at: ago(7 * DAY),
+    item: itemById(13),
+    seller: USERS[2],
+  },
+  {
+    post_id: 11,
+    item_id: 12,
+    post_type: "SellOnly",
+    price: 45,
+    quantity_remaining: 5,
+    created_at: ago(8 * DAY),
+    item: itemById(12),
+    seller: USERS[2],
+  },
 ];
 
 const postById = (id: number) => POSTS.find((p) => p.post_id === id)!;
@@ -360,6 +471,68 @@ export const OFFERS: Offer[] = [
     items: [itemById(3)],
     proposer: USERS[3],
     post: postById(4),
+  },
+  /**
+   * Offers 3-7 are UI mocks. The seed has two offers and the viewer is on
+   * neither side of them, so both tabs of the inbox rendered their empty state
+   * and no offer status other than Pending and Rejected was ever drawn.
+   *
+   * 3-5 are offers *to* the viewer, 6-7 are offers *from* them.
+   */
+  {
+    offer_id: 3,
+    post_id: 9,
+    proposer_id: 5,
+    additional_money: 0,
+    status: "Pending",
+    created_at: ago(4 * HOUR),
+    items: [itemById(7)],
+    proposer: USERS[5],
+    post: postById(9),
+  },
+  {
+    offer_id: 4,
+    post_id: 10,
+    proposer_id: 7,
+    additional_money: 40,
+    status: "Accepted",
+    created_at: ago(3 * DAY),
+    items: [itemById(8)],
+    proposer: USERS[7],
+    post: postById(10),
+  },
+  {
+    offer_id: 5,
+    post_id: 9,
+    proposer_id: 3,
+    additional_money: 500,
+    status: "Rejected",
+    created_at: ago(5 * DAY),
+    items: [itemById(3)],
+    proposer: USERS[3],
+    post: postById(9),
+  },
+  {
+    offer_id: 6,
+    post_id: 3,
+    proposer_id: 2,
+    additional_money: 1200,
+    status: "Pending",
+    created_at: ago(7 * HOUR),
+    items: [itemById(14), itemById(1)],
+    proposer: USERS[2],
+    post: postById(3),
+  },
+  {
+    offer_id: 7,
+    post_id: 8,
+    proposer_id: 2,
+    additional_money: 0,
+    status: "Withdrawn",
+    created_at: ago(4 * DAY),
+    items: [itemById(13)],
+    proposer: USERS[2],
+    post: postById(8),
   },
 ];
 
@@ -508,8 +681,38 @@ export const APPOINTMENTS: AppointmentSeed[] = [
     location: "อาคารเรียนรวม 4 (ศร.4) ชั้น 1",
     status: "Confirmed",
   },
+  /**
+   * UI mocks covering the other two states. Transaction 6 is deliberately left
+   * without a row, so the "no time agreed yet" branch — the one that creates a
+   * card — is reachable too.
+   */
+  {
+    appointment_id: 3,
+    transaction_id: 5,
+    proposed_by: 4,
+    date: "2026-08-09",
+    time: "11:00:00",
+    location: "ลานเกียร์ คณะวิศวกรรมศาสตร์",
+    status: "Pending",
+  },
+  {
+    appointment_id: 4,
+    transaction_id: 3,
+    proposed_by: 8,
+    date: "2026-08-08",
+    time: "09:00:00",
+    location: "หน้าหอพักหญิง ซอย 2",
+    status: "Rejected",
+  },
 ];
 
+/**
+ * Eight rows so every combination the UI branches on is reachable: all three
+ * allocation methods, all three giveaway statuses, the viewer as giver and as
+ * entrant. The seed has two rows, both Active, both with the viewer on one
+ * side only — which left the Closed and Completed states, the Manual manage
+ * screen, and four of the five ticket states with no way to be seen.
+ */
 export const GIVEAWAYS: GiveawayPost[] = [
   {
     giveaway_id: 1,
@@ -520,7 +723,7 @@ export const GIVEAWAYS: GiveawayPost[] = [
     allocation_method: "FirstCome",
     registered_deadline: at("2026-08-15T17:00:00+07:00"),
     pickup_start_date: at("2026-08-15T17:00:00+07:00"),
-    pickup_end_date: at("2026-08-15T17:00:00+07:00"),
+    pickup_end_date: at("2026-08-18T17:00:00+07:00"),
     status: "Active",
     created_at: ago(2 * DAY),
     images: [
@@ -538,7 +741,7 @@ export const GIVEAWAYS: GiveawayPost[] = [
     allocation_method: "Random",
     registered_deadline: at("2026-08-20T18:00:00+07:00"),
     pickup_start_date: at("2026-08-20T18:00:00+07:00"),
-    pickup_end_date: at("2026-08-20T18:00:00+07:00"),
+    pickup_end_date: at("2026-08-23T18:00:00+07:00"),
     status: "Active",
     created_at: ago(1 * DAY),
     images: [
@@ -547,10 +750,124 @@ export const GIVEAWAYS: GiveawayPost[] = [
     giver: USERS[8],
     registered_count: 1,
   },
+  // --- UI mocks from here down.
+  {
+    giveaway_id: 3,
+    item_name: "กระถางต้นไม้เล็ก พร้อมดินปลูก",
+    description: "เลี้ยงไม่ไหวแล้วครับ อยากส่งต่อให้คนที่ดูแลต่อได้จริงๆ",
+    pickup_location: "หอพักนิสิตชาย ซอย 3 (ล็อบบี้)",
+    giver_id: 2,
+    allocation_method: "Manual",
+    registered_deadline: at("2026-08-12T20:00:00+07:00"),
+    pickup_start_date: at("2026-08-13T09:00:00+07:00"),
+    pickup_end_date: at("2026-08-16T18:00:00+07:00"),
+    status: "Active",
+    created_at: ago(18 * HOUR),
+    images: [
+      { image_id: 3, image_url: "https://picsum.photos/id/106/800/600", display_order: 1 },
+    ],
+    giver: USERS[2],
+    registered_count: 3,
+  },
+  {
+    giveaway_id: 4,
+    item_name: "เครื่องเขียนเตรียมสอบ (ชุดใหญ่)",
+    description: "จัดชุดไว้แจกช่วงสอบกลางภาคครับ",
+    pickup_location: "สำนักหอสมุด มก. (โต๊ะประชาสัมพันธ์)",
+    giver_id: 3,
+    allocation_method: "FirstCome",
+    registered_deadline: at("2026-08-06T12:00:00+07:00"),
+    pickup_start_date: at("2026-08-07T09:00:00+07:00"),
+    pickup_end_date: at("2026-08-11T18:00:00+07:00"),
+    status: "Closed",
+    created_at: ago(6 * DAY),
+    images: [
+      { image_id: 4, image_url: "https://picsum.photos/id/180/800/600", display_order: 1 },
+    ],
+    giver: USERS[3],
+    registered_count: 4,
+  },
+  {
+    giveaway_id: 5,
+    item_name: "โคมไฟหัวเตียงเล็ก",
+    description: "ย้ายหอแล้วเอาไปไม่ได้ครับ",
+    pickup_location: "อาคารเรียนรวม 3 (ศร.3) ชั้น 1",
+    giver_id: 5,
+    allocation_method: "Random",
+    registered_deadline: at("2026-07-28T17:00:00+07:00"),
+    pickup_start_date: at("2026-07-29T10:00:00+07:00"),
+    pickup_end_date: at("2026-08-02T17:00:00+07:00"),
+    status: "Completed",
+    created_at: ago(14 * DAY),
+    images: [
+      { image_id: 5, image_url: "https://picsum.photos/id/201/800/600", display_order: 1 },
+    ],
+    giver: USERS[5],
+    registered_count: 6,
+  },
+  {
+    giveaway_id: 6,
+    item_name: "หนังสือนิยายภาษาอังกฤษ 4 เล่ม",
+    description: "อ่านจบแล้ว อยากให้คนที่อ่านต่อจริงๆ เลยขอเลือกเองนะครับ",
+    pickup_location: "โรงอาหารกลาง 2 (ชั้นลอย)",
+    giver_id: 7,
+    allocation_method: "Manual",
+    registered_deadline: at("2026-08-14T19:00:00+07:00"),
+    pickup_start_date: at("2026-08-15T10:00:00+07:00"),
+    pickup_end_date: at("2026-08-19T18:00:00+07:00"),
+    status: "Active",
+    created_at: ago(10 * HOUR),
+    images: [
+      { image_id: 6, image_url: "https://picsum.photos/id/367/800/600", display_order: 1 },
+    ],
+    giver: USERS[7],
+    registered_count: 5,
+  },
+  {
+    giveaway_id: 7,
+    item_name: "จอคอมพิวเตอร์ 22 นิ้ว (มือสอง)",
+    description: "อัปเกรดจอใหม่แล้ว ตัวเดิมยังใช้ได้ปกติครับ",
+    pickup_location: "ตึกวิศวกรรมคอมพิวเตอร์ (หน้าห้องแลบ)",
+    giver_id: 6,
+    allocation_method: "Random",
+    registered_deadline: at("2026-08-04T18:00:00+07:00"),
+    pickup_start_date: at("2026-08-05T10:00:00+07:00"),
+    pickup_end_date: at("2026-08-09T18:00:00+07:00"),
+    status: "Closed",
+    created_at: ago(9 * DAY),
+    images: [
+      { image_id: 7, image_url: "https://picsum.photos/id/0/800/600", display_order: 1 },
+    ],
+    giver: USERS[6],
+    registered_count: 11,
+  },
+  {
+    giveaway_id: 8,
+    item_name: "กระเป๋าผ้าลดโลกร้อน มก.",
+    description: "ได้มาจากงานกิจกรรม เหลือหลายใบครับ",
+    pickup_location: "ลานหน้าอาคารสารนิเทศ 50 ปี",
+    giver_id: 10,
+    allocation_method: "FirstCome",
+    registered_deadline: at("2026-07-25T17:00:00+07:00"),
+    pickup_start_date: at("2026-07-26T10:00:00+07:00"),
+    pickup_end_date: at("2026-07-30T17:00:00+07:00"),
+    status: "Closed",
+    created_at: ago(20 * DAY),
+    images: [
+      { image_id: 8, image_url: "https://picsum.photos/id/1062/800/600", display_order: 1 },
+    ],
+    giver: USERS[10],
+    registered_count: 8,
+  },
 ];
 
 const giveawayById = (id: number) => GIVEAWAYS.find((g) => g.giveaway_id === id)!;
 
+/**
+ * Tickets 4-8 belong to the viewer and cover all five `TicketStatus` values;
+ * 9-13 are other entrants, so the Manual manage screen has a roster and the
+ * derived entrant status below has something to derive from.
+ */
 export const TICKETS: GiveawayTicket[] = [
   {
     ticket_id: 1,
@@ -578,6 +895,98 @@ export const TICKETS: GiveawayTicket[] = [
     updated_at: ago(1 * DAY),
     created_at: ago(1 * DAY),
     giveaway: giveawayById(2),
+  },
+  // --- The viewer's own entries, one per ticket state.
+  {
+    ticket_id: 4,
+    giveaway_id: 6,
+    receiver_id: 2,
+    status: "Registered",
+    updated_at: ago(9 * HOUR),
+    created_at: ago(9 * HOUR),
+    giveaway: giveawayById(6),
+  },
+  {
+    ticket_id: 5,
+    giveaway_id: 4,
+    receiver_id: 2,
+    status: "Waiting",
+    updated_at: ago(1 * DAY),
+    created_at: ago(6 * DAY),
+    giveaway: giveawayById(4),
+  },
+  {
+    ticket_id: 6,
+    giveaway_id: 5,
+    receiver_id: 2,
+    status: "Received",
+    updated_at: ago(6 * DAY),
+    created_at: ago(14 * DAY),
+    giveaway: giveawayById(5),
+  },
+  {
+    ticket_id: 7,
+    giveaway_id: 7,
+    receiver_id: 2,
+    status: "Not_Selected",
+    updated_at: ago(3 * DAY),
+    created_at: ago(9 * DAY),
+    giveaway: giveawayById(7),
+  },
+  {
+    ticket_id: 8,
+    giveaway_id: 8,
+    receiver_id: 2,
+    status: "Expired",
+    updated_at: ago(8 * DAY),
+    created_at: ago(20 * DAY),
+    giveaway: giveawayById(8),
+  },
+  // --- Other entrants on the viewer's Manual giveaway.
+  {
+    ticket_id: 9,
+    giveaway_id: 3,
+    receiver_id: 5,
+    status: "Registered",
+    updated_at: ago(16 * HOUR),
+    created_at: ago(16 * HOUR),
+    giveaway: giveawayById(3),
+  },
+  {
+    ticket_id: 10,
+    giveaway_id: 3,
+    receiver_id: 6,
+    status: "Registered",
+    updated_at: ago(14 * HOUR),
+    created_at: ago(14 * HOUR),
+    giveaway: giveawayById(3),
+  },
+  {
+    ticket_id: 11,
+    giveaway_id: 3,
+    receiver_id: 9,
+    status: "Registered",
+    updated_at: ago(11 * HOUR),
+    created_at: ago(11 * HOUR),
+    giveaway: giveawayById(3),
+  },
+  {
+    ticket_id: 12,
+    giveaway_id: 4,
+    receiver_id: 8,
+    status: "Not_Selected",
+    updated_at: ago(1 * DAY),
+    created_at: ago(6 * DAY),
+    giveaway: giveawayById(4),
+  },
+  {
+    ticket_id: 13,
+    giveaway_id: 4,
+    receiver_id: 9,
+    status: "Received",
+    updated_at: ago(20 * HOUR),
+    created_at: ago(6 * DAY),
+    giveaway: giveawayById(4),
   },
 ];
 
@@ -783,13 +1192,36 @@ export interface Entrant {
   status: "Registered" | "Selected" | "Not_Selected";
 }
 
+/**
+ * Entrant status is derived from the ticket, not hardcoded: a roster that says
+ * "Registered" next to someone who has already collected is a roster the giver
+ * cannot use.
+ */
 export async function getEntrants(giveawayId: number): Promise<Entrant[]> {
-  return TICKETS.filter((t) => t.giveaway_id === giveawayId).map((t) => ({
-    receiver_id: t.receiver_id,
-    user: USERS[t.receiver_id],
-    registered_at: t.created_at,
-    status: "Registered" as const,
-  }));
+  return TICKETS.filter((t) => t.giveaway_id === giveawayId).map((t) => {
+    let status: Entrant["status"];
+    switch (t.status) {
+      // Expired counts as selected: the place was theirs, they did not collect
+      // it in time. Folding it into Not_Selected would rewrite what happened.
+      case "Waiting":
+      case "Received":
+      case "Expired":
+        status = "Selected";
+        break;
+      case "Not_Selected":
+        status = "Not_Selected";
+        break;
+      case "Registered":
+        status = "Registered";
+        break;
+    }
+    return {
+      receiver_id: t.receiver_id,
+      user: USERS[t.receiver_id],
+      registered_at: t.created_at,
+      status,
+    };
+  });
 }
 
 export interface Notification {
@@ -818,7 +1250,7 @@ export async function getNotifications(): Promise<Notification[]> {
       kind: "moderation",
       title: "Your report is being investigated",
       body: "An admin picked up report #1 about the Calculus 1 deal.",
-      href: "/deals/1",
+      href: "/history/1",
       created_at: ago(1 * DAY),
       read: false,
     },
@@ -827,7 +1259,7 @@ export async function getNotifications(): Promise<Notification[]> {
       kind: "deal",
       title: "Meetup confirmed",
       body: "สมชาย แซ่ตั้ง confirmed 10 Aug at 13:00, สำนักหอสมุด มก.",
-      href: "/deals/1",
+      href: "/history/1",
       created_at: ago(2 * DAY),
       read: true,
     },

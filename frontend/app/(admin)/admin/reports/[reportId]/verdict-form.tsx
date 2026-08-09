@@ -80,7 +80,7 @@ export function VerdictForm({ report }: { report: AdminReportRow }) {
       </header>
 
       <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-[0.6875rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+        <p className="text-overline text-ink-muted uppercase">
           Reported by
         </p>
         <TrustBadge

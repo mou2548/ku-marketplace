@@ -32,6 +32,34 @@ export interface StatusPresentation {
   hint?: string;
 }
 
+/**
+ * Severity contract. The tables below were first written one enum at a time,
+ * with the tone judged per table, and the result was that several bad outcomes
+ * landed on `neutral` — a rejected offer and a withdrawn one looked the same.
+ * A tone is not a mood; it is a severity, and severity is decided here:
+ *
+ *   danger   Terminal failure, or a state that costs the viewer something.
+ *            Cancelled, Rejected, Banned, Suspended, Violation_Confirmed,
+ *            Appeal_Rejected, Expired ticket, Not_Selected, payment Reject.
+ *   warning  Waiting on a human, or a clock running down.
+ *            Pending, Waiting, Pending Refund, Appeal_Submitted, Closed,
+ *            Warning sanction, Expired subscription.
+ *   info     The system is moving and nobody is blocked.
+ *            Processing, Listed, Under_Investigation, Appeal_Under_Review,
+ *            Registered, Random allocation, Active giveaway.
+ *   success  A good outcome that has actually happened.
+ *            Completed, Accepted, Transferred, Received, Confirmed, Verified,
+ *            Appeal_Upheld, Active account, Active subscription.
+ *   neutral  A no-op: archived, or ended by the viewer's own choice with
+ *            nothing lost. Unlisted, Withdrawn, Cancelled offer, Refunded,
+ *            Deleted, Report_Dismissed.
+ *   trade    A category accent, never a severity. PostType, Manual allocation.
+ *
+ * "Availability" is not success — an open giveaway has achieved nothing yet.
+ * "Money returned" is not failure — a refunded deal is simply over.
+ */
+
+
 /* ------------------------------------------------------------------ *
  * Transaction
  * ------------------------------------------------------------------ */
@@ -129,7 +157,9 @@ export const OFFER_STATUS: Record<OfferStatus, StatusPresentation> = {
 export type ItemStatus = "Unlisted" | "Listed" | "Transferred";
 
 export const ITEM_STATUS: Record<ItemStatus, StatusPresentation> = {
-  Unlisted: { tone: "neutral", label: "Not listed", icon: "Package" },
+  // The schema's own word. "Not listed" read as a state nobody recognised
+  // next to the two the spec actually names.
+  Unlisted: { tone: "neutral", label: "Unlisted", icon: "Package" },
   Listed: { tone: "info", label: "Listed", icon: "Store" },
   Transferred: { tone: "success", label: "Handed over", icon: "PackageCheck" },
 };
@@ -225,8 +255,33 @@ export const TICKET_STATUS: Record<TicketStatus, StatusPresentation> = {
     hint: "Show your QR to the giver within the pickup window",
   },
   Received: { tone: "success", label: "Collected", icon: "PartyPopper" },
-  Not_Selected: { tone: "neutral", label: "Not selected", icon: "Minus" },
+  // Losing the draw is an outcome the entrant paid attention for, not a no-op.
+  Not_Selected: { tone: "danger", label: "Not selected", icon: "CircleX" },
   Expired: { tone: "danger", label: "Pickup window closed", icon: "TimerOff" },
+};
+
+/**
+ * The roster view of a ticket, for the giver looking at a list of entrants.
+ * Coarser than `TicketStatus` on purpose: Waiting, Received and Expired all
+ * collapse to `Selected`, because from the roster's point of view the place
+ * was theirs regardless of what they did with it (see `getEntrants`).
+ */
+export type EntrantStatus = "Registered" | "Selected" | "Not_Selected";
+
+export const ENTRANT_STATUS: Record<EntrantStatus, StatusPresentation> = {
+  Registered: {
+    tone: "info",
+    label: "Registered",
+    icon: "TicketCheck",
+    hint: "In the draw, not chosen yet",
+  },
+  Selected: {
+    tone: "success",
+    label: "Chosen",
+    icon: "CircleCheck",
+    hint: "A place is theirs",
+  },
+  Not_Selected: { tone: "danger", label: "Not selected", icon: "CircleX" },
 };
 
 export type AllocationMethod = "FirstCome" | "Random" | "Manual";
@@ -290,8 +345,9 @@ export const APPOINTMENT_STATUS: Record<AppointmentStatus, StatusPresentation> =
 export type GiveawayStatus = "Active" | "Closed" | "Completed";
 
 export const GIVEAWAY_STATUS: Record<GiveawayStatus, StatusPresentation> = {
+  // Open for entries is availability, not an achievement.
   Active: {
-    tone: "success",
+    tone: "info",
     label: "Open for entries",
     icon: "Gift",
   },
@@ -302,7 +358,7 @@ export const GIVEAWAY_STATUS: Record<GiveawayStatus, StatusPresentation> = {
     hint: "Recipients have been chosen; collection is still open",
   },
   Completed: {
-    tone: "neutral",
+    tone: "success",
     label: "Finished",
     icon: "CheckCheck",
   },
@@ -316,8 +372,10 @@ export type UserStatus = "Active" | "Suspended" | "Banned" | "Deleted";
 
 export const USER_STATUS: Record<UserStatus, StatusPresentation> = {
   Active: { tone: "success", label: "Active", icon: "CircleCheck" },
+  // An account that cannot be used is a failure state, not a nudge — the same
+  // severity the Suspend sanction that caused it already carries.
   Suspended: {
-    tone: "warning",
+    tone: "danger",
     label: "Suspended",
     icon: "ShieldAlert",
     hint: "Access returns automatically when the suspension expires",
@@ -366,8 +424,9 @@ export type SubscriptionStatus = "Active" | "Expired" | "Cancelled";
 
 export const SUBSCRIPTION_STATUS: Record<SubscriptionStatus, StatusPresentation> = {
   Active: { tone: "success", label: "Active", icon: "Crown" },
+  // Benefits have lapsed and renewing is an action the holder needs to take.
   Expired: {
-    tone: "neutral",
+    tone: "warning",
     label: "Expired",
     icon: "TimerOff",
     hint: "Renew to get the tier benefits back",

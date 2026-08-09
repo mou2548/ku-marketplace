@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell,
   Gift,
   Handshake,
+  History,
   MessagesSquare,
   Menu,
   Package,
@@ -54,7 +56,10 @@ interface NavEntry {
 const NAV: NavEntry[] = [
   { href: "/", label: "Market", icon: Store },
   { href: "/offers", label: "Offers", icon: Handshake, badge: "offers" },
-  { href: "/deals", label: "Deals", icon: Handshake, badge: "deals" },
+  // The route keeps its name; the label does not. The screen has been a record
+  // of past deals since chat moved out of it, and "Deals" next to "Offers" —
+  // with the same icon — read as two doors into the same room.
+  { href: "/history", label: "History", icon: History, badge: "deals" },
   { href: "/chat", label: "Chat", icon: MessagesSquare },
   { href: "/inventory", label: "Inventory", icon: Package },
   { href: "/giveaway", label: "Giveaway", icon: Gift },
@@ -84,12 +89,23 @@ export interface AppShellProps {
 
 export function AppShell({ children, badges = {}, user }: AppShellProps) {
   const pathname = usePathname() ?? "";
+  /**
+   * The drawer has to be told to close.
+   *
+   * It used to be uncontrolled, and a link inside a modal does navigate — but
+   * this layout is not remounted by that navigation, so the drawer stayed
+   * mounted on top of the page it had just opened. Every item in the mobile
+   * menu looked like it did nothing, Chat included.
+   *
+   * Every link in the panel therefore closes it on the way out.
+   */
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-[50] w-full border-b border-green-200 bg-surface text-ink-brand shadow-flat">
         <div className="mx-auto flex h-16 w-full max-w-[100rem] items-center gap-6 px-4 lg:px-8">
-          <DrawerTrigger>
+          <DrawerTrigger isOpen={menuOpen} onOpenChange={setMenuOpen}>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -101,7 +117,12 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
             </Button>
 
             <Drawer title="KU Marketplace">
-              <MobileMenu pathname={pathname} badges={badges} user={user} />
+              <MobileMenu
+                pathname={pathname}
+                badges={badges}
+                user={user}
+                onNavigate={() => setMenuOpen(false)}
+              />
             </Drawer>
           </DrawerTrigger>
 
@@ -212,14 +233,16 @@ function MobileMenu({
   pathname,
   badges,
   user,
+  onNavigate,
 }: {
   pathname: string;
   badges: NavBadges;
   user?: { name: string };
+  onNavigate: () => void;
 }) {
   return (
     <div className="flex h-full flex-col gap-3">
-      <LinkButton href="/post" block size="lg">
+      <LinkButton href="/post" block size="lg" onClick={onNavigate}>
         <Plus className="size-5" />
         Post an item
       </LinkButton>
@@ -233,6 +256,7 @@ function MobileMenu({
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem]",
@@ -258,6 +282,7 @@ function MobileMenu({
       <div className="mt-auto flex flex-col gap-0.5 border-t border-line pt-3">
         <Link
           href="/notifications"
+          onClick={onNavigate}
           className="flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem] text-ink-secondary hover:bg-gray-100"
         >
           <Bell aria-hidden className="size-5" />
@@ -265,6 +290,7 @@ function MobileMenu({
         </Link>
         <Link
           href="/account"
+          onClick={onNavigate}
           className="flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem] text-ink-secondary hover:bg-gray-100"
         >
           <span

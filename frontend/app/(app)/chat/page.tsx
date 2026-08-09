@@ -1,22 +1,68 @@
 import { RoomList } from "@/components/kit/room-list";
-import { getRoomSummaries } from "@/lib/api/rooms-query";
+import { EmptyState } from "@/components/kit/empty-state";
+import { MessagesSquare } from "lucide-react";
+
+import { VIEWER_ID } from "@/lib/api/fixtures";
+import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
+
+import { RoomScreen } from "./[roomId]/room-screen";
 
 export const metadata = { title: "Chat - KU Marketplace" };
 
 /**
- * The inbox on its own. On desktop a room renders this list beside itself, so
- * this route is what a phone sees first and what a desktop user lands on before
- * picking a conversation.
+ * The inbox, and — on a wide screen — the conversation it is pointing at.
+ *
+ * This used to be a `max-w-2xl` list and nothing else, which measured 47% of a
+ * 1440px window with the rest empty. A messaging app on a laptop shows the list
+ * beside a thread, so it does: the room that opens is the first in
+ * `buildRooms`' order, which sorts rooms waiting on the viewer ahead of
+ * everything else and then by recency — "the one waiting on me, otherwise the
+ * latest".
+ *
+ * Below `xl` it stays the plain list. That is the same breakpoint
+ * `/chat/[roomId]` uses to show or hide the list beside a room, and on a phone
+ * the inbox has to be the thing you land on.
  */
 export default async function ChatInboxPage() {
   const rooms = await getRoomSummaries();
+  const first = rooms[0]
+    ? await getRoomDetail(rooms[0].room_id, rooms)
+    : undefined;
+
+  if (rooms.length === 0) {
+    return (
+      <EmptyState
+        icon={<MessagesSquare className="size-6" />}
+        title="No conversations yet"
+        description="A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+      />
+    );
+  }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        Chat
-      </h1>
-      <RoomList rooms={rooms} />
+    <div className="flex gap-6">
+      <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-4 xl:mx-0 xl:w-80 xl:max-w-none xl:shrink-0">
+        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+          Chat
+        </h1>
+        <RoomList rooms={rooms} activeRoomId={first?.summary.room_id} />
+      </div>
+
+      {/* The preview, not a second route: opening a room from the list still
+          navigates to /chat/[roomId], which renders exactly this. */}
+      {first ? (
+        <div className="hidden min-w-0 flex-1 xl:block">
+          <RoomScreen
+            summary={first.summary}
+            viewerId={VIEWER_ID}
+            transaction={first.transaction}
+            giveaway={first.giveaway}
+            appointment={first.appointment}
+            entrants={first.entrants}
+            messages={first.messages}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

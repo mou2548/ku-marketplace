@@ -22,7 +22,7 @@ export default function DealScanPage({
   // POST /transactions/{id}/qr/scan → { token }
   const onScan = useCallback(async () => {
     toast.show("Receipt confirmed. The deal is closed.");
-    router.push(`/deals/${txId}`);
+    router.push(`/history/${txId}`);
   }, [router, toast, txId]);
 
   return (

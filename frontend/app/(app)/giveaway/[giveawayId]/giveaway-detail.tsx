@@ -11,7 +11,7 @@ import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
-import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
+import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS } from "@/lib/status";
 
 /**
  * Research risk R7: registering and then waiting had no shape at all in the
@@ -90,7 +90,7 @@ export function GiveawayDetail({
       <div className="flex flex-col gap-5 lg:w-1/2">
         <div className="flex flex-col gap-2">
           <StatusBadge status={method} variant="solid" size="sm" className="w-fit" />
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em] sm:text-[1.875rem]">
+          <h1 className="text-display">
             {giveaway.item_name}
           </h1>
           {giveaway.description ? (
@@ -129,7 +129,7 @@ export function GiveawayDetail({
         </Surface>
 
         {/* How you will find out, stated before you commit. */}
-        <Surface shape="card" elevation="flat" className="flex flex-col gap-2 bg-tone-info-bg p-4">
+        <Surface shape="card" elevation="flat" className="flex flex-col gap-2 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
           <p className="text-[0.875rem] font-semibold text-tone-info-fg">
             {method.label}
           </p>
@@ -140,14 +140,34 @@ export function GiveawayDetail({
         </Surface>
 
         {isGiver ? (
-          <LinkButton
-            size="lg"
-            block
-            href={`/giveaway/${giveaway.giveaway_id}/manage`}
-          >
-            <Users className="size-5" />
-            Manage entrants
-          </LinkButton>
+          /* Only a Manual giveaway has anything for its giver to do. FirstCome
+             allocates as people register and Random is drawn by the system, so
+             offering those givers a "Manage entrants" button led them to a
+             screen whose only action was a draw that was never theirs. */
+          giveaway.allocation_method === "Manual" ? (
+            <LinkButton
+              size="lg"
+              block
+              href={`/giveaway/${giveaway.giveaway_id}/manage`}
+            >
+              <Users className="size-5" />
+              Choose recipients
+            </LinkButton>
+          ) : (
+            <Surface
+              shape="card"
+              elevation="flat"
+              className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4"
+            >
+              <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+                This is your giveaway. Nothing for you to do.
+              </p>
+              <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                {method.hint}. Recipients are allocated automatically, and a
+                chat room opens with each of them so you can arrange collection.
+              </p>
+            </Surface>
+          )
         ) : ticket ? (
           <div className="flex flex-col gap-2">
             <StatusBadge status={TICKET_STATUS[ticket.status]} />
@@ -160,7 +180,7 @@ export function GiveawayDetail({
             </LinkButton>
           </div>
         ) : joined ? (
-          <Surface shape="card" elevation="flat" className="bg-tone-success-bg p-4">
+          <Surface shape="card" elevation="flat" className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4">
             <p className="text-[0.9375rem] font-medium text-tone-success-fg">
               Registered. Waiting for the draw.
             </p>
@@ -168,11 +188,20 @@ export function GiveawayDetail({
               If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page.
             </p>
           </Surface>
-        ) : (
+        ) : giveaway.status === "Active" ? (
           <Button size="lg" block isLoading={busy} onPress={join}>
             <Gift className="size-5" />
             Register for this giveaway
           </Button>
+        ) : (
+          /* Closed and Completed giveaways stay readable — they are linked
+             from tickets and from chat rooms — but they cannot be entered. */
+          <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
+            <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
+            <p className="mt-2 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+              Registration for this giveaway has closed.
+            </p>
+          </Surface>
         )}
       </div>
     </div>

@@ -46,7 +46,8 @@ function VerifyForm() {
       setOtp("");
       return;
     }
-    router.push("/");
+    // flow4: the address is proved, so now the password and the profile.
+    router.push(`/register/details?email=${encodeURIComponent(email)}`);
   }
 
   return (
@@ -108,7 +109,7 @@ function VerifyForm() {
           isDisabled={otp.length < 6}
           isLoading={busy}
         >
-          Verify and complete sign-up
+          Verify this email
         </Button>
       </form>
 
@@ -124,10 +125,10 @@ function VerifyForm() {
           The code is valid for {OTP_TTL_MINUTES} minutes.
         </p>
         <Link
-          href="/register"
+          href="/login"
           className="text-[0.875rem] text-ink-muted hover:text-ink"
         >
-          Use a different email
+          Start over with a different email
         </Link>
       </div>
     </Surface>

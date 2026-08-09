@@ -105,11 +105,14 @@ export function OfferComposer({
 
       <TradeBench
         inventory={stash}
-        offered={offered}
-        onOfferedChange={setOffered}
-        wanted={wanted}
+        youGet={wanted}
+        youGive={offered}
+        onYouGiveChange={setOffered}
         additionalMoney={money}
         onAdditionalMoneyChange={setMoney}
+        // Composing an offer, you are always the one putting the cash up.
+        moneyDirection="you-pay"
+        counterpartyName={post.seller.name}
       />
 
       <TradeSourcePanel
@@ -127,11 +130,13 @@ export function OfferComposer({
         shape="card"
         className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex items-center gap-3 p-3 lg:static"
       >
+        {/* Same phrasing as the review screen and the inbox card, so what you
+            are about to send reads the way it will read once it is sent. */}
         <p className="min-w-0 flex-1 text-[0.8125rem] text-ink-muted">
           {offered.length > 0
-            ? `On the table: ${offered.length} items`
+            ? `You give ${offered.length} ${offered.length === 1 ? "item" : "items"}`
             : "Nothing on the table yet"}
-          {money > 0 ? ` + ฿${money.toLocaleString("en-GB")}` : ""}
+          {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""}
         </p>
         <Button size="lg" isDisabled={!canSubmit} isLoading={busy} onPress={submit}>
           <ArrowLeftRight className="size-5" />

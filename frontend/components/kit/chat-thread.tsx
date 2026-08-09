@@ -4,10 +4,14 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { ImagePlus, Send } from "lucide-react";
 
+import type { UserSummary } from "@/lib/api/types";
+import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
 import { Surface } from "./surface";
+import { TONE_RAIL_LEFT } from "./tone";
+import { TrustBadge } from "./trust-badge";
 
 /**
  * The chat is the transaction (IA decision D1). Flow actions are not buried in
@@ -39,7 +43,29 @@ export interface ChatThreadProps {
   /** Giveaway rooms let only the giver type (flow 3). */
   isReadOnly?: boolean;
   readOnlyNotice?: string;
+  /**
+   * Who everyone is, by `sender_id`. Needed only when `showSenders` is on.
+   */
+  senders?: Map<number, UserSummary>;
+  /**
+   * Name other people's messages. Off for a one-to-one deal room, where the
+   * only two possible senders are you and the person in the header. On for a
+   * giveaway room, where several recipients share the thread and every bubble
+   * that is not yours otherwise collapses into the same anonymous grey.
+   */
+  showSenders?: boolean;
   className?: string;
+}
+
+/**
+ * A stable colour per person so a run of messages is separable while scrolling
+ * past it. Decorative and always paired with the name — `danger` and `success`
+ * are excluded so an accent can never be read as a status.
+ */
+const SENDER_TONES: Tone[] = ["info", "trade", "warning", "neutral"];
+
+function senderTone(senderId: number): Tone {
+  return SENDER_TONES[Math.abs(senderId) % SENDER_TONES.length];
 }
 
 export function ChatThread({
@@ -51,6 +77,8 @@ export function ChatThread({
   onAttach,
   isReadOnly = false,
   readOnlyNotice = "Only the giver can post in this room",
+  senders,
+  showSenders = false,
   className,
 }: ChatThreadProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -70,16 +98,34 @@ export function ChatThread({
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 py-4">
-        {messages.map((m) => {
+        {messages.map((m, i) => {
           const mine = m.sender_id === viewerId;
+          // Only the first message of a run gets the name — repeating it on
+          // every bubble of a five-message burst is noise, not attribution.
+          const startsRun = messages[i - 1]?.sender_id !== m.sender_id;
+          const named = showSenders && !mine;
+          const sender = named ? senders?.get(m.sender_id) : undefined;
+          const tone = senderTone(m.sender_id);
+
           return (
             <div key={m.message_id} className="flex flex-col gap-3">
               <div
                 className={cn(
                   "flex max-w-[82%] flex-col gap-1.5",
                   mine ? "self-end items-end" : "self-start items-start",
+                  named && startsRun && i > 0 && "mt-2",
                 )}
               >
+                {named && startsRun ? (
+                  <TrustBadge
+                    size="sm"
+                    name={sender?.name ?? "Unknown member"}
+                    isVerified={sender?.isVerified ?? false}
+                    avatarUrl={sender?.avatar_url}
+                    className="px-1"
+                  />
+                ) : null}
+
                 {m.image_urls?.length ? (
                   <div className="grid grid-cols-2 gap-1.5">
                     {m.image_urls.slice(0, 5).map((url) => (
@@ -102,6 +148,7 @@ export function ChatThread({
                       mine
                         ? "rounded-br-chip bg-brand text-on-brand"
                         : "rounded-bl-chip bg-surface text-ink shadow-raised",
+                      named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                     )}
                   >
                     {m.content}

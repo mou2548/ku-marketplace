@@ -26,13 +26,17 @@ export function GiveawayBrowser({
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
 }) {
+  // "Open" has to mean open. Closed and Completed rows are still reachable
+  // from a ticket or a chat room; they are not something to browse and enter.
+  const open = giveaways.filter((g) => g.status === "Active");
+
   return (
     <div className="flex flex-col gap-4">
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           Giveaways
         </h1>
-        <LinkButton size="sm" href="/giveaway/new">
+        <LinkButton size="sm" href="/post?type=giveaway">
           <Plus className="size-4" />
           Give something away
         </LinkButton>
@@ -45,7 +49,7 @@ export function GiveawayBrowser({
         </TabList>
 
         <TabPanel id="open">
-          {giveaways.length === 0 ? (
+          {open.length === 0 ? (
             <EmptyState
               icon={<Gift className="size-6" />}
               title="No one is giving anything away right now"
@@ -53,7 +57,7 @@ export function GiveawayBrowser({
             />
           ) : (
             <ul className="grid gap-3 pt-4 sm:grid-cols-2 lg:grid-cols-3">
-              {giveaways.map((g) => (
+              {open.map((g) => (
                 <li key={g.giveaway_id}>
                   <GiveawayCard giveaway={g} />
                 </li>

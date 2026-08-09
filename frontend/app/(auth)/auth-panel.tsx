@@ -4,37 +4,35 @@ import { useActionState, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Lock, Mail, X } from "lucide-react";
+import { ArrowRight, Lock, Mail } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import {
   ALLOWED_EMAIL_DOMAINS,
   OTP_TTL_MINUTES,
-  PASSWORD_RULES,
-  checkPassword,
   isKuEmail,
-  isPasswordValid,
 } from "@/lib/auth-rules";
 import { login } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 /**
- * Sign in and register, on one panel.
+ * Sign in and register, on one panel and one route.
  *
  * Registering used to be a separate long page reached through a tab that was
- * really a link, so the tab lied about what it did. It is three fields, so it
- * belongs here beside the sign-in form.
- *
- * The tabs are links rather than local state on purpose: `/login` and
- * `/register` stay real URLs, so the browser back button works, a "sign up
- * here" link can be sent to someone, and the existing `/register` route keeps
- * working without a redirect.
+ * really a link. It is three fields, so it belongs here beside the sign-in
+ * form — and now it is here in the literal sense too: the tabs are state, not
+ * navigation. Two URLs rendering the same shell meant a full navigation, a
+ * re-fetch, and a flash of the hero image to move between two forms sitting
+ * side by side. `/register` redirects here, so links that were already sent
+ * still land in the right place.
  *
  * The visual design of this screen is deliberately unchanged — it is the one
  * part of the product the team asked to keep (docs/PLAN.md §3).
  */
-export function AuthPanel({ mode }: { mode: "login" | "register" }) {
+export function AuthPanel() {
+  const [mode, setMode] = useState<"login" | "register">("login");
+
   return (
     <div className="flex min-h-dvh w-full flex-col bg-gradient-to-b from-white to-page">
       <div className="flex w-full flex-1 flex-col md:flex-row">
@@ -74,17 +72,22 @@ export function AuthPanel({ mode }: { mode: "login" | "register" }) {
             priority
           />
 
-          <nav
+          <div
+            role="group"
             aria-label="Sign in or register"
             className="flex w-full max-w-lg rounded-pill bg-surface-sunken p-1 shadow-sunken"
           >
-            <ModeTab href="/login" label="Login" isActive={mode === "login"} />
             <ModeTab
-              href="/register"
+              label="Login"
+              isActive={mode === "login"}
+              onPress={() => setMode("login")}
+            />
+            <ModeTab
               label="Register"
               isActive={mode === "register"}
+              onPress={() => setMode("register")}
             />
-          </nav>
+          </div>
 
           {mode === "login" ? <LoginForm /> : <RegisterForm />}
         </div>
@@ -94,18 +97,19 @@ export function AuthPanel({ mode }: { mode: "login" | "register" }) {
 }
 
 function ModeTab({
-  href,
   label,
   isActive,
+  onPress,
 }: {
-  href: string;
   label: string;
   isActive: boolean;
+  onPress: () => void;
 }) {
   return (
-    <Link
-      href={href}
-      aria-current={isActive ? "page" : undefined}
+    <button
+      type="button"
+      onClick={onPress}
+      aria-pressed={isActive}
       className={cn(
         "flex h-12 flex-1 items-center justify-center rounded-pill text-[1.0625rem]",
         "transition-colors duration-[--dur-fast]",
@@ -115,7 +119,7 @@ function ModeTab({
       )}
     >
       {label}
-    </Link>
+    </button>
   );
 }
 
@@ -124,10 +128,16 @@ function LoginForm() {
 
   return (
     <form action={formAction} className="flex w-full max-w-lg flex-col gap-6">
+      {/* Not `type="email"`: the browser refuses to submit anything without an
+          `@` in it, which silently blocked every non-email account — including
+          the development one. The server decides what is valid, not the input
+          type. */}
       <TextInput
         name="username"
         label="KU email"
-        type="email"
+        type="text"
+        autoComplete="username"
+        isRequired
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
         inputClassName="h-14 text-[1.0625rem]"
@@ -137,6 +147,8 @@ function LoginForm() {
         name="password"
         type="password"
         label="Password"
+        autoComplete="current-password"
+        isRequired
         placeholder="········"
         icon={<Lock className="size-5" />}
         inputClassName="h-14 text-[1.0625rem]"
@@ -166,25 +178,23 @@ function LoginForm() {
 }
 
 /**
- * Three fields. The phone number is gone — the schema has it nullable and no
- * flow depends on it, so asking for it at the door was cost with no return; it
- * can be added later from the profile.
+ * One field.
  *
- * The single identity field is the KU email rather than a free username,
- * because the one-time code is emailed and the `@ku.th` domain is the whole
- * trust model (research T1). Naming it "KU email" is the honest label for what
- * it has to be.
+ * `flow4.png` orders signup: enter a KU email, the system sends a one-time
+ * code, **then** you set a password and fill in your profile, and only then is
+ * the account opened. The form used to take the password here, before the
+ * address had been proved to belong to anyone — so a full set of credentials
+ * could be typed for an address the person did not hold.
+ *
+ * The identity is the KU email rather than a free username, because the code is
+ * emailed and the `@ku.th` domain is the whole trust model (research T1).
  */
 function RegisterForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
 
   const emailOk = isKuEmail(email);
-  const rules = checkPassword(password);
-  const passwordsMatch = password !== "" && password === confirm;
-  const canSubmit = emailOk && isPasswordValid(password) && passwordsMatch;
+  const canSubmit = emailOk;
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -200,7 +210,7 @@ function RegisterForm() {
         type="email"
         value={email}
         onChange={setEmail}
-        placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
+        placeholder={`username  @${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
         inputClassName="h-14 text-[1.0625rem]"
         errorMessage={
@@ -210,68 +220,18 @@ function RegisterForm() {
         }
       />
 
-      <div className="flex flex-col gap-2">
-        <TextInput
-          label="Password"
-          type="password"
-          value={password}
-          onChange={setPassword}
-          placeholder="········"
-          icon={<Lock className="size-5" />}
-          inputClassName="h-14 text-[1.0625rem]"
-        />
-        <ul className="flex flex-col gap-1">
-          <Rule
-            ok={rules.longEnough && rules.shortEnough}
-            label={`${PASSWORD_RULES.minLength}–${PASSWORD_RULES.maxLength} characters`}
-          />
-          <Rule ok={rules.hasLetter} label="At least one letter" />
-          <Rule ok={rules.hasDigit} label="At least one number" />
-        </ul>
-      </div>
-
-      <TextInput
-        label="Confirm password"
-        type="password"
-        value={confirm}
-        onChange={setConfirm}
-        placeholder="········"
-        icon={<Lock className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
-        errorMessage={
-          confirm !== "" && !passwordsMatch ? "Passwords do not match" : undefined
-        }
-      />
-
       <Button type="submit" size="lg" block pill isDisabled={!canSubmit}>
-        Register
+        Send me the code
         <ArrowRight className="size-5" />
       </Button>
 
-      <p className="text-center text-[0.875rem] text-ink-muted">
+      <p className="text-center text-[0.875rem] leading-[1.65] text-ink-muted">
         We will email you a 6-digit code, valid for {OTP_TTL_MINUTES} minutes.
+        You pick a password and fill in your profile after that.
       </p>
 
       <Terms />
     </form>
-  );
-}
-
-function Rule({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <li
-      className={cn(
-        "flex items-center gap-2 text-[0.75rem]",
-        ok ? "text-ink-brand" : "text-ink-muted",
-      )}
-    >
-      {ok ? (
-        <Check aria-hidden className="size-3.5" />
-      ) : (
-        <X aria-hidden className="size-3.5" />
-      )}
-      {label}
-    </li>
   );
 }
 
