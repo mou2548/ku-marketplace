@@ -24,7 +24,6 @@ import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
-import { TwoColumn } from "@/components/kit/two-column";
 import type { Item } from "@/lib/api/types";
 import {
   ALLOCATION_METHOD,
@@ -56,6 +55,18 @@ import { cn } from "@/lib/utils";
  * screen that offers the choice, and never leaves it.
  */
 type ListingKind = PostType | "Giveaway";
+
+/**
+ * What the form is about to ask, shown while nothing is picked. Kept in step
+ * with the fields below it — these are the four decisions the composer makes,
+ * not marketing copy.
+ */
+const STEPS: Array<[key: string, label: string, detail: string]> = [
+  ["pick", "Pick from your stuff", "Tick one or more items in the list above"],
+  ["kind", "Say how it is going out", "For sale, for trade, both, or given away"],
+  ["terms", "Set the terms once", "A price, what you want in trade, or a pickup place and a closing date"],
+  ["publish", "Publish", "It appears in the market straight away and offers come to your inbox"],
+];
 
 export function PostComposer({
   items,
@@ -140,7 +151,7 @@ export function PostComposer({
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+      <div className="flex w-full max-w-2xl flex-col gap-4">
         <Surface
           shape="card"
           elevation="flat"
@@ -194,9 +205,12 @@ export function PostComposer({
           something else.
         </Surface>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+        // `min-w-0` on each item: a grid track defaults to `min-width:auto`,
+        // so without it the row cannot shrink below its content and the page
+        // scrolls sideways at 360px.
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {unlisted.map((item) => (
-            <li key={item.item_id}>
+            <li key={item.item_id} className="min-w-0">
               <ItemPick
                 item={item}
                 isPicked={picked.has(item.item_id)}
@@ -230,22 +244,89 @@ export function PostComposer({
     </Surface>
   );
 
+  const publishBar = (
+    <Surface
+      shape="card"
+      className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 p-3"
+    >
+      <p className="min-w-0 flex-1 text-[0.875rem]">
+        {picked.size === 0 ? (
+          <span className="text-ink-muted">Pick at least one item</span>
+        ) : (
+          <span data-numeric className="font-medium">
+            {picked.size} selected
+          </span>
+        )}
+      </p>
+
+      <Button
+        size="lg"
+        isDisabled={!canPublish}
+        isLoading={busy}
+        onPress={publish}
+      >
+        {isGiveaway ? (
+          <>
+            <Gift className="size-5" />
+            Post giveaway
+          </>
+        ) : (
+          <>
+            <Store className="size-5" />
+            Publish
+          </>
+        )}
+      </Button>
+    </Surface>
+  );
+
   return (
-    <TwoColumn rail={stash} railFirst>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Post to the market
-        </h1>
+    <div className="flex flex-col gap-5">
+      <header className="flex max-w-prose flex-col gap-1">
+        <h1 className="text-h1">Post to the market</h1>
         <p className="text-[0.9375rem] leading-[1.7] text-ink-muted">
           Pick what you want to list, set the terms once, publish. Selling,
           trading and giving away all start here.
         </p>
       </header>
 
+      {stash}
+
       {/* Terms only appear once something is picked: an empty form above an
-          empty selection is two decisions presented as one. */}
+          empty selection is two decisions presented as one. But an empty page
+          is not the alternative — before anything is picked this says what the
+          form is about to ask for, so the screen has a shape to fill in rather
+          than a single disabled bar in a blank half-window. */}
+      {picked.size === 0 ? (
+        <ol className="grid items-stretch gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {STEPS.map(([step, label, detail], i) => (
+            <li key={step}>
+              <Surface
+                shape="card"
+                elevation="flat"
+                className="flex h-full items-start gap-3 p-4"
+              >
+                <span
+                  aria-hidden
+                  data-numeric
+                  className="grid size-6 shrink-0 place-items-center rounded-pill bg-gray-100 text-[0.75rem] font-semibold text-ink-muted"
+                >
+                  {i + 1}
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[0.9375rem] font-medium">{label}</span>
+                  <span className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+                    {detail}
+                  </span>
+                </span>
+              </Surface>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+
       {picked.size > 0 ? (
-        <section className="flex flex-col gap-5">
+        <section className="mx-auto flex w-full max-w-6xl flex-col gap-5">
           <RadioGroupField
             label="What kind of listing is this"
             value={kind}
@@ -394,40 +475,8 @@ export function PostComposer({
         </section>
       ) : null}
 
-      <Surface
-        shape="card"
-        className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] flex flex-wrap items-center gap-3 p-3"
-      >
-        <p className="min-w-0 flex-1 text-[0.875rem]">
-          {picked.size === 0 ? (
-            <span className="text-ink-muted">Pick at least one item</span>
-          ) : (
-            <span data-numeric className="font-medium">
-              {picked.size} selected
-            </span>
-          )}
-        </p>
-
-        <Button
-          size="lg"
-          isDisabled={!canPublish}
-          isLoading={busy}
-          onPress={publish}
-        >
-          {isGiveaway ? (
-            <>
-              <Gift className="size-5" />
-              Post giveaway
-            </>
-          ) : (
-            <>
-              <Store className="size-5" />
-              Publish
-            </>
-          )}
-        </Button>
-      </Surface>
-    </TwoColumn>
+      {publishBar}
+    </div>
   );
 }
 
@@ -448,7 +497,7 @@ function ItemPick({
       type="button"
       aria-pressed={isPicked}
       onClick={onToggle}
-      className="w-full text-left"
+      className="w-full min-w-0 text-left"
     >
       <Surface
         as="div"
@@ -473,8 +522,8 @@ function ItemPick({
         </span>
 
         <span
-          className="block w-14 shrink-0 overflow-hidden rounded-slot"
-          style={{ boxShadow: `0 0 0 2px ${rarity.edge}` }}
+          className="block w-14 shrink-0 overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+          style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
         >
           <PostImage src={primary?.image_url} alt="" aspectRatio={1} sizes="56px" />
         </span>
@@ -486,7 +535,12 @@ function ItemPick({
           <span className="truncate text-[0.8125rem] text-ink-muted">
             {item.category}
             <span aria-hidden> · </span>
-            <span style={{ color: rarity.fg }}>{rarity.label}</span>
+            <span
+              style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
+              className="text-[var(--slot-edge)]"
+            >
+              {rarity.label}
+            </span>
           </span>
         </span>
       </Surface>
