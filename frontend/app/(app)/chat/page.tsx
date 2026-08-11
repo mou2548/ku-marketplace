@@ -40,18 +40,19 @@ export default async function ChatInboxPage() {
   }
 
   return (
-    <div className="flex gap-6">
-      <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-4 xl:mx-0 xl:w-80 xl:max-w-none xl:shrink-0">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Chat
-        </h1>
-        <RoomList rooms={rooms} activeRoomId={first?.summary.room_id} />
+    <div className="flex h-full min-h-0">
+      <div className="flex h-full w-full min-w-0 flex-col xl:w-96 xl:shrink-0 xl:border-r xl:border-line">
+        <RoomList
+          rooms={rooms}
+          activeRoomId={first?.summary.room_id}
+          heading="Chat"
+        />
       </div>
 
       {/* The preview, not a second route: opening a room from the list still
           navigates to /chat/[roomId], which renders exactly this. */}
       {first ? (
-        <div className="hidden min-w-0 flex-1 xl:block">
+        <div className="hidden min-h-0 min-w-0 flex-1 xl:flex">
           <RoomScreen
             summary={first.summary}
             viewerId={VIEWER_ID}

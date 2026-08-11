@@ -1,91 +1,81 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AlertTriangle, Trash2 } from "lucide-react";
-
-import { Button } from "@/components/kit/button";
-import { TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
-import { useToast } from "@/components/kit/toast";
+import { TwoColumn } from "@/components/kit/two-column";
+import {
+  getMyItems,
+  getOffers,
+  getPosts,
+  getTransactions,
+  VIEWER_ID,
+} from "@/lib/api/fixtures";
 
-const CONFIRM_WORD = "DELETE";
+import { DeleteAccountForm } from "./delete-form";
+
+export const metadata = { title: "Close account - KU Marketplace" };
 
 /**
- * A destructive, irreversible action, so it is gated on typing the word rather
- * than on a second button. The consequences are listed before the control, not
- * after it — a warning under the button is a warning nobody reads.
+ * The consequences, counted.
+ *
+ * The page used to state what closing an account does in the abstract and then
+ * sit in a 42% column with the rest of the window empty. The same sentences
+ * mean much more with the viewer's own numbers beside them — and the count of
+ * deals in progress is not decoration, it is the thing that blocks the button.
  */
-export default function DeleteAccountPage() {
-  const router = useRouter();
-  const toast = useToast();
-  const [confirm, setConfirm] = useState("");
-  const [busy, setBusy] = useState(false);
+export default async function DeleteAccountPage() {
+  const [items, posts, transactions, offers] = await Promise.all([
+    getMyItems(),
+    getPosts(),
+    getTransactions(),
+    getOffers(),
+  ]);
 
-  async function remove() {
-    setBusy(true);
-    // DELETE /users/me
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show("Account closed");
-    router.push("/login");
-  }
+  const mine = new Set(items.map((i) => i.item_id));
+  const livePosts = posts.filter((p) => mine.has(p.item_id)).length;
+  const openOffers = offers.filter(
+    (o) => o.proposer_id === VIEWER_ID && o.status === "Pending",
+  ).length;
+
+  const involved = transactions.filter(
+    (t) => t.buyer_id === VIEWER_ID || t.seller_id === VIEWER_ID,
+  );
+  const inProgress = involved.filter(
+    (t) => t.status === "Pending" || t.status === "Processing",
+  ).length;
+  const completed = involved.filter((t) => t.status === "Completed").length;
+
+  const rows: Array<[label: string, value: number, note: string]> = [
+    ["Items in your inventory", items.length, "Deleted with the account"],
+    ["Live posts", livePosts, "Removed from the market at once"],
+    ["Open offers you made", openOffers, "Withdrawn"],
+    ["Deals in progress", inProgress, "Must be finished or cancelled first"],
+    ["Completed deals", completed, "Stay in the other party's history"],
+  ];
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        Close your account
-      </h1>
-
-      <Surface
-        shape="card"
-        elevation="flat"
-        className="flex gap-3 bg-tone-danger-bg border-l-4 border-l-tone-danger-solid p-4"
-      >
-        <AlertTriangle
-          aria-hidden
-          className="mt-0.5 size-5 shrink-0 text-tone-danger-fg"
-        />
-        <div className="flex flex-col gap-2 text-[0.875rem] leading-[1.7] text-ink-secondary">
-          <p className="font-semibold text-tone-danger-fg">
-            This cannot be undone.
+    <TwoColumn
+      rail={
+        <Surface shape="card" className="flex flex-col gap-4 p-5">
+          <p className="text-overline text-ink-muted uppercase">
+            What you would lose
           </p>
-          <ul className="flex list-disc flex-col gap-1 pl-4">
-            <li>Your posts are removed from the market immediately.</li>
-            <li>Open offers you made are withdrawn.</li>
-            <li>
-              Deals still in progress must be finished or cancelled first — you
-              cannot leave someone mid-handover.
-            </li>
-            <li>
-              Completed deals stay in the other party&apos;s history, because
-              they are that person&apos;s evidence too.
-            </li>
-          </ul>
-        </div>
-      </Surface>
-
-      <TextInput
-        label={`Type ${CONFIRM_WORD} to confirm`}
-        value={confirm}
-        onChange={setConfirm}
-        placeholder={CONFIRM_WORD}
-      />
-
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="ghost" onPress={() => router.back()}>
-          Keep my account
-        </Button>
-        <Button
-          variant="danger"
-          isDisabled={confirm !== CONFIRM_WORD}
-          isLoading={busy}
-          onPress={remove}
-        >
-          <Trash2 className="size-4" />
-          Close account permanently
-        </Button>
-      </div>
-    </div>
+          <dl className="flex flex-col gap-3">
+            {rows.map(([label, value, note]) => (
+              <div key={label} className="flex flex-col gap-0.5">
+                <dt className="flex items-baseline justify-between gap-2 text-[0.875rem] font-medium">
+                  {label}
+                  <span data-numeric className="shrink-0 tabular-nums">
+                    {value}
+                  </span>
+                </dt>
+                <dd className="text-[0.75rem] leading-[1.5] text-ink-muted">
+                  {note}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Surface>
+      }
+    >
+      <DeleteAccountForm blocked={inProgress} />
+    </TwoColumn>
   );
 }

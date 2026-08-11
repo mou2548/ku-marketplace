@@ -62,38 +62,11 @@
   --rose-900: #46161f;
   --rose-950: #2d1015;
 
-  /* --- Blue: informational, in transit --- */
-  --blue-50: #f3f7f9;
-  --blue-100: #e5edf3;
-  --blue-200: #cbdde9;
-  --blue-300: #a4c7dd;
-  --blue-400: #65a6d0;   /*  2.64 */
-  --blue-500: #3388bd;   /*  3.91 — large text only */
-  --blue-600: #286b95;   /*  5.80 — text. AA. */
-  --blue-700: #205576;
-  --blue-800: #1b435d;
-  --blue-900: #163346;
-  --blue-950: #10222d;
+  /* Blue, violet and gold were retired: the palette is five hues — two greens,
+     two ambers, one rose — and those three had no consumer left. Info moved to
+     the light green, trade to neutral, membership to amber. Do not add a sixth
+     hue without deciding which of these five it replaces. */
 
-  /* --- Violet: trade. Separates a swap from a sale at a glance. --- */
-  --violet-50: #f4f3f9;
-  --violet-100: #e8e5f2;
-  --violet-200: #d2cce8;
-  --violet-300: #b0a5dc;
-  --violet-400: #7c67cd;  /* 4.48 */
-  --violet-500: #5136ba;  /* 8.15 — text + fill with white on top */
-  --violet-600: #402a93;
-  --violet-700: #332275;
-  --violet-800: #291d5b;
-  --violet-900: #201745;
-  --violet-950: #16112c;
-
-  /* --- Gold: reserved for the New condition rarity and giveaway rewards. --- */
-  --gold-100: #faf1dc;
-  --gold-200: #f2e0b4;
-  --gold-400: #d8a93a;
-  --gold-600: #9a7413;   /* 4.97 — text. AA. */
-  --gold-800: #5f4708;
 }
 
 /* =========================================================================
@@ -146,39 +119,59 @@
   /* --------------------------------------------------------------------
      Tones. Backend enums map to a tone in lib/status.ts — never in CSS.
      Each tone is a trio: a wash background, a border, and AA-safe text.
+
+     The border is not decoration. A wash is a 100-step tint and the page is
+     #f4f7f5, so a chip's fill measures about 1.06:1 against the page it sits
+     on — the pill disappears and leaves floating coloured text. The border is
+     the only thing giving the chip a shape, so each tone uses the lowest step
+     that stays visible on both the page and a white card:
+
+       neutral gray-400   2.51:1    warning amber-600 3.25:1
+       info    green-400  1.85:1    danger  rose-400  3.37:1
+       success green-600  4.04:1    trade   gray-400  2.51:1
+
+     They were all 300 before, which measured 1.38-2.10:1 and was chosen for
+     white only. Pair them with `TONE_CHIP`, never `TONE_WASH` alone.
      -------------------------------------------------------------------- */
   --tone-neutral-bg: var(--gray-100);
-  --tone-neutral-border: var(--gray-300);
+  --tone-neutral-border: var(--gray-400);
   --tone-neutral-fg: var(--gray-700);
   --tone-neutral-solid: var(--gray-600);
 
-  --tone-info-bg: var(--blue-100);
-  --tone-info-border: var(--blue-300);
-  --tone-info-fg: var(--blue-700);
-  --tone-info-solid: var(--blue-600);
+  /* Info is the light green, success the deep one — the same journey seen
+     twice, "on the way" and "arrived". Six tones over five hues means two
+     share, and these two are the pair that share best. The washes are only
+     1.14:1 apart, so the border and the icon carry the distinction; colour is
+     never the sole signal anyway (CLAUDE.md §6). */
+  --tone-info-bg: var(--green-100);
+  --tone-info-border: var(--green-400);
+  --tone-info-fg: var(--green-700);
+  --tone-info-solid: var(--green-400);
 
-  --tone-success-bg: var(--green-100);
-  --tone-success-border: var(--green-300);
+  --tone-success-bg: var(--green-200);
+  --tone-success-border: var(--green-600);
   --tone-success-fg: var(--green-800);
-  --tone-success-solid: var(--green-600);
+  --tone-success-solid: var(--green-700);
 
   --tone-warning-bg: var(--amber-100);
-  --tone-warning-border: var(--amber-300);
+  --tone-warning-border: var(--amber-600);
   --tone-warning-fg: var(--amber-800);
   --tone-warning-solid: var(--amber-500);
 
   --tone-danger-bg: var(--rose-100);
-  --tone-danger-border: var(--rose-300);
+  --tone-danger-border: var(--rose-400);
   --tone-danger-fg: var(--rose-600);
   --tone-danger-solid: var(--rose-500);
 
-  /* Trade stays distinguishable from a sale, but quieter than the brand:
-     in the first pass the violet solid badge was the loudest thing on the
-     feed, which put the accent above the identity. */
-  --tone-trade-bg: var(--violet-100);
-  --tone-trade-border: var(--violet-300);
-  --tone-trade-fg: var(--violet-600);
-  --tone-trade-solid: var(--violet-400);
+  /* Trade is a category, not a severity, and the palette is five hues with no
+     violet in it. It reads as neutral now; where sale and trade genuinely have
+     to be told apart — the feed card — the chip is filled green or amber and
+     says which in words. The tone name stays so the enum maps keep compiling;
+     retiring it is a type change, not a colour one. */
+  --tone-trade-bg: var(--gray-100);
+  --tone-trade-border: var(--gray-400);
+  --tone-trade-fg: var(--gray-700);
+  --tone-trade-solid: var(--gray-600);
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.
@@ -378,6 +371,19 @@
   --color-green-900: var(--green-900);
   --color-green-950: var(--green-950);
 
+  /* Amber is one of the five hues the product allows, so its ramp is
+     reachable the way green's is — a filled chip needs the 700 step to carry
+     white text at 4.5:1, and 600 only reaches 3.50:1. */
+  --color-amber-100: var(--amber-100);
+  --color-amber-400: var(--amber-400);
+  --color-amber-600: var(--amber-600);
+  --color-amber-700: var(--amber-700);
+  --color-amber-800: var(--amber-800);
+
+  --color-rose-400: var(--rose-400);
+  --color-rose-500: var(--rose-500);
+  --color-rose-600: var(--rose-600);
+
   --color-gray-50: var(--gray-50);
   --color-gray-100: var(--gray-100);
   --color-gray-200: var(--gray-200);
@@ -390,13 +396,6 @@
   --color-gray-900: var(--gray-900);
   --color-gray-950: var(--gray-950);
 
-  --color-violet-100: var(--violet-100);
-  --color-violet-300: var(--violet-300);
-  --color-violet-500: var(--violet-500);
-  --color-violet-600: var(--violet-600);
-  --color-gold-100: var(--gold-100);
-  --color-gold-400: var(--gold-400);
-  --color-gold-600: var(--gold-600);
 
   /* Semantic — prefer these in components. */
   --color-page: var(--bg-page);

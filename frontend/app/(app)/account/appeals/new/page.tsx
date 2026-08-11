@@ -8,6 +8,7 @@ import { Button } from "@/components/kit/button";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { TwoColumn } from "@/components/kit/two-column";
 
 const MIN_LENGTH = 40;
 
@@ -29,13 +30,45 @@ export default function NewAppealPage() {
     router.push("/account/appeals");
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        Submit an appeal
-      </h1>
+  /**
+   * What makes an appeal succeed, beside the box you write it in. This is the
+   * one screen where the quality of what the student types decides the outcome,
+   * and the guidance was previously a single paragraph above the field.
+   */
+  const guidance = (
+    <Surface shape="card" className="flex flex-col gap-4 p-5">
+      <p className="text-overline text-ink-muted uppercase">
+        What an admin looks for
+      </p>
+      <ul className="flex flex-col gap-3 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+        <li>
+          <span className="block font-medium text-ink">
+            Evidence that was not seen
+          </span>
+          A message, a slip, or a photo the first decision did not have.
+        </li>
+        <li>
+          <span className="block font-medium text-ink">
+            What the decision got wrong
+          </span>
+          Point at the specific finding, not the outcome.
+        </li>
+        <li>
+          <span className="block font-medium text-ink">Dates and order</span>
+          What happened when. The chat is timestamped and an admin will check.
+        </li>
+      </ul>
+      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
+        Restating the original complaint does not help. One appeal per decision.
+      </p>
+    </Surface>
+  );
 
-      <Surface shape="card" elevation="flat" className="bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
+  return (
+    <TwoColumn rail={guidance}>
+      <h1 className="text-h1">Submit an appeal</h1>
+
+      <Surface shape="card" elevation="flat" className="max-w-xl bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
         <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
           A different admin from the one who made the original decision reviews
           your appeal. Say what the decision got wrong and what evidence has not
@@ -79,6 +112,6 @@ export default function NewAppealPage() {
           Submit appeal
         </Button>
       </div>
-    </div>
+    </TwoColumn>
   );
 }

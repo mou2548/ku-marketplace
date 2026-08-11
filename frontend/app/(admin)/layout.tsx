@@ -47,12 +47,17 @@ export default async function AdminLayout({
     <ToastProvider>
       <div className="flex min-h-dvh flex-col">
         <header className="sticky top-0 z-[50] border-b border-line bg-surface-inverse text-white">
-          <div className="mx-auto flex h-16 w-full max-w-[80rem] items-center gap-3 px-4 lg:px-8">
-            <span className="font-bold tracking-[-0.012em]">
+          <div className="flex h-16 w-full items-center gap-3 px-4 lg:px-8">
+            {/* Truncates rather than pushing the row wide: at 360 the title,
+                three queue links and the back link together overflowed. */}
+            <span className="min-w-0 truncate font-bold tracking-[-0.012em]">
               KU Marketplace · Admin
             </span>
 
-            <nav aria-label="Moderation queues" className="ml-4 flex items-center gap-1">
+            <nav
+              aria-label="Moderation queues"
+              className="flex shrink-0 items-center gap-1 sm:ml-4"
+            >
               {queues.map(({ href, label, icon: Icon, count }) => (
                 <Link
                   key={href}
@@ -75,7 +80,7 @@ export default async function AdminLayout({
 
             <Link
               href="/"
-              className="ml-auto flex min-h-11 items-center gap-2 rounded-control px-3 text-[0.875rem] text-white/70 hover:text-white"
+              className="ml-auto flex min-h-11 shrink-0 items-center gap-2 rounded-control px-3 text-[0.875rem] text-white/70 hover:text-white"
             >
               <ArrowLeft aria-hidden className="size-4" />
               <span className="hidden sm:inline">Back to the marketplace</span>
@@ -85,7 +90,7 @@ export default async function AdminLayout({
 
         <main
           id="main"
-          className="mx-auto w-full max-w-[80rem] flex-1 px-4 py-6 lg:px-8"
+          className="w-full flex-1 px-4 py-6 lg:px-8"
         >
           {children}
         </main>

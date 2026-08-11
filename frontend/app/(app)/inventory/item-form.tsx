@@ -18,7 +18,9 @@ import {
 } from "@/components/kit/choice";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { TextAreaField, TextInput } from "@/components/kit/field";
+import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
+import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
 import type { Item, ItemCategory } from "@/lib/api/types";
 import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
@@ -108,9 +110,57 @@ export function ItemForm({
     router.push("/inventory");
   }
 
+  /**
+   * The item as it will look in the stash, updating as you type.
+   *
+   * The form was a capped column with no rail, so at 1600 it used 44% of the
+   * window and left 896px of grey — the widest dead band in the product. The
+   * preview is the same answer `/account/edit` and `/inventory/[id]/list`
+   * already use: real state, no invented content, and it happens to be the one
+   * thing worth seeing while filling this form in.
+   */
+  const preview = (
+    <Surface shape="card" className="flex flex-col gap-3 p-5">
+      <p className="text-overline text-ink-muted uppercase">In your stash</p>
+
+      <span
+        style={
+          {
+            "--slot-edge": ITEM_CONDITION[condition].edge,
+          } as React.CSSProperties
+        }
+        className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+      >
+        <PostImage src={previews[0]} alt="" aspectRatio={1} sizes="320px" />
+      </span>
+
+      <p className="font-semibold">{name.trim() || "Untitled item"}</p>
+
+      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+        <div className="flex justify-between gap-2">
+          <dt className="text-ink-muted">Category</dt>
+          <dd>{category}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-ink-muted">Condition</dt>
+          <dd>{ITEM_CONDITION[condition].label}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-ink-muted">Quantity</dt>
+          <dd data-numeric>{quantity || "1"}</dd>
+        </div>
+      </dl>
+
+      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
+        The border colour is the condition. It is how the item reads at a glance
+        everywhere it appears.
+      </p>
+    </Surface>
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+    <TwoColumn rail={preview}>
+      <h1 className="text-h1">
         {mode === "create" ? "Add an item" : "Edit details"}
       </h1>
 
@@ -171,6 +221,7 @@ export function ItemForm({
       </Surface>
 
       <TextInput
+        className="max-w-2xl"
         label="Item name"
         value={name}
         onChange={setName}
@@ -178,7 +229,7 @@ export function ItemForm({
         placeholder="e.g. Calculus textbook, volume 1"
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <SelectField
           label="Category"
           selectedKey={category}
@@ -201,6 +252,7 @@ export function ItemForm({
 
       {needsCourse ? (
         <TextInput
+          className="max-w-2xl"
           label="Course code"
           value={courseName}
           onChange={setCourseName}
@@ -255,6 +307,7 @@ export function ItemForm({
       </RadioGroupField>
 
       <TextAreaField
+        className="max-w-2xl"
         label="Details"
         value={description}
         onChange={setDescription}
@@ -276,6 +329,6 @@ export function ItemForm({
           {mode === "create" ? "Add to inventory" : "Save"}
         </Button>
       </div>
-    </div>
+    </TwoColumn>
   );
 }

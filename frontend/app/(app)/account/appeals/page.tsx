@@ -4,10 +4,22 @@ import { LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { TwoColumn } from "@/components/kit/two-column";
 import { getAdminAppeals } from "@/lib/api/fixtures";
-import { APPEAL_STATUS, REPORT_STATUS } from "@/lib/status";
+import { APPEAL_STATUS, REPORT_STATUS, type AppealStatus } from "@/lib/status";
 
 export const metadata = { title: "My appeals - KU Marketplace" };
+
+/**
+ * The order flow 2 moves an appeal through. `Not_Appealed` is the absence of
+ * an appeal, so it is not a step on this page.
+ */
+const APPEAL_FLOW: AppealStatus[] = [
+  "Appeal_Submitted",
+  "Appeal_Under_Review",
+  "Appeal_Upheld",
+  "Appeal_Rejected",
+];
 
 /**
  * Flow 2, the student's side. A penalty with no visible way to answer it is
@@ -27,11 +39,41 @@ export default async function MyAppealsPage() {
     );
   }
 
+  /**
+   * The states an appeal moves through, from the same map the badges use, so
+   * "Appeal under review" beside a row means something without the reader
+   * having to guess what comes after it.
+   */
+  const legend = (
+    <Surface shape="card" className="flex flex-col gap-4 p-5">
+      <p className="text-overline text-ink-muted uppercase">
+        How an appeal moves
+      </p>
+      <ol className="flex flex-col gap-3">
+        {APPEAL_FLOW.map((key) => {
+          const state = APPEAL_STATUS[key];
+          return (
+            <li key={key} className="flex flex-col gap-1">
+              <StatusBadge status={state} size="sm" className="w-fit" />
+              {state.hint ? (
+                <p className="text-[0.75rem] leading-[1.5] text-ink-muted">
+                  {state.hint}
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
+        A different admin from the one who made the original decision reviews
+        every appeal.
+      </p>
+    </Surface>
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        My appeals
-      </h1>
+    <TwoColumn rail={legend}>
+      <h1 className="text-h1">My appeals</h1>
 
       <ul className="flex flex-col gap-2">
         {appeals.map((a) => (
@@ -68,10 +110,14 @@ export default async function MyAppealsPage() {
         ))}
       </ul>
 
-      <LinkButton variant="secondary" href="/account/appeals/new">
+      <LinkButton
+        variant="secondary"
+        href="/account/appeals/new"
+        className="w-fit"
+      >
         <Scale className="size-4" />
         Submit a new appeal
       </LinkButton>
-    </div>
+    </TwoColumn>
   );
 }

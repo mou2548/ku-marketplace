@@ -7,7 +7,7 @@ import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
-import { TONE_BORDER, TONE_WASH } from "./tone";
+import { TONE_CHIP } from "./tone";
 
 /**
  * Confirmations for actions that do not change the screen — a slip uploaded, a
@@ -68,8 +68,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               "pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-card border px-4 py-3",
               "shadow-floating",
               "animate-in slide-in-from-bottom-2 fade-in",
-              TONE_WASH[t.tone],
-              TONE_BORDER[t.tone],
+              TONE_CHIP[t.tone],
             )}
           >
             <p className="flex-1 text-[0.875rem] leading-[1.65] font-medium">

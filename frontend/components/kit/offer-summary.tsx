@@ -96,8 +96,8 @@ function Stack({
           return (
             <li key={item.item_id} className={cn("shrink-0", thumb)}>
               <span
-                className="block overflow-hidden rounded-slot ring-2"
-                style={{ boxShadow: `0 0 0 2px ${rarity.edge}` }}
+                className="block overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+                style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
               >
                 <PostImage
                   src={item.images.find((i) => i.is_primary)?.image_url}

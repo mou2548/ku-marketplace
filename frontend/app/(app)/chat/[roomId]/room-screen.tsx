@@ -31,8 +31,12 @@ import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
-import { TONE_WASH } from "@/components/kit/tone";
-import { buildSteps, TransactionStepper } from "@/components/kit/transaction-stepper";
+import { TONE_CHIP } from "@/components/kit/tone";
+import {
+  buildSteps,
+  TransactionStepper,
+  type Step,
+} from "@/components/kit/transaction-stepper";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import type { AppointmentSeed, Entrant } from "@/lib/api/fixtures";
 import type { GiveawayPost, Transaction, UserSummary } from "@/lib/api/types";
@@ -45,6 +49,8 @@ import {
   requiresPayment,
   resolveTransactionActor,
   TRANSACTION_STATUS,
+  type ActorPrompt,
+  type Deadline,
   type Party,
 } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -169,6 +175,8 @@ export function RoomScreen({
   const [when, setWhen] = useState<DateValue | null>(null);
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  /** The deal strip's disclosure — everything the desktop rail used to hold. */
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -334,411 +342,470 @@ export function RoomScreen({
     ) : null;
 
   return (
-    <div className="flex gap-6">
-      <Surface
-        shape="card"
-        elevation="none"
-        className="flex min-h-[70dvh] min-w-0 flex-1 flex-col overflow-hidden"
-      >
-        {/* Header: who, what kind, what about. */}
-        <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-          <Link
-            href="/chat"
-            aria-label="Back to conversations"
-            className="grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
-          >
-            <ArrowLeft aria-hidden className="size-5" />
-          </Link>
+    /* A messenger, not a card. The room is the surface: it fills the column the
+       shell gives it, and the only thing that scrolls is the thread. */
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface">
+      {/* Header: who, what kind, what about. */}
+      <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+        <Link
+          href="/chat"
+          aria-label="Back to conversations"
+          className="grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
+        >
+          <ArrowLeft aria-hidden className="size-5" />
+        </Link>
 
-          {/* In a group room the counterparty is the giver, so the bare name
-              reads as "the person you are talking to" when it is not. */}
-          <span className="flex min-w-0 items-center gap-2">
-            <TrustBadge
-              name={summary.counterparty.name}
-              isVerified={summary.counterparty.isVerified}
-              faculty={summary.counterparty.faculty}
-              avatarUrl={summary.counterparty.avatar_url}
-              size="sm"
-            />
-            {isGroupRoom ? (
-              <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
-                Giver
-              </span>
-            ) : null}
-          </span>
-
-          <span className="ml-auto flex min-w-0 items-center gap-2">
-            <span
-              className={cn(
-                "shrink-0 rounded-chip px-1.5 py-0.5 text-[0.6875rem] font-semibold",
-                TONE_WASH[ROOM_KIND_TONE[summary.kind]],
-              )}
-            >
-              {summary.kind}
+        {/* In a group room the counterparty is the giver, so the bare name
+            reads as "the person you are talking to" when it is not. */}
+        <span className="flex min-w-0 items-center gap-2">
+          <TrustBadge
+            name={summary.counterparty.name}
+            isVerified={summary.counterparty.isVerified}
+            faculty={summary.counterparty.faculty}
+            avatarUrl={summary.counterparty.avatar_url}
+            size="sm"
+          />
+          {isGroupRoom ? (
+            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
+              Giver
             </span>
-            {/* The subject was dead text, and on anything under 640px it was
-                not even shown — so a room had no route back to the thing it is
-                about. */}
-            {subjectHref ? (
-              <Link
-                href={subjectHref}
-                className="min-w-0 truncate text-[0.8125rem] text-ink-brand hover:underline"
-              >
-                {summary.subject}
-              </Link>
-            ) : (
-              <span className="min-w-0 truncate text-[0.8125rem] text-ink-muted">
-                {summary.subject}
-              </span>
+          ) : null}
+        </span>
+
+        <span className="ml-auto flex min-w-0 items-center gap-2">
+          <span
+            className={cn(
+              "shrink-0 rounded-chip border px-1.5 py-0.5 text-[0.6875rem] font-semibold",
+              TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
             )}
+          >
+            {summary.kind}
           </span>
-        </header>
+          {/* The subject was dead text, and on anything under 640px it was
+              not even shown — so a room had no route back to the thing it is
+              about. */}
+          {subjectHref ? (
+            <Link
+              href={subjectHref}
+              className="min-w-0 truncate text-[0.8125rem] text-ink-brand hover:underline"
+            >
+              {summary.subject}
+            </Link>
+          ) : (
+            <span className="min-w-0 truncate text-[0.8125rem] text-ink-muted">
+              {summary.subject}
+            </span>
+          )}
+        </span>
+      </header>
 
-        {/* The rail below is desktop-only, so on a phone this strip is the only
-            way out of the room and into the item, the listing, or the record. */}
-        <div className="flex items-center gap-3 border-b border-line px-4 py-2.5 lg:hidden">
-          <span className="block w-11 shrink-0 overflow-hidden rounded-slot">
-            <PostImage src={subjectImage} alt="" aspectRatio={1} sizes="44px" />
+    {/* The deal strip. This used to be the phone-only stand-in for a rail
+        that covered desktop; with the rail gone it is the one summary at
+        every width, and tapping it opens everything the rail used to hold. */}
+    <div className="shrink-0 border-b border-line">
+      <button
+        type="button"
+        onClick={() => setDetailOpen((v) => !v)}
+        aria-expanded={detailOpen}
+        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
+      >
+        <span className="block w-11 shrink-0 overflow-hidden rounded-slot">
+          <PostImage src={subjectImage} alt="" aspectRatio={1} sizes="44px" />
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[0.875rem] font-semibold">
+            {summary.subject}
           </span>
+          <span className="block truncate text-[0.75rem] text-ink-muted">
+            {transaction
+              ? `${transaction.delivery_method === "Meetup" ? "Meetup" : "Shipping"}${
+                  requiresPayment(transaction)
+                    ? ` · ฿${transaction.final_amount.toLocaleString("en-GB")}`
+                    : " · trade, no money"
+                }`
+              : giveaway
+                ? `Collect at ${giveaway.pickup_location}`
+                : null}
+          </span>
+        </span>
 
-          <div className="min-w-0 flex-1">
-            {subjectHref ? (
-              <Link
-                href={subjectHref}
-                className="block truncate text-[0.875rem] font-semibold hover:underline"
-              >
-                {summary.subject}
-              </Link>
-            ) : (
-              <p className="truncate text-[0.875rem] font-semibold">
-                {summary.subject}
-              </p>
-            )}
-            <p className="truncate text-[0.75rem] text-ink-muted">
-              {transaction
-                ? `${transaction.delivery_method === "Meetup" ? "Meetup" : "Shipping"}${
-                    requiresPayment(transaction)
-                      ? ` · ฿${transaction.final_amount.toLocaleString("en-GB")}`
-                      : " · trade, no money"
-                  }`
-                : giveaway
-                  ? `Collect at ${giveaway.pickup_location}`
-                  : null}
-            </p>
-          </div>
+        {transaction ? (
+          <StatusBadge
+            status={TRANSACTION_STATUS[transaction.status]}
+            size="sm"
+            iconOnly
+          />
+        ) : null}
 
-          {transaction ? (
-            <StatusBadge
-              status={TRANSACTION_STATUS[transaction.status]}
-              size="sm"
-              iconOnly
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "size-4 shrink-0 text-ink-muted transition-transform duration-[--dur-fast]",
+            detailOpen && "rotate-180",
+          )}
+        />
+      </button>
+
+      {detailOpen ? (
+        <div className="border-t border-line bg-surface-sunken/40 px-4 py-4">
+          {transaction && viewer ? (
+            <DealDetails
+              transaction={transaction}
+              viewer={viewer}
+              appointment={appointment}
+              counterpartyName={summary.counterparty.name}
+              prompt={prompt}
+              steps={steps}
+              currentStepNumber={currentStepNumber}
+              deadline={deadline}
+              reportable={reportable}
+              busy={busy}
+              onAct={act}
+            />
+          ) : null}
+
+          {giveaway ? (
+            <GiveawayDetails
+              giveaway={giveaway}
+              entrants={entrants}
+              viewerId={viewerId}
             />
           ) : null}
         </div>
+      ) : null}
+    </div>
 
-        {/* Pinned like LINE pins a message: one line, expandable, always the
-            first thing under the header. What it pins depends on how the item
-            changes hands — a shipped deal has no appointment, so pinning one
-            was showing information that does not exist. */}
-        {transaction && viewer ? (
-          <div
-            className={cn(
-              "border-b border-line",
-              transaction.delivery_method === "Meetup"
-                ? "bg-tone-success-bg/60"
-                : "bg-tone-info-bg/60",
-            )}
+      {/* Pinned like LINE pins a message: one line, expandable, always the
+          first thing under the header. What it pins depends on how the item
+          changes hands — a shipped deal has no appointment, so pinning one
+          was showing information that does not exist. */}
+      {transaction && viewer ? (
+        <div
+          className={cn(
+            "border-b border-line",
+            transaction.delivery_method === "Meetup"
+              ? "bg-tone-success-bg/60"
+              : "bg-tone-info-bg/60",
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => setPinOpen((v) => !v)}
+            aria-expanded={pinOpen}
+            className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-[0.8125rem]"
           >
-            <button
-              type="button"
-              onClick={() => setPinOpen((v) => !v)}
-              aria-expanded={pinOpen}
-              className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-[0.8125rem]"
-            >
-              {transaction.delivery_method === "Meetup" ? (
-                <>
-                  <CalendarClock
-                    aria-hidden
-                    className="size-4 shrink-0 text-tone-success-fg"
-                  />
-                  {/* The real Appointment_Card row. This line used to be a
-                      hardcoded date that every Meetup deal in the app claimed
-                      as its own. */}
-                  <span className="min-w-0 flex-1 truncate font-medium text-tone-success-fg">
-                    {appointment
-                      ? `Meetup · ${appointmentLabel(appointment)}`
-                      : "No time agreed yet"}
-                  </span>
-                </>
+            {transaction.delivery_method === "Meetup" ? (
+              <>
+                <CalendarClock
+                  aria-hidden
+                  className="size-4 shrink-0 text-tone-success-fg"
+                />
+                {/* The real Appointment_Card row. This line used to be a
+                    hardcoded date that every Meetup deal in the app claimed
+                    as its own. */}
+                <span className="min-w-0 flex-1 truncate font-medium text-tone-success-fg">
+                  {appointment
+                    ? `Meetup · ${appointmentLabel(appointment)}`
+                    : "No time agreed yet"}
+                </span>
+              </>
+            ) : (
+              <DeliveryCard
+                transaction={transaction}
+                viewer={viewer}
+                compact
+                className="flex-1"
+              />
+            )}
+            {pinOpen ? (
+              <ChevronUp aria-hidden className="size-4 shrink-0" />
+            ) : (
+              <ChevronDown aria-hidden className="size-4 shrink-0" />
+            )}
+          </button>
+
+          {pinOpen ? (
+            <div className="px-4 pb-4">
+              {transaction.delivery_method !== "Meetup" ? (
+                <DeliveryCard transaction={transaction} viewer={viewer} />
+              ) : appointment ? (
+                <AppointmentCard
+                  status={appointment.status}
+                  scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
+                  place={appointment.location}
+                  // Only the side that did not propose it can answer it.
+                  awaitingViewer={appointment.proposed_by !== viewerId}
+                  onAccept={() => act("Meetup confirmed")}
+                  onDecline={() => act("Asked for another time")}
+                />
               ) : (
-                <DeliveryCard
-                  transaction={transaction}
-                  viewer={viewer}
-                  compact
-                  className="flex-1"
+                /* Flow 1 puts the appointment after the payment is confirmed
+                   and before the QR scan, and the API has a card to create.
+                   With no row yet, the pin is where you make one. */
+                <ProposeMeetup
+                  place={place}
+                  onPlaceChange={setPlace}
+                  when={when}
+                  onWhenChange={setWhen}
+                  isBusy={busy}
+                  onPropose={() => act("Meetup proposed. Waiting on a reply.")}
                 />
               )}
-              {pinOpen ? (
-                <ChevronUp aria-hidden className="size-4 shrink-0" />
-              ) : (
-                <ChevronDown aria-hidden className="size-4 shrink-0" />
-              )}
-            </button>
-
-            {pinOpen ? (
-              <div className="px-4 pb-4">
-                {transaction.delivery_method !== "Meetup" ? (
-                  <DeliveryCard transaction={transaction} viewer={viewer} />
-                ) : appointment ? (
-                  <AppointmentCard
-                    status={appointment.status}
-                    scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
-                    place={appointment.location}
-                    // Only the side that did not propose it can answer it.
-                    awaitingViewer={appointment.proposed_by !== viewerId}
-                    onAccept={() => act("Meetup confirmed")}
-                    onDecline={() => act("Asked for another time")}
-                  />
-                ) : (
-                  /* Flow 1 puts the appointment after the payment is confirmed
-                     and before the QR scan, and the API has a card to create.
-                     With no row yet, the pin is where you make one. */
-                  <ProposeMeetup
-                    place={place}
-                    onPlaceChange={setPlace}
-                    when={when}
-                    onWhenChange={setWhen}
-                    isBusy={busy}
-                    onPropose={() => act("Meetup proposed. Waiting on a reply.")}
-                  />
-                )}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <ChatThread
-          messages={messages}
-          viewerId={viewerId}
-          senders={senders}
-          showSenders={isGroupRoom}
-          action={currentAction() ?? sellerQr}
-          isReadOnly={giveawayReadOnly}
-          readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-          onSend={async () => toast.show("Message sent")}
-        />
-      </Surface>
-
-      {/* Summary rail. Vertical stepper: five steps across a 300px column is
-          what made the labels unreadable in the first build. */}
-      {transaction && viewer ? (
-        <Surface
-          as="aside"
-          shape="card"
-          className="hidden w-72 shrink-0 flex-col gap-4 self-start p-4 lg:flex"
-        >
-          <div className="flex flex-col gap-1">
-            <Link
-              href={`/market/${transaction.post_id}`}
-              className="font-semibold hover:underline"
-            >
-              {transaction.post.item.name}
-            </Link>
-            <StatusBadge
-              status={TRANSACTION_STATUS[transaction.status]}
-              size="sm"
-              className="w-fit"
-            />
-            <p className="text-[0.8125rem] text-ink-muted">
-              {transaction.delivery_method === "Meetup" ? "Meetup" : "Shipping"}
-              {requiresPayment(transaction)
-                ? ` · ฿${transaction.final_amount.toLocaleString("en-GB")}`
-                : " · trade, no money"}
-            </p>
-          </div>
-
-          {prompt ? (
-            <p
-              className={cn(
-                "rounded-control px-3 py-2 text-[0.875rem] font-medium",
-                TONE_WASH[prompt.tone],
-              )}
-            >
-              {prompt.label}
-            </p>
-          ) : null}
-
-          {/* A bare column of dots does not announce what it is measuring. */}
-          <div className="flex flex-col gap-2 border-t border-line pt-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-overline text-ink-muted uppercase">
-                Deal progress
-              </p>
-              <p data-numeric className="text-[0.75rem] text-ink-muted">
-                Step {currentStepNumber} of {steps.length}
-              </p>
-            </div>
-            <TransactionStepper
-              transaction={transaction}
-              appointmentStatus={appointment?.status}
-              orientation="vertical"
-              viewer={viewer}
-              counterpartyName={summary.counterparty.name}
-            />
-          </div>
-
-          {transaction.delivery_method === "Shipping" ? (
-            <DeliveryCard transaction={transaction} viewer={viewer} />
-          ) : deadline ? (
-            <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-              <p className="text-[0.75rem] text-ink-muted">{deadline.label}</p>
-              <CountdownPill deadline={deadline} />
             </div>
           ) : null}
-
-          <div className="flex flex-col gap-2 border-t border-line pt-3">
-            {reportable ? (
-              <LinkButton
-                variant="secondary"
-                size="sm"
-                block
-                href={`/history/${transaction.transaction_id}/report`}
-              >
-                <Flag className="size-4" />
-                Report a problem
-              </LinkButton>
-            ) : null}
-
-            {transaction.status === "Pending" ||
-            transaction.status === "Processing" ? (
-              <OverlayTrigger>
-                <Button variant="ghost" size="sm" block>
-                  <XCircle className="size-4" />
-                  Request cancellation
-                </Button>
-                <Overlay
-                  title="Request to cancel this deal"
-                  description="The other side has 72 hours to respond. If they do not, it goes to an admin."
-                  footer={
-                    <>
-                      <Button variant="ghost" slot="close">
-                        Keep the deal
-                      </Button>
-                      <Button
-                        variant="danger"
-                        isLoading={busy}
-                        onPress={() => act("Cancellation requested")}
-                      >
-                        Send cancellation request
-                      </Button>
-                    </>
-                  }
-                >
-                  <TextInput
-                    label="Reason"
-                    placeholder="e.g. I can no longer make the meetup"
-                    hint="A reason helps a lot. If the other side rejects it, this is the context an admin will see."
-                  />
-                </Overlay>
-              </OverlayTrigger>
-            ) : null}
-          </div>
-        </Surface>
+        </div>
       ) : null}
 
-      {giveaway ? (
-        <Surface
-          as="aside"
-          shape="card"
-          className="hidden w-72 shrink-0 flex-col gap-3 self-start p-4 lg:flex"
-        >
+      <ChatThread
+        messages={messages}
+        viewerId={viewerId}
+        senders={senders}
+        showSenders={isGroupRoom}
+        action={currentAction() ?? sellerQr}
+        isReadOnly={giveawayReadOnly}
+        readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
+        onSend={async () => toast.show("Message sent")}
+      />
+    </div>
+  );
+}
+
+/**
+ * What the desktop rail used to hold, now behind the deal strip.
+ *
+ * The rail was a 288px column pinned beside the thread; at that width the
+ * stepper had to run vertically and the whole thing competed with the
+ * conversation for attention. As a disclosure it is the same content, opened
+ * when it is wanted, and it works at 360px without a second layout.
+ */
+function DealDetails({
+  transaction,
+  viewer,
+  appointment,
+  counterpartyName,
+  prompt,
+  steps,
+  currentStepNumber,
+  deadline,
+  reportable,
+  busy,
+  onAct,
+}: {
+  transaction: Transaction;
+  viewer: Party;
+  appointment?: AppointmentSeed;
+  counterpartyName: string;
+  prompt?: ActorPrompt;
+  steps: Step[];
+  currentStepNumber: number;
+  deadline?: Deadline;
+  reportable: boolean;
+  busy: boolean;
+  onAct: (message: string) => void;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
           <Link
-            href={`/giveaway/${giveaway.giveaway_id}`}
+            href={`/market/${transaction.post_id}`}
             className="font-semibold hover:underline"
           >
-            {giveaway.item_name}
+            {transaction.post.item.name}
           </Link>
           <StatusBadge
-            status={ALLOCATION_METHOD[giveaway.allocation_method]}
+            status={TRANSACTION_STATUS[transaction.status]}
             size="sm"
             className="w-fit"
           />
-          <p className="flex items-start gap-2 text-[0.8125rem] leading-[1.6] text-ink-muted">
-            <MapPin aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-            Collect at {giveaway.pickup_location}
+        </div>
+
+        {prompt ? (
+          <p
+            className={cn(
+              "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
+              TONE_CHIP[prompt.tone],
+            )}
+          >
+            {prompt.label}
           </p>
+        ) : null}
 
-          {/* The rail listed the item and the pickup point and nobody at all,
-              in the one kind of room that holds more than two people. */}
-          {entrants?.length ? (
-            <div className="flex flex-col gap-2 border-t border-line pt-3">
-              <p className="text-overline text-ink-muted uppercase">
-                In this room
-              </p>
+        {transaction.delivery_method === "Shipping" ? (
+          <DeliveryCard transaction={transaction} viewer={viewer} />
+        ) : deadline ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[0.75rem] text-ink-muted">{deadline.label}</p>
+            <CountdownPill deadline={deadline} />
+          </div>
+        ) : null}
 
-              <span className="flex items-center gap-2">
-                <TrustBadge
-                  size="sm"
-                  name={giveaway.giver.name}
-                  isVerified={giveaway.giver.isVerified}
-                  avatarUrl={giveaway.giver.avatar_url}
-                />
-                <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
-                  Giver
-                </span>
-              </span>
-
-              <ul className="flex flex-col gap-2">
-                {entrants.slice(0, ROSTER_LIMIT).map((e) => (
-                  <li key={e.receiver_id} className="flex items-center gap-2">
-                    <TrustBadge
-                      size="sm"
-                      name={e.user.name}
-                      isVerified={e.user.isVerified}
-                      avatarUrl={e.user.avatar_url}
-                    />
-                    <StatusBadge
-                      status={ENTRANT_STATUS[e.status]}
-                      size="sm"
-                      className="ml-auto shrink-0"
-                    />
-                  </li>
-                ))}
-              </ul>
-
-              {entrants.length > ROSTER_LIMIT ? (
-                <Link
-                  href={`/giveaway/${giveaway.giveaway_id}/manage`}
-                  className="text-[0.8125rem] font-medium text-ink-brand hover:underline"
-                >
-                  {entrants.length - ROSTER_LIMIT} more
-                </Link>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* Only a Manual giveaway has a manage screen — the route 404s for
-              the other two, and this button sent every giver at it. */}
-          {giveaway.giver_id === viewerId &&
-          giveaway.allocation_method === "Manual" ? (
-            <LinkButton
-              size="sm"
-              block
-              href={`/giveaway/${giveaway.giveaway_id}/manage`}
-            >
-              Choose recipients
-            </LinkButton>
-          ) : (
+        <div className="flex flex-col gap-2 border-t border-line pt-3">
+          {reportable ? (
             <LinkButton
               variant="secondary"
               size="sm"
-              block
-              href={`/giveaway/${giveaway.giveaway_id}`}
+              href={`/history/${transaction.transaction_id}/report`}
             >
-              Open the giveaway
+              <Flag className="size-4" />
+              Report a problem
             </LinkButton>
-          )}
-        </Surface>
+          ) : null}
+
+          {transaction.status === "Pending" ||
+          transaction.status === "Processing" ? (
+            <OverlayTrigger>
+              <Button variant="ghost" size="sm">
+                <XCircle className="size-4" />
+                Request cancellation
+              </Button>
+              <Overlay
+                title="Request to cancel this deal"
+                description="The other side has 72 hours to respond. If they do not, it goes to an admin."
+                footer={
+                  <>
+                    <Button variant="ghost" slot="close">
+                      Keep the deal
+                    </Button>
+                    <Button
+                      variant="danger"
+                      isLoading={busy}
+                      onPress={() => onAct("Cancellation requested")}
+                    >
+                      Send cancellation request
+                    </Button>
+                  </>
+                }
+              >
+                <TextInput
+                  label="Reason"
+                  placeholder="e.g. I can no longer make the meetup"
+                  hint="A reason helps a lot. If the other side rejects it, this is the context an admin will see."
+                />
+              </Overlay>
+            </OverlayTrigger>
+          ) : null}
+        </div>
+      </div>
+
+      {/* A bare column of dots does not announce what it is measuring. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-overline text-ink-muted uppercase">Deal progress</p>
+          <p data-numeric className="text-[0.75rem] text-ink-muted">
+            Step {currentStepNumber} of {steps.length}
+          </p>
+        </div>
+        <TransactionStepper
+          transaction={transaction}
+          appointmentStatus={appointment?.status}
+          orientation="vertical"
+          viewer={viewer}
+          counterpartyName={counterpartyName}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** The giveaway equivalent: what it is, where to collect, and who is here. */
+function GiveawayDetails({
+  giveaway,
+  entrants,
+  viewerId,
+}: {
+  giveaway: GiveawayPost;
+  entrants?: Entrant[];
+  viewerId: number;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/giveaway/${giveaway.giveaway_id}`}
+          className="font-semibold hover:underline"
+        >
+          {giveaway.item_name}
+        </Link>
+        <StatusBadge
+          status={ALLOCATION_METHOD[giveaway.allocation_method]}
+          size="sm"
+          className="w-fit"
+        />
+        <p className="flex items-start gap-2 text-[0.8125rem] leading-[1.6] text-ink-muted">
+          <MapPin aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          Collect at {giveaway.pickup_location}
+        </p>
+
+        {/* Only a Manual giveaway has a manage screen — the route 404s for
+            the other two, and this button sent every giver at it. */}
+        {giveaway.giver_id === viewerId &&
+        giveaway.allocation_method === "Manual" ? (
+          <LinkButton
+            size="sm"
+            className="w-fit"
+            href={`/giveaway/${giveaway.giveaway_id}/manage`}
+          >
+            Choose recipients
+          </LinkButton>
+        ) : (
+          <LinkButton
+            variant="secondary"
+            size="sm"
+            className="w-fit"
+            href={`/giveaway/${giveaway.giveaway_id}`}
+          >
+            Open the giveaway
+          </LinkButton>
+        )}
+      </div>
+
+      {/* The rail listed the item and the pickup point and nobody at all,
+          in the one kind of room that holds more than two people. */}
+      {entrants?.length ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-overline text-ink-muted uppercase">In this room</p>
+
+          <span className="flex items-center gap-2">
+            <TrustBadge
+              size="sm"
+              name={giveaway.giver.name}
+              isVerified={giveaway.giver.isVerified}
+              avatarUrl={giveaway.giver.avatar_url}
+            />
+            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
+              Giver
+            </span>
+          </span>
+
+          <ul className="flex flex-col gap-2">
+            {entrants.slice(0, ROSTER_LIMIT).map((e) => (
+              <li key={e.receiver_id} className="flex items-center gap-2">
+                <TrustBadge
+                  size="sm"
+                  name={e.user.name}
+                  isVerified={e.user.isVerified}
+                  avatarUrl={e.user.avatar_url}
+                />
+                <StatusBadge
+                  status={ENTRANT_STATUS[e.status]}
+                  size="sm"
+                  className="ml-auto shrink-0"
+                />
+              </li>
+            ))}
+          </ul>
+
+          {entrants.length > ROSTER_LIMIT ? (
+            <Link
+              href={`/giveaway/${giveaway.giveaway_id}/manage`}
+              className="text-[0.8125rem] font-medium text-ink-brand hover:underline"
+            >
+              {entrants.length - ROSTER_LIMIT} more
+            </Link>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

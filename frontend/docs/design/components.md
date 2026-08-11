@@ -44,6 +44,33 @@ separates it from the page, and giving it a shadow as well makes it read as a
 card the user can act on. It gets a tone-coloured left rail instead, so it is
 annotated rather than blank.
 
+### Width by role
+
+A **column fills the space it is given. A control caps itself.**
+
+A text input, a paragraph and a button have a usable maximum width. A table
+row, a list of cards and a settings row do not — those read fine edge to edge,
+because the eye tracks the label on the left and the control on the right.
+
+**Never put `max-w-*` on a layout column to make its contents readable. Cap the
+contents.** Capping the column leaves a dead band where the cap ends, and the
+page reads as a narrow strip pinned to one side of the window.
+
+This is written down because it went wrong three times: the detail pages, then
+`/account`, then `/inventory/new`, which spent 44% of a 1600px window and left
+896px of grey. Each time the cap was added for a good reason and each time it
+produced the same result.
+
+`scripts/layout-audit.mjs` checks it. It measures the widest painted surface —
+not the rightmost element, which is what an earlier hand-rolled version got
+wrong, reporting `/account` as 98% wide while the content stopped at 72%. Run it
+before calling a layout change done, and open the screenshots as well as
+reading the numbers.
+
+```
+node --experimental-websocket scripts/layout-audit.mjs
+```
+
 **Texture** (§3.3): `noise` belongs on game and rail surfaces — never behind
 body text. `texture-grid` belongs on heroes, banners, and empty states.
 

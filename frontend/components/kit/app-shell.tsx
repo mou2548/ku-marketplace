@@ -12,7 +12,6 @@ import {
   Menu,
   Package,
   Plus,
-  Search,
   Store,
   User,
 } from "lucide-react";
@@ -101,10 +100,17 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
    */
   const [menuOpen, setMenuOpen] = useState(false);
 
+  /**
+   * Chat is a messenger, not a document: it fills the window under the header
+   * and scrolls inside itself, so the page never scrolls and the composer stays
+   * on the bottom edge. Every other route keeps the padded, growing column.
+   */
+  const isChat = pathname === "/chat" || pathname.startsWith("/chat/");
+
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>
       <header className="sticky top-0 z-[50] w-full border-b border-green-200 bg-surface text-ink-brand shadow-flat">
-        <div className="mx-auto flex h-16 w-full max-w-[100rem] items-center gap-6 px-4 lg:px-8">
+        <div className="flex h-16 w-full items-center gap-6 px-4 lg:px-8">
           <DrawerTrigger isOpen={menuOpen} onOpenChange={setMenuOpen}>
             <Button
               variant="ghost"
@@ -168,27 +174,23 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-            {/* Outlined rather than filled: a solid green button next to green
-                links made the bar read as two competing calls to action. */}
+            {/* Tinted rather than filled: a solid green button next to green
+                links made the bar read as two competing calls to action.
+                `subtle` is that tint and is already what the avatar chip two
+                places along uses, so the cluster is one family — this used to
+                ask for `secondary` and then override its fill, shadow and
+                border, which matched no variant in the system. `pill` because
+                every one of its neighbours is round. */}
             <LinkButton
-              variant="secondary"
+              variant="subtle"
               size="sm"
+              pill
               href="/post"
-              className="hidden border border-brand bg-transparent text-ink-brand shadow-none hover:bg-brand-subtle md:inline-flex"
+              className="hidden md:inline-flex"
             >
               <Plus className="size-4" />
               Post
             </LinkButton>
-
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              pill
-              aria-label="Search"
-              className="text-ink-secondary hover:bg-brand-subtle hover:text-ink-brand"
-            >
-              <Search className="size-5" />
-            </Button>
 
             <Link
               href="/notifications"
@@ -221,7 +223,17 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
       <main
         id="main"
-        className="mx-auto w-full max-w-[100rem] flex-1 px-4 py-5 pb-12 lg:px-8 lg:py-7"
+        /* Full width, not a centred box. `mx-auto max-w-[100rem]` put a
+           160px dead margin down both sides of a 1920 window and made every
+           screen read as a card floating in the middle of the display. The
+           page now runs edge to edge and only the reading measure of prose and
+           form fields is capped — line length is legibility, not centring. */
+        className={cn(
+          "w-full flex-1",
+          isChat
+            ? "min-h-0 overflow-hidden"
+            : "px-4 py-5 pb-12 lg:px-8 lg:py-7",
+        )}
       >
         {children}
       </main>

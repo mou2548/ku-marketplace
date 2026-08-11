@@ -9,7 +9,7 @@ import {
 } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
-import { TONE_DOT, TONE_WASH } from "./tone";
+import { TONE_CHIP, TONE_DOT } from "./tone";
 
 /**
  * Research risk R3: flow 1 has four terminal paths — Shipping, Meetup, trade
@@ -235,8 +235,8 @@ export function TransactionStepper({
               {waitingLabel ? (
                 <span
                   className={cn(
-                    "mt-1 inline-flex items-center rounded-pill px-2 py-0.5 text-[0.75rem] font-medium",
-                    waitingOnYou ? TONE_WASH.warning : TONE_WASH.info,
+                    "mt-1 inline-flex items-center rounded-pill border px-2 py-0.5 text-[0.75rem] font-medium",
+                    waitingOnYou ? TONE_CHIP.warning : TONE_CHIP.info,
                   )}
                 >
                   {waitingLabel}

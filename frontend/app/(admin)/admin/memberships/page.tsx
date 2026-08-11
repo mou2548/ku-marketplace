@@ -45,7 +45,7 @@ export default async function AdminMembershipsPage() {
                   faculty={r.user.faculty}
                   size="sm"
                 />
-                <span className="flex items-center gap-1.5 rounded-pill bg-gold-100 px-2.5 py-1 text-[0.75rem] font-semibold text-gold-600">
+                <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-2.5 py-1 text-[0.75rem] font-semibold text-amber-700">
                   <Crown aria-hidden className="size-3.5" />
                   {r.tier}
                 </span>

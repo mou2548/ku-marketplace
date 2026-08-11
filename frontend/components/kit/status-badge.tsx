@@ -2,7 +2,7 @@ import type { StatusPresentation } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { StatusIcon } from "./icon";
-import { TONE_BORDER, TONE_SOLID, TONE_WASH } from "./tone";
+import { TONE_CHIP, TONE_SOLID } from "./tone";
 
 /**
  * Research risk R1 + principle 4: a status reaches the screen as a Thai
@@ -17,7 +17,7 @@ export interface StatusBadgeProps {
    * `auto` fills a danger badge and washes everything else — see below.
    * The explicit variants override that for the rare case a screen needs one.
    */
-  variant?: "auto" | "wash" | "solid" | "outline";
+  variant?: "auto" | "wash" | "solid";
   size?: "sm" | "md";
   /** Hide the label and expose it to assistive tech only. */
   iconOnly?: boolean;
@@ -32,11 +32,17 @@ export interface StatusBadgeProps {
  *
  * `--tone-danger-solid` is rose-500; white on it is ~5.3:1, so the 13px label
  * still clears AA.
+ *
+ * A wash carries the tone's border. Without one it measured 1.01:1 against the
+ * page behind it — the pill disappeared and left floating coloured text, which
+ * is what "the badge is the same colour as the background" meant. There is no
+ * `outline` variant any more: it was wash plus border, which is now what wash
+ * is, and nothing ever called it.
  */
 function resolveVariant(
   variant: NonNullable<StatusBadgeProps["variant"]>,
   tone: StatusPresentation["tone"],
-): "wash" | "solid" | "outline" {
+): "wash" | "solid" {
   if (variant !== "auto") return variant;
   return tone === "danger" ? "solid" : "wash";
 }
@@ -60,10 +66,8 @@ export function StatusBadge({
           ? "h-6 px-2 text-[0.75rem]"
           : "h-7 px-2.5 text-[0.8125rem]",
         iconOnly && (size === "sm" ? "w-6 justify-center px-0" : "w-7 justify-center px-0"),
-        paint === "wash" && TONE_WASH[tone],
+        paint === "wash" && cn("border", TONE_CHIP[tone]),
         paint === "solid" && TONE_SOLID[tone],
-        paint === "outline" &&
-          cn("border bg-surface", TONE_BORDER[tone], TONE_WASH[tone], "bg-surface"),
         className,
       )}
     >

@@ -12,7 +12,15 @@ import {
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getMembership, getTransactions, getViewer, VIEWER_ID } from "@/lib/api/fixtures";
+import {
+  getMembership,
+  getTransactions,
+  getViewer,
+  getViewerProfile,
+  VIEWER_ID,
+} from "@/lib/api/fixtures";
+
+import { ProfileFields } from "./profile-fields";
 
 export const metadata = { title: "Account - KU Marketplace" };
 
@@ -25,8 +33,9 @@ export const metadata = { title: "Account - KU Marketplace" };
  * Everything else here is settings, and settings are a list.
  */
 export default async function AccountPage() {
-  const [viewer, membership, transactions] = await Promise.all([
+  const [viewer, profile, membership, transactions] = await Promise.all([
     getViewer(),
+    getViewerProfile(),
     getMembership(),
     getTransactions(),
   ]);
@@ -37,8 +46,8 @@ export default async function AccountPage() {
       (t.buyer_id === VIEWER_ID || t.seller_id === VIEWER_ID),
   ).length;
 
+  /** Shown at every width. */
   const rows = [
-    { href: "/account/edit", label: "Edit profile", icon: Pencil },
     { href: "/account/membership", label: "Membership", icon: Crown },
     { href: "/account/appeals", label: "My appeals", icon: Scale },
     { href: "/account/delete", label: "Close account", icon: Trash2 },
@@ -77,7 +86,7 @@ export default async function AccountPage() {
           {completed} completed {completed === 1 ? "deal" : "deals"}
         </span>
         {membership.tier !== "Free" ? (
-          <span className="flex items-center gap-1.5 rounded-pill bg-gold-100 px-3 py-1.5 text-[0.875rem] font-medium text-gold-600">
+          <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-3 py-1.5 text-[0.875rem] font-medium text-amber-700">
             <Crown aria-hidden className="size-4" />
             {membership.tier}
           </span>
@@ -88,13 +97,45 @@ export default async function AccountPage() {
 
   return (
     <TwoColumn rail={rail} railSide="left" railFirst>
-      {/* Capped measure: four links have no business spanning a 1100px column,
-          and the stretch was most of why this screen read as hollow. */}
-      <nav aria-label="Account settings" className="max-w-2xl">
-        <h1 className="mb-4 text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Account
-        </h1>
+      <h1 className="text-h1">Account</h1>
+
+      {/* The two form factors diverge here, and only here. A wide screen has
+          room to show the whole profile and change one line in place; a phone
+          gets the link out to a full-width form. */}
+      <section className="hidden flex-col gap-3 lg:flex">
+        <h2 className="text-overline text-ink-muted uppercase">Profile</h2>
+        <ProfileFields
+          profile={profile}
+          faculty={viewer.faculty}
+          year={viewer.year}
+        />
+      </section>
+
+      <nav aria-label="Account settings">
         <ul className="flex flex-col gap-2">
+          <li className="lg:hidden">
+            <Link href="/account/edit">
+              <Surface
+                as="div"
+                shape="card"
+                elevation="raised"
+                interactive
+                className="flex min-h-16 items-center gap-4 px-5"
+              >
+                <Pencil
+                  aria-hidden
+                  className="size-[1.375rem] shrink-0 text-ink-muted"
+                />
+                <span className="flex-1 text-[1rem] font-medium">
+                  Edit profile
+                </span>
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 shrink-0 text-ink-muted"
+                />
+              </Surface>
+            </Link>
+          </li>
           {rows.map(({ href, label, icon: Icon }) => (
             <li key={href}>
               <Link href={href}>
@@ -123,7 +164,7 @@ export default async function AccountPage() {
 
       <Link
         href="/login"
-        className="flex min-h-12 max-w-2xl items-center justify-center gap-2 text-[0.9375rem] font-medium text-tone-danger-fg"
+        className="flex min-h-12 items-center justify-center gap-2 text-[0.9375rem] font-medium text-tone-danger-fg"
       >
         <LogOut aria-hidden className="size-4" />
         Sign out

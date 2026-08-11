@@ -44,6 +44,37 @@ type Filter = "all" | Notification["kind"];
  * unread — the two facts the rows already carry, in the ~380px the list was
  * leaving empty on a laptop.
  */
+/**
+ * Bucket by calendar day, newest first, preserving the order inside each day.
+ * "Today"/"Yesterday" rather than a date, because that is how someone reads a
+ * notification list — relative to now, not to the calendar.
+ */
+function groupByDay(items: Notification[]): Array<[string, Notification[]]> {
+  const dayKey = (iso: string) => new Date(iso).toDateString();
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86_400_000).toDateString();
+
+  const label = (key: string) =>
+    key === today
+      ? "Today"
+      : key === yesterday
+        ? "Yesterday"
+        : new Date(key).toLocaleDateString("en-GB", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          });
+
+  const buckets = new Map<string, Notification[]>();
+  for (const n of items) {
+    const key = dayKey(n.created_at);
+    const bucket = buckets.get(key);
+    if (bucket) bucket.push(n);
+    else buckets.set(key, [n]);
+  }
+  return [...buckets].map(([key, group]) => [label(key), group]);
+}
+
 export function NotificationsScreen({
   notifications,
 }: {
@@ -102,9 +133,7 @@ export function NotificationsScreen({
   return (
     <TwoColumn rail={rail} railSide="left">
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Notifications
-        </h1>
+        <h1 className="text-h1">Notifications</h1>
         {counts.unread.all > 0 ? (
           <span
             data-numeric
@@ -122,8 +151,12 @@ export function NotificationsScreen({
           description="Updates on your deals, offers, and giveaways land here as they happen."
         />
       ) : (
-        <ul className="flex flex-col gap-2">
-          {shown.map((n) => {
+        <div className="flex flex-col gap-5">
+          {groupByDay(shown).map(([day, items]) => (
+            <section key={day} className="flex flex-col gap-2">
+              <h2 className="text-overline text-ink-muted uppercase">{day}</h2>
+              <ul className="flex flex-col gap-2">
+          {items.map((n) => {
             const Icon = ICON[n.kind];
             return (
               <li key={n.notification_id}>
@@ -149,7 +182,10 @@ export function NotificationsScreen({
                       <Icon aria-hidden className="size-4" />
                     </span>
 
-                    <div className="min-w-0 flex-1">
+                    {/* Capped so the title and the date are not at opposite
+                        ends of a 1180px row with nothing between them. The row
+                        fills; its text does not have to. */}
+                    <div className="min-w-0 flex-1 md:max-w-3xl">
                       <p
                         className={cn(
                           "text-[0.9375rem]",
@@ -177,7 +213,10 @@ export function NotificationsScreen({
               </li>
             );
           })}
-        </ul>
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </TwoColumn>
   );

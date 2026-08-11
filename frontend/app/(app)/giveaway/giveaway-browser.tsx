@@ -127,7 +127,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
             </span>
           )}
           <span className="absolute top-2 left-2">
-            <StatusBadge status={method} variant="solid" size="sm" />
+            <StatusBadge status={method} size="sm" />
           </span>
         </div>
 

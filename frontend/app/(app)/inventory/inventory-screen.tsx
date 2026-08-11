@@ -168,7 +168,6 @@ export function InventoryScreen({
                 badge={
                   <StatusBadge
                     status={ITEM_STATUS[statusOf(item)]}
-                    variant="solid"
                     size="sm"
                   />
                 }

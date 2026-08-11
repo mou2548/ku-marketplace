@@ -6,6 +6,21 @@ import { cn } from "@/lib/utils";
  * The elevation vocabulary, as a component. Radius varies by role — a Card is
  * 20px, a Panel is 24px, a slot is 10px — because one radius everywhere reads
  * as a template (design principle 9, tokens §8).
+ *
+ * **No `border` here, deliberately.** Each shadow token already ends in its own
+ * hairline ring and opens with the lit top edge CLAUDE.md §3.1 asks for:
+ *
+ *     --shadow-raised:
+ *       inset 0 1px 0 rgb(255 255 255 / 0.75),   <- lit top edge
+ *       0 1px 2px rgb(18 43 29 / 0.05),
+ *       0 2px 6px rgb(18 43 29 / 0.045),
+ *       0 0 0 1px rgb(18 43 29 / 0.04);           <- the hairline
+ *
+ * A `border` on top of that outlines every surface twice, and the heavier of
+ * the two wins — which is exactly how the product came to read as a grid of
+ * boxes. §3.1 is "depth over outline, never a lone hairline border". If a
+ * surface looks like it is floating with no edge, raise its elevation; do not
+ * give it a border.
  */
 const surface = cva("relative", {
   variants: {

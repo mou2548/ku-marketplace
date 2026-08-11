@@ -7,7 +7,7 @@ import {
 } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
-import { TONE_BORDER, TONE_WASH } from "./tone";
+import { TONE_CHIP } from "./tone";
 
 /**
  * Research risk R4 and design principle 1: "whose turn is it" is the most
@@ -39,8 +39,7 @@ export function ActorLine({
     <div
       className={cn(
         "flex flex-col gap-3 rounded-card border p-4 sm:flex-row sm:items-center sm:justify-between",
-        TONE_WASH[prompt.tone],
-        TONE_BORDER[prompt.tone],
+        TONE_CHIP[prompt.tone],
         className,
       )}
     >

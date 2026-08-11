@@ -21,12 +21,13 @@ import { cn } from "@/lib/utils";
 const TIERS: Array<{
   tier: MembershipTier;
   price: number;
-  perks: string[];
+  /** What this tier adds. Tiers are cumulative — see `perksOf`. */
+  adds: string[];
 }> = [
   {
     tier: "Silver",
     price: 49,
-    perks: [
+    adds: [
       "Up to 20 live posts instead of 5",
       "Verified badge beside your name everywhere it appears",
     ],
@@ -34,8 +35,7 @@ const TIERS: Array<{
   {
     tier: "Gold",
     price: 99,
-    perks: [
-      "Everything in Silver",
+    adds: [
       "Your posts rank above ordinary posts in the feed and in search",
       "Priority in giveaway draws you enter",
     ],
@@ -43,13 +43,18 @@ const TIERS: Array<{
   {
     tier: "Diamond",
     price: 199,
-    perks: [
-      "Everything in Gold",
-      "Unlimited live posts",
-      "Dedicated support channel for disputes",
-    ],
+    adds: ["Unlimited live posts", "Dedicated support channel for disputes"],
   },
 ];
+
+/** Every perk a tier carries, inherited ones included. */
+function perksOf(tier: MembershipTier): string[] {
+  const upto = TIERS.findIndex((t) => t.tier === tier);
+  return TIERS.slice(0, upto + 1).flatMap((t) => t.adds);
+}
+
+/** Every perk in the product, in the order tiers introduce them. */
+const ALL_PERKS = TIERS.flatMap((t) => t.adds);
 
 export function MembershipScreen({ membership }: { membership: Membership }) {
   const toast = useToast();
@@ -71,7 +76,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
         <p className="flex items-center gap-2 text-[1.125rem] font-semibold">
           {membership.tier !== "Free" ? (
-            <Crown aria-hidden className="size-5 text-gold-600" />
+            <Crown aria-hidden className="size-5 text-amber-700" />
           ) : null}
           {membership.tier}
         </p>
@@ -140,7 +145,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 font-semibold">
-                      <Crown aria-hidden className="size-4 text-gold-600" />
+                      <Crown aria-hidden className="size-4 text-amber-700" />
                       {t.tier}
                     </span>
                     {isCurrent ? (
@@ -159,7 +164,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                   </p>
 
                   <ul className="flex flex-col gap-1.5">
-                    {t.perks.map((p) => (
+                    {t.adds.map((p) => (
                       <li
                         key={p}
                         className="flex gap-2 text-[0.8125rem] leading-[1.6] text-ink-secondary"
@@ -179,8 +184,72 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
         })}
       </ul>
 
+      {/* The cards say what each tier *adds*; this says what you end up with.
+          Same data, fully stated — "Everything in Gold" is not an answer to
+          "what do I actually get". */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-h2">What each tier includes</h2>
+        <Surface as="div" shape="panel" className="overflow-x-auto">
+          <table className="w-full min-w-[34rem] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-line">
+                <th scope="col" className="p-3 text-overline text-ink-muted uppercase">
+                  Benefit
+                </th>
+                {TIERS.map((t) => (
+                  <th
+                    key={t.tier}
+                    scope="col"
+                    className="w-24 p-3 text-center text-[0.875rem] font-semibold"
+                  >
+                    {t.tier}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ALL_PERKS.map((perk) => (
+                <tr key={perk} className="border-b border-line last:border-0">
+                  <th
+                    scope="row"
+                    className="p-3 text-[0.875rem] leading-[1.6] font-normal text-ink-secondary"
+                  >
+                    {perk}
+                  </th>
+                  {TIERS.map((t) => (
+                    <td key={t.tier} className="p-3 text-center">
+                      {perksOf(t.tier).includes(perk) ? (
+                        <>
+                          <Check
+                            aria-hidden
+                            className="mx-auto size-4 text-tone-success-fg"
+                          />
+                          <span className="sr-only">Included</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden className="text-ink-disabled">
+                            &mdash;
+                          </span>
+                          <span className="sr-only">Not included</span>
+                        </>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Surface>
+      </section>
+
       <OverlayTrigger>
-        <Button size="lg" block isDisabled={membership.pending_review}>
+        <Button
+          size="lg"
+          block
+          className="sm:w-auto"
+          isDisabled={membership.pending_review}
+        >
           <Crown className="size-5" />
           Subscribe to {selected}
         </Button>

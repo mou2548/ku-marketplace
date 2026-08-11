@@ -43,7 +43,7 @@ export function ListItemForm({ item }: { item: Item }) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
+    <div className="flex w-full max-w-2xl flex-col gap-5">
       <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
         List an item
       </h1>
@@ -52,8 +52,12 @@ export function ListItemForm({ item }: { item: Item }) {
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{item.name}</p>
           <p
-            className="text-[0.8125rem]"
-            style={{ color: ITEM_CONDITION[item.condition].fg }}
+            className="text-[0.8125rem] text-[var(--slot-edge)]"
+            style={
+              {
+                "--slot-edge": ITEM_CONDITION[item.condition].fg,
+              } as React.CSSProperties
+            }
           >
             {ITEM_CONDITION[item.condition].label} · {item.quantity} in stock
           </p>
@@ -143,7 +147,7 @@ export function ListItemForm({ item }: { item: Item }) {
           isLoading={busy}
           onPress={publish}
         >
-          <StatusBadge status={POST_TYPE[postType]} variant="solid" size="sm" iconOnly />
+          <StatusBadge status={POST_TYPE[postType]} size="sm" iconOnly />
           Publish listing
         </Button>
       </div>

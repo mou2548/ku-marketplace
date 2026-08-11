@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImagePlus, Send } from "lucide-react";
+import { ChevronUp, ImagePlus, Send } from "lucide-react";
 
 import type { UserSummary } from "@/lib/api/types";
 import type { Tone } from "@/lib/status";
@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
 import { Overlay, OverlayTrigger } from "./overlay";
-import { Surface } from "./surface";
 import { TONE_RAIL_LEFT } from "./tone";
 import { TrustBadge } from "./trust-badge";
 
@@ -106,6 +105,15 @@ export function ChatThread({
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * The flow action folds away. It sits at the end of the thread where it
+   * belongs, but a scanner card is tall and there is no reason to look at it
+   * while reading back through the conversation. Open by default — it is the
+   * thing the deal is waiting on — and the toggle lives in the composer beside
+   * the attach button, so it is reachable without scrolling to the card.
+   */
+  const [actionOpen, setActionOpen] = useState(true);
+
   // Jump, don't animate: a smooth scroll on every incoming message fights the
   // user when they are reading back through the thread.
   useEffect(() => {
@@ -118,111 +126,123 @@ export function ChatThread({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 py-4">
-        {messages.map((m, i) => {
-          const mine = m.sender_id === viewerId;
-          // Only the first message of a run gets the name — repeating it on
-          // every bubble of a five-message burst is noise, not attribution.
-          const startsRun = messages[i - 1]?.sender_id !== m.sender_id;
-          const named = showSenders && !mine;
-          const sender = named ? senders?.get(m.sender_id) : undefined;
-          const tone = senderTone(m.sender_id);
-          const startsNewDay =
-            i === 0 || dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+        {/* `mt-auto` pins a short conversation to the bottom, against the
+            composer, the way every messenger does. Without it a room with
+            three messages hangs from the top of a tall column with the gap
+            underneath, which reads as a document rather than a thread. */}
+        <div className="mt-auto flex flex-col gap-3">
+          {messages.map((m, i) => {
+            const mine = m.sender_id === viewerId;
+            // Only the first message of a run gets the name — repeating it on
+            // every bubble of a five-message burst is noise, not attribution.
+            const startsRun = messages[i - 1]?.sender_id !== m.sender_id;
+            const named = showSenders && !mine;
+            const sender = named ? senders?.get(m.sender_id) : undefined;
+            const tone = senderTone(m.sender_id);
+            const startsNewDay =
+              i === 0 ||
+              dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
 
-          return (
-            <div key={m.message_id} className="flex flex-col gap-3">
-              {startsNewDay ? (
-                <div className="flex justify-center py-1">
-                  <span className="rounded-pill bg-surface-sunken px-3 py-1 text-[0.75rem] font-medium text-ink-muted">
-                    {dayLabel(m.created_at)}
-                  </span>
-                </div>
-              ) : null}
-
-              <div
-                className={cn(
-                  "flex max-w-[82%] flex-col gap-1.5",
-                  mine ? "self-end items-end" : "self-start items-start",
-                  named && startsRun && i > 0 && "mt-2",
-                )}
-              >
-                {named && startsRun ? (
-                  <TrustBadge
-                    size="sm"
-                    name={sender?.name ?? "Unknown member"}
-                    isVerified={sender?.isVerified ?? false}
-                    avatarUrl={sender?.avatar_url}
-                    className="px-1"
-                  />
-                ) : null}
-
-                {m.image_urls?.length ? (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {m.image_urls.slice(0, 5).map((url) => (
-                      <OverlayTrigger key={url}>
-                        <button
-                          type="button"
-                          aria-label="View photo full size"
-                          className="block overflow-hidden rounded-control"
-                        >
-                          <Image
-                            src={url}
-                            alt=""
-                            width={220}
-                            height={220}
-                            className="aspect-square object-cover shadow-raised"
-                          />
-                        </button>
-                        <Overlay title="Photo" size="lg">
-                          <div className="flex items-center justify-center">
-                            <Image
-                              src={url}
-                              alt=""
-                              width={960}
-                              height={960}
-                              className="max-h-[75dvh] w-full rounded-control object-contain"
-                            />
-                          </div>
-                        </Overlay>
-                      </OverlayTrigger>
-                    ))}
+            return (
+              <div key={m.message_id} className="flex flex-col gap-3">
+                {startsNewDay ? (
+                  <div className="flex justify-center py-1">
+                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-[0.75rem] font-medium text-ink-muted">
+                      {dayLabel(m.created_at)}
+                    </span>
                   </div>
                 ) : null}
 
-                {m.content ? (
-                  <p
-                    className={cn(
-                      "rounded-card px-3.5 py-2.5 text-[0.9375rem] leading-[1.7]",
-                      mine
-                        ? "rounded-br-chip bg-brand text-on-brand"
-                        : "rounded-bl-chip bg-surface text-ink",
-                      named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
-                    )}
-                  >
-                    {m.content}
-                  </p>
-                ) : null}
-
-                <time
-                  dateTime={m.created_at}
-                  className="px-1 text-[0.75rem] text-ink-muted"
+                <div
+                  className={cn(
+                    "flex max-w-[82%] flex-col gap-1.5",
+                    mine ? "self-end items-end" : "self-start items-start",
+                    named && startsRun && i > 0 && "mt-2",
+                  )}
                 >
-                  {new Date(m.created_at).toLocaleTimeString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </time>
+                  {named && startsRun ? (
+                    <TrustBadge
+                      size="sm"
+                      name={sender?.name ?? "Unknown member"}
+                      isVerified={sender?.isVerified ?? false}
+                      avatarUrl={sender?.avatar_url}
+                      className="px-1"
+                    />
+                  ) : null}
+
+                  {m.image_urls?.length ? (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {m.image_urls.slice(0, 5).map((url) => (
+                        <OverlayTrigger key={url}>
+                          <button
+                            type="button"
+                            aria-label="View photo full size"
+                            className="block overflow-hidden rounded-control"
+                          >
+                            <Image
+                              src={url}
+                              alt=""
+                              width={220}
+                              height={220}
+                              className="aspect-square object-cover shadow-raised"
+                            />
+                          </button>
+                          <Overlay title="Photo" size="lg">
+                            <div className="flex items-center justify-center">
+                              <Image
+                                src={url}
+                                alt=""
+                                width={960}
+                                height={960}
+                                className="max-h-[75dvh] w-full rounded-control object-contain"
+                              />
+                            </div>
+                          </Overlay>
+                        </OverlayTrigger>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {m.content ? (
+                    <p
+                      className={cn(
+                        "rounded-card px-3.5 py-2.5 text-[0.9375rem] leading-[1.7]",
+                        mine
+                          ? "rounded-br-chip bg-brand text-on-brand"
+                          : "rounded-bl-chip bg-surface text-ink",
+                        named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
+                      )}
+                    >
+                      {m.content}
+                    </p>
+                  ) : null}
+
+                  <time
+                    dateTime={m.created_at}
+                    className="px-1 text-[0.75rem] text-ink-muted"
+                  >
+                    {new Date(m.created_at).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                </div>
+
+                {cardsByMessage.get(m.message_id) ?? null}
               </div>
+            );
+          })}
 
-              {cardsByMessage.get(m.message_id) ?? null}
-            </div>
-          );
-        })}
-
-        {action ? <div className="pt-1">{action}</div> : null}
-        <div ref={endRef} />
+          <div ref={endRef} />
+        </div>
       </div>
+
+      {/* Attached above the composer, outside the scroll region, so the step
+          the deal is waiting on cannot scroll out from under its own toggle.
+          Read-only rooms have no composer and so no toggle — the action stays
+          open there rather than becoming unreachable. */}
+      {action && (actionOpen || isReadOnly) ? action : null}
 
       {isReadOnly ? (
         <p className="border-t border-line px-4 py-3 text-center text-[0.8125rem] text-ink-muted">
@@ -239,6 +259,30 @@ export function ChatThread({
             if (inputRef.current) inputRef.current.value = "";
           }}
         >
+          {action ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              pill
+              aria-expanded={actionOpen}
+              aria-label={
+                actionOpen ? "Hide the current step" : "Show the current step"
+              }
+              onPress={() => setActionOpen((v) => !v)}
+              // Tinted while folded away, so a pending step cannot be lost
+              // behind its own toggle.
+              className={cn(!actionOpen && "bg-brand-subtle text-ink-brand")}
+            >
+              <ChevronUp
+                className={cn(
+                  "size-5 transition-transform duration-[--dur-fast]",
+                  actionOpen && "rotate-180",
+                )}
+              />
+            </Button>
+          ) : null}
+
           <Button
             type="button"
             variant="ghost"
@@ -277,8 +321,13 @@ export function ChatThread({
 }
 
 /**
- * The slot a flow action occupies inside the thread. Tinted and titled so it
- * is unmistakably a commitment rather than a message.
+ * The slot a flow action occupies, attached to the top of the composer.
+ *
+ * It used to be a floating card inside the scroll region — rounded, shadowed,
+ * ringed — which meant the thing the deal was waiting on scrolled away with the
+ * messages, and the toggle in the composer controlled something you could not
+ * see. It is now a bar fixed to the bottom of the room: full width, square, no
+ * shadow, separated from the thread by a single rule.
  */
 export function ActionCard({
   title,
@@ -290,17 +339,14 @@ export function ActionCard({
   className?: string;
 }) {
   return (
-    <Surface
-      as="section"
-      shape="card"
-      elevation="floating"
-      className={cn("ring-2 ring-brand-subtle", className)}
+    <section
+      className={cn("border-t border-line bg-brand-subtle/30", className)}
       aria-label={title}
     >
-      <h4 className="border-b border-line px-4 py-2.5 text-[0.8125rem] leading-[1.5] font-semibold tracking-[0.09em] text-ink-brand uppercase">
+      <h4 className="px-4 pt-3 text-overline text-ink-brand uppercase">
         {title}
       </h4>
-      <div className="p-4">{children}</div>
-    </Surface>
+      <div className="px-4 pt-2 pb-3">{children}</div>
+    </section>
   );
 }

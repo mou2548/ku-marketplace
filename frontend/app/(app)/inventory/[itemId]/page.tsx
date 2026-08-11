@@ -41,6 +41,12 @@ export default async function ItemDetailPage({
   const rarity = ITEM_CONDITION[item.condition];
   const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
 
+  // Everything else in the stash, so the page ends in somewhere to go rather
+  // than in a dead half-window. Transferred items are not in the stash.
+  const rest = items.filter(
+    (i) => i.item_id !== item.item_id && i.status !== "Transferred",
+  );
+
   const specs: Array<[string, string]> = [
     ["Category", item.category],
     ["Condition", rarity.label],
@@ -70,8 +76,10 @@ export default async function ItemDetailPage({
         Back to my stuff
       </Link>
 
+      {/* The photo is bounded, the page is not — capping the page only moves
+          the empty half to the right. */}
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-        <div className="lg:w-1/2">
+        <div className="lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
           <Surface shape="card" className="overflow-hidden">
             <PostImage
               src={primary?.image_url}
@@ -100,13 +108,18 @@ export default async function ItemDetailPage({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-5 lg:w-1/2">
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={ITEM_STATUS[item.status]} size="sm" />
               <span
-                className="rounded-pill px-2.5 py-1 text-[0.75rem] font-medium"
-                style={{ color: rarity.fg, backgroundColor: rarity.glow }}
+                style={
+                  {
+                    "--slot-edge": rarity.fg,
+                    "--slot-glow": rarity.glow,
+                  } as React.CSSProperties
+                }
+                className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-[0.75rem] font-medium text-[var(--slot-edge)]"
               >
                 {rarity.label}
               </span>
@@ -128,7 +141,6 @@ export default async function ItemDetailPage({
                 </span>
                 <StatusBadge
                   status={POST_TYPE[post.post_type]}
-                  variant="solid"
                   size="sm"
                 />
               </div>
@@ -187,14 +199,19 @@ export default async function ItemDetailPage({
             </p>
           ) : null}
 
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-            {specs.map(([label, value]) => (
-              <div key={label} className="flex flex-col">
-                <dt className="text-[0.75rem] text-ink-muted">{label}</dt>
-                <dd className="text-[0.9375rem] font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <Surface as="section" shape="panel" fill="plate" noise className="p-4">
+            <h2 className="mb-3 text-overline text-ink-muted uppercase">
+              Details
+            </h2>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
+              {specs.map(([label, value]) => (
+                <div key={label} className="flex flex-col">
+                  <dt className="text-[0.75rem] text-ink-muted">{label}</dt>
+                  <dd className="text-[0.9375rem] font-medium">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Surface>
 
           <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center">
             <p className="flex flex-1 items-center gap-2 text-[0.8125rem] text-ink-muted">
@@ -224,6 +241,46 @@ export default async function ItemDetailPage({
           ) : null}
         </div>
       </div>
+
+      {rest.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-h2">The rest of your stuff</h2>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+            {rest.map((other) => {
+              const cond = ITEM_CONDITION[other.condition];
+              return (
+                <li key={other.item_id}>
+                  <Link href={`/inventory/${other.item_id}`} className="group block">
+                    <Surface
+                      shape="slot"
+                      elevation="sunken"
+                      fill="sunken"
+                      className="overflow-hidden"
+                      style={{ "--slot-edge": cond.edge } as React.CSSProperties}
+                    >
+                      <PostImage
+                        src={
+                          other.images.find((i) => i.is_primary)?.image_url
+                        }
+                        alt=""
+                        aspectRatio={1}
+                        sizes="160px"
+                      />
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 rounded-slot ring-1 ring-[var(--slot-edge)] ring-inset"
+                      />
+                    </Surface>
+                    <span className="mt-1.5 line-clamp-2 block text-[0.75rem] leading-[1.4] text-ink-secondary group-hover:text-ink">
+                      {other.name}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

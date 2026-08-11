@@ -89,7 +89,7 @@ export function GiveawayDetail({
 
       <div className="flex flex-col gap-5 lg:w-1/2">
         <div className="flex flex-col gap-2">
-          <StatusBadge status={method} variant="solid" size="sm" className="w-fit" />
+          <StatusBadge status={method} size="sm" className="w-fit" />
           <h1 className="text-display">
             {giveaway.item_name}
           </h1>

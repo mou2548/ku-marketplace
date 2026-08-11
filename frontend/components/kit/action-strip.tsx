@@ -8,7 +8,7 @@ import type { InboxEntry } from "@/lib/inbox";
 import { cn } from "@/lib/utils";
 
 import { CountdownPill } from "./countdown-pill";
-import { TONE_WASH } from "./tone";
+import { TONE_CHIP } from "./tone";
 
 /**
  * Revised 2026-08-07. The first build made "what is waiting on you" the whole
@@ -99,7 +99,8 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
                 <span
                   className={cn(
                     "justify-self-end rounded-pill px-2.5 py-1 text-[0.8125rem] font-medium whitespace-nowrap",
-                    TONE_WASH[entry.prompt.tone],
+                    "border",
+                    TONE_CHIP[entry.prompt.tone],
                   )}
                 >
                   {entry.prompt.label}

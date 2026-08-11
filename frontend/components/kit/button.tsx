@@ -32,6 +32,10 @@ const button = cva(
       variant: {
         primary:
           "bg-brand text-on-brand shadow-raised hover:bg-brand-hover data-[pressed]:bg-brand-active",
+        // No border: `shadow-raised` already ends in a hairline ring, and
+        // stacking one on top made a secondary button pixel-identical to a
+        // Surface card — which is what made a wide one stop reading as a
+        // button at all. Same reason surface.tsx dropped its border.
         secondary:
           "bg-surface text-ink shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
         subtle:
@@ -76,11 +80,18 @@ export function Button({
   loadingLabel = "Working",
   isDisabled,
   children,
+  /**
+   * Forwarded to the underlying button. Needed wherever focus has to be put
+   * back somewhere deliberate — an inline edit returning focus to the control
+   * that opened it, for one (CLAUDE.md §6).
+   */
+  ref,
   ...props
-}: ButtonProps) {
+}: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
   return (
     <AriaButton
       {...props}
+      ref={ref}
       isDisabled={isDisabled || isLoading}
       // Touch targets stay >=44px on coarse pointers even at size="sm".
       className={cn(button({ variant, size, block, pill }), className)}

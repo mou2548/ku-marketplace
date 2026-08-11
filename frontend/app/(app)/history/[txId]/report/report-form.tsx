@@ -62,7 +62,7 @@ export function ReportForm({
   // act and let them go back with that answer.
   if (!allowed) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <div className="flex w-full max-w-xl flex-col gap-4">
         <Surface shape="card" className="flex flex-col gap-3 p-5">
           <span className="grid size-11 place-items-center rounded-pill bg-tone-info-bg text-tone-info-fg">
             <ShieldAlert aria-hidden className="size-5" />
@@ -97,11 +97,9 @@ export function ReportForm({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
+    <div className="flex w-full max-w-xl flex-col gap-5">
       <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Report a problem
-        </h1>
+        <h1 className="text-h1">Report a problem</h1>
         <p className="text-[0.875rem] text-ink-muted">
           {itemName} - with {counterparty}
         </p>

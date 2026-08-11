@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 
+import { PostImage } from "@/components/kit/post-image";
+import { Surface } from "@/components/kit/surface";
+import { TwoColumn } from "@/components/kit/two-column";
 import { getMyItems } from "@/lib/api/fixtures";
+import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
 
@@ -22,5 +26,63 @@ export default async function ListItemPage({
   const item = items.find((i) => i.item_id === Number(itemId));
   if (!item) notFound();
 
-  return <ListItemForm item={item} />;
+  const rarity = ITEM_CONDITION[item.condition];
+
+  /**
+   * The thing being listed, beside the terms. Setting a price for an item you
+   * cannot see is the one thing this screen must not ask for.
+   */
+  const preview = (
+    <Surface shape="card" className="flex flex-col gap-3 p-5">
+      <p className="text-overline text-ink-muted uppercase">
+        What you are listing
+      </p>
+
+      <span
+        className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+        style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
+      >
+        <PostImage
+          src={item.images.find((i) => i.is_primary)?.image_url}
+          alt=""
+          aspectRatio={4 / 3}
+          sizes="320px"
+        />
+      </span>
+
+      <p className="font-semibold">{item.name}</p>
+
+      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+        <div className="flex justify-between gap-2">
+          <dt className="text-ink-muted">Category</dt>
+          <dd>{item.category}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-ink-muted">Condition</dt>
+          <dd
+            style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
+            className="text-[var(--slot-edge)]"
+          >
+            {rarity.label}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-ink-muted">Quantity</dt>
+          <dd data-numeric>{item.quantity}</dd>
+        </div>
+      </dl>
+
+      {item.description ? (
+        <p className="border-t border-line pt-3 text-[0.8125rem] leading-[1.6] text-ink-muted">
+          {item.description}
+        </p>
+      ) : null}
+    </Surface>
+  );
+
+  return (
+    <TwoColumn rail={preview}>
+      <ListItemForm item={item} />
+    </TwoColumn>
+  );
 }

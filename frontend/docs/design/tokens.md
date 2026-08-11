@@ -80,14 +80,14 @@ trace of the brand hue (~147°) at very low saturation.
 
 | Ramp | Base | AA text step | Meaning |
 |---|---|---|---|
-| amber | `#F09C00` | **700** `#966200` (5.20) | waiting on someone, deadline near |
+| amber | `#F09C00` | **700** `#966200` (5.20) | waiting on someone, deadline near, membership |
 | rose | `#BE324B` | **500** `#BE324B` (5.61) | cancelled, reported, expired, destructive |
-| blue | `#3388BD` | **600** `#286B95` (5.80) | informational, in transit |
-| violet | `#5136BA` | **500/600** (8.15 / 10.66) | **trade** — separates a swap from a sale |
-| gold | `#D8A93A` | **600** `#9A7413` (4.97) | New-condition rarity, giveaway |
 
-Violet earns its own ramp because of research P3 and risk R5: a trade is a different
-mental model from a purchase, and the feed must signal that before the user clicks.
+Only two accent ramps remain. **Blue, violet and gold were deleted** — see "The
+palette: five hues" below. Violet used to carry trade on the reasoning that a
+swap is a different mental model from a purchase; the feed still signals that
+before the tap, but with a filled chip that says "For trade" in words rather
+than with a sixth hue.
 
 ---
 
@@ -99,14 +99,72 @@ one place to change, 24 enum values, zero raw enum strings in JSX.
 
 | Tone | Wash | Border | Text | Solid |
 |---|---|---|---|---|
-| neutral | gray-100 | gray-300 | gray-700 | gray-600 |
-| info | blue-100 | blue-300 | blue-700 | blue-600 |
-| success | green-100 | green-300 | green-800 | green-600 |
-| warning | amber-100 | amber-300 | amber-800 | amber-500 |
-| danger | rose-100 | rose-300 | rose-600 | rose-500 |
-| trade | violet-100 | violet-300 | violet-600 | violet-500 |
+| neutral | gray-100 | gray-400 | gray-700 | gray-600 |
+| info | green-100 | green-400 | green-700 | green-400 |
+| success | green-200 | green-600 | green-800 | green-700 |
+| warning | amber-100 | amber-600 | amber-800 | amber-500 |
+| danger | rose-100 | rose-400 | rose-600 | rose-500 |
+| trade | gray-100 | gray-400 | gray-700 | gray-600 |
 
-Every `*-fg` on its own `*-bg` clears 4.5:1.
+Every `*-fg` on its own `*-bg` clears 4.5:1 — info 5.10, success 6.28.
+
+`trade` is the neutral trio. The name survives so the enum maps in
+`lib/status.ts` keep compiling; retiring the union member is a type change, not
+a colour one, and is still outstanding.
+
+### The palette: five hues, and no more
+
+The product uses **five colours**. Everything else is the green-tinted neutral
+ramp, which carries text and surfaces and is not a colour decision.
+
+| Hue | Step | Carries |
+|---|---|---|
+| Deep green | `green-600/700/800` | Brand, success, condition `New` |
+| Light green | `green-100/400` | Info — "in progress" — and condition `Very Good` |
+| Light amber | `amber-400` | Condition `Good` |
+| Deep amber | `amber-600/700/800` | Warning, membership tier, condition `Acceptable` |
+| Rose | `rose-400/500/600` | Danger, condition `Worn` |
+
+Blue, violet and gold were **retired**. Info moved to the light green, trade to
+neutral, membership to amber. The ramps are deleted from the primitives, not
+merely unused — a sixth hue must replace one of these five, not join them.
+
+Two consequences to know about:
+
+- **Info and success share the green.** Six tones over five hues means a pair
+  must share, and "on the way" and "arrived" are the pair that share best. Their
+  washes are 1.14:1 apart, so the border and the icon do the separating; colour
+  is never the only signal (§6).
+- **A filled chip uses the 700 step, not the 600.** White on `green-600` is
+  4.04:1 and on `amber-600` is 3.50:1 — both below AA for a normal-size label.
+  `green-700` (5.87:1) and `amber-700` (5.19:1) carry it. Same hue, deeper. The
+  600 steps stay legal for large text and for fills with dark text on them.
+
+### What colour is for
+
+Colour has exactly three jobs. Everything else is type, weight and space
+(principle §3.5: "Type carries hierarchy. Do not rely on color alone to signal
+importance").
+
+| Role | Owns | Never |
+|---|---|---|
+| **Severity** — the tone system | Status. The weight is chosen by `variant="auto"`, not by the call site | A category, a type, a method |
+| **Rarity** — the condition ramp | One edge per item, and the filter dots | Free-floating coloured text |
+| **Brand** — green | The primary action, and identity | Neutral metadata |
+
+**A category is not a severity.** Post type, allocation method and item status
+are facts about *what a thing is*, not about whether something went wrong. They
+get a wash at most, and where type can carry the distinction instead, no chip at
+all. An audit found seven call sites forcing `variant="solid"` and every one of
+them was a category — which meant the loudest treatment in the system was
+reserved for the most routine facts on the screen.
+
+**Colour is applied as a class, not as `style`.** Passing `rarity.fg` into
+`style={{ color }}` is a token value smuggled past the class layer, and it is why
+item condition once appeared in five different shapes across the product. The
+ramp is exposed in `@theme` as `--color-rarity-*` and `--shadow-rarity`; where a
+value genuinely has to vary at runtime, set a CSS custom property on the element
+the way `inventory-slot.tsx` sets `--slot-edge`, and let the class read it.
 
 ### Severity contract
 

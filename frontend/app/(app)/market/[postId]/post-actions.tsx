@@ -38,6 +38,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
         <LinkButton
           variant="secondary"
           block
+          className="lg:w-auto"
           href={`/inventory/${post.item_id}/list`}
         >
           Edit listing
@@ -68,7 +69,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
     >
       {canBuy ? (
         <OverlayTrigger>
-          <Button block size="lg">
+          <Button block size="lg" className="lg:w-auto">
             <ShoppingBag className="size-5" />
             Buy now
           </Button>
@@ -126,6 +127,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           variant={canBuy ? "secondary" : "primary"}
           size="lg"
           block
+          className="lg:w-auto"
           href={`/offers/new?post=${post.post_id}`}
         >
           <ArrowLeftRight className="size-5" />

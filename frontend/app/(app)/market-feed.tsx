@@ -22,8 +22,8 @@ import { cn } from "@/lib/utils";
  *    every card and part of what the search box matches.
  *  - **Pinterest-style density** the brief asked for: variable card heights via
  *    CSS multi-column, so the grid looks full rather than gridded.
- *  - **Sell vs Trade must be readable before the tap** — hence the violet trade
- *    tone and the top-level segments.
+ *  - **Sell vs Trade must be readable before the tap** — the card chip is
+ *    filled green for anything sellable and amber for a pure swap.
  *
  * Filters live in a sheet on mobile and a rail on desktop; the filter *state*
  * is identical, so nothing is unreachable on a phone.
@@ -88,6 +88,31 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
     apply(next);
   }
 
+  /**
+   * Post type. Rendered twice on purpose: in the rail with the other filters
+   * from `lg` up, and in a bar above the feed below it — the rail is hidden on
+   * a phone, and burying the primary filter in the sheet would cost a tap on
+   * the control people reach for first.
+   */
+  const segmentTabs = (
+    <Tabs
+      selectedKey={segment}
+      onSelectionChange={(k) => setSegment(k as Segment)}
+      className="min-w-0 flex-1"
+    >
+      <TabList aria-label="Post type" variant="segment">
+        {SEGMENTS.map((s) => (
+          <SegmentTab key={s.id} id={s.id}>
+            {s.label}
+          </SegmentTab>
+        ))}
+      </TabList>
+      {SEGMENTS.map((s) => (
+        <TabPanel key={s.id} id={s.id} className="hidden" />
+      ))}
+    </Tabs>
+  );
+
   const filterControls = (
     <div className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-2">
@@ -142,42 +167,13 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Search — course code first, per persona P1. */}
-      <div className="relative lg:max-w-2xl">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted"
-        />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search by item name or course code"
-          placeholder="Search by item name or course code, e.g. 01417111"
-          className="h-12 w-full rounded-pill bg-surface-sunken pr-4 pl-11 text-[0.9375rem] shadow-sunken"
-        />
-      </div>
+      {/* Phone only: post type plus the filter sheet. From `lg` both move into
+          the rail and the search takes the top of the feed column. */}
+      <div className="flex items-center gap-2 lg:hidden">
+        {segmentTabs}
 
-      <div className="flex items-center gap-2">
-        <Tabs
-          selectedKey={segment}
-          onSelectionChange={(k) => setSegment(k as Segment)}
-          className="min-w-0 flex-1"
-        >
-          <TabList aria-label="Post type" variant="segment">
-            {SEGMENTS.map((s) => (
-              <SegmentTab key={s.id} id={s.id}>
-                {s.label}
-              </SegmentTab>
-            ))}
-          </TabList>
-          {SEGMENTS.map((s) => (
-            <TabPanel key={s.id} id={s.id} className="hidden" />
-          ))}
-        </Tabs>
-
-        {/* Filters: a sheet on mobile, the rail below on desktop. */}
         <OverlayTrigger>
-          <Button variant="secondary" size="icon" aria-label="Filters" className="lg:hidden">
+          <Button variant="secondary" size="icon" aria-label="Filters">
             <span className="relative">
               <SlidersHorizontal className="size-5" />
               {activeFilters > 0 ? (
@@ -205,13 +201,42 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
             shape="panel"
             fill="plate"
             noise
-            className="sticky top-20 p-4"
+            className="sticky top-20 flex flex-col gap-5 p-4"
           >
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-overline text-ink-muted uppercase">
+                Showing
+              </legend>
+              {segmentTabs}
+            </fieldset>
+
             {filterControls}
           </Surface>
         </aside>
 
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          {/* Search leads the feed column and takes its full width — it was a
+              capped bar sitting above the rail, in line with nothing.
+
+              White and raised, not sunken. Inputs are sunken wells everywhere
+              else in the app (components.md §3) and that is right on a white
+              card, but this one sits straight on the page: `--bg-surface-sunken`
+              is #f6f8f7 and the page is #f4f7f5, which is 1.01:1 — the field
+              was invisible. It lifts off the page instead. */}
+          <div className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted"
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search by item name or course code"
+              placeholder="Search by item name or course code, e.g. 01417111"
+              className="h-12 w-full rounded-pill bg-surface pr-4 pl-11 text-[0.9375rem] shadow-raised"
+            />
+          </div>
+
           {filtered.length === 0 ? (
             <EmptyState
               icon={<Store className="size-6" />}
@@ -280,8 +305,13 @@ function FilterChip({
       {dotColor ? (
         <span
           aria-hidden
-          className="size-2 rounded-pill"
-          style={{ backgroundColor: isActive ? "currentColor" : dotColor }}
+          // The dot is the condition ramp, so it comes in as a property and a
+          // class reads it. Active inverts to the chip's own text colour.
+          style={{ "--slot-edge": dotColor } as React.CSSProperties}
+          className={cn(
+            "size-2 rounded-pill",
+            isActive ? "bg-current" : "bg-[var(--slot-edge)]",
+          )}
         />
       ) : null}
       {children}

@@ -25,14 +25,15 @@ export default async function RoomPage({
   if (!detail) notFound();
 
   return (
-    <div className="flex gap-6">
+    <div className="flex h-full min-h-0">
       {/* The inbox stays visible beside the room on desktop, the way every
-          messaging app people already use behaves. */}
-      <aside className="hidden w-80 shrink-0 xl:block">
+          messaging app people already use behaves. One divider between the two
+          columns, no gutter and no card — the room is the surface. */}
+      <aside className="hidden h-full w-80 shrink-0 border-r border-line xl:block xl:w-96">
         <RoomList rooms={rooms} activeRoomId={detail.summary.room_id} />
       </aside>
 
-      <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1">
         <RoomScreen
           summary={detail.summary}
           viewerId={VIEWER_ID}

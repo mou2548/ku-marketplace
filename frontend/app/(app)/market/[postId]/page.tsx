@@ -2,10 +2,12 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { BookOpen, Package, ShieldCheck } from "lucide-react";
 
+import { PostCard } from "@/components/kit/post-card";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { getPost, VIEWER_ID } from "@/lib/api/fixtures";
+import { getPost, getPosts, VIEWER_ID } from "@/lib/api/fixtures";
+import type { Post } from "@/lib/api/types";
 
 import { ITEM_CONDITION, POST_TYPE } from "@/lib/status";
 
@@ -54,13 +56,34 @@ export default async function PostDetailPage({
     ]);
   }
 
+  // Two grids under the fold, both derived from the posts list because the API
+  // defines no related-posts route (docs/design/api-gaps.md).
+  const all = await getPosts();
+  const others = all.filter((p) => p.post_id !== post.post_id);
+  const fromSeller = others
+    .filter((p) => p.seller.user_id === post.seller.user_id)
+    .slice(0, 4);
+  const similar = others
+    .filter(
+      (p) =>
+        p.item.category === post.item.category &&
+        p.seller.user_id !== post.seller.user_id,
+    )
+    .slice(0, 4);
+
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-      {/* Gallery */}
-      <div className="lg:w-1/2">
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+      {/* The image is bounded, the page is not. Capping the whole page just
+          moves the empty half from the middle to the right; capping the photo
+          is what stops it inflating into a 670px slab that sets the page
+          height. Everything else takes the width it is given. */}
+      <div className="lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
         <Surface
           shape="card"
-          className="relative aspect-[4/5] w-full overflow-hidden"
+          // Portrait is a phone shape. On a wide screen the same 4:5 made the
+          // photo the tallest thing on the page by a wide margin.
+          className="relative aspect-[4/5] w-full overflow-hidden lg:aspect-[4/3]"
         >
           {image ? (
             <Image
@@ -78,20 +101,25 @@ export default async function PostDetailPage({
           )}
           <span
             aria-hidden
-            className="absolute inset-0 rounded-card ring-2 ring-inset"
-            style={{ boxShadow: `inset 0 0 0 2px ${rarity.edge}` }}
+            style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
+            className="absolute inset-0 rounded-card ring-2 ring-[var(--slot-edge)] ring-inset"
           />
         </Surface>
       </div>
 
       {/* Details */}
-      <div className="flex flex-col gap-5 lg:w-1/2">
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={POST_TYPE[post.post_type]} variant="solid" size="sm" />
+            <StatusBadge status={POST_TYPE[post.post_type]} size="sm" />
             <span
-              className="rounded-pill px-2.5 py-1 text-[0.75rem] font-medium"
-              style={{ color: rarity.fg, backgroundColor: `${rarity.glow}` }}
+              style={
+                {
+                  "--slot-edge": rarity.fg,
+                  "--slot-glow": rarity.glow,
+                } as React.CSSProperties
+              }
+              className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-[0.75rem] font-medium text-[var(--slot-edge)]"
             >
               {rarity.label}
             </span>
@@ -127,7 +155,7 @@ export default async function PostDetailPage({
         </Surface>
 
         {post.description ? (
-          <p className="text-[0.9375rem] leading-[1.75] whitespace-pre-line text-ink-secondary">
+          <p className="max-w-prose text-[0.9375rem] leading-[1.75] whitespace-pre-line text-ink-secondary">
             {post.description}
           </p>
         ) : null}
@@ -150,17 +178,59 @@ export default async function PostDetailPage({
           </Surface>
         ) : null}
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {specs.map(([label, value]) => (
-            <div key={label} className="flex flex-col">
-              <dt className="text-[0.75rem] text-ink-muted">{label}</dt>
-              <dd className="text-[0.9375rem] font-medium">{value}</dd>
-            </div>
-          ))}
-        </dl>
+        {/* The specs were a bare text grid floating on the page; at any width
+            over about 900px they read as a table dump rather than a spec. */}
+        <Surface as="section" shape="panel" fill="plate" noise className="p-4">
+          <h2 className="mb-3 text-overline text-ink-muted uppercase">Details</h2>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
+            {specs.map(([label, value]) => (
+              <div key={label} className="flex flex-col">
+                <dt className="text-[0.75rem] text-ink-muted">{label}</dt>
+                <dd className="text-[0.9375rem] font-medium">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Surface>
 
         <PostActions post={post} isMine={isMine} />
       </div>
+      </div>
+
+      {fromSeller.length > 0 ? (
+        <RelatedPosts
+          title={`More from ${post.seller.name}`}
+          posts={fromSeller}
+        />
+      ) : null}
+
+      {similar.length > 0 ? (
+        <RelatedPosts title={`Other ${post.item.category}`} posts={similar} />
+      ) : null}
     </div>
+  );
+}
+
+/** A row of other listings, so the page has a bottom instead of a dead field. */
+function RelatedPosts({ title, posts }: { title: string; posts: Post[] }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-h2">{title}</h2>
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+        {posts.map((p) => (
+          <li key={p.post_id}>
+            <PostCard
+              postId={p.post_id}
+              name={p.item.name}
+              price={p.price}
+              postType={p.post_type}
+              condition={p.item.condition}
+              imageUrl={p.item.images.find((i) => i.is_primary)?.image_url}
+              courseName={p.item.course_name}
+              seller={p.seller}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

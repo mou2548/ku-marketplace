@@ -62,7 +62,7 @@ export function ManageGiveaway({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <header className="flex flex-col gap-2">
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           {giveaway.item_name}

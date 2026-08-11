@@ -1,40 +1,27 @@
-import { ActionStrip } from "@/components/kit/action-strip";
 import { PostFab } from "@/components/kit/post-fab";
-import {
-  getOffers,
-  getPosts,
-  getTransactions,
-  VIEWER_ID,
-} from "@/lib/api/fixtures";
-import { buildInbox } from "@/lib/inbox";
+import { getPosts } from "@/lib/api/fixtures";
 
 import { MarketFeed } from "./market-feed";
 
 /**
- * Home is the marketplace.
+ * Home is the marketplace. Nothing else.
  *
  * Revised 2026-08-07. The first build made `/` a task inbox (decision D2) and
- * put the feed on `/market`. Two problems showed up the moment it was on
- * screen: opening the product landed on a wall of admin rows before a single
- * item, and Home and Market were two routes doing overlapping jobs.
+ * put the feed on `/market`; that landed the product on a wall of admin rows
+ * before a single item, so the inbox became a strip above the feed instead.
  *
- * The research finding behind D2 was right — R4 and persona P2 both need one
- * place that answers "what is waiting on me" — but it did not deserve the whole
- * page. It is a collapsible strip above the feed now, and it disappears when
- * there is nothing waiting.
+ * The strip is gone too. A full-bleed green banner was the loudest thing above
+ * the fold on the page whose whole job is to show items, and "what is waiting
+ * on me" is already answered in four other places that the student is looking
+ * at anyway: the nav badges on Offers and History, the "Your turn" chip on
+ * every affected row in `/history` and in the chat inbox, and `/notifications`.
+ * R4 and persona P2 are served without spending the top of the feed on it.
  */
 export default async function HomePage() {
-  const [posts, transactions, offers] = await Promise.all([
-    getPosts(),
-    getTransactions(),
-    getOffers(),
-  ]);
-
-  const inbox = buildInbox(transactions, offers, VIEWER_ID);
+  const posts = await getPosts();
 
   return (
     <div className="flex flex-col gap-5">
-      <ActionStrip entries={inbox.yours} />
       <MarketFeed posts={posts} />
       <PostFab />
     </div>
