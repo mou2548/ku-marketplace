@@ -72,6 +72,7 @@ function user(id: number, th: string): UserSummary {
     isVerified: true,
     faculty: FACULTY[id],
     year: (id % 4) + 1,
+    avatar_url: `https://i.pravatar.cc/150?u=${id}`,
   };
 }
 
