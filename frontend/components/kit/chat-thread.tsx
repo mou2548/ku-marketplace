@@ -9,6 +9,7 @@ import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
+import { Overlay, OverlayTrigger } from "./overlay";
 import { Surface } from "./surface";
 import { TONE_RAIL_LEFT } from "./tone";
 import { TrustBadge } from "./trust-badge";
@@ -68,6 +69,26 @@ function senderTone(senderId: number): Tone {
   return SENDER_TONES[Math.abs(senderId) % SENDER_TONES.length];
 }
 
+/** Calendar day in the campus timezone, so a message near midnight groups the
+ * same way for everyone regardless of the reader's own device timezone. */
+function dayKey(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+}
+
+/** "Today" / "Yesterday" / "Mon 10 Aug" — the pill between day groups. */
+function dayLabel(iso: string): string {
+  const key = dayKey(iso);
+  if (key === dayKey(new Date().toISOString())) return "Today";
+  if (key === dayKey(new Date(Date.now() - 86_400_000).toISOString()))
+    return "Yesterday";
+  return new Date(iso).toLocaleDateString("en-GB", {
+    timeZone: "Asia/Bangkok",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export function ChatThread({
   messages,
   viewerId,
@@ -106,9 +127,19 @@ export function ChatThread({
           const named = showSenders && !mine;
           const sender = named ? senders?.get(m.sender_id) : undefined;
           const tone = senderTone(m.sender_id);
+          const startsNewDay =
+            i === 0 || dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
 
           return (
             <div key={m.message_id} className="flex flex-col gap-3">
+              {startsNewDay ? (
+                <div className="flex justify-center py-1">
+                  <span className="rounded-pill bg-surface-sunken px-3 py-1 text-[0.75rem] font-medium text-ink-muted">
+                    {dayLabel(m.created_at)}
+                  </span>
+                </div>
+              ) : null}
+
               <div
                 className={cn(
                   "flex max-w-[82%] flex-col gap-1.5",
@@ -129,14 +160,32 @@ export function ChatThread({
                 {m.image_urls?.length ? (
                   <div className="grid grid-cols-2 gap-1.5">
                     {m.image_urls.slice(0, 5).map((url) => (
-                      <Image
-                        key={url}
-                        src={url}
-                        alt=""
-                        width={220}
-                        height={220}
-                        className="aspect-square rounded-control object-cover shadow-raised"
-                      />
+                      <OverlayTrigger key={url}>
+                        <button
+                          type="button"
+                          aria-label="View photo full size"
+                          className="block overflow-hidden rounded-control"
+                        >
+                          <Image
+                            src={url}
+                            alt=""
+                            width={220}
+                            height={220}
+                            className="aspect-square object-cover shadow-raised"
+                          />
+                        </button>
+                        <Overlay title="Photo" size="lg">
+                          <div className="flex items-center justify-center">
+                            <Image
+                              src={url}
+                              alt=""
+                              width={960}
+                              height={960}
+                              className="max-h-[75dvh] w-full rounded-control object-contain"
+                            />
+                          </div>
+                        </Overlay>
+                      </OverlayTrigger>
                     ))}
                   </div>
                 ) : null}
@@ -147,7 +196,7 @@ export function ChatThread({
                       "rounded-card px-3.5 py-2.5 text-[0.9375rem] leading-[1.7]",
                       mine
                         ? "rounded-br-chip bg-brand text-on-brand"
-                        : "rounded-bl-chip bg-surface text-ink shadow-raised",
+                        : "rounded-bl-chip bg-surface text-ink",
                       named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                     )}
                   >
