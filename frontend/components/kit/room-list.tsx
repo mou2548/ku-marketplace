@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MessagesSquare } from "lucide-react";
+import { MessagesSquare, Search } from "lucide-react";
 
 import type { RoomKind, RoomSummary } from "@/lib/rooms";
 import { ROOM_KIND_TONE } from "@/lib/rooms";
@@ -33,10 +33,30 @@ export function RoomList({
   className?: string;
 }) {
   const [filter, setFilter] = useState<"all" | RoomKind>("all");
-  const shown = filter === "all" ? rooms : rooms.filter((r) => r.kind === filter);
+  const [query, setQuery] = useState("");
+
+  const byKind = filter === "all" ? rooms : rooms.filter((r) => r.kind === filter);
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? byKind.filter((r) => r.counterparty.name.toLowerCase().includes(q))
+    : byKind;
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-3", className)}>
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-muted"
+        />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search conversations"
+          placeholder="Search"
+          className="h-10 w-full rounded-pill bg-surface-sunken pr-4 pl-10 text-[0.875rem] shadow-sunken"
+        />
+      </div>
+
       <Tabs
         selectedKey={filter}
         onSelectionChange={(k) => setFilter(k as "all" | RoomKind)}
@@ -52,8 +72,12 @@ export function RoomList({
       {shown.length === 0 ? (
         <EmptyState
           icon={<MessagesSquare className="size-6" />}
-          title="No conversations here"
-          description="A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+          title={q ? "No matches" : "No conversations here"}
+          description={
+            q
+              ? `Nobody named "${query.trim()}" is in this list.`
+              : "A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+          }
         />
       ) : (
         <ul className="flex min-h-0 flex-col gap-1 overflow-y-auto">
@@ -86,9 +110,19 @@ function RoomRow({
     >
       <span
         aria-hidden
-        className="grid size-11 shrink-0 place-items-center rounded-pill bg-brand-subtle text-[0.8125rem] font-semibold text-ink-brand"
+        className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-pill bg-brand-subtle text-[0.8125rem] font-semibold text-ink-brand"
+        style={
+          room.counterparty.avatar_url
+            ? {
+                backgroundImage: `url(${room.counterparty.avatar_url})`,
+                backgroundSize: "cover",
+              }
+            : undefined
+        }
       >
-        {room.counterparty.name.slice(0, 2)}
+        {room.counterparty.avatar_url
+          ? null
+          : room.counterparty.name.slice(0, 2)}
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
