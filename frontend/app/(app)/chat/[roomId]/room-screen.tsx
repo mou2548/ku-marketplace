@@ -337,7 +337,7 @@ export function RoomScreen({
     <div className="flex gap-6">
       <Surface
         shape="card"
-        elevation="raised"
+        elevation="none"
         className="flex min-h-[70dvh] min-w-0 flex-1 flex-col overflow-hidden"
       >
         {/* Header: who, what kind, what about. */}
@@ -357,6 +357,7 @@ export function RoomScreen({
               name={summary.counterparty.name}
               isVerified={summary.counterparty.isVerified}
               faculty={summary.counterparty.faculty}
+              avatarUrl={summary.counterparty.avatar_url}
               size="sm"
             />
             {isGroupRoom ? (
