@@ -13,6 +13,7 @@ import {
   Flag,
   MapPin,
   QrCode,
+  Receipt,
   ScanLine,
   Truck,
   XCircle,
@@ -271,18 +272,26 @@ export function RoomScreen({
         return transaction.slip_image_url &&
           transaction.payment_confirmed_by_buyer_at ? (
           <ActionCard title="Your step - check the slip">
-            <SlipReviewer
-              slipUrl={transaction.slip_image_url}
-              amount={transaction.final_amount}
-              buyer={{
-                name: transaction.buyer.name,
-                isVerified: transaction.buyer.isVerified,
-              }}
-              uploadedAt={transaction.payment_confirmed_by_buyer_at}
-              isBusy={busy}
-              onConfirm={() => act("Payment confirmed")}
-              onReject={() => act("Told the buyer the amount does not match")}
-            />
+            <OverlayTrigger>
+              <Button block size="lg">
+                <Receipt className="size-5" />
+                Check Slip
+              </Button>
+              <Overlay title="Check the slip" size="lg">
+                <SlipReviewer
+                  slipUrl={transaction.slip_image_url}
+                  amount={transaction.final_amount}
+                  buyer={{
+                    name: transaction.buyer.name,
+                    isVerified: transaction.buyer.isVerified,
+                  }}
+                  uploadedAt={transaction.payment_confirmed_by_buyer_at}
+                  isBusy={busy}
+                  onConfirm={() => act("Payment confirmed")}
+                  onReject={() => act("Told the buyer the amount does not match")}
+                />
+              </Overlay>
+            </OverlayTrigger>
           </ActionCard>
         ) : null;
       case "enter-tracking":
