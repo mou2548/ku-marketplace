@@ -20,9 +20,9 @@ import { cn } from "@/lib/utils";
  *   2. the border colour IS the item condition — rarity at a glance
  *
  * Built on react-aria-components' GridList because it gives arrow-key
- * navigation, multi-select, and — with useDragAndDrop — a keyboard drag path
- * for free. CLAUDE.md §6 forbids reaching for the raw HTML5 drag API here:
- * a mouse-only trade bench is not shippable.
+ * navigation and makes each slot a keyboard-operable button (Enter fires its
+ * action), so placing and removing items on the trade bench works without a
+ * pointer — CLAUDE.md §6.
  *
  * Condition is never conveyed by colour alone; it is in the accessible name.
  */
@@ -93,11 +93,10 @@ export function InventorySlot({
         } as React.CSSProperties
       }
       className={cn(
-        "group cursor-grab rounded-slot",
+        "group cursor-pointer rounded-slot",
         "transition-transform duration-[--dur-fast] ease-[--ease-spring]",
         "hover:-translate-y-0.5 data-[pressed]:scale-95",
         "data-[selected]:-translate-y-1 data-[selected]:brightness-105",
-        "data-[dragging]:opacity-40",
         showName ? "flex flex-col gap-1.5" : "relative aspect-square",
         isPlaced && "pointer-events-none opacity-35 grayscale",
         className,
@@ -167,13 +166,11 @@ export function InventorySlot({
   );
 }
 
-/** An empty well on the trade bench — a place an item can be dropped into. */
+/** An empty well on the trade bench — a placeholder for a not-yet-placed item. */
 export function EmptySlot({
-  isDropTarget = false,
   label = "Empty slot",
   className,
 }: {
-  isDropTarget?: boolean;
   label?: string;
   className?: string;
 }) {
@@ -184,17 +181,11 @@ export function EmptySlot({
         "grid aspect-square place-items-center rounded-slot",
         "border-2 border-dashed border-line-default bg-surface-sunken/60",
         "transition-colors duration-[--dur-fast]",
-        isDropTarget && "border-brand bg-brand-subtle",
         className,
       )}
       title={label}
     >
-      <Plus
-        className={cn(
-          "size-4 text-ink-disabled",
-          isDropTarget && "text-ink-brand",
-        )}
-      />
+      <Plus className="size-4 text-ink-disabled" />
     </div>
   );
 }
