@@ -152,7 +152,7 @@ function ProposeMeetup({
 export function RoomScreen({
   summary,
   viewerId,
-  transaction,
+  transaction: initialTransaction,
   giveaway,
   appointment,
   entrants,
@@ -177,6 +177,28 @@ export function RoomScreen({
   const [pinOpen, setPinOpen] = useState(false);
   /** The deal strip's disclosure — everything the desktop rail used to hold. */
   const [detailOpen, setDetailOpen] = useState(false);
+  /**
+   * Nothing on this screen is backed by a real API yet, and the mock viewer
+   * is always the seller (`VIEWER_ID` in `lib/api/fixtures.ts`) — the
+   * buyer-only upload step can never be reached by clicking through the app.
+   * Local state lets a demo walk both sides of the payment sequence in one
+   * session; it resets on refresh.
+   */
+  const [transaction, setTransaction] = useState(initialTransaction);
+
+  async function handleDemoSlipUpload(file: File) {
+    const url = URL.createObjectURL(file);
+    setTransaction((tx) =>
+      tx
+        ? {
+            ...tx,
+            slip_image_url: url,
+            payment_confirmed_by_buyer_at: new Date().toISOString(),
+          }
+        : tx,
+    );
+    toast.show("Slip uploaded (demo). Waiting on the seller to check it.");
+  }
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -465,6 +487,7 @@ export function RoomScreen({
               reportable={reportable}
               busy={busy}
               onAct={act}
+              onDemoUpload={handleDemoSlipUpload}
             />
           ) : null}
 
@@ -594,6 +617,7 @@ function DealDetails({
   reportable,
   busy,
   onAct,
+  onDemoUpload,
 }: {
   transaction: Transaction;
   viewer: Party;
@@ -606,6 +630,7 @@ function DealDetails({
   reportable: boolean;
   busy: boolean;
   onAct: (message: string) => void;
+  onDemoUpload: (file: File) => Promise<void>;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
@@ -625,14 +650,21 @@ function DealDetails({
         </div>
 
         {prompt ? (
-          <p
-            className={cn(
-              "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
-              TONE_CHIP[prompt.tone],
-            )}
-          >
-            {prompt.label}
-          </p>
+          prompt.action === "upload-slip" && prompt.actor !== viewer ? (
+            // The real buyer's own turn already gets the full uploader
+            // through the composer's ActionCard — this box only stands in
+            // for it when nobody but the mock viewer can trigger that step.
+            <SlipUploader amount={transaction.final_amount} onUpload={onDemoUpload} />
+          ) : (
+            <p
+              className={cn(
+                "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
+                TONE_CHIP[prompt.tone],
+              )}
+            >
+              {prompt.label}
+            </p>
+          )
         ) : null}
 
         {transaction.delivery_method === "Shipping" ? (
