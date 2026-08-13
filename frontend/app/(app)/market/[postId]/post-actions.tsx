@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, Handshake, MapPin, MessageCircle, ShoppingBag, Truck } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
-import { useToast } from "@/components/kit/toast";
+import { Surface } from "@/components/kit/surface";
 import type { DeliveryMethod } from "@/lib/status";
 import type { Post } from "@/lib/api/types";
 
@@ -24,13 +23,38 @@ import type { Post } from "@/lib/api/types";
  * fold on a phone.
  */
 export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
-  const router = useRouter();
-  const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
   const [busy, setBusy] = useState(false);
+  // The purchase is confirmed in place rather than by jumping to a fixture chat
+  // room that belongs to a different item. The success panel names this item
+  // and this seller, so the demo shows the right deal was made.
+  const [boughtWith, setBoughtWith] = useState<DeliveryMethod | null>(null);
 
   const canBuy = post.post_type !== "TradeOnly";
   const canTrade = post.post_type !== "SellOnly";
+
+  if (boughtWith) {
+    return (
+      <Surface
+        shape="card"
+        className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
+      >
+        <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
+          <CheckCircle2 aria-hidden className="size-5 shrink-0" />
+          Deal created
+        </p>
+        <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+          You bought {post.item.name} from {post.seller.name} by{" "}
+          {boughtWith === "Meetup" ? "meetup" : "shipping"}. A chat room is open
+          so you can arrange the handover.
+        </p>
+        <LinkButton variant="secondary" href="/chat" className="w-fit">
+          <MessageCircle className="size-4" />
+          Open chat
+        </LinkButton>
+      </Surface>
+    );
+  }
 
   if (isMine) {
     return (
@@ -52,11 +76,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
     // POST /posts/{id}/buy → { delivery_method, quantity }
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
-    toast.show("Deal created. A chat room has been opened for you.");
-    // UI mock: the real call returns the new transaction id. Transaction 6 is
-    // the fixture where the viewer is the buyer, so the redirect through
-    // /history/[txId] lands in a room instead of a 404. Delete with the fixtures.
-    router.push("/history/6");
+    setBoughtWith(method);
   }
 
   return (

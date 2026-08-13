@@ -1,15 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Package } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, Package } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
 import { Surface } from "@/components/kit/surface";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
-import { useToast } from "@/components/kit/toast";
 import type { Item, Post } from "@/lib/api/types";
 
 /**
@@ -31,11 +29,12 @@ export function OfferComposer({
   post: Post;
   inventory: Item[];
 }) {
-  const router = useRouter();
-  const toast = useToast();
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);
   const [busy, setBusy] = useState(false);
+  // The sent offer cannot land in the fixture-backed inbox, so confirming in
+  // place beats navigating to /offers where it would appear to have vanished.
+  const [sent, setSent] = useState(false);
 
   const stash: InventoryItem[] = useMemo(
     () =>
@@ -73,8 +72,35 @@ export function OfferComposer({
     // POST /posts/{id}/offers → { item_ids, additional_money }
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
-    toast.show("Offer sent. Waiting on the post owner.");
-    router.push("/offers");
+    setSent(true);
+  }
+
+  if (sent) {
+    return (
+      <Surface
+        shape="card"
+        className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-5"
+      >
+        <p className="flex items-center gap-2 text-[1.0625rem] font-semibold text-tone-success-fg">
+          <CheckCircle2 aria-hidden className="size-5 shrink-0" />
+          Offer sent
+        </p>
+        <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+          You offered {post.seller.name}{" "}
+          {offered.length > 0
+            ? `${offered.length} ${offered.length === 1 ? "item" : "items"}`
+            : "no items"}
+          {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""} for{" "}
+          {post.item.name}. They will see it and can accept or decline.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <LinkButton href="/market">Keep browsing</LinkButton>
+          <LinkButton variant="secondary" href="/offers">
+            My offers
+          </LinkButton>
+        </div>
+      </Surface>
+    );
   }
 
   if (stash.length === 0) {
