@@ -4,11 +4,12 @@ import { ReportService } from './report.service';
 import { AppealController } from './appeal.controller';
 import { AppealService } from './appeal.service';
 import { TransactionModule } from '../transaction/transaction.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  // Closing a report has to settle any §8.7 cancellation dispute it represents,
-  // otherwise the transaction stays locked forever after the admin rules.
-  imports: [TransactionModule],
+  // TransactionModule: settling §8.7 disputes on report resolution.
+  // AuthModule: JwtAuthGuard now replaces the MockAuthGuard placeholder.
+  imports: [TransactionModule, AuthModule],
   controllers: [ReportController, AppealController],
   providers: [ReportService, AppealService],
 })

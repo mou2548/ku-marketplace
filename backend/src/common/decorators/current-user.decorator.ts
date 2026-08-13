@@ -4,7 +4,7 @@ import { CurrentUserPayload } from '../interfaces/current-user.interface';
 
 /**
  * Usage: whoami(@CurrentUser() user: CurrentUserPayload)
- * Only valid on routes guarded by MockAuthGuard (request.user must be set).
+ * Only valid on routes guarded by JwtAuthGuard (request.user must be set).
  */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): CurrentUserPayload => {

@@ -8,7 +8,7 @@ import { Request } from 'express';
 import { CurrentUserPayload } from '../interfaces/current-user.interface';
 
 /**
- * Must run after MockAuthGuard (or its real replacement) so request.user exists.
+ * Must run after JwtAuthGuard so request.user exists.
  * Guards the /admin/* endpoints in Report & Moderation (resolve, restore, decide).
  */
 @Injectable()

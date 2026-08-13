@@ -12,7 +12,7 @@ import {
 import { ReportService } from './report.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
-import { MockAuthGuard } from '../common/guards/mock-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
@@ -24,7 +24,7 @@ export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Post('reports')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(JwtAuthGuard)
   create(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CreateReportDto,
@@ -33,14 +33,14 @@ export class ReportController {
   }
 
   @Get('admin/reports')
-  @UseGuards(MockAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   findAll() {
     return this.reportService.findAll();
   }
 
   @Post('admin/reports/:id/resolve')
   @HttpCode(200)
-  @UseGuards(MockAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   resolve(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: CurrentUserPayload,
@@ -51,7 +51,7 @@ export class ReportController {
 
   @Post('admin/reports/:id/restore')
   @HttpCode(200)
-  @UseGuards(MockAuthGuard, AdminGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   restore(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: CurrentUserPayload,

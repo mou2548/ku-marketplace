@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Get,
+  HttpCode,
   Param,
   ParseIntPipe,
   Post,
@@ -19,6 +21,19 @@ export class AppointmentCardsController {
     private readonly appointmentCardsService: AppointmentCardsService,
   ) {}
 
+  @Get()
+  findAll(@CurrentUser() user: CurrentUserPayload) {
+    return this.appointmentCardsService.findAllForUser(user.userId);
+  }
+
+  @Get(':id')
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.appointmentCardsService.findOneForUser(id, user.userId);
+  }
+
   @Post(':id/respond')
   respondToAppointment(
     @Param('id', ParseIntPipe) appointmentId: number,
@@ -30,5 +45,15 @@ export class AppointmentCardsController {
       respondAppointmentDto,
       user.userId,
     );
+  }
+
+  /** proxy ไปยัง TransactionService.generateQr() ตัวจริง — ดู comment ใน service */
+  @Post(':id/qr/generate')
+  @HttpCode(200)
+  generateQr(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.appointmentCardsService.generateQr(id, user.userId);
   }
 }

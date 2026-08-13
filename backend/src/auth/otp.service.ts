@@ -48,4 +48,13 @@ export class OtpService {
 
     return JSON.parse(payloadRaw);
   }
+
+  /**
+   * ⚠️ DEV ONLY — อ่าน OTP ปัจจุบันโดยไม่ลบทิ้ง (ต่างจาก verify())
+   * ใช้สำหรับ test console เท่านั้น ห้ามเปิด endpoint นี้ใน production เด็ดขาด
+   * (ดู guard ที่ auth.controller.ts — เช็ค NODE_ENV ก่อนเรียกเสมอ)
+   */
+  async peekOtp(email: string): Promise<string | null> {
+    return this.redis.get(`register:otp:${email}`);
+  }
 }
