@@ -8,7 +8,11 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { setLiveMeetupLocation } from "@/lib/live-transaction";
+import { transactionsApi } from "@/lib/transactions-api";
 
 // TODO: replace with real on-campus meetup spots from the API
 const CAMPUS_SPOTS = [
@@ -26,6 +30,36 @@ export default function ChatTargetPage({
   const { tradeId } = use(params);
   const router = useRouter();
   const [selected, setSelected] = useState(CAMPUS_SPOTS[0].id);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState("14:00");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const transactionId = Number(tradeId);
+  const isLive = Number.isInteger(transactionId) && transactionId > 0 && String(transactionId) === tradeId;
+
+  async function shareLocation() {
+    const spot = CAMPUS_SPOTS.find((s) => s.id === selected);
+    if (!isLive || !spot) {
+      router.push("/chat");
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await transactionsApi.createAppointment(transactionId, {
+        date,
+        time,
+        location: spot.name,
+      });
+      setLiveMeetupLocation(transactionId, spot.name);
+      router.push("/chat");
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "นัดหมายไม่สำเร็จ");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="flex min-h-full flex-col bg-page-background">
@@ -83,6 +117,37 @@ export default function ChatTargetPage({
           })}
         </div>
 
+        {isLive && (
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-2">
+              <Label htmlFor="appointment-date" className="text-sm font-semibold">
+                วันนัด
+              </Label>
+              <Input
+                id="appointment-date"
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="h-11 rounded-xl"
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-2">
+              <Label htmlFor="appointment-time" className="text-sm font-semibold">
+                เวลานัด
+              </Label>
+              <Input
+                id="appointment-time"
+                type="time"
+                value={time}
+                onChange={(event) => setTime(event.target.value)}
+                className="h-11 rounded-xl"
+              />
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
         <Card className="flex-row items-center justify-between rounded-2xl p-4 shadow-card ring-0">
           <Button
             variant="outline"
@@ -91,8 +156,12 @@ export default function ChatTargetPage({
           >
             Cancel
           </Button>
-          <Button onClick={() => router.push("/chat")} className="ml-3 h-11 flex-1">
-            Share Location
+          <Button
+            onClick={shareLocation}
+            disabled={isSubmitting}
+            className="ml-3 h-11 flex-1"
+          >
+            {isSubmitting ? "กำลังส่ง..." : "Share Location"}
           </Button>
         </Card>
       </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -22,9 +22,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Conversation } from "@/lib/chat-threads";
+import type { ChatMessage, Conversation } from "@/lib/chat-threads";
+import { decodeJwtUserId, getDevToken } from "@/lib/dev-token";
+import { transactionsApi } from "@/lib/transactions-api";
 
 type Thread = Conversation["thread"];
+
+function toLocalMessage(message: {
+  messageId: number;
+  senderId: number;
+  content: string | null;
+  createdAt: string;
+}): ChatMessage {
+  const token = getDevToken();
+  const myUserId = token ? decodeJwtUserId(token) : null;
+  return {
+    id: `msg-${message.messageId}`,
+    from: myUserId !== null && message.senderId === myUserId ? "me" : "them",
+    text: message.content ?? "",
+    time: new Date(message.createdAt).toLocaleTimeString("th-TH", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+}
 
 export function ChatThread({
   thread,
@@ -37,7 +58,52 @@ export function ChatThread({
   className?: string;
 }) {
   const [cancelled, setCancelled] = useState(false);
+  const [messages, setMessages] = useState(thread.messages);
+  const [draft, setDraft] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isGiveaway = thread.kind === "giveaway";
+  const isLive = typeof thread.transactionId === "number";
+
+  useEffect(() => {
+    if (!thread.transactionId) return;
+    const transactionId = thread.transactionId;
+    setIsLoading(true);
+    setError(null);
+    transactionsApi
+      .getMessages(transactionId)
+      .then((history) => setMessages(history.map(toLocalMessage)))
+      .catch((err) => setError(err instanceof Error ? err.message : "โหลดข้อความไม่สำเร็จ"))
+      .finally(() => setIsLoading(false));
+  }, [thread.transactionId]);
+
+  async function handleSend() {
+    const text = draft.trim();
+    if (!text) return;
+
+    if (!thread.transactionId) {
+      // Demo thread with no backend transaction — keep it local-only.
+      setMessages((prev) => [
+        ...prev,
+        { id: `local-${Date.now()}`, from: "me", text, time: "เมื่อสักครู่" },
+      ]);
+      setDraft("");
+      return;
+    }
+
+    setIsSending(true);
+    setError(null);
+    try {
+      const sent = await transactionsApi.sendMessage(thread.transactionId, { content: text });
+      setMessages((prev) => [...prev, toLocalMessage(sent)]);
+      setDraft("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ส่งข้อความไม่สำเร็จ");
+    } finally {
+      setIsSending(false);
+    }
+  }
 
   return (
     <main className={cn("min-w-0 flex-1 flex-col bg-white", className)}>
@@ -149,7 +215,13 @@ export function ChatThread({
       )}
 
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 md:p-6">
-        {thread.messages.map((message) => (
+        {isLive && isLoading && (
+          <span className="mx-auto text-xs text-muted-foreground">กำลังโหลดข้อความ...</span>
+        )}
+        {error && (
+          <span className="mx-auto text-xs text-destructive">{error}</span>
+        )}
+        {messages.map((message) => (
           <div
             key={message.id}
             className={cn(
@@ -247,10 +319,21 @@ export function ChatThread({
           </Button>
           <Input
             type="text"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !isSending) handleSend();
+            }}
             placeholder="Type a message..."
             className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 py-0 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
           />
-          <Button size="icon" aria-label="Send message" className="size-10 shrink-0 shadow-card">
+          <Button
+            size="icon"
+            aria-label="Send message"
+            disabled={isSending || draft.trim() === ""}
+            onClick={handleSend}
+            className="size-10 shrink-0 shadow-card"
+          >
             <Send className="size-4" />
           </Button>
         </div>

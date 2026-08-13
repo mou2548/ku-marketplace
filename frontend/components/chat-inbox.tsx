@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { CONVERSATIONS, type ChatFilter } from "@/lib/chat-threads";
+import type { ChatFilter, Conversation } from "@/lib/chat-threads";
 
 const FILTERS: { label: string; value: ChatFilter }[] = [
   { label: "All", value: "all" },
@@ -18,10 +18,12 @@ const FILTERS: { label: string; value: ChatFilter }[] = [
 ];
 
 export function ChatInbox({
+  conversations,
   selectedId,
   onSelect,
   className,
 }: {
+  conversations: Conversation[];
   selectedId: string;
   onSelect: (id: string) => void;
   className?: string;
@@ -30,8 +32,8 @@ export function ChatInbox({
 
   const visible =
     filter === "all"
-      ? CONVERSATIONS
-      : CONVERSATIONS.filter((c) => c.filter === filter);
+      ? conversations
+      : conversations.filter((c) => c.filter === filter);
 
   return (
     <aside className={cn("h-full w-full shrink-0 flex-col border-r border-border/20 bg-white md:w-[400px]", className)}>

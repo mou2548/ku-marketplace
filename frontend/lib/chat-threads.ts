@@ -28,6 +28,8 @@ export interface Conversation {
     meetupLocation: string | null;
     meetupSubtitle: string;
     messages: ChatMessage[];
+    /** When set, this thread is backed by a real /transactions/{id} record — messages load/send through the API instead of staying local-only. */
+    transactionId?: number;
   };
 }
 
