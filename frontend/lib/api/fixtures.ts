@@ -884,6 +884,24 @@ export const GIVEAWAYS: GiveawayPost[] = [
     giver: USERS[10],
     registered_count: 8,
   },
+  {
+    giveaway_id: 9,
+    item_name: "ปากกาเจล 12 สี (ยังไม่แกะกล่อง)",
+    description: "ได้มาจากงานบูธ ใช้ไม่หมดครับ ใครอยากได้ลงชื่อไว้เลย",
+    pickup_location: "ตึกเรียนรวม 4 (ศร.4) ชั้น 1",
+    giver_id: 4,
+    allocation_method: "FirstCome",
+    registered_deadline: at("2026-08-16T18:00:00+07:00"),
+    pickup_start_date: at("2026-08-17T10:00:00+07:00"),
+    pickup_end_date: at("2026-08-20T17:00:00+07:00"),
+    status: "Active",
+    created_at: ago(3 * DAY),
+    images: [
+      { image_id: 9, image_url: "https://picsum.photos/id/1053/800/600", display_order: 1 },
+    ],
+    giver: USERS[4],
+    registered_count: 4,
+  },
 ];
 
 const giveawayById = (id: number) => GIVEAWAYS.find((g) => g.giveaway_id === id)!;
@@ -891,7 +909,9 @@ const giveawayById = (id: number) => GIVEAWAYS.find((g) => g.giveaway_id === id)
 /**
  * Tickets 4-8 belong to the viewer and cover all five `TicketStatus` values;
  * 9-13 are other entrants, so the Manual manage screen has a roster and the
- * derived entrant status below has something to derive from.
+ * derived entrant status below has something to derive from. 14-17 put the
+ * viewer in a still-open FirstCome giveaway behind three other entrants, so
+ * `getQueuePosition` has a case where the answer is not 1.
  */
 export const TICKETS: GiveawayTicket[] = [
   {
@@ -1012,6 +1032,44 @@ export const TICKETS: GiveawayTicket[] = [
     updated_at: ago(20 * HOUR),
     created_at: ago(6 * DAY),
     giveaway: giveawayById(4),
+  },
+  // --- FirstCome giveaway still open: three entrants ahead of the viewer,
+  // registered before the draw, so a queue position is derivable and non-1.
+  {
+    ticket_id: 14,
+    giveaway_id: 9,
+    receiver_id: 9,
+    status: "Registered",
+    updated_at: ago(3 * DAY),
+    created_at: ago(3 * DAY),
+    giveaway: giveawayById(9),
+  },
+  {
+    ticket_id: 15,
+    giveaway_id: 9,
+    receiver_id: 10,
+    status: "Registered",
+    updated_at: ago(2 * DAY),
+    created_at: ago(2 * DAY),
+    giveaway: giveawayById(9),
+  },
+  {
+    ticket_id: 16,
+    giveaway_id: 9,
+    receiver_id: 6,
+    status: "Registered",
+    updated_at: ago(1 * DAY),
+    created_at: ago(1 * DAY),
+    giveaway: giveawayById(9),
+  },
+  {
+    ticket_id: 17,
+    giveaway_id: 9,
+    receiver_id: 2,
+    status: "Registered",
+    updated_at: ago(5 * HOUR),
+    created_at: ago(5 * HOUR),
+    giveaway: giveawayById(9),
   },
 ];
 
@@ -1252,6 +1310,23 @@ export async function getEntrants(giveawayId: number): Promise<Entrant[]> {
       status,
     };
   });
+}
+
+/**
+ * FirstCome position in the registration queue, per `flow3.png`: the system
+ * grants places in order of `registered_at` once registration closes, so
+ * "queue position" is just that ordering read back before the close happens.
+ * Meaningless once the ticket has left `Registered` — the draw already ran.
+ */
+export async function getQueuePosition(
+  giveawayId: number,
+  receiverId: number,
+): Promise<number | undefined> {
+  const entrants = (await getEntrants(giveawayId)).slice().sort(
+    (a, b) => Date.parse(a.registered_at) - Date.parse(b.registered_at),
+  );
+  const index = entrants.findIndex((e) => e.receiver_id === receiverId);
+  return index === -1 ? undefined : index + 1;
 }
 
 export interface Notification {

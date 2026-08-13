@@ -1,4 +1,4 @@
-import { getGiveaways, getMyTickets } from "@/lib/api/fixtures";
+import { getGiveaways, getMyTickets, getQueuePosition } from "@/lib/api/fixtures";
 
 import { GiveawayBrowser } from "./giveaway-browser";
 
@@ -18,5 +18,29 @@ export default async function GiveawayPage() {
     getMyTickets(),
   ]);
 
-  return <GiveawayBrowser giveaways={giveaways} tickets={tickets} />;
+  // R7 follow-up: FirstCome entrants who are still waiting on the draw could
+  // only see a headcount, not where they stood in it. Queue position is
+  // derived the same way the manage screen derives entrant status — see
+  // `getQueuePosition`.
+  const queuePositions = new Map<number, number>();
+  await Promise.all(
+    tickets
+      .filter(
+        (t) =>
+          t.status === "Registered" &&
+          t.giveaway.allocation_method === "FirstCome",
+      )
+      .map(async (t) => {
+        const position = await getQueuePosition(t.giveaway_id, t.receiver_id);
+        if (position !== undefined) queuePositions.set(t.ticket_id, position);
+      }),
+  );
+
+  return (
+    <GiveawayBrowser
+      giveaways={giveaways}
+      tickets={tickets}
+      queuePositions={queuePositions}
+    />
+  );
 }

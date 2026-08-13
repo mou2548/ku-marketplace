@@ -51,6 +51,13 @@ There is no endpoint that says which entrants were selected. `getEntrants` in
 `Waiting`/`Received`/`Expired` mean the place was theirs, `Not_Selected` means it
 was not. A real client will have to do the same join over the ticket list.
 
+The same roster gives a `FirstCome` entrant their queue position while they are
+still `Registered` (`getQueuePosition`, sorting `Entrant.registered_at`), which
+matches `flow3.png`'s "system grants places in order of registration time."
+There is still no capacity column (see gap 2 above), so the position is honest
+about rank but cannot say how many ranks win — `GET /giveaways/{id}/recipients`
+would need to answer that, or the frontend would need to keep guessing.
+
 ## 6. A chat room has no members
 
 `Chat_Room` is `(room_id, transaction_id?, giveaway_id?, created_at)` and

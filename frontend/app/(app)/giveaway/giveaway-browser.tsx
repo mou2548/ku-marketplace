@@ -22,9 +22,12 @@ import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
 export function GiveawayBrowser({
   giveaways,
   tickets,
+  queuePositions,
 }: {
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
+  /** `ticket_id` -> position in the FirstCome registration order. */
+  queuePositions: Map<number, number>;
 }) {
   // "Open" has to mean open. Closed and Completed rows are still reachable
   // from a ticket or a chat room; they are not something to browse and enter.
@@ -75,28 +78,39 @@ export function GiveawayBrowser({
             />
           ) : (
             <ul className="flex flex-col gap-2 pt-4">
-              {tickets.map((t) => (
-                <li key={t.ticket_id}>
-                  <Link href={`/giveaway/ticket/${t.ticket_id}`}>
-                    <Surface
-                      as="div"
-                      shape="card"
-                      interactive
-                      className="flex items-center gap-3 p-4"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">
-                          {t.giveaway.item_name}
-                        </p>
-                        <p className="truncate text-[0.8125rem] text-ink-muted">
-                          Collect at {t.giveaway.pickup_location}
-                        </p>
-                      </div>
-                      <StatusBadge status={TICKET_STATUS[t.status]} size="sm" />
-                    </Surface>
-                  </Link>
-                </li>
-              ))}
+              {tickets.map((t) => {
+                const position = queuePositions.get(t.ticket_id);
+                return (
+                  <li key={t.ticket_id}>
+                    <Link href={`/giveaway/ticket/${t.ticket_id}`}>
+                      <Surface
+                        as="div"
+                        shape="card"
+                        interactive
+                        className="flex items-center gap-3 p-4"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold">
+                            {t.giveaway.item_name}
+                          </p>
+                          <p className="truncate text-[0.8125rem] text-ink-muted">
+                            Collect at {t.giveaway.pickup_location}
+                          </p>
+                          {position !== undefined ? (
+                            <p
+                              data-numeric
+                              className="mt-0.5 text-[0.8125rem] font-medium text-tone-warning-fg"
+                            >
+                              #{position} in line
+                            </p>
+                          ) : null}
+                        </div>
+                        <StatusBadge status={TICKET_STATUS[t.status]} size="sm" />
+                      </Surface>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </TabPanel>

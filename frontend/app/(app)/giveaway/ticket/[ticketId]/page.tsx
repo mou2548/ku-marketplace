@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { getMyTickets } from "@/lib/api/fixtures";
+import { getMyTickets, getQueuePosition } from "@/lib/api/fixtures";
 
 import { TicketScreen } from "./ticket-screen";
 
@@ -20,5 +20,11 @@ export default async function TicketPage({
   const ticket = tickets.find((t) => t.ticket_id === Number(ticketId));
   if (!ticket) notFound();
 
-  return <TicketScreen ticket={ticket} />;
+  const queuePosition =
+    ticket.status === "Registered" &&
+    ticket.giveaway.allocation_method === "FirstCome"
+      ? await getQueuePosition(ticket.giveaway_id, ticket.receiver_id)
+      : undefined;
+
+  return <TicketScreen ticket={ticket} queuePosition={queuePosition} />;
 }
