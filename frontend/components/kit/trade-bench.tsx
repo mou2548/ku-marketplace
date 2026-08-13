@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
 import { ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
-import { useDragAndDrop } from "react-aria-components";
 
 import type { InventoryItem } from "./inventory-slot";
 import { EmptySlot, InventoryGrid, InventorySlot } from "./inventory-slot";
@@ -24,9 +22,10 @@ import { cn } from "@/lib/utils";
  * stacks abreast. The cash field stays in the middle, on the seam, so the
  * comparison survives the geometry change (docs/design/ia.md §5).
  *
- * Drag-and-drop comes from react-aria-components, which ships a keyboard path
- * (focus an item, Enter to lift, arrow to the target, Enter to drop). A
- * mouse-only bench would fail CLAUDE.md §6.
+ * Items move by clicking: tap one in your inventory to place it on the bench,
+ * tap it on the bench to take it back. GridList makes each slot a keyboard
+ * button (Enter to act), so the whole bench works without a pointer — CLAUDE.md
+ * §6.
  *
  * The sides are named for the viewer, not for the proposer. They used to be
  * `offered`/`wanted`, which meant something different depending on which side
@@ -34,12 +33,8 @@ import { cn } from "@/lib/utils";
  * so the same trade drew in two different arrangements.
  */
 
-const DRAG_TYPE = "application/x-ku-item";
-
 export interface TradeBenchProps {
-  /** Items still in the viewer's inventory, available to drag on. */
-  inventory: InventoryItem[];
-  /** What leaves the viewer. The editable, droppable side. */
+  /** What leaves the viewer. The editable side. */
   youGive: InventoryItem[];
   onYouGiveChange: (next: InventoryItem[]) => void;
   /** What comes to the viewer. Read-only — it is the other side's stack. */
@@ -63,7 +58,6 @@ const OVERLINE =
   "text-overline text-ink-muted uppercase";
 
 export function TradeBench({
-  inventory,
   youGive,
   onYouGiveChange,
   youGet,
@@ -75,41 +69,6 @@ export function TradeBench({
   isReadOnly = false,
   className,
 }: TradeBenchProps) {
-  const offeredIds = useMemo(
-    () => new Set(youGive.map((i) => i.item_id)),
-    [youGive],
-  );
-
-  const byId = useMemo(() => {
-    const map = new Map<number, InventoryItem>();
-    for (const item of [...inventory, ...youGive]) map.set(item.item_id, item);
-    return map;
-  }, [inventory, youGive]);
-
-  /** The bench accepts items and adds them to the offer. */
-  const { dragAndDropHooks: benchHooks } = useDragAndDrop({
-    acceptedDragTypes: [DRAG_TYPE],
-    isDisabled: isReadOnly,
-    getDropOperation: () => "move",
-    onRootDrop: async (event) => {
-      const dropped = await Promise.all(
-        event.items
-          .filter((item) => item.kind === "text")
-          .map(async (item) => Number(await item.getText(DRAG_TYPE))),
-      );
-      const additions = dropped
-        .map((id) => byId.get(id))
-        .filter((item): item is InventoryItem => !!item && !offeredIds.has(item.item_id));
-      if (additions.length) onYouGiveChange([...youGive, ...additions]);
-    },
-    // Lifting an item back off the bench returns it to the inventory.
-    getItems: (keys) =>
-      [...keys].map((key) => ({
-        [DRAG_TYPE]: String(key),
-        "text/plain": byId.get(Number(key))?.name ?? "",
-      })),
-  });
-
   const remove = (id: number) =>
     onYouGiveChange(youGive.filter((i) => i.item_id !== id));
 
@@ -241,7 +200,6 @@ export function TradeBench({
         <InventoryGrid
           aria-label="Items on the trade table"
           items={youGive}
-          dragAndDropHooks={benchHooks}
           selectionMode="none"
           renderEmptyState={() => null}
           className="grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"
@@ -259,14 +217,14 @@ export function TradeBench({
         {emptyWells > 0 ? (
           <div className="mt-2 grid grid-cols-4 gap-2">
             {Array.from({ length: emptyWells }, (_, i) => (
-              <EmptySlot key={i} label="Drag an item here" />
+              <EmptySlot key={i} label="Empty slot" />
             ))}
           </div>
         ) : null}
 
         {!isReadOnly ? (
           <p className="mt-3 text-[0.8125rem] leading-[1.5] text-ink-muted">
-            Drag items from your inventory, or focus an item and press Enter to move it with the arrow keys
+            Tap an item in your inventory to place it here; tap it again to take it back
           </p>
         ) : null}
       </Surface>
@@ -276,8 +234,8 @@ export function TradeBench({
 
 /**
  * The proposer's inventory panel. Kept separate from TradeBench so a page can
- * place it wherever the layout needs — a sheet on mobile, a rail on desktop —
- * while sharing the same drag session.
+ * place it wherever the layout needs — a sheet on mobile, a rail on desktop.
+ * Tapping an item hands it to `onAdd`, which places it on the bench.
  */
 export function TradeSourcePanel({
   inventory,
@@ -290,11 +248,6 @@ export function TradeSourcePanel({
   onAdd: (item: InventoryItem) => void;
   className?: string;
 }) {
-  const { dragAndDropHooks } = useDragAndDrop({
-    getItems: (keys) =>
-      [...keys].map((key) => ({ [DRAG_TYPE]: String(key) })),
-  });
-
   return (
     <Surface as="section" shape="panel" className={cn("p-4", className)}>
       <h3 className="mb-3 text-[1.125rem] leading-[1.4] font-semibold">
@@ -303,8 +256,7 @@ export function TradeSourcePanel({
       <InventoryGrid
         aria-label="My inventory"
         items={inventory}
-        dragAndDropHooks={dragAndDropHooks}
-        selectionMode="multiple"
+        selectionMode="none"
       >
         {(item: InventoryItem) => (
           <InventorySlot

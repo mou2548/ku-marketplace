@@ -346,7 +346,6 @@
   --z-card-overlay: 10;
   --z-sticky: 20;
   --z-header: 50;
-  --z-drag: 80;      /* an item being dragged clears the header */
   --z-dialog: 100;
   --z-toast: 120;
 }

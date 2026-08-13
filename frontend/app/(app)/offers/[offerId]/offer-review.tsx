@@ -96,7 +96,6 @@ export function OfferReview({
       {/* The bench, read-only. Sides are labelled from the viewer's
           perspective, so "You give" always means what leaves your hands. */}
       <TradeBench
-        inventory={[]}
         youGet={sides.youGet.map(toSlot)}
         youGive={sides.youGive.map(toSlot)}
         onYouGiveChange={() => {}}

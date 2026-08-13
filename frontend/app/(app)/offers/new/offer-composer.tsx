@@ -17,12 +17,12 @@ import type { Item, Post } from "@/lib/api/types";
  *
  * The old flow was a checkbox list plus a number field, which makes fairness
  * impossible to judge — you cannot compare two piles you can only read. Here
- * the piles are the interface: drag from your stash onto the table, watch the
+ * the piles are the interface: tap from your stash onto the table, watch the
  * cash gap in the middle, and the answer to "is this fair?" is visible without
  * reading a label.
  *
- * On mobile the stash sits below the bench rather than beside it; the drag
- * still works, and so does the keyboard path react-aria-components provides.
+ * On mobile the stash sits below the bench rather than beside it; tapping to
+ * place works the same, and every slot stays keyboard-operable.
  */
 export function OfferComposer({
   post,
@@ -104,7 +104,6 @@ export function OfferComposer({
       </header>
 
       <TradeBench
-        inventory={stash}
         youGet={wanted}
         youGive={offered}
         onYouGiveChange={setOffered}

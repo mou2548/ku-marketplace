@@ -16,9 +16,9 @@ import type { Item } from "@/lib/api/types";
 import { ITEM_STATUS, type ItemStatus } from "@/lib/status";
 
 /**
- * The slot grid, same as the trade bench: a student who has dragged an item
- * onto the bench already knows how this screen works, and the rarity border
- * means the same thing in both places.
+ * The slot grid, same as the trade bench: a student who has placed an item on
+ * the bench already knows how this screen works, and the rarity border means
+ * the same thing in both places.
  *
  * Three behaviours came out of reviewing the built screen:
  *
