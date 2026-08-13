@@ -238,6 +238,9 @@ export function RoomScreen({
           <ActionCard title="Your step - pay and upload the slip">
             <SlipUploader
               amount={transaction.final_amount}
+              slipUrl={transaction.slip_image_url}
+              isUploaded={!!transaction.slip_image_url}
+              uploadedAt={transaction.payment_confirmed_by_buyer_at}
               onUpload={async () => act("Slip uploaded. Waiting on the seller.")}
             />
           </ActionCard>
