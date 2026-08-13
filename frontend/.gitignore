@@ -23,7 +23,6 @@
 # misc
 .DS_Store
 *.pem
-CLAUDE.md
 
 # debug
 npm-debug.log*
@@ -41,9 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-CLAUDE.md
+# agent / assistant config — never commit
+.claude/
+.cursor/
+
+# local design sources (large binaries, kept off the repo)
 /picforgen
 color.png
 /UI_Marketplace (1)
-
-

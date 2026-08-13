@@ -2,29 +2,39 @@ import type { Metadata } from "next";
 import { Prompt } from "next/font/google";
 import "./globals.css";
 
+/**
+ * Prompt covers Thai and Latin in one family, which matters here: the UI mixes
+ * them in the same line constantly (a Thai label next to a course code next to
+ * a price). Two families would mean two vertical rhythms in the same sentence.
+ */
 const prompt = Prompt({
   variable: "--font-prompt",
   subsets: ["thai", "latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "KU Marketplace",
-  description: "Student marketplace for buying, selling, and giving away items at Kasetsart University.",
+  description:
+    "Buy, sell, trade, and give away items inside Kasetsart University.",
 };
 
 export default function RootLayout({
   children,
-  modal,
 }: Readonly<{
   children: React.ReactNode;
-  modal: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${prompt.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className={`${prompt.variable} h-full antialiased`}>
+      <body className="min-h-full">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[120] focus:rounded-control focus:bg-surface focus:px-4 focus:py-2 focus:shadow-floating"
+        >
+          Skip to main content
+        </a>
         {children}
-        {modal}
       </body>
     </html>
   );

@@ -1,0 +1,69 @@
+import { RoomList } from "@/components/kit/room-list";
+import { EmptyState } from "@/components/kit/empty-state";
+import { MessagesSquare } from "lucide-react";
+
+import { VIEWER_ID } from "@/lib/api/fixtures";
+import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
+
+import { RoomScreen } from "./[roomId]/room-screen";
+
+export const metadata = { title: "Chat - KU Marketplace" };
+
+/**
+ * The inbox, and — on a wide screen — the conversation it is pointing at.
+ *
+ * This used to be a `max-w-2xl` list and nothing else, which measured 47% of a
+ * 1440px window with the rest empty. A messaging app on a laptop shows the list
+ * beside a thread, so it does: the room that opens is the first in
+ * `buildRooms`' order, which sorts rooms waiting on the viewer ahead of
+ * everything else and then by recency — "the one waiting on me, otherwise the
+ * latest".
+ *
+ * Below `xl` it stays the plain list. That is the same breakpoint
+ * `/chat/[roomId]` uses to show or hide the list beside a room, and on a phone
+ * the inbox has to be the thing you land on.
+ */
+export default async function ChatInboxPage() {
+  const rooms = await getRoomSummaries();
+  const first = rooms[0]
+    ? await getRoomDetail(rooms[0].room_id, rooms)
+    : undefined;
+
+  if (rooms.length === 0) {
+    return (
+      <EmptyState
+        icon={<MessagesSquare className="size-6" />}
+        title="No conversations yet"
+        description="A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0">
+      <div className="flex h-full w-full min-w-0 flex-col xl:w-96 xl:shrink-0 xl:border-r xl:border-line">
+        <RoomList
+          rooms={rooms}
+          activeRoomId={first?.summary.room_id}
+          heading="Chat"
+        />
+      </div>
+
+      {/* The preview, not a second route: opening a room from the list still
+          navigates to /chat/[roomId], which renders exactly this. */}
+      {first ? (
+        <div className="hidden min-h-0 min-w-0 flex-1 xl:flex">
+          <RoomScreen
+            summary={first.summary}
+            viewerId={VIEWER_ID}
+            transaction={first.transaction}
+            giveaway={first.giveaway}
+            appointment={first.appointment}
+            entrants={first.entrants}
+            messages={first.messages}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
