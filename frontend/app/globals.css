@@ -62,11 +62,33 @@
   --rose-900: #46161f;
   --rose-950: #2d1015;
 
-  /* Blue, violet and gold were retired: the palette is five hues — two greens,
-     two ambers, one rose — and those three had no consumer left. Info moved to
-     the light green, trade to neutral, membership to amber. Do not add a sixth
-     hue without deciding which of these five it replaces. */
+  /* --- Slate: info only. Added 2026-08-14 — info used to share the green
+     ramp with success (see the tone comment below), and a ticket list with
+     both on screen at once (Registered vs Collected) showed they cannot be
+     told apart at a glance. Cool and muted on purpose: it must read as
+     "the system is moving," not compete with the brand green. */
+  --slate-50: #f3f6f8;
+  --slate-100: #e4eaef;
+  --slate-400: #6f8fa3;  /*  3.42 — border only */
+  --slate-600: #3d6076;  /*  6.70 */
+  --slate-700: #2f4c5f;  /*  9.05 — text. AA. */
 
+  /* --- Clay: trade only. Added 2026-08-14, same pass as slate. The feed
+     card already filled "For trade" with amber (see post-card.tsx's old
+     comment) which reads as a warning next to Pending/Awaiting-payment chips
+     that use the same hue. Clay carries the same "filled, white text"
+     treatment without borrowing warning's colour. */
+  --clay-50: #f8f1ec;
+  --clay-100: #efe0d3;
+  --clay-400: #c68a5e;  /*  2.92 — border only */
+  --clay-700: #7a4522;  /*  7.77 — text and solid fill. AA. */
+
+  /* Blue and gold were retired for lack of a consumer; violet is banned
+     outright (see the trade tone comment below). Slate and clay are the two
+     exceptions since — info colliding with success, and trade colliding with
+     warning, were both real confusions on screen, not a preference. The
+     palette is seven hues now: two greens, slate, two ambers, clay, one
+     rose. Do not add an eighth without the same kind of evidence. */
 }
 
 /* =========================================================================
@@ -127,8 +149,8 @@
      that stays visible on both the page and a white card:
 
        neutral gray-400   2.51:1    warning amber-600 3.25:1
-       info    green-400  1.85:1    danger  rose-400  3.37:1
-       success green-600  4.04:1    trade   gray-400  2.51:1
+       info    slate-400  3.42:1    danger  rose-400  3.37:1
+       success green-600  4.04:1    trade   clay-400  2.92:1
 
      They were all 300 before, which measured 1.38-2.10:1 and was chosen for
      white only. Pair them with `TONE_CHIP`, never `TONE_WASH` alone.
@@ -138,15 +160,17 @@
   --tone-neutral-fg: var(--gray-700);
   --tone-neutral-solid: var(--gray-600);
 
-  /* Info is the light green, success the deep one — the same journey seen
-     twice, "on the way" and "arrived". Six tones over five hues means two
-     share, and these two are the pair that share best. The washes are only
-     1.14:1 apart, so the border and the icon carry the distinction; colour is
-     never the sole signal anyway (CLAUDE.md §6). */
-  --tone-info-bg: var(--green-100);
-  --tone-info-border: var(--green-400);
-  --tone-info-fg: var(--green-700);
-  --tone-info-solid: var(--green-400);
+  /* Revised 2026-08-14: info used to be the light green, on the theory that
+     it and success were "the same journey seen twice." On a real screen —
+     the giveaway ticket list — Registered (info) and Collected (success)
+     sat two rows apart in near-identical green pills, and the difference
+     that was supposed to carry the meaning (a 1.14:1 wash gap) did not
+     survive being printed. Info is slate now: it no longer competes with
+     success for the one hue that means "this went well." */
+  --tone-info-bg: var(--slate-100);
+  --tone-info-border: var(--slate-400);
+  --tone-info-fg: var(--slate-700);
+  --tone-info-solid: var(--slate-600);
 
   --tone-success-bg: var(--green-200);
   --tone-success-border: var(--green-600);
@@ -163,15 +187,18 @@
   --tone-danger-fg: var(--rose-600);
   --tone-danger-solid: var(--rose-500);
 
-  /* Trade is a category, not a severity, and the palette is five hues with no
-     violet in it. It reads as neutral now; where sale and trade genuinely have
-     to be told apart — the feed card — the chip is filled green or amber and
-     says which in words. The tone name stays so the enum maps keep compiling;
-     retiring it is a type change, not a colour one. */
-  --tone-trade-bg: var(--gray-100);
-  --tone-trade-border: var(--gray-400);
-  --tone-trade-fg: var(--gray-700);
-  --tone-trade-solid: var(--gray-600);
+  /* Trade is a category, not a severity — that principle stands. What changed
+     2026-08-14: trade used to share `neutral`'s gray, which made "For trade"
+     and "Unlisted" the same colour with nothing but an icon between them, and
+     the feed card worked around it with a local hardcoded amber fill that
+     then collided with `warning`. Clay is trade's own hue now: distinct from
+     neutral, distinct from warning, filled with white text wherever `warning`
+     and `danger` already are (`TONE_SOLID`, not `TONE_CHIP`) — see
+     post-card.tsx. */
+  --tone-trade-bg: var(--clay-100);
+  --tone-trade-border: var(--clay-400);
+  --tone-trade-fg: var(--clay-700);
+  --tone-trade-solid: var(--clay-700);
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.

@@ -27,6 +27,12 @@ export interface SlipUploaderProps {
   onUpload: (file: File) => Promise<void>;
   isUploaded?: boolean;
   uploadedAt?: string | null;
+  /**
+   * The persisted slip, once the backend has one. `preview` (a local blob
+   * URL) only lives for the tab that just uploaded it — reopening the room
+   * later has nothing else to fall back on without this.
+   */
+  slipUrl?: string | null;
   className?: string;
 }
 
@@ -35,6 +41,7 @@ export function SlipUploader({
   onUpload,
   isUploaded = false,
   uploadedAt,
+  slipUrl,
   className,
 }: SlipUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,11 +83,31 @@ export function SlipUploader({
       </header>
 
       {preview || isUploaded ? (
-        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken">
-          {preview ? (
-            <Image src={preview} alt="Uploaded slip" fill className="object-contain" />
+        <a
+          href={preview ?? slipUrl ?? undefined}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="View the full slip in a new tab"
+          className={cn(
+            "relative block aspect-[3/4] w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
+            !preview && !slipUrl && "pointer-events-none",
+          )}
+        >
+          {preview || slipUrl ? (
+            <Image
+              src={preview ?? slipUrl!}
+              alt="Uploaded slip"
+              fill
+              className="object-contain"
+            />
           ) : null}
-        </div>
+          {preview || slipUrl ? (
+            <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-pill bg-surface-inverse/80 px-2 py-1.5 text-[0.75rem] font-medium text-white">
+              <ZoomIn aria-hidden className="size-3.5" />
+              View full slip
+            </span>
+          ) : null}
+        </a>
       ) : (
         <button
           type="button"

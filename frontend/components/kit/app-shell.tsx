@@ -156,11 +156,11 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   aria-current={active ? "page" : undefined}
                   title={label}
                   className={cn(
-                    "flex min-h-10 items-center gap-1.5 rounded-pill px-3 text-[0.9375rem] lg:px-4",
+                    "relative flex min-h-10 items-center gap-1.5 px-3 text-[0.9375rem] lg:px-4",
                     "transition-colors duration-[--dur-fast]",
                     active
-                      ? "bg-brand-subtle font-semibold text-ink-brand"
-                      : "text-ink-secondary hover:bg-green-50 hover:text-ink-brand",
+                      ? "font-semibold text-ink"
+                      : "text-ink-secondary hover:text-ink-brand",
                   )}
                 >
                   {/* Between 768 and 1024 there is room for icons but not
@@ -168,6 +168,15 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   <Icon aria-hidden className="size-5 lg:hidden" />
                   <span className="hidden lg:inline">{label}</span>
                   <Count value={badge ? badges[badge] : undefined} />
+                  {/* Underline, not a pill — matches the reference layout: a
+                      short brand-coloured bar under the active label only,
+                      no filled background on the tab itself. */}
+                  {active ? (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-3 -bottom-[3px] h-[2px] rounded-pill bg-brand lg:inset-x-4"
+                    />
+                  ) : null}
                 </Link>
               );
             })}
