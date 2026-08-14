@@ -4,10 +4,310 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  userId          Int              @id @default(autoincrement()) @map("user_id")
+  email           String           @unique @db.VarChar(255)
+  firstNameEn     String           @map("first_name_en") @db.VarChar(100)
+  lastNameEn      String           @map("last_name_en") @db.VarChar(100)
+  firstNameTh     String           @map("first_name_th") @db.VarChar(100)
+  lastNameTh      String           @map("last_name_th") @db.VarChar(100)
+  passwordHash    String           @map("password_hash") @db.VarChar(255)
+  phoneNumber     String?          @map("phone_number") @db.VarChar(20)
+  status          String?          @default("Active") @db.VarChar(20)
+  emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
+  isAdmin         Boolean?         @default(false) @map("isAdmin")
+  createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  items           Item[]
+  offers          Offer[]
+  purchases       Transaction[]    @relation("TransactionBuyer")
+  sales           Transaction[]    @relation("TransactionSeller")
+  giveaways       GiveawayPost[]
+  giveawayTickets GiveawayTicket[]
+
+  reportsFiled           Report[]              @relation("ReportReporter")
+  reportsHandled         Report[]              @relation("ReportHandledBy")
+  appealsFiled           Appeal[]              @relation("AppealAppellant")
+  appealsHandled         Appeal[]              @relation("AppealHandledBy")
+  appointmentsProposed   AppointmentCard[]
+  chatMessages           ChatMessage[]
+  subscriptions          Subscription[]
+  subscriptionPayments   SubscriptionPayment[] @relation("SubscriptionPaymentUser")
+  subscriptionPaymentsHandled SubscriptionPayment[] @relation("SubscriptionPaymentHandledBy")
+
+  @@map("User")
+}
+
+model Item {
+  itemId         Int         @id @default(autoincrement()) @map("item_id")
+  ownerId        Int         @map("owner_id")
+  name           String      @db.VarChar(255)
+  category       String      @db.VarChar(50)
+  condition      String      @db.VarChar(50)
+  description    String?
+  status         String?     @default("Unlisted") @db.VarChar(20)
+  courseName     String?     @map("course_name") @db.VarChar(100)
+  brandModel     String?     @map("brand_model") @db.VarChar(100)
+  warrantyExpiry DateTime?   @map("warranty_expiry") @db.Date
+  size           String?     @db.VarChar(20)
+  createdAt      DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  owner          User        @relation(fields: [ownerId], references: [userId])
+  post           Post?
+  offerItems     OfferItem[]
+  images         ItemImage[]
+
+  @@map("Item")
+}
+
+model Post {
+  postId            Int           @id @default(autoincrement()) @map("post_id")
+  itemId            Int           @unique @map("item_id")
+  postType          String        @map("post_type") @db.VarChar(20)
+  price             Decimal       @db.Decimal(10, 2)
+  quantityTotal     Int           @default(1) @map("quantity_total")
+  quantityRemaining Int           @default(1) @map("quantity_remaining")
+  createdAt         DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  item              Item          @relation(fields: [itemId], references: [itemId])
+  offers            Offer[]
+  transactions      Transaction[]
+
+  @@map("Post")
+}
+
+model Offer {
+  offerId         Int           @id @default(autoincrement()) @map("offer_id")
+  postId          Int           @map("post_id")
+  proposerId      Int           @map("proposer_id")
+  additionalMoney Decimal?      @default(0) @map("additional_money") @db.Decimal(10, 2)
+  status          String?       @default("Pending") @db.VarChar(20)
+  createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  post            Post          @relation(fields: [postId], references: [postId])
+  proposer        User          @relation(fields: [proposerId], references: [userId])
+  items           OfferItem[]
+  transactions    Transaction[]
+
+  @@map("Offer")
+}
+
+model OfferItem {
+  offerId Int   @map("offer_id")
+  itemId  Int   @map("item_id")
+  offer   Offer @relation(fields: [offerId], references: [offerId])
+  item    Item  @relation(fields: [itemId], references: [itemId])
+
+  @@id([offerId, itemId])
+  @@map("Offer_Item")
+}
+
+model Transaction {
+  transactionId                   Int       @id @default(autoincrement()) @map("transaction_id")
+  postId                          Int       @map("post_id")
+  offerId                         Int?      @map("offer_id")
+  buyerId                         Int       @map("buyer_id")
+  sellerId                        Int       @map("seller_id")
+  quantity                        Int?      @default(1)
+  status                          String?   @default("Pending") @db.VarChar(20)
+  activeReportId                  Int?      @map("active_report_id")
+  deliveryMethod                  String    @map("delivery_method") @db.VarChar(20)
+  slipImageUrl                    String?   @map("slip_image_url") @db.VarChar(500)
+  trackingNumber                  String?   @map("tracking_number") @db.VarChar(100)
+  estimatedDeliveryDate           DateTime? @map("estimated_delivery_date") @db.Date
+  paymentConfirmedByBuyerAt       DateTime? @map("payment_confirmed_by_buyer_at") @db.Timestamp(6)
+  paymentConfirmedBySellerAt      DateTime? @map("payment_confirmed_by_seller_at") @db.Timestamp(6)
+  itemReceivedConfirmedByBuyerAt  DateTime? @map("item_received_confirmed_by_buyer_at") @db.Timestamp(6)
+  itemReceivedConfirmedBySellerAt DateTime? @map("item_received_confirmed_by_seller_at") @db.Timestamp(6)
+  itemReturnConfirmedAt           DateTime? @map("item_return_confirmed_at") @db.Timestamp(6)
+  cancellationRequestedBy         Int?      @map("cancellation_requested_by")
+  refundSlipUrl                   String?   @map("refund_slip_url") @db.VarChar(500)
+  refundConfirmedByBuyer          Boolean?  @default(false) @map("refund_confirmed_by_buyer")
+  createdAt                       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  post                            Post      @relation(fields: [postId], references: [postId])
+  offer                           Offer?    @relation(fields: [offerId], references: [offerId])
+  buyer                           User      @relation("TransactionBuyer", fields: [buyerId], references: [userId])
+  seller                          User      @relation("TransactionSeller", fields: [sellerId], references: [userId])
+  activeReport                    Report?   @relation(fields: [activeReportId], references: [reportId])
+
+  appointmentCards AppointmentCard[]
+  chatRooms        ChatRoom[]
+
+  @@map("Transaction")
+}
+
+model GiveawayPost {
+  giveawayId       Int              @id @default(autoincrement()) @map("giveaway_id")
+  itemName         String           @map("item_name") @db.VarChar(255)
+  description      String?
+  pickupLocation   String           @map("pickup_location") @db.VarChar(255)
+  giverId          Int              @map("giver_id")
+  allocationMethod String           @map("allocation_method") @db.VarChar(20)
+  pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
+  status           String?          @default("Active") @db.VarChar(20)
+  createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  giver            User             @relation(fields: [giverId], references: [userId])
+  images           GiveawayImage[]
+  tickets          GiveawayTicket[]
+  chatRooms        ChatRoom[]
+
+  @@map("Giveaway_Post")
+}
+
+model GiveawayImage {
+  imageId      Int          @id @default(autoincrement()) @map("image_id")
+  giveawayId   Int          @map("giveaway_id")
+  imageUrl     String       @map("image_url") @db.VarChar(500)
+  displayOrder Int?         @default(0) @map("display_order")
+  createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
+  giveaway     GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
+
+  @@map("Giveaway_Image")
+}
+
+model GiveawayTicket {
+  ticketId   Int          @id @default(autoincrement()) @map("ticket_id")
+  giveawayId Int          @map("giveaway_id")
+  receiverId Int          @map("receiver_id")
+  qrToken    String?      @unique @map("qr_token") @db.VarChar(255)
+  status     String?      @default("Waiting") @db.VarChar(20)
+  updatedAt  DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
+  giveaway   GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
+  receiver   User         @relation(fields: [receiverId], references: [userId])
+
+  @@map("Giveaway_Ticket")
+}
+
+model ItemImage {
+  imageId      Int       @id @default(autoincrement()) @map("image_id")
+  itemId       Int       @map("item_id")
+  imageUrl     String    @map("image_url") @db.VarChar(500)
+  isPrimary    Boolean?  @default(false) @map("is_primary")
+  displayOrder Int?      @default(0) @map("display_order")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  item         Item      @relation(fields: [itemId], references: [itemId])
+
+  @@map("Item_Image")
+}
+
+model Report {
+  reportId       Int       @id @default(autoincrement()) @map("report_id")
+  reporterId     Int       @map("reporter_id")
+  reportType     String    @map("report_type") @db.VarChar(20)
+  targetId       Int       @map("target_id")
+  reasonCategory String    @map("reason_category") @db.VarChar(100)
+  details        String?
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String?   @default("Pending") @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note")
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  reporter User  @relation("ReportReporter", fields: [reporterId], references: [userId])
+  handler  User? @relation("ReportHandledBy", fields: [handledBy], references: [userId])
+
+  appeals            Appeal[]
+  activeTransactions Transaction[]
+
+  @@map("Report")
+}
+
+model Appeal {
+  appealId       Int       @id @default(autoincrement()) @map("appeal_id")
+  reportId       Int       @map("report_id")
+  appellantId    Int       @map("appellant_id")
+  reason         String
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String    @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note")
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+
+  report    Report @relation(fields: [reportId], references: [reportId])
+  appellant User   @relation("AppealAppellant", fields: [appellantId], references: [userId])
+  handler   User?  @relation("AppealHandledBy", fields: [handledBy], references: [userId])
+
+  @@map("Appeal")
+}
+
+model AppointmentCard {
+  appointmentId Int       @id @default(autoincrement()) @map("appointment_id")
+  transactionId Int       @map("transaction_id")
+  proposedBy    Int       @map("proposed_by")
+  date          DateTime  @db.Date
+  time          DateTime  @db.Time(6)
+  location      String    @db.VarChar(255)
+  status        String?   @default("Pending") @db.VarChar(20)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [transactionId])
+  proposer    User        @relation(fields: [proposedBy], references: [userId])
+
+  @@map("Appointment_Card")
+}
+
+model ChatRoom {
+  roomId        Int       @id @default(autoincrement()) @map("room_id")
+  transactionId Int?      @map("transaction_id")
+  giveawayId    Int?      @map("giveaway_id")
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  transaction Transaction?  @relation(fields: [transactionId], references: [transactionId])
+  giveaway    GiveawayPost? @relation(fields: [giveawayId], references: [giveawayId])
+  messages    ChatMessage[]
+
+  @@map("Chat_Room")
+}
+
+model ChatMessage {
+  messageId Int       @id @default(autoincrement()) @map("message_id")
+  roomId    Int       @map("room_id")
+  senderId  Int       @map("sender_id")
+  content   String?
+  imageUrls Json?     @map("image_urls")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  room   ChatRoom @relation(fields: [roomId], references: [roomId])
+  sender User     @relation(fields: [senderId], references: [userId])
+
+  @@map("Chat_Message")
+}
+
+model Subscription {
+  subscriptionId     Int       @id @default(autoincrement()) @map("subscription_id")
+  userId             Int       @map("user_id")
+  tier               String    @db.VarChar(20)
+  postsUsedThisMonth Int?      @default(0) @map("posts_used_this_month")
+  status             String?   @default("Active") @db.VarChar(20)
+  startDate          DateTime? @map("start_date") @db.Timestamp(6)
+  endDate            DateTime? @map("end_date") @db.Timestamp(6)
+
+  user     User                  @relation(fields: [userId], references: [userId])
+  payments SubscriptionPayment[]
+
+  @@map("Subscription")
+}
+
+model SubscriptionPayment {
+  paymentId       Int       @id @default(autoincrement()) @map("payment_id")
+  subscriptionId  Int       @map("subscription_id")
+  userId          Int       @map("user_id")
+  amount          Int
+  slipImageUrl    String    @map("slip_image_url") @db.VarChar(500)
+  status          String    @default("Pending") @db.VarChar(25)
+  rejectionReason String?   @map("rejection_reason")
+  handledBy       Int?      @map("handled_by")
+  handledAt       DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [subscriptionId])
+  user         User         @relation("SubscriptionPaymentUser", fields: [userId], references: [userId])
+  handler      User?        @relation("SubscriptionPaymentHandledBy", fields: [handledBy], references: [userId])
+
+  @@map("Subscription_Payment")
 }
