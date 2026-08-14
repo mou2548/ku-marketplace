@@ -32,6 +32,21 @@ export class ReportController {
     return this.reportService.create(user.userId, dto);
   }
 
+  @Get('reports')
+  @UseGuards(JwtAuthGuard)
+  findMine(@CurrentUser() user: CurrentUserPayload) {
+    return this.reportService.findAllForUser(user.userId);
+  }
+
+  @Get('reports/:id')
+  @UseGuards(JwtAuthGuard)
+  findOneMine(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.reportService.findOneForUser(id, user.userId);
+  }
+
   @Get('admin/reports')
   @UseGuards(JwtAuthGuard, AdminGuard)
   findAll() {

@@ -12,13 +12,16 @@ export class ItemsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async count() {
-    const count = await this.prisma.item.count();
+    const count = await this.prisma.item.count({
+      where: { deletedAt: null },
+    });
     return { count };
   }
 
   async getCategories() {
     const categories = await this.prisma.item.groupBy({
       by: ['category'],
+      where: { deletedAt: null },
     });
     return categories.map((c) => c.category);
   }
@@ -41,20 +44,22 @@ export class ItemsService {
                   imageUrl: img.image_url ?? img.imageUrl,
                   isPrimary: img.is_primary ?? img.isPrimary ?? false,
                   displayOrder: img.display_order ?? img.displayOrder ?? 0,
+                  status: 'Active',
                 })),
               }
             : undefined,
       },
       include: {
-        images: true,
+        images: { where: { status: 'Active' } },
       },
     });
   }
 
   async findAll() {
     return this.prisma.item.findMany({
+      where: { deletedAt: null },
       include: {
-        images: true,
+        images: { where: { status: 'Active' } },
       },
       orderBy: {
         createdAt: 'desc',
@@ -64,9 +69,9 @@ export class ItemsService {
 
   async findOne(id: number) {
     const item = await this.prisma.item.findUnique({
-      where: { itemId: id },
+      where: { itemId: id, deletedAt: null },
       include: {
-        images: true,
+        images: { where: { status: 'Active' } },
       },
     });
 
@@ -79,7 +84,7 @@ export class ItemsService {
 
   async update(id: number, updateItemDto: UpdateItemDto, userId: number) {
     const item = await this.prisma.item.findUnique({
-      where: { itemId: id },
+      where: { itemId: id, deletedAt: null },
     });
 
     if (!item) {
@@ -106,24 +111,30 @@ export class ItemsService {
         }),
         ...(images && {
           images: {
-            deleteMany: {},
+            // §soft-delete — mark the previous set Inactive instead of
+            // physically deleting them, so image history survives (evidence
+            // for reports/disputes). Reads always filter to status: 'Active'
+            // (see findAll/findOne/create above), so this is invisible to
+            // normal API consumers.
+            updateMany: { where: {}, data: { status: 'Inactive' } },
             create: images.map((img) => ({
               imageUrl: img.image_url ?? img.imageUrl,
               isPrimary: img.is_primary ?? img.isPrimary ?? false,
               displayOrder: img.display_order ?? img.displayOrder ?? 0,
+              status: 'Active',
             })),
           },
         }),
       },
       include: {
-        images: true,
+        images: { where: { status: 'Active' } },
       },
     });
   }
 
   async remove(id: number, userId: number) {
     const item = await this.prisma.item.findUnique({
-      where: { itemId: id },
+      where: { itemId: id, deletedAt: null },
     });
 
     if (!item) {
@@ -136,8 +147,13 @@ export class ItemsService {
       );
     }
 
-    return this.prisma.item.delete({
+    // §soft-delete — Item is master data that Report/Appeal evidence may
+    // still point to, so this never physically removes the row. Hard
+    // deleting used to also blow up with a raw FK violation the moment the
+    // item had any Item_Image row, since nothing cleaned those up first.
+    return this.prisma.item.update({
       where: { itemId: id },
+      data: { deletedAt: new Date() },
     });
   }
 }

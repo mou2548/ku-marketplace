@@ -126,6 +126,7 @@ export class PostsService {
 
   async findAllPosts() {
     const posts = await this.prisma.post.findMany({
+      where: { deletedAt: null },
       include: { item: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -137,7 +138,7 @@ export class PostsService {
 
   async getPostById(postId: string) {
     const post = await this.prisma.post.findUnique({
-      where: { postId: this.id(postId, 'post') },
+      where: { postId: this.id(postId, 'post'), deletedAt: null },
       include: { item: true },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
@@ -149,7 +150,9 @@ export class PostsService {
       throw new BadRequestException('price ต้องเป็นเลขที่ไม่ติดลบ');
     }
     const id = this.id(postId, 'post');
-    const found = await this.prisma.post.findUnique({ where: { postId: id } });
+    const found = await this.prisma.post.findUnique({
+      where: { postId: id, deletedAt: null },
+    });
     if (!found) throw new NotFoundException('ไม่พบโพสต์');
     const post = await this.prisma.post.update({
       where: { postId: id },
@@ -164,7 +167,7 @@ export class PostsService {
   async deletePost(postId: string) {
     const id = this.id(postId, 'post');
     const post = await this.prisma.post.findUnique({
-      where: { postId: id },
+      where: { postId: id, deletedAt: null },
       include: { _count: { select: { offers: true, transactions: true } } },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
@@ -173,8 +176,17 @@ export class PostsService {
         'ลบโพสต์ที่มี offer หรือ transaction แล้วไม่ได้',
       );
     }
+    // §soft-delete — a post with zero offers/transactions can still have an
+    // open Report against it (e.g. "Inappropriate Content" needs neither).
+    // Hard-deleting used to destroy that evidence out from under an
+    // in-progress investigation, so this marks it gone without removing the
+    // row. findAllPosts/getPostById both filter deletedAt: null already, so
+    // it disappears from the public API immediately.
     await this.prisma.$transaction([
-      this.prisma.post.delete({ where: { postId: id } }),
+      this.prisma.post.update({
+        where: { postId: id },
+        data: { status: 'Inactive', deletedAt: new Date() },
+      }),
       this.prisma.item.update({
         where: { itemId: post.itemId },
         data: { status: 'Unlisted' },
@@ -202,7 +214,7 @@ export class PostsService {
 
     const transaction = await this.prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
-        where: { postId: id },
+        where: { postId: id, deletedAt: null },
         include: { item: true },
       });
       if (!post) throw new NotFoundException('ไม่พบโพสต์');
@@ -259,7 +271,7 @@ export class PostsService {
       throw new BadRequestException('ต้องระบุ item_ids อย่างน้อยหนึ่งรายการ');
     }
     const post = await this.prisma.post.findUnique({
-      where: { postId: id },
+      where: { postId: id, deletedAt: null },
       include: { item: true },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
@@ -322,7 +334,11 @@ export class PostsService {
 
   async getOffers(postId: string) {
     const id = this.id(postId, 'post');
-    if (!(await this.prisma.post.findUnique({ where: { postId: id } }))) {
+    if (
+      !(await this.prisma.post.findUnique({
+        where: { postId: id, deletedAt: null },
+      }))
+    ) {
       throw new NotFoundException('ไม่พบโพสต์');
     }
     const offers = await this.prisma.offer.findMany({

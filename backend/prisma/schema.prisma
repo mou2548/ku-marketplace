@@ -20,7 +20,7 @@ model User {
   lastNameTh      String           @map("last_name_th") @db.VarChar(100)
   passwordHash    String           @map("password_hash") @db.VarChar(255)
   phoneNumber     String?          @map("phone_number") @db.VarChar(20)
-  status          String?          @default("Active") @db.VarChar(20)
+  status          String?          @default("Active") @db.VarChar(20) @map("user_status")
   emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
   isAdmin         Boolean?         @default(false) @map("isAdmin")
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
@@ -51,11 +51,14 @@ model Item {
   category       String      @db.VarChar(50)
   condition      String      @db.VarChar(50)
   description    String?
-  status         String?     @default("Unlisted") @db.VarChar(20)
+  status         String?     @default("Unlisted") @db.VarChar(20) @map("item_status")
   courseName     String?     @map("course_name") @db.VarChar(100)
   brandModel     String?     @map("brand_model") @db.VarChar(100)
   warrantyExpiry DateTime?   @map("warranty_expiry") @db.Date
   size           String?     @db.VarChar(20)
+  // §soft-delete — Item is master data referenced by Report/Appeal evidence,
+  // never hard-delete it. NULL = not deleted.
+  deletedAt      DateTime?   @map("deleted_at") @db.Timestamp(6)
   createdAt      DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
   owner          User        @relation(fields: [ownerId], references: [userId])
   post           Post?
@@ -69,9 +72,14 @@ model Post {
   postId            Int           @id @default(autoincrement()) @map("post_id")
   itemId            Int           @unique @map("item_id")
   postType          String        @map("post_type") @db.VarChar(20)
+  // §was missing from schema.prisma entirely even though init.sql has had this
+  // column since the start — added now because soft delete needs it.
+  status            String?       @default("Active") @db.VarChar(20) @map("post_status")
   price             Decimal       @db.Decimal(10, 2)
   quantityTotal     Int           @default(1) @map("quantity_total")
   quantityRemaining Int           @default(1) @map("quantity_remaining")
+  // §soft-delete — Post evidence must survive even after a user "deletes" it.
+  deletedAt         DateTime?     @map("deleted_at") @db.Timestamp(6)
   createdAt         DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
   item              Item          @relation(fields: [itemId], references: [itemId])
   offers            Offer[]
@@ -85,7 +93,7 @@ model Offer {
   postId          Int           @map("post_id")
   proposerId      Int           @map("proposer_id")
   additionalMoney Decimal?      @default(0) @map("additional_money") @db.Decimal(10, 2)
-  status          String?       @default("Pending") @db.VarChar(20)
+  status          String?       @default("Pending") @db.VarChar(20) @map("offer_status")
   createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
   post            Post          @relation(fields: [postId], references: [postId])
   proposer        User          @relation(fields: [proposerId], references: [userId])
@@ -112,7 +120,7 @@ model Transaction {
   buyerId                         Int       @map("buyer_id")
   sellerId                        Int       @map("seller_id")
   quantity                        Int?      @default(1)
-  status                          String?   @default("Pending") @db.VarChar(20)
+  status                          String?   @default("Pending") @db.VarChar(20) @map("transaction_status")
   activeReportId                  Int?      @map("active_report_id")
   deliveryMethod                  String    @map("delivery_method") @db.VarChar(20)
   slipImageUrl                    String?   @map("slip_image_url") @db.VarChar(500)
@@ -152,7 +160,7 @@ model GiveawayPost {
   giverId          Int              @map("giver_id")
   allocationMethod String           @map("allocation_method") @db.VarChar(20)
   pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
-  status           String?          @default("Active") @db.VarChar(20)
+  status           String?          @default("Active") @db.VarChar(20) @map("giveaway_status")
   createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   giver            User             @relation(fields: [giverId], references: [userId])
   images           GiveawayImage[]
@@ -166,6 +174,9 @@ model GiveawayImage {
   imageId      Int          @id @default(autoincrement()) @map("image_id")
   giveawayId   Int          @map("giveaway_id")
   imageUrl     String       @map("image_url") @db.VarChar(500)
+  // §was missing from schema.prisma even though init.sql has had this column
+  // since the start.
+  status       String?      @default("Active") @db.VarChar(20) @map("image_status")
   displayOrder Int?         @default(0) @map("display_order")
   createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
   giveaway     GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
@@ -178,7 +189,7 @@ model GiveawayTicket {
   giveawayId Int          @map("giveaway_id")
   receiverId Int          @map("receiver_id")
   qrToken    String?      @unique @map("qr_token") @db.VarChar(255)
-  status     String?      @default("Waiting") @db.VarChar(20)
+  status     String?      @default("Waiting") @db.VarChar(20) @map("ticket_status")
   updatedAt  DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
   giveaway   GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
   receiver   User         @relation(fields: [receiverId], references: [userId])
@@ -190,6 +201,10 @@ model ItemImage {
   imageId      Int       @id @default(autoincrement()) @map("image_id")
   itemId       Int       @map("item_id")
   imageUrl     String    @map("image_url") @db.VarChar(500)
+  // §was missing from schema.prisma even though init.sql has had this column
+  // since the start — this is why the app used to hard-delete images instead
+  // of toggling this to 'Inactive'. Now wired up for soft delete.
+  status       String?   @default("Active") @db.VarChar(20) @map("item_image_status")
   isPrimary    Boolean?  @default(false) @map("is_primary")
   displayOrder Int?      @default(0) @map("display_order")
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
@@ -206,7 +221,7 @@ model Report {
   reasonCategory String    @map("reason_category") @db.VarChar(100)
   details        String?
   evidenceUrls   Json?     @map("evidence_urls")
-  status         String?   @default("Pending") @db.VarChar(20)
+  status         String?   @default("Pending") @db.VarChar(20) @map("report_status")
   handledBy      Int?      @map("handled_by")
   resolutionNote String?   @map("resolution_note")
   handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
@@ -227,7 +242,7 @@ model Appeal {
   appellantId    Int       @map("appellant_id")
   reason         String
   evidenceUrls   Json?     @map("evidence_urls")
-  status         String    @db.VarChar(20)
+  status         String    @db.VarChar(20) @map("appeal_status")
   handledBy      Int?      @map("handled_by")
   resolutionNote String?   @map("resolution_note")
   createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
@@ -247,7 +262,7 @@ model AppointmentCard {
   date          DateTime  @db.Date
   time          DateTime  @db.Time(6)
   location      String    @db.VarChar(255)
-  status        String?   @default("Pending") @db.VarChar(20)
+  status        String?   @default("Pending") @db.VarChar(20) @map("appointment_status")
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   transaction Transaction @relation(fields: [transactionId], references: [transactionId])
@@ -260,6 +275,9 @@ model ChatRoom {
   roomId        Int       @id @default(autoincrement()) @map("room_id")
   transactionId Int?      @map("transaction_id")
   giveawayId    Int?      @map("giveaway_id")
+  // §was missing from schema.prisma even though init.sql has had this column
+  // since the start.
+  status        String?   @default("Active") @db.VarChar(20) @map("chat_room_status")
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   transaction Transaction?  @relation(fields: [transactionId], references: [transactionId])
@@ -288,7 +306,7 @@ model Subscription {
   userId             Int       @map("user_id")
   tier               String    @db.VarChar(20)
   postsUsedThisMonth Int?      @default(0) @map("posts_used_this_month")
-  status             String?   @default("Active") @db.VarChar(20)
+  status             String?   @default("Active") @db.VarChar(20) @map("subscription_status")
   startDate          DateTime? @map("start_date") @db.Timestamp(6)
   endDate            DateTime? @map("end_date") @db.Timestamp(6)
 
@@ -304,7 +322,7 @@ model SubscriptionPayment {
   userId          Int       @map("user_id")
   amount          Int
   slipImageUrl    String    @map("slip_image_url") @db.VarChar(500)
-  status          String    @default("Pending") @db.VarChar(25)
+  status          String    @default("Pending") @db.VarChar(25) @map("payment_status")
   rejectionReason String?   @map("rejection_reason")
   handledBy       Int?      @map("handled_by")
   handledAt       DateTime? @map("handled_at") @db.Timestamp(6)

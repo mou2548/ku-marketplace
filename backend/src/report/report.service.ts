@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -33,6 +34,21 @@ export class ReportService {
     return this.prisma.report.findMany({
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  findAllForUser(userId: number) {
+    return this.prisma.report.findMany({
+      where: { reporterId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOneForUser(reportId: number, userId: number) {
+    const report = await this.findOneOrThrow(reportId);
+    if (report.reporterId !== userId) {
+      throw new ForbiddenException('This report does not belong to you');
+    }
+    return report;
   }
 
   private async findOneOrThrow(reportId: number) {
