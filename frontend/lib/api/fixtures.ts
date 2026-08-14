@@ -675,6 +675,25 @@ export const TRANSACTIONS: Transaction[] = [
     buyer: USERS[8],
     seller: USERS[5],
   },
+  // --- UI mock: slip already uploaded, waiting on the seller to check it —
+  // "review-slip" is otherwise unreachable, since the viewer is the seller
+  // in every other payment-required fixture.
+  {
+    transaction_id: 7,
+    post_id: 11,
+    buyer_id: 9,
+    seller_id: 2,
+    quantity: 1,
+    final_amount: 45,
+    status: "Pending",
+    delivery_method: "Meetup",
+    slip_image_url: "https://picsum.photos/id/29/600/800",
+    payment_confirmed_by_buyer_at: ago(1 * HOUR),
+    created_at: ago(26 * HOUR),
+    post: postById(11),
+    buyer: USERS[9],
+    seller: USERS[2],
+  },
 ];
 
 export interface AppointmentSeed {
@@ -1092,6 +1111,7 @@ export const CHAT_ROOMS: ChatRoom[] = [
   { room_id: 4, transaction_id: 4, giveaway_id: null },
   { room_id: 5, transaction_id: 5, giveaway_id: null },
   { room_id: 6, transaction_id: 6, giveaway_id: null },
+  { room_id: 7, transaction_id: 7, giveaway_id: null },
 ];
 
 export interface ChatSeed {
@@ -1186,6 +1206,33 @@ export const CHAT: ChatSeed[] = [
     transaction_id: 6,
     giveaway_id: null,
     content: "แลกกันเลยครับ ไม่ต้องเพิ่มเงิน นัดที่ลานเกียร์ได้ไหมครับ",
+  },
+  {
+    message_id: 11,
+    created_at: ago(2 * HOUR),
+    room_id: 7,
+    sender_id: 9,
+    transaction_id: 7,
+    giveaway_id: null,
+    content: "สนใจสมุดโน้ต A5 ครับ ขอซื้อ 1 เล่มนะครับ",
+  },
+  {
+    message_id: 12,
+    created_at: ago(1.5 * HOUR),
+    room_id: 7,
+    sender_id: 2,
+    transaction_id: 7,
+    giveaway_id: null,
+    content: "ได้เลยครับ โอนมาได้เลยนะครับ 45 บาท",
+  },
+  {
+    message_id: 13,
+    created_at: ago(1 * HOUR),
+    room_id: 7,
+    sender_id: 9,
+    transaction_id: 7,
+    giveaway_id: null,
+    content: "โอนแล้วครับ แนบสลิปให้เลยนะครับ",
   },
   {
     message_id: 6,
