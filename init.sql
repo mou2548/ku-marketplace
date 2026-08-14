@@ -31,6 +31,7 @@ CREATE TABLE "Item" (
     "brand_model" VARCHAR(100),
     "warranty_expiry" DATE,
     "size" VARCHAR(20),
+    "deleted_at" TIMESTAMP,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
