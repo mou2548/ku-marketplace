@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
  *  - **Pinterest-style density** the brief asked for: variable card heights via
  *    CSS multi-column, so the grid looks full rather than gridded.
  *  - **Sale vs Trade must be readable before the tap** — the card chip is
- *    filled with the tone system's success/trade solid (green / clay).
+ *    filled with the tone system's success/trade solid (green / teal).
  *
  * Filters live in a sheet on mobile and a rail on desktop; the filter *state*
  * is identical, so nothing is unreachable on a phone.

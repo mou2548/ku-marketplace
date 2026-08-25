@@ -7,7 +7,7 @@ import type { Deadline, Tone } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
-import { TONE_CHIP } from "./tone";
+import { TONE_SOLID } from "./tone";
 
 /**
  * Research risk R2. Flow 1 runs four clocks — 24h to confirm a slip, 8h
@@ -73,8 +73,7 @@ export function CountdownPill({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1",
         "text-[0.8125rem] leading-[1.5] font-medium",
-        "border",
-        TONE_CHIP[tone],
+        TONE_SOLID[tone],
         className,
       )}
     >
@@ -84,7 +83,7 @@ export function CountdownPill({
         <AlarmClock aria-hidden className="size-4" />
       )}
       {showLabel ? (
-        <span className="text-ink-muted">{deadline.label}</span>
+        <span className="text-white/70">{deadline.label}</span>
       ) : null}
       <time
         dateTime={new Date(deadline.expiresAt).toISOString()}

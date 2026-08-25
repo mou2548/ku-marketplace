@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from "react";
 import Image from "next/image";
-import { Clock, Gift, MapPin, Users } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Clock, Gift, MapPin, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
@@ -79,7 +80,16 @@ export function GiveawayDetail({
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+    <div className="flex flex-col gap-6">
+      <Link
+        href="/giveaway"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to giveaways
+      </Link>
+
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
       <div className="lg:w-1/2">
         <Surface shape="card" className="relative aspect-[4/3] overflow-hidden">
           {image ? (
@@ -231,6 +241,7 @@ export function GiveawayDetail({
             </p>
           </Surface>
         )}
+      </div>
       </div>
     </div>
   );

@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback } from "react";
-import { CircleX, Clock, Hourglass, MapPin, PartyPopper, TimerOff } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CircleX,
+  Clock,
+  Hourglass,
+  MapPin,
+  PartyPopper,
+  TimerOff,
+} from "lucide-react";
 
 import { ChatThread } from "@/components/kit/chat-thread";
 import { CountdownPill } from "@/components/kit/countdown-pill";
@@ -9,6 +18,7 @@ import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { CHAT, getRoomIdForGiveaway } from "@/lib/api/fixtures";
 import type { GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
 
@@ -68,7 +78,16 @@ export function TicketScreen({
     : undefined;
 
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+    <div className="flex flex-col gap-5">
+      <Link
+        href="/giveaway"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to giveaways
+      </Link>
+
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
       <div className="flex flex-1 flex-col gap-4">
         <header className="flex items-start justify-between gap-2">
           <div>
@@ -87,36 +106,47 @@ export function TicketScreen({
             <QrTicket onGenerate={generate} />
           </Surface>
         ) : ticket.status === "Registered" ? (
-          <Surface
-            shape="card"
-            elevation="flat"
-            className="flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-5"
-          >
-            <div className="flex items-center gap-3">
-              <Hourglass
-                aria-hidden
-                className="size-6 shrink-0 text-tone-info-fg"
-              />
-              {queuePosition !== undefined ? (
-                <p
-                  data-numeric
-                  className="text-[1.125rem] font-bold text-tone-info-fg"
-                >
-                  #{queuePosition} in line
-                </p>
-              ) : (
-                <p className="text-[0.9375rem] font-medium text-tone-info-fg">
-                  Registered
-                </p>
-              )}
-            </div>
-            <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
-              {ALLOCATION_METHOD[giveaway.allocation_method].hint}
-            </p>
-            {drawDeadline ? (
-              <CountdownPill deadline={drawDeadline} showLabel />
+          <div className="flex flex-col gap-3">
+            <Surface
+              shape="card"
+              elevation="flat"
+              className="flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-5"
+            >
+              <div className="flex items-center gap-3">
+                <Hourglass
+                  aria-hidden
+                  className="size-6 shrink-0 text-tone-info-fg"
+                />
+                {queuePosition !== undefined ? (
+                  <p
+                    data-numeric
+                    className="text-[1.125rem] font-bold text-tone-info-fg"
+                  >
+                    #{queuePosition} in line
+                  </p>
+                ) : (
+                  <p className="text-[0.9375rem] font-medium text-tone-info-fg">
+                    Registered
+                  </p>
+                )}
+              </div>
+              <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                {ALLOCATION_METHOD[giveaway.allocation_method].hint}
+              </p>
+              {drawDeadline ? (
+                <CountdownPill deadline={drawDeadline} showLabel />
+              ) : null}
+            </Surface>
+
+            {/* FirstCome allocates on registration, same as giveaway-detail's
+                isFirstCome branch — the QR is already yours, not something a
+                future draw grants. */}
+            {giveaway.allocation_method === "FirstCome" ? (
+              <Surface shape="panel" fill="plate" noise className="p-5">
+                <QrTicket onGenerate={generate} />
+              </Surface>
             ) : null}
-          </Surface>
+          </div>
         ) : ticket.status === "Received" ? (
           <Surface
             shape="card"
@@ -186,32 +216,45 @@ export function TicketScreen({
           instructions and show their QR — a broadcast, not a conversation.
           The room itself only exists once a ticket has held a place. */}
       {HAS_CHAT_ROOM[ticket.status] ? (
-        <Surface
-          shape="card"
-          elevation="raised"
-          className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
-        >
-          <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
-            Notes from the giver
-          </h2>
-          <ChatThread
-            viewerId={ticket.receiver_id}
-            isReadOnly
-            readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-            messages={[
-              {
-                message_id: 1,
-                sender_id: giveaway.giver_id,
-                content:
-                  ticket.status === "Waiting"
-                    ? `Collect at ${giveaway.pickup_location} during the stated window. Open your QR in the app so I can scan it.`
-                    : `Collect at ${giveaway.pickup_location} during the stated window.`,
-                created_at: ticket.created_at,
-              },
-            ]}
-          />
-        </Surface>
+        (() => {
+          // UI mock: pull the real fixture room's messages when this
+          // giveaway has one (only giveaway_id 1 does). Every other
+          // giveaway falls back to a single instructional line, same as
+          // the room-less fallback on the post/offer chat buttons.
+          const roomId = getRoomIdForGiveaway(giveaway.giveaway_id);
+          const messages = roomId
+            ? CHAT.filter((m) => m.room_id === roomId)
+            : [
+                {
+                  message_id: 1,
+                  sender_id: giveaway.giver_id,
+                  content:
+                    ticket.status === "Waiting"
+                      ? `Collect at ${giveaway.pickup_location} during the stated window. Open your QR in the app so I can scan it.`
+                      : `Collect at ${giveaway.pickup_location} during the stated window.`,
+                  created_at: ticket.created_at,
+                },
+              ];
+          return (
+            <Surface
+              shape="card"
+              elevation="raised"
+              className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
+            >
+              <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+                Notes from the giver
+              </h2>
+              <ChatThread
+                viewerId={ticket.receiver_id}
+                isReadOnly
+                readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
+                messages={messages}
+              />
+            </Surface>
+          );
+        })()
       ) : null}
+      </div>
     </div>
   );
 }

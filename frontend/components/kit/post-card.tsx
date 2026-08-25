@@ -80,11 +80,14 @@ export function PostCard({
               `warning` and `danger` chips already use. Used to be a local
               `amber-700`/`green-700` ternary that bypassed the tone system
               entirely and, worse, picked the same hue `warning` chips use for
-              a pure trade — see the trade tone comment in globals.css. */}
+              a pure trade — see the trade tone comment in globals.css.
+              No `shadow-raised`: its inset white top-highlight is meant for a
+              flat card surface, and traced around this pill's full rounded
+              edge as a visible white rim, worst over a photo. */}
           <span
             className={cn(
               "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
-              "rounded-pill px-2.5 py-1 text-[0.75rem] font-semibold shadow-raised",
+              "rounded-pill px-2.5 py-1 text-[0.75rem] font-semibold",
               TONE_SOLID[POST_TYPE[postType].tone],
             )}
           >

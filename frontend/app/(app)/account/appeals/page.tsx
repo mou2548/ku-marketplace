@@ -1,4 +1,5 @@
-import { Scale } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Scale } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -31,11 +32,21 @@ export default async function MyAppealsPage() {
 
   if (appeals.length === 0) {
     return (
-      <EmptyState
-        icon={<Scale className="size-6" />}
-        title="You have no appeals"
-        description="If a decision goes against you, you can appeal it here within the window stated in the decision."
-      />
+      <div className="flex flex-col gap-5">
+        <Link
+          href="/account"
+          className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          Back to account
+        </Link>
+
+        <EmptyState
+          icon={<Scale className="size-6" />}
+          title="You have no appeals"
+          description="If a decision goes against you, you can appeal it here within the window stated in the decision."
+        />
+      </div>
     );
   }
 
@@ -73,6 +84,14 @@ export default async function MyAppealsPage() {
 
   return (
     <TwoColumn rail={legend}>
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to account
+      </Link>
+
       <h1 className="text-h1">My appeals</h1>
 
       <ul className="flex flex-col gap-2">

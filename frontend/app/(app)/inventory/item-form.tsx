@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   parseDate,
   type DateValue,
 } from "@internationalized/date";
-import { ImagePlus, Save, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, Save, X } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import {
@@ -120,7 +121,7 @@ export function ItemForm({
    * thing worth seeing while filling this form in.
    */
   const preview = (
-    <Surface shape="card" className="flex flex-col gap-3 p-5">
+    <Surface shape="card" className="flex w-full max-w-md flex-col gap-3 p-5 mx-auto">
       <p className="text-overline text-ink-muted uppercase">In your stash</p>
 
       <span
@@ -131,7 +132,19 @@ export function ItemForm({
         }
         className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
       >
-        <PostImage src={previews[0]} alt="" aspectRatio={1} sizes="320px" />
+        {/* PostImage shrinks itself to a short 16:7 plate when there is no
+            photo yet (right, for a feed card — a card with nothing to show
+            should not leave a tall gap) and only takes the square
+            `aspectRatio` once a photo lands. Here that swap reads as the
+            whole preview card jumping size as you add the first photo, so
+            the square is forced regardless of which state PostImage is in. */}
+        <PostImage
+          src={previews[0]}
+          alt=""
+          aspectRatio={1}
+          sizes="320px"
+          className="!aspect-square"
+        />
       </span>
 
       <p className="font-semibold">{name.trim() || "Untitled item"}</p>
@@ -159,7 +172,15 @@ export function ItemForm({
   );
 
   return (
-    <TwoColumn rail={preview}>
+    <TwoColumn rail={preview} columns="minmax(0,1fr) minmax(0,1fr)">
+      <Link
+        href={mode === "create" ? "/inventory" : `/inventory/${item?.item_id}`}
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        {mode === "create" ? "Back to my stuff" : "Back to item"}
+      </Link>
+
       <h1 className="text-h1">
         {mode === "create" ? "Add an item" : "Edit details"}
       </h1>
@@ -221,7 +242,6 @@ export function ItemForm({
       </Surface>
 
       <TextInput
-        className="max-w-2xl"
         label="Item name"
         value={name}
         onChange={setName}
@@ -229,7 +249,7 @@ export function ItemForm({
         placeholder="e.g. Calculus textbook, volume 1"
       />
 
-      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <SelectField
           label="Category"
           selectedKey={category}
@@ -252,7 +272,6 @@ export function ItemForm({
 
       {needsCourse ? (
         <TextInput
-          className="max-w-2xl"
           label="Course code"
           value={courseName}
           onChange={setCourseName}
@@ -307,7 +326,6 @@ export function ItemForm({
       </RadioGroupField>
 
       <TextAreaField
-        className="max-w-2xl"
         label="Details"
         value={description}
         onChange={setDescription}

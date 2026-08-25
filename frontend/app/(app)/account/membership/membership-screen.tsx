@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Crown } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Check, Crown } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { SlipUploader } from "@/components/kit/slip";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { TONE_SOLID } from "@/components/kit/tone";
 import { TwoColumn } from "@/components/kit/two-column";
 import type { Membership, MembershipTier } from "@/lib/api/fixtures";
 import { cn } from "@/lib/utils";
@@ -76,7 +78,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
         <p className="flex items-center gap-2 text-[1.125rem] font-semibold">
           {membership.tier !== "Free" ? (
-            <Crown aria-hidden className="size-5 text-amber-700" />
+            <Crown aria-hidden className="size-5 text-tone-warning-fg" />
           ) : null}
           {membership.tier}
         </p>
@@ -112,6 +114,14 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
   return (
     <TwoColumn rail={rail} railSide="left" railFirst>
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to account
+      </Link>
+
       <header className="flex flex-col gap-1">
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           Membership
@@ -145,11 +155,16 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 font-semibold">
-                      <Crown aria-hidden className="size-4 text-amber-700" />
+                      <Crown aria-hidden className="size-4 text-tone-warning-fg" />
                       {t.tier}
                     </span>
                     {isCurrent ? (
-                      <span className="rounded-pill bg-tone-success-bg px-2 py-0.5 text-[0.6875rem] font-semibold text-tone-success-fg">
+                      <span
+                        className={cn(
+                          "rounded-pill px-2 py-0.5 text-[0.6875rem] font-semibold",
+                          TONE_SOLID.success,
+                        )}
+                      >
                         Current
                       </span>
                     ) : null}

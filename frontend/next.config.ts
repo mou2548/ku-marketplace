@@ -11,6 +11,10 @@ import type { NextConfig } from "next";
  * Permanent, because these moves are structural and not coming back.
  */
 const nextConfig: NextConfig = {
+  // Dev server blocks cross-origin requests by default (Next 16). LAN
+  // testing from a phone or another machine hits this — the page loads but
+  // hydration never completes, so nothing is clickable.
+  allowedDevOrigins: ["10.31.223.158"],
   output: "standalone",
   images: {
     remotePatterns: [

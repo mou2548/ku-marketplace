@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./empty-state";
 import { SegmentTab, TabList, Tabs } from "./tabs";
-import { TONE_CHIP } from "./tone";
+import { TONE_DOT, TONE_SOLID, TONE_TEXT } from "./tone";
 
 /**
  * One inbox for every conversation.
@@ -158,15 +158,23 @@ function RoomRow({
         </span>
 
         {/* Where this conversation came from — the review asked for this to sit
-            directly under the name. */}
+            directly under the name. A dot + coloured label, not a boxed chip:
+            kind is a category, not a severity, and it sits in a dense list
+            where every row would otherwise carry its own small filled block. */}
         <span className="flex min-w-0 items-center gap-1.5">
-          <span
-            className={cn(
-              "shrink-0 rounded-chip border px-1.5 py-0.5 text-[0.6875rem] font-semibold",
-              TONE_CHIP[ROOM_KIND_TONE[room.kind]],
-            )}
-          >
-            {room.kind}
+          <span className="flex shrink-0 items-center gap-1">
+            <span
+              aria-hidden
+              className={cn("size-1.5 rounded-full", TONE_DOT[ROOM_KIND_TONE[room.kind]])}
+            />
+            <span
+              className={cn(
+                "text-[0.75rem] font-semibold",
+                TONE_TEXT[ROOM_KIND_TONE[room.kind]],
+              )}
+            >
+              {room.kind}
+            </span>
           </span>
           <span className="min-w-0 truncate text-[0.75rem] text-ink-muted">
             {room.subject}
@@ -182,8 +190,8 @@ function RoomRow({
         {room.needsYou ? (
           <span
             className={cn(
-              "mt-0.5 w-fit rounded-pill border px-2 py-0.5 text-[0.6875rem] font-semibold",
-              TONE_CHIP.warning,
+              "mt-0.5 w-fit rounded-pill px-2 py-0.5 text-[0.75rem] font-medium",
+              TONE_SOLID.warning,
             )}
           >
             Your turn

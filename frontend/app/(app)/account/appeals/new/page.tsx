@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Scale } from "lucide-react";
+import { ArrowLeft, Scale } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextAreaField, TextInput } from "@/components/kit/field";
@@ -66,6 +67,14 @@ export default function NewAppealPage() {
 
   return (
     <TwoColumn rail={guidance}>
+      <Link
+        href="/account/appeals"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to my appeals
+      </Link>
+
       <h1 className="text-h1">Submit an appeal</h1>
 
       <Surface shape="card" elevation="flat" className="max-w-xl bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">

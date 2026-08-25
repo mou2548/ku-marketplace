@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Save } from "lucide-react";
+import { ArrowLeft, Lock, Save } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
@@ -61,6 +62,14 @@ export function EditProfileForm({ profile }: { profile: User }) {
 
   return (
     <TwoColumn rail={preview}>
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to account
+      </Link>
+
       <h1 className="text-h1">Edit profile</h1>
 
       <Surface shape="card" elevation="flat" className="flex max-w-3xl gap-3 bg-gray-100 border-l-4 border-l-line-strong p-4">

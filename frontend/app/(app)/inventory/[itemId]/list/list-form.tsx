@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Coins, Sparkles, Store } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Coins, Sparkles, Store } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
@@ -43,7 +44,15 @@ export function ListItemForm({ item }: { item: Item }) {
   }
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
+      <Link
+        href={`/inventory/${item.item_id}`}
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to item
+      </Link>
+
       <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
         List an item
       </h1>

@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, MapPin, MessageCircle, Truck, Undo2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  MapPin,
+  MessageCircle,
+  Truck,
+  Undo2,
+  X,
+} from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
@@ -13,6 +22,7 @@ import { Surface } from "@/components/kit/surface";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { getRoomIdForOffer } from "@/lib/api/fixtures";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
 import type { DeliveryMethod } from "@/lib/status";
@@ -69,6 +79,14 @@ export function OfferReview({
 
   return (
     <div className="flex flex-col gap-5">
+      <Link
+        href="/offers"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to offers
+      </Link>
+
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           {/* Same two lines as the card the viewer tapped to get here. */}
@@ -122,25 +140,37 @@ export function OfferReview({
       />
 
       {acceptedWith ? (
-        <Surface
-          shape="card"
-          className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
-        >
-          <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
-            <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-            Offer accepted
-          </p>
-          <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
-            You are trading with {sides.counterparty.name} for{" "}
-            {offer.post.item.name} by{" "}
-            {acceptedWith === "Meetup" ? "meetup" : "shipping"}. Every other
-            offer on this post is declined and a chat room is open.
-          </p>
-          <LinkButton variant="secondary" href="/chat" className="w-fit">
-            <MessageCircle className="size-4" />
-            Open chat
-          </LinkButton>
-        </Surface>
+        // UI mock: a real acceptance returns the new transaction's room id.
+        // Derived here from the fixture data already on hand — the offer's
+        // own transaction/room, if the fixture set has one.
+        (() => {
+          const roomId = getRoomIdForOffer(offer.offer_id);
+          return (
+            <Surface
+              shape="card"
+              className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
+            >
+              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
+                <CheckCircle2 aria-hidden className="size-5 shrink-0" />
+                Offer accepted
+              </p>
+              <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+                You are trading with {sides.counterparty.name} for{" "}
+                {offer.post.item.name} by{" "}
+                {acceptedWith === "Meetup" ? "meetup" : "shipping"}. Every
+                other offer on this post is declined and a chat room is open.
+              </p>
+              <LinkButton
+                variant="secondary"
+                href={roomId ? `/chat/${roomId}` : "/chat"}
+                className="w-fit"
+              >
+                <MessageCircle className="size-4" />
+                Open chat
+              </LinkButton>
+            </Surface>
+          );
+        })()
       ) : pending ? (
         isOwner ? (
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -2,8 +2,10 @@ import { Crown } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
 import { Surface } from "@/components/kit/surface";
+import { TONE_SOLID } from "@/components/kit/tone";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { getMembershipRequests } from "@/lib/api/fixtures";
+import { cn } from "@/lib/utils";
 
 import { MembershipReview } from "./membership-review";
 
@@ -45,7 +47,12 @@ export default async function AdminMembershipsPage() {
                   faculty={r.user.faculty}
                   size="sm"
                 />
-                <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-2.5 py-1 text-[0.75rem] font-semibold text-amber-700">
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[0.8125rem] font-semibold",
+                    TONE_SOLID.warning,
+                  )}
+                >
                   <Crown aria-hidden className="size-3.5" />
                   {r.tier}
                 </span>

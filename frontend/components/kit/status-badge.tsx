@@ -27,24 +27,21 @@ export interface StatusBadgeProps {
 /**
  * Every tone used to paint as a wash, so a cancelled deal and a completed one
  * were the same weight of pastel and severity did not survive a glance down a
- * list. A failure now takes the solid fill and everything else keeps the wash,
- * which leaves exactly one loud thing on a screen: the thing that went wrong.
+ * list. A wash also carried a hard dependency on its border: without one it
+ * measured 1.01:1 against the page behind it and the pill disappeared,
+ * leaving floating coloured text.
  *
- * `--tone-danger-solid` is rose-500; white on it is ~5.3:1, so the 13px label
- * still clears AA.
- *
- * A wash carries the tone's border. Without one it measured 1.01:1 against the
- * page behind it — the pill disappeared and left floating coloured text, which
- * is what "the badge is the same colour as the background" meant. There is no
- * `outline` variant any more: it was wash plus border, which is now what wash
- * is, and nothing ever called it.
+ * Solid is now the default for every tone (spectrum.adobe.com/page/badge —
+ * shape and fill convention only, not their colour set: our tones stay
+ * `TONE_SOLID`). A saturated fill reads as a badge on its own, so it carries
+ * no border and can't fail that contrast check in the first place. `wash` is
+ * kept as an explicit opt-out for a screen that wants a quieter pill.
  */
 function resolveVariant(
   variant: NonNullable<StatusBadgeProps["variant"]>,
-  tone: StatusPresentation["tone"],
 ): "wash" | "solid" {
   if (variant !== "auto") return variant;
-  return tone === "danger" ? "solid" : "wash";
+  return "solid";
 }
 
 export function StatusBadge({
@@ -55,7 +52,7 @@ export function StatusBadge({
   className,
 }: StatusBadgeProps) {
   const { tone, label, icon, hint } = status;
-  const paint = resolveVariant(variant, tone);
+  const paint = resolveVariant(variant);
 
   return (
     <span

@@ -109,7 +109,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
   return (
     <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>
-      <header className="sticky top-0 z-[50] w-full border-b border-green-200 bg-surface text-ink-brand shadow-flat">
+      <header className="sticky top-0 z-[50] w-full bg-surface text-ink-brand shadow-raised">
         <div className="flex h-16 w-full items-center gap-6 px-4 lg:px-8">
           <DrawerTrigger isOpen={menuOpen} onOpenChange={setMenuOpen}>
             <Button
@@ -214,17 +214,13 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               aria-label="Account"
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
               className={cn(
-                "grid size-9 place-items-center rounded-pill text-[0.75rem] font-semibold transition-colors",
+                "grid size-9 place-items-center rounded-pill transition-colors",
                 isActive(pathname, "/account")
                   ? "bg-brand text-on-brand"
                   : "bg-brand-subtle text-ink-brand hover:bg-green-200",
               )}
             >
-              {user?.name ? (
-                user.name.slice(0, 2)
-              ) : (
-                <User aria-hidden className="size-4" />
-              )}
+              <User aria-hidden className="size-4" />
             </Link>
           </div>
         </div>

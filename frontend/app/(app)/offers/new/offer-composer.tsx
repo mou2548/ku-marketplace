@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowLeftRight, CheckCircle2, Package } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, ArrowLeftRight, CheckCircle2, Package } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
+import { TextInput } from "@/components/kit/field";
+import { Overlay } from "@/components/kit/overlay";
 import { Surface } from "@/components/kit/surface";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
@@ -36,17 +39,34 @@ export function OfferComposer({
   // place beats navigating to /offers where it would appear to have vanished.
   const [sent, setSent] = useState(false);
 
+  // Local, editable copy of the stash. An offer can only carry a whole item
+  // (`Offer.items` has no per-item quantity — lib/api/types.ts, confirmed
+  // against the real `POST /posts/{id}/offers` body, which takes `item_ids`
+  // and nothing else), so offering fewer than a full stack means carving that
+  // amount out into its own item row first. That split has to live somewhere
+  // the rest of the screen can see it, hence local state rather than a memo
+  // over the `inventory` prop.
+  const [items, setItems] = useState<Item[]>(inventory);
+  const [splitTarget, setSplitTarget] = useState<InventoryItem | null>(null);
+  const [splitQty, setSplitQty] = useState("1");
+  const [splitBusy, setSplitBusy] = useState(false);
+  // Synthetic ids for split-off items, guaranteed not to collide with a real
+  // (positive) item_id from the API.
+  const nextSplitId = useRef(-1);
+
   const stash: InventoryItem[] = useMemo(
     () =>
-      inventory.map((i) => ({
-        item_id: i.item_id,
-        name: i.name,
-        quantity: i.quantity,
-        condition: i.condition,
-        category: i.category,
-        image_url: i.images[0]?.image_url ?? null,
-      })),
-    [inventory],
+      items
+        .filter((i) => i.quantity > 0)
+        .map((i) => ({
+          item_id: i.item_id,
+          name: i.name,
+          quantity: i.quantity,
+          condition: i.condition,
+          category: i.category,
+          image_url: i.images[0]?.image_url ?? null,
+        })),
+    [items],
   );
 
   const wanted: InventoryItem[] = [
@@ -66,6 +86,67 @@ export function OfferComposer({
   );
 
   const canSubmit = offered.length > 0 || money > 0;
+
+  function addToOffer(item: InventoryItem) {
+    setOffered((list) =>
+      list.some((i) => i.item_id === item.item_id) ? list : [...list, item],
+    );
+  }
+
+  // A single-unit stack goes straight to the bench, same as before. A
+  // multi-unit stack opens the split dialog so "how many" is a question the
+  // screen actually asks rather than assuming "all of them."
+  function tapStash(item: InventoryItem) {
+    if (item.quantity > 1) {
+      setSplitTarget(item);
+      setSplitQty(String(item.quantity));
+    } else {
+      addToOffer(item);
+    }
+  }
+
+  async function confirmSplit() {
+    if (!splitTarget) return;
+    const n = Math.min(Math.max(Number(splitQty) || 0, 1), splitTarget.quantity);
+    setSplitBusy(true);
+
+    if (n === splitTarget.quantity) {
+      // The whole stack — nothing to split, offer the item as-is.
+      await new Promise((r) => setTimeout(r, 200));
+      addToOffer(splitTarget);
+    } else {
+      // PATCH /items/{splitTarget.item_id} → { quantity: splitTarget.quantity - n }
+      // POST /items → { ...copy of splitTarget, quantity: n }
+      await new Promise((r) => setTimeout(r, 400));
+      const original = items.find((i) => i.item_id === splitTarget.item_id);
+      if (original) {
+        const splitItem: Item = {
+          ...original,
+          item_id: nextSplitId.current--,
+          quantity: n,
+        };
+        setItems((list) => [
+          ...list.map((i) =>
+            i.item_id === original.item_id
+              ? { ...i, quantity: i.quantity - n }
+              : i,
+          ),
+          splitItem,
+        ]);
+        addToOffer({
+          item_id: splitItem.item_id,
+          name: splitItem.name,
+          quantity: n,
+          condition: splitItem.condition,
+          category: splitItem.category,
+          image_url: splitItem.images[0]?.image_url ?? null,
+        });
+      }
+    }
+
+    setSplitBusy(false);
+    setSplitTarget(null);
+  }
 
   async function submit() {
     setBusy(true);
@@ -118,6 +199,14 @@ export function OfferComposer({
 
   return (
     <div className="flex flex-col gap-5">
+      <Link
+        href={`/market/${post.post_id}`}
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to listing
+      </Link>
+
       <header className="flex flex-col gap-1">
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           Offer a trade for {post.item.name}
@@ -143,12 +232,44 @@ export function OfferComposer({
       <TradeSourcePanel
         inventory={stash}
         offeredIds={offeredIds}
-        onAdd={(item) =>
-          setOffered((list) =>
-            list.some((i) => i.item_id === item.item_id) ? list : [...list, item],
-          )
-        }
+        onAdd={tapStash}
       />
+
+      <Overlay
+        isOpen={!!splitTarget}
+        onOpenChange={(open) => {
+          if (!open) setSplitTarget(null);
+        }}
+        title={splitTarget ? `How many ${splitTarget.name} to offer?` : ""}
+        description={
+          splitTarget
+            ? `You have ${splitTarget.quantity} of these. Offering fewer splits it into its own item, so the seller sees exactly what is on the table.`
+            : undefined
+        }
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onPress={() => setSplitTarget(null)}
+              isDisabled={splitBusy}
+            >
+              Cancel
+            </Button>
+            <Button isLoading={splitBusy} onPress={confirmSplit}>
+              Add to offer
+            </Button>
+          </>
+        }
+      >
+        <TextInput
+          label="Quantity to offer"
+          value={splitQty}
+          onChange={(v) => setSplitQty(v.replace(/\D/g, ""))}
+          inputMode="numeric"
+          hint={splitTarget ? `Max ${splitTarget.quantity}` : undefined}
+        />
+      </Overlay>
 
       {/* Sticky on mobile: the submit must not be below a scrolling stash. */}
       <Surface

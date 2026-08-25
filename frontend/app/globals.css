@@ -19,7 +19,7 @@
   --green-500: #3ab572;  /*  2.60 */
   --green-600: #2e8f5a;  /*  4.04 — BRAND. Fills only, never normal text. */
   --green-700: #257248;  /*  5.88 — text + links. AA. */
-  --green-800: #1f5939;  /*  8.23 */
+  --green-800: #1d6d41;  /*  6.34 */
   --green-900: #19432c;  /* 11.16 */
   --green-950: #122b1d;  /* 15.04 — ink */
 
@@ -51,10 +51,10 @@
 
   /* --- Rose: cancelled, reported, expired --- */
   --rose-50: #f9f3f4;
-  --rose-100: #f3e5e7;
+  --rose-100: #fbe4e8;
   --rose-200: #e9cbd0;
   --rose-300: #dea3ae;
-  --rose-400: #d06478;   /*  3.63 */
+  --rose-400: #b3455a;   /*  5.36 */
   --rose-500: #be324b;   /*  5.61 — text. AA. */
   --rose-600: #96273b;   /*  7.93 */
   --rose-700: #771f2f;   /* 10.36 */
@@ -73,21 +73,22 @@
   --slate-600: #3d6076;  /*  6.70 */
   --slate-700: #2f4c5f;  /*  9.05 — text. AA. */
 
-  /* --- Clay: trade only. Added 2026-08-14, same pass as slate. The feed
-     card already filled "For trade" with amber (see post-card.tsx's old
-     comment) which reads as a warning next to Pending/Awaiting-payment chips
-     that use the same hue. Clay carries the same "filled, white text"
-     treatment without borrowing warning's colour. */
-  --clay-50: #f8f1ec;
-  --clay-100: #efe0d3;
-  --clay-400: #c68a5e;  /*  2.92 — border only */
-  --clay-700: #7a4522;  /*  7.77 — text and solid fill. AA. */
+  /* --- Teal: trade only. Replaces clay 2026-08-14 (same reasoning as
+     clay's own introduction, same day: trade needs a hue nothing else on
+     the tone system touches). The feed card already filled "For trade" with
+     amber (see post-card.tsx's old comment) which reads as a warning next
+     to Pending/Awaiting-payment chips that use the same hue. Teal carries
+     the same "filled, white text" treatment without borrowing warning's
+     colour. */
+  --teal-100: #e1f1f5;
+  --teal-400: #4fa3bd;  /*  2.87 — border only */
+  --teal-700: #2c7a93;  /*  4.87 — text and solid fill. AA. */
 
   /* Blue and gold were retired for lack of a consumer; violet is banned
-     outright (see the trade tone comment below). Slate and clay are the two
+     outright (see the trade tone comment below). Slate and teal are the two
      exceptions since — info colliding with success, and trade colliding with
      warning, were both real confusions on screen, not a preference. The
-     palette is seven hues now: two greens, slate, two ambers, clay, one
+     palette is seven hues now: two greens, slate, two ambers, teal, one
      rose. Do not add an eighth without the same kind of evidence. */
 }
 
@@ -97,10 +98,12 @@
 
 :root {
   /* --- Surfaces ---
-     Revised 2026-08-07. The first pass used green so sparingly that the only
-     saturated thing on screen was a violet badge. KU's own systems put the
-     green on the chrome and keep the content white; this follows that. */
-  --bg-page: #f4f7f5;
+     Revised 2026-08-14: page went fully white, matching --bg-surface. Cards
+     now separate from the page by shadow alone (--shadow-raised carries an
+     inset top highlight plus a soft drop shadow), not by a colour step —
+     the "depth over outline" principle applied to the page itself, not just
+     to individual surfaces. */
+  --bg-page: #ffffff;
   --bg-surface: #ffffff;
   --bg-surface-raised: #ffffff;
   --bg-surface-sunken: var(--gray-50);
@@ -150,7 +153,7 @@
 
        neutral gray-400   2.51:1    warning amber-600 3.25:1
        info    slate-400  3.42:1    danger  rose-400  3.37:1
-       success green-600  4.04:1    trade   clay-400  2.92:1
+       success green-600  4.04:1    trade   teal-400  2.87:1
 
      They were all 300 before, which measured 1.38-2.10:1 and was chosen for
      white only. Pair them with `TONE_CHIP`, never `TONE_WASH` alone.
@@ -180,7 +183,10 @@
   --tone-warning-bg: var(--amber-100);
   --tone-warning-border: var(--amber-600);
   --tone-warning-fg: var(--amber-800);
-  --tone-warning-solid: var(--amber-500);
+  /* amber-500 (2.23:1) was fill-only and needed near-black text, which read as
+     a different, brighter family next to every other tone's deep-saturated,
+     white-on-top solid. amber-700 (5.20:1) takes white like the rest do. */
+  --tone-warning-solid: var(--amber-700);
 
   --tone-danger-bg: var(--rose-100);
   --tone-danger-border: var(--rose-400);
@@ -191,14 +197,14 @@
      2026-08-14: trade used to share `neutral`'s gray, which made "For trade"
      and "Unlisted" the same colour with nothing but an icon between them, and
      the feed card worked around it with a local hardcoded amber fill that
-     then collided with `warning`. Clay is trade's own hue now: distinct from
+     then collided with `warning`. Teal is trade's own hue now: distinct from
      neutral, distinct from warning, filled with white text wherever `warning`
      and `danger` already are (`TONE_SOLID`, not `TONE_CHIP`) — see
      post-card.tsx. */
-  --tone-trade-bg: var(--clay-100);
-  --tone-trade-border: var(--clay-400);
-  --tone-trade-fg: var(--clay-700);
-  --tone-trade-solid: var(--clay-700);
+  --tone-trade-bg: var(--teal-100);
+  --tone-trade-border: var(--teal-400);
+  --tone-trade-fg: var(--teal-700);
+  --tone-trade-solid: var(--teal-700);
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.
