@@ -79,3 +79,40 @@ Two consequences a real backend should close:
    room, so recipients cannot open the group chat they are in. That is
    membership logic rather than a missing endpoint, and is deliberately left
    alone here.
+
+## 7. Auth has no endpoint for a profile, a password reset, a refresh, or a logout
+
+The merged backend (`origin/backend/main`, now in `backend/src`) implements exactly
+three auth routes: `POST /auth/register/request-otp`, `POST
+/auth/register/verify-otp`, `POST /auth/login`. Confirmed by reading every
+controller in `backend/src` — there is no `users` controller at all.
+
+Consequences accepted, in the order they hit the signup flow:
+
+- **`request-otp` requires `password` (and accepts an optional `phone`) before any
+  OTP exists.** The product's original 3-screen order — email, then OTP, then
+  password and profile — cannot survive: password had to move to the first screen.
+  `app/(auth)/auth-panel.tsx`'s `RegisterForm` now collects email + password
+  together and posts straight to `request-otp`.
+- **`phone` is dropped, not just moved.** It's optional on the DTO, and since
+  nothing downstream can ever edit it either, collecting it at signup would only
+  ever write once and be inert. Not asked for anywhere in the flow now.
+- **There is no endpoint that accepts a Thai first/last name, ever.**
+  `verify-otp` creates the row with `firstNameTh`/`lastNameTh` as empty strings
+  (see the comment in the merged `auth.service.ts`) and nothing later can fill
+  them in. `app/(auth)/register/details/page.tsx` — the screen that used to collect
+  this — is deleted rather than kept as a dead end nobody can complete.
+- **No `GET`/`PATCH /users/me`.** `account/edit` and the profile fields on
+  `account/page.tsx` have nothing to read from or write to yet. Not touched in this
+  pass.
+- **No `POST /auth/refresh`,** despite `login` and `verify-otp` both setting a
+  `refreshToken` httpOnly cookie. Nothing anywhere consumes it. The access token is
+  15 minutes (`token.service.ts`); the frontend session cookie (`lib/api/session.ts`)
+  is set to match that lifetime and simply expires with it — no silent-refresh
+  logic exists to write.
+- **No logout endpoint.** The frontend clears its own `session` cookie
+  client-side; the backend's refresh cookie (never relayed to the browser in the
+  first place — see `lib/api/session.ts`) is not this frontend's to manage.
+- **No forgot-password / reset-password endpoints.** `app/(auth)/forgot` and
+  `app/(auth)/reset` are left exactly as they were — still fully mocked. There is
+  nothing real to wire them to.

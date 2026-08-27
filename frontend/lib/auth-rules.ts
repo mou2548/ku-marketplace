@@ -58,10 +58,3 @@ export const OTP_TTL_MINUTES = 10;
 
 /** §1.6 — the password-reset link's lifetime, deliberately longer than OTP. */
 export const RESET_LINK_TTL_MINUTES = 30;
-
-/**
- * §1.5 — phone is optional and never OTP-verified. The proposal weighs the
- * per-SMS cost against the benefit and decides it is not worth it; the phone
- * is a fallback contact channel, not an identity check.
- */
-export const PHONE_IS_OPTIONAL = true;
