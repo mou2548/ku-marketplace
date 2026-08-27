@@ -1,54 +1,39 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Lock, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { OtpInput } from "@/components/kit/otp-input";
 import { Surface } from "@/components/kit/surface";
+import { verifyRegisterOtp } from "@/lib/actions/auth";
 import { OTP_TTL_MINUTES, derivedFirstName } from "@/lib/auth-rules";
 
 /**
  * The one-time code step.
  *
- * The mock code is 111111 while there is no backend to send a real one. It is a
- * constant with a name rather than a magic string, so the day the API arrives
- * the check is deleted rather than hunted for.
+ * Verifying opens the account in the same call (`POST
+ * /auth/register/verify-otp`) — there is no later step, so success here goes
+ * straight to `/` rather than a profile page that has nowhere to send its
+ * fields (see `docs/design/api-gaps.md`).
  *
  * The locked English name moved here from the registration form. It is derived
  * from the institutional email, so showing it before the email is verified was
  * asserting an identity nobody had proved yet. Here it reads as what it is:
  * this is who the university says you are, confirm and continue.
  */
-const MOCK_OTP = "111111";
-
 function VerifyForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "student.name@ku.th";
 
   const [otp, setOtp] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    // TODO: POST /auth/otp/verify
-    await new Promise((r) => setTimeout(r, 300));
-    setBusy(false);
-
-    if (otp !== MOCK_OTP) {
-      setError("That code is not right. Check the email and try again.");
-      setOtp("");
-      return;
-    }
-    // flow4: the address is proved, so now the password and the profile.
-    router.push(`/register/details?email=${encodeURIComponent(email)}`);
-  }
+  const [state, formAction, isPending] = useActionState(
+    verifyRegisterOtp,
+    undefined,
+  );
 
   return (
     <Surface
@@ -90,15 +75,15 @@ function VerifyForm() {
         </p>
       </div>
 
-      <form onSubmit={submit} className="flex w-full flex-col items-center gap-6">
+      <form action={formAction} className="flex w-full flex-col items-center gap-6">
+        <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="otp" value={otp} />
+
         <OtpInput
           value={otp}
-          onChange={(v) => {
-            setOtp(v);
-            if (error) setError(null);
-          }}
+          onChange={setOtp}
           autoFocus
-          errorMessage={error ?? undefined}
+          errorMessage={state?.error ?? undefined}
           className="w-full"
         />
 
@@ -107,7 +92,7 @@ function VerifyForm() {
           block
           pill
           isDisabled={otp.length < 6}
-          isLoading={busy}
+          isLoading={isPending}
         >
           Verify this email
         </Button>
