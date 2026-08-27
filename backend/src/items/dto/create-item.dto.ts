@@ -7,6 +7,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -36,6 +37,11 @@ export class CreateItemDto {
   @IsString()
   @IsNotEmpty()
   condition: string;
+
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  quantity?: number;
 
   @IsString()
   @IsOptional()

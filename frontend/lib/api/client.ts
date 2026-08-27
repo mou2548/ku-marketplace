@@ -32,14 +32,19 @@ interface Envelope<T> {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // `FormData` bodies (file uploads) must not get a hand-set `Content-Type` —
+  // `fetch` writes its own with the multipart boundary. JSON bodies get the
+  // default unless the caller already set one.
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) };
+  if (!(init?.body instanceof FormData) && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
+      headers,
       cache: "no-store",
     });
   } catch {
