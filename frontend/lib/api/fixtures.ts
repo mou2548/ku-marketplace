@@ -30,7 +30,6 @@ import type {
   Offer,
   Post,
   Transaction,
-  User,
   UserSummary,
 } from "./types";
 
@@ -76,29 +75,6 @@ function user(id: number, th: string): UserSummary {
     avatar_url: `https://i.pravatar.cc/150?u=${id}`,
   };
 }
-
-/**
- * The viewer's full row.
- *
- * `USERS` holds `UserSummary` — the attribution shape used wherever a person
- * appears next to something they did. The account screen edits the row itself,
- * which needs the columns `DatabaseSchema.pdf` §2.1 actually defines. The Thai
- * name here must stay in step with `USERS[VIEWER_ID]`; they disagreeing is what
- * made /account and /account/edit show two different people.
- */
-const VIEWER_PROFILE: User = {
-  user_id: VIEWER_ID,
-  email: "b6512345@ku.th",
-  first_name_en: "Somchai",
-  last_name_en: "Saetang",
-  first_name_th: "สมชาย",
-  last_name_th: "แซ่ตั้ง",
-  phone_number: null,
-  status: "Active",
-  email_verified_at: "2026-06-01T03:00:00.000Z",
-  isAdmin: false,
-  created_at: "2026-06-01T03:00:00.000Z",
-};
 
 export const USERS: Record<number, UserSummary> = {
   1: user(1, "แอดมิน มก"),
@@ -1204,11 +1180,6 @@ export async function getMyTickets(): Promise<GiveawayTicket[]> {
 
 export async function getViewer(): Promise<UserSummary> {
   return USERS[VIEWER_ID];
-}
-
-/** The full row, for the one screen that edits it. `GET /users/me`. */
-export async function getViewerProfile(): Promise<User> {
-  return VIEWER_PROFILE;
 }
 
 /* ------------------------------------------------------------------ *

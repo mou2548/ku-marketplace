@@ -80,39 +80,29 @@ Two consequences a real backend should close:
    membership logic rather than a missing endpoint, and is deliberately left
    alone here.
 
-## 7. Auth has no endpoint for a profile, a password reset, a refresh, or a logout
+## 7. Auth has no `/auth/refresh` endpoint
 
-The merged backend (`origin/backend/main`, now in `backend/src`) implements exactly
-three auth routes: `POST /auth/register/request-otp`, `POST
-/auth/register/verify-otp`, `POST /auth/login`. Confirmed by reading every
-controller in `backend/src` — there is no `users` controller at all.
+A later backend pass (`origin/backend/main` commit `b232f58`) added everything
+§7 used to list as missing: `POST /auth/otp/resend`, `POST /auth/logout`,
+`POST /auth/password/forgot`, `POST /auth/password/reset`, and
+`GET`/`PATCH`/`DELETE /users/me`. All of it is wired now. Two decisions from
+that pass are permanent product shape, not workarounds, and are worth recording
+here so nobody tries to "fix" them back:
 
-Consequences accepted, in the order they hit the signup flow:
+- **Register is email + password in one step**, not email-then-password. The
+  real `POST /auth/register` requires `password` before any OTP exists, so
+  `app/(auth)/auth-panel.tsx`'s `RegisterForm` asks for both up front. `phone`
+  stays out of the signup flow entirely — it was always optional on the DTO,
+  and asking for it there bought nothing once profile fields moved to
+  `/account/edit`.
+- **Password reset is email + a 6-digit code**, not a magic link.
+  `POST /auth/password/reset` takes `{ email, otp, newPassword }` — the same
+  OTP mechanism as registration, on its own Redis namespace. `app/(auth)/reset`
+  reads `?email=` now, not `?token=`.
 
-- **`request-otp` requires `password` (and accepts an optional `phone`) before any
-  OTP exists.** The product's original 3-screen order — email, then OTP, then
-  password and profile — cannot survive: password had to move to the first screen.
-  `app/(auth)/auth-panel.tsx`'s `RegisterForm` now collects email + password
-  together and posts straight to `request-otp`.
-- **`phone` is dropped, not just moved.** It's optional on the DTO, and since
-  nothing downstream can ever edit it either, collecting it at signup would only
-  ever write once and be inert. Not asked for anywhere in the flow now.
-- **There is no endpoint that accepts a Thai first/last name, ever.**
-  `verify-otp` creates the row with `firstNameTh`/`lastNameTh` as empty strings
-  (see the comment in the merged `auth.service.ts`) and nothing later can fill
-  them in. `app/(auth)/register/details/page.tsx` — the screen that used to collect
-  this — is deleted rather than kept as a dead end nobody can complete.
-- **No `GET`/`PATCH /users/me`.** `account/edit` and the profile fields on
-  `account/page.tsx` have nothing to read from or write to yet. Not touched in this
-  pass.
-- **No `POST /auth/refresh`,** despite `login` and `verify-otp` both setting a
-  `refreshToken` httpOnly cookie. Nothing anywhere consumes it. The access token is
-  15 minutes (`token.service.ts`); the frontend session cookie (`lib/api/session.ts`)
-  is set to match that lifetime and simply expires with it — no silent-refresh
-  logic exists to write.
-- **No logout endpoint.** The frontend clears its own `session` cookie
-  client-side; the backend's refresh cookie (never relayed to the browser in the
-  first place — see `lib/api/session.ts`) is not this frontend's to manage.
-- **No forgot-password / reset-password endpoints.** `app/(auth)/forgot` and
-  `app/(auth)/reset` are left exactly as they were — still fully mocked. There is
-  nothing real to wire them to.
+What's still genuinely missing: **no `POST /auth/refresh`**, despite `login`
+and `otp/verify` both setting a `refreshToken` httpOnly cookie — nothing
+anywhere consumes it. The access token is 15 minutes
+(`token.service.ts`); the frontend session cookie (`lib/api/session.ts`) is set
+to match that lifetime and simply expires with it. No silent-refresh logic
+exists to write, and there is nothing to build it against.
