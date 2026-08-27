@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Crown } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
@@ -9,6 +10,8 @@ import { SlipUploader } from "@/components/kit/slip";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
+import { subscribeToMembership } from "@/lib/actions/membership";
+import { uploadFile } from "@/lib/actions/uploads";
 import type { Membership, MembershipTier } from "@/lib/api/fixtures";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +20,13 @@ import { cn } from "@/lib/utils";
  * else: transfer, upload a slip, wait for an admin to confirm. Reusing
  * `SlipUploader` here is deliberate — a student who has paid for a deal already
  * knows exactly what this screen wants (research R5, applied to a new context).
+ *
+ * Prices and duration match `backend/src/common/constants/membership.constant.ts`
+ * exactly — this used to show ฿49/฿99/฿199 for "6 months", which was never what
+ * the backend actually charged or granted (฿29/฿49/฿89, 30 days flat for every
+ * tier — `reviewPayment` matches the amount transferred against this exact
+ * table, so showing the wrong price here would make a correct payment look
+ * like the wrong amount to the admin reviewing it).
  */
 const TIERS: Array<{
   tier: MembershipTier;
@@ -26,15 +36,15 @@ const TIERS: Array<{
 }> = [
   {
     tier: "Silver",
-    price: 49,
+    price: 29,
     adds: [
-      "Up to 20 live posts instead of 5",
+      "Up to 10 live posts instead of 3",
       "Verified badge beside your name everywhere it appears",
     ],
   },
   {
     tier: "Gold",
-    price: 99,
+    price: 49,
     adds: [
       "Your posts rank above ordinary posts in the feed and in search",
       "Priority in giveaway draws you enter",
@@ -42,10 +52,12 @@ const TIERS: Array<{
   },
   {
     tier: "Diamond",
-    price: 199,
+    price: 89,
     adds: ["Unlimited live posts", "Dedicated support channel for disputes"],
   },
 ];
+
+const MEMBERSHIP_DURATION_DAYS = 30;
 
 /** Every perk a tier carries, inherited ones included. */
 function perksOf(tier: MembershipTier): string[] {
@@ -57,6 +69,7 @@ function perksOf(tier: MembershipTier): string[] {
 const ALL_PERKS = TIERS.flatMap((t) => t.adds);
 
 export function MembershipScreen({ membership }: { membership: Membership }) {
+  const router = useRouter();
   const toast = useToast();
   const [selected, setSelected] = useState<MembershipTier>("Gold");
 
@@ -94,7 +107,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           </p>
         ) : (
           <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
-            The free tier: 5 live posts, and everything the marketplace does.
+            The free tier: 3 live posts, and everything the marketplace does.
           </p>
         )}
       </Surface>
@@ -117,8 +130,8 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           Membership
         </h1>
         <p className="text-[0.9375rem] leading-[1.7] text-ink-muted">
-          Six months at a time. Transfer, upload the slip, and an admin switches
-          your tier.
+          {MEMBERSHIP_DURATION_DAYS} days at a time. Transfer, upload the slip,
+          and an admin switches your tier.
         </p>
       </header>
 
@@ -159,7 +172,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                     ฿{t.price}
                     <span className="text-[0.8125rem] font-normal text-ink-muted">
                       {" "}
-                      / 6 months
+                      / {MEMBERSHIP_DURATION_DAYS} days
                     </span>
                   </p>
 
@@ -260,8 +273,11 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
         >
           <SlipUploader
             amount={current?.price ?? 0}
-            onUpload={async () => {
+            onUpload={async (file) => {
+              const url = await uploadFile(file);
+              await subscribeToMembership(selected, url);
               toast.show("Slip uploaded. An admin will review it shortly.");
+              router.refresh();
             }}
           />
         </Overlay>

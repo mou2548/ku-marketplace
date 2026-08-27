@@ -23,8 +23,8 @@ import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
 import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
+import { uploadFile } from "@/lib/actions/uploads";
 import type { ItemPayload } from "@/lib/api/items";
-import { uploadImage } from "@/lib/api/uploads";
 import type { Item, ItemCategory } from "@/lib/api/types";
 import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
@@ -121,7 +121,7 @@ export function ItemForm({
       // to get a real hosted URL before the item itself can reference it.
       const images = await Promise.all(
         photos.map(async (p, i) => ({
-          image_url: p.file ? await uploadImage(p.file) : p.previewUrl,
+          image_url: p.file ? await uploadFile(p.file) : p.previewUrl,
           is_primary: i === 0,
           display_order: i,
         })),

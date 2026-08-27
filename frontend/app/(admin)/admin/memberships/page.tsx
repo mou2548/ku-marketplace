@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { Crown } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { getMembershipRequests } from "@/lib/api/fixtures";
+import { listPendingPayments } from "@/lib/api/membership";
+import { getAccessToken, isCurrentUserAdmin } from "@/lib/api/session";
 
 import { MembershipReview } from "./membership-review";
 
@@ -16,7 +18,14 @@ export const metadata = { title: "Memberships - Admin" };
  * this queue expects.
  */
 export default async function AdminMembershipsPage() {
-  const requests = await getMembershipRequests();
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
+  if (!(await isCurrentUserAdmin())) {
+    redirect("/");
+  }
+
+  const requests = await listPendingPayments();
 
   if (requests.length === 0) {
     return (
@@ -56,6 +65,7 @@ export default async function AdminMembershipsPage() {
                 slipUrl={r.slip_image_url}
                 userName={r.user.name}
                 tier={r.tier}
+                amount={r.amount}
                 createdAt={r.created_at}
               />
             </Surface>
