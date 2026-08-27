@@ -52,4 +52,15 @@ export class TransactionsController {
       user.userId,
     );
   }
+
+  @Get(':id/appointment-cards')
+  getAppointmentCards(
+    @Param('id', ParseIntPipe) transactionId: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.transactionsService.getAppointmentCards(
+      transactionId,
+      user.userId,
+    );
+  }
 }

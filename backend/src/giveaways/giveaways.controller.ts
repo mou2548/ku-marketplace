@@ -17,6 +17,7 @@ import type {
   SelectRecipientsPayload,
 } from './giveaways.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ResponseMessage } from '../common/decorators/response-message.decorator';
 
 // เช่นเดียวกับ posts — เพิ่มแค่ guard กันคนไม่ login ยังไม่ได้เปลี่ยนวิธีรับ
 // giver_id/receiver_id ที่ยังมาจาก body เหมือนเดิม
@@ -26,17 +27,20 @@ export class GiveawaysController {
 
   @Post('giveaways')
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('สร้างโพสต์แจกของสำเร็จ')
   create(@Body() body: CreateGiveawayPayload) {
     return this.giveawaysService.create(body);
   }
 
   @Get('giveaways/:id')
+  @ResponseMessage('รายละเอียดโพสต์แจกของสำเร็จ')
   detail(@Param('id') id: string) {
     return this.giveawaysService.detail(id);
   }
 
   @Post('giveaways/:id/join')
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('เข้าร่วมการแจกของสำเร็จ')
   join(@Param('id') id: string, @Body() body: JoinGiveawayPayload) {
     return this.giveawaysService.join(id, body);
   }
@@ -44,6 +48,7 @@ export class GiveawaysController {
   @Post('giveaways/:id/draw')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('จับฉลากสำเร็จ')
   draw(@Param('id') id: string) {
     return this.giveawaysService.draw(id);
   }
@@ -51,11 +56,13 @@ export class GiveawaysController {
   @Post('giveaways/:id/select')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('เลือกผู้ชนะสำเร็จ')
   select(@Param('id') id: string, @Body() body: SelectRecipientsPayload) {
     return this.giveawaysService.select(id, body.receiver_ids ?? []);
   }
 
   @Get('giveaways/:id/recipients')
+  @ResponseMessage('สรุปผู้รับของสำเร็จ')
   recipients(@Param('id') id: string) {
     return this.giveawaysService.recipients(id);
   }
@@ -63,6 +70,7 @@ export class GiveawaysController {
   @Post('giveaways/recipients/:recipient_id/forfeit')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('สละสิทธิ์สำเร็จ')
   forfeit(
     @Param('recipient_id') recipientId: string,
     @Body() body: ForfeitPayload,
@@ -72,6 +80,7 @@ export class GiveawaysController {
 
   @Post('giveaways/:id/tickets/:ticket_id/qr/generate')
   @UseGuards(JwtAuthGuard)
+  @ResponseMessage('สร้าง QR สำเร็จ')
   qrGenerate(@Param('id') id: string, @Param('ticket_id') ticketId: string) {
     return this.giveawaysService.qrGenerate(id, ticketId);
   }

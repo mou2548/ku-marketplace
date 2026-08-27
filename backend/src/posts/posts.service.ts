@@ -38,10 +38,6 @@ export interface AcceptOfferPayload {
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private ok(message: string, data: Record<string, unknown> | unknown[]) {
-    return { success: true, message, data };
-  }
-
   private id(value: string, prefix: string) {
     const match = value.match(new RegExp(`^(?:${prefix}_)?(\\d+)$`, 'i'));
     if (!match) {
@@ -121,7 +117,7 @@ export class PostsService {
       return { ...created, item };
     });
 
-    return this.ok('สร้างโพสต์สำเร็จ', this.serializePost(post));
+    return this.serializePost(post);
   }
 
   async findAllPosts() {
@@ -130,10 +126,7 @@ export class PostsService {
       include: { item: true },
       orderBy: { createdAt: 'desc' },
     });
-    return this.ok(
-      'นำโพสต์ทั้งหมดมาแสดงสำเร็จ',
-      posts.map((p) => this.serializePost(p)),
-    );
+    return posts.map((p) => this.serializePost(p));
   }
 
   async getPostById(postId: string) {
@@ -142,7 +135,7 @@ export class PostsService {
       include: { item: true },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
-    return this.ok('รายละเอียดโพสต์สำเร็จ', this.serializePost(post));
+    return this.serializePost(post);
   }
 
   async updatePostPrice(postId: string, payload: UpdatePostPayload) {
@@ -158,10 +151,10 @@ export class PostsService {
       where: { postId: id },
       data: { price: payload.price },
     });
-    return this.ok('แก้ไขโพสต์สำเร็จ', {
+    return {
       post_id: this.label('post', post.postId),
       price: post.price.toNumber(),
-    });
+    };
   }
 
   async deletePost(postId: string) {
@@ -192,10 +185,10 @@ export class PostsService {
         data: { status: 'Unlisted' },
       }),
     ]);
-    return this.ok('ลบโพสต์สำเร็จ', {
+    return {
       post_id: this.label('post', id),
       deleted: true,
-    });
+    };
   }
 
   async buyPost(postId: string, payload: BuyPostPayload) {
@@ -248,14 +241,14 @@ export class PostsService {
       return created;
     });
 
-    return this.ok('ทำการซื้อสำเร็จ', {
+    return {
       transaction_id: this.label('transaction', transaction.transactionId),
       post_id: this.label('post', transaction.postId),
       buyer_id: transaction.buyerId,
       delivery_method: transaction.deliveryMethod,
       quantity: transaction.quantity,
       status: transaction.status,
-    });
+    };
   }
 
   async createOffer(postId: string, payload: CreateOfferPayload) {
@@ -309,7 +302,7 @@ export class PostsService {
       },
       include: { items: true },
     });
-    return this.ok('เสนอข้อแลกเปลี่ยนสำเร็จ', this.serializeOffer(offer));
+    return this.serializeOffer(offer);
   }
 
   private serializeOffer(offer: {
@@ -346,10 +339,10 @@ export class PostsService {
       include: { items: true },
       orderBy: { createdAt: 'desc' },
     });
-    return this.ok('แสดงข้อแลกเปลี่ยนสำเร็จ', {
+    return {
       post_id: this.label('post', id),
       offers: offers.map((offer) => this.serializeOffer(offer)),
-    });
+    };
   }
 
   async acceptOffer(
@@ -408,38 +401,27 @@ export class PostsService {
       return created;
     });
 
-    return this.ok('ตอบรับข้อเสนอสำเร็จ', {
+    return {
       transaction_id: this.label('transaction', transaction.transactionId),
       post_id: this.label('post', postPk),
       offer_id: this.label('offer', offerPk),
       delivery_method: transaction.deliveryMethod,
       status: 'accepted',
-    });
+    };
   }
 
   async withdrawOffer(postId: string, offerId: string) {
-    return this.changeOfferStatus(
-      postId,
-      offerId,
-      'Withdrawn',
-      'ถอนข้อเสนอสำเร็จ',
-    );
+    return this.changeOfferStatus(postId, offerId, 'Withdrawn');
   }
 
   async rejectOffer(postId: string, offerId: string) {
-    return this.changeOfferStatus(
-      postId,
-      offerId,
-      'Rejected',
-      'ปฏิเสธข้อเสนอสำเร็จ',
-    );
+    return this.changeOfferStatus(postId, offerId, 'Rejected');
   }
 
   private async changeOfferStatus(
     postId: string,
     offerId: string,
     status: string,
-    message: string,
   ) {
     const postPk = this.id(postId, 'post');
     const offerPk = this.id(offerId, 'offer');
@@ -449,10 +431,10 @@ export class PostsService {
     });
     if (result.count === 0)
       throw new NotFoundException('ไม่พบ offer ที่อยู่ในสถานะ Pending');
-    return this.ok(message, {
+    return {
       post_id: this.label('post', postPk),
       offer_id: this.label('offer', offerPk),
       status: status.toLowerCase(),
-    });
+    };
   }
 }
