@@ -1,4 +1,8 @@
-import { getMyItems, getPosts } from "@/lib/api/fixtures";
+import { redirect } from "next/navigation";
+
+import { getPosts } from "@/lib/api/fixtures";
+import { getMyItems } from "@/lib/api/items";
+import { getAccessToken } from "@/lib/api/session";
 
 import { InventoryScreen } from "./inventory-screen";
 
@@ -17,6 +21,10 @@ import { InventoryScreen } from "./inventory-screen";
 export const metadata = { title: "My inventory - KU Marketplace" };
 
 export default async function InventoryPage() {
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
+
   const [allItems, posts] = await Promise.all([getMyItems(), getPosts()]);
 
   /**

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
@@ -13,7 +13,9 @@ import { LinkButton } from "@/components/kit/button";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { getMyItems, getPosts } from "@/lib/api/fixtures";
+import { getPosts } from "@/lib/api/fixtures";
+import { getItem, getMyItems } from "@/lib/api/items";
+import { getAccessToken } from "@/lib/api/session";
 import { ITEM_CONDITION, ITEM_STATUS, POST_TYPE } from "@/lib/status";
 
 /**
@@ -31,10 +33,20 @@ export default async function ItemDetailPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
+
   const { itemId } = await params;
-  const items = await getMyItems();
-  const item = items.find((i) => i.item_id === Number(itemId));
-  if (!item) notFound();
+
+  // `GET /items/:id` is public and returns any item, not just the viewer's —
+  // this screen is "my stuff", so an item that exists but belongs to someone
+  // else reads as not found rather than leaking their inventory.
+  const [item, items] = await Promise.all([
+    getItem(Number(itemId)).catch(() => undefined),
+    getMyItems(),
+  ]);
+  if (!item || !items.some((i) => i.item_id === item.item_id)) notFound();
 
   const posts = await getPosts();
   const post = posts.find((p) => p.item_id === item.item_id);
