@@ -9,16 +9,16 @@ import { Lock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { OtpInput } from "@/components/kit/otp-input";
 import { Surface } from "@/components/kit/surface";
-import { verifyRegisterOtp } from "@/lib/actions/auth";
+import { resendOtp, verifyRegisterOtp } from "@/lib/actions/auth";
 import { OTP_TTL_MINUTES, derivedFirstName } from "@/lib/auth-rules";
 
 /**
  * The one-time code step.
  *
- * Verifying opens the account in the same call (`POST
- * /auth/register/verify-otp`) — there is no later step, so success here goes
- * straight to `/` rather than a profile page that has nowhere to send its
- * fields (see `docs/design/api-gaps.md`).
+ * Verifying opens the account in the same call (`POST /auth/otp/verify`) —
+ * there is no later step, so success here goes straight to `/` rather than a
+ * profile page that has nowhere to send its fields (see
+ * `docs/design/api-gaps.md`).
  *
  * The locked English name moved here from the registration form. It is derived
  * from the institutional email, so showing it before the email is verified was
@@ -32,6 +32,10 @@ function VerifyForm() {
   const [otp, setOtp] = useState("");
   const [state, formAction, isPending] = useActionState(
     verifyRegisterOtp,
+    undefined,
+  );
+  const [resendState, resendAction, isResending] = useActionState(
+    resendOtp,
     undefined,
   );
 
@@ -99,13 +103,26 @@ function VerifyForm() {
       </form>
 
       <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          className="flex items-center gap-1.5 text-[0.875rem] text-ink-muted hover:text-ink"
-        >
-          <RotateCcw aria-hidden className="size-4" />
-          Send the code again
-        </button>
+        <form action={resendAction}>
+          <input type="hidden" name="email" value={email} />
+          <button
+            type="submit"
+            disabled={isResending}
+            className="flex items-center gap-1.5 text-[0.875rem] text-ink-muted hover:text-ink disabled:opacity-50"
+          >
+            <RotateCcw aria-hidden className="size-4" />
+            {isResending ? "Sending..." : "Send the code again"}
+          </button>
+        </form>
+        {resendState?.resent ? (
+          <p className="text-[0.75rem] font-medium text-ink-brand">
+            A new code is on its way.
+          </p>
+        ) : resendState?.error ? (
+          <p role="alert" className="text-[0.75rem] font-medium text-tone-danger-fg">
+            {resendState.error}
+          </p>
+        ) : null}
         <p className="text-[0.75rem] text-ink-muted">
           The code is valid for {OTP_TTL_MINUTES} minutes.
         </p>

@@ -8,6 +8,7 @@ import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
@@ -28,8 +29,17 @@ export function EditProfileForm({ profile }: { profile: User }) {
 
   async function save() {
     setBusy(true);
-    // PATCH /users/me
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      await updateProfile({
+        first_name_th: firstNameTh,
+        last_name_th: lastNameTh,
+        phone_number: phone || undefined,
+      });
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not save profile");
+      return;
+    }
     setBusy(false);
     toast.show("Profile saved");
     router.push("/account");

@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Check, Lock, Mail, X } from "lucide-react";
 
-import { Button, LinkButton } from "@/components/kit/button";
+import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
-import { Surface } from "@/components/kit/surface";
+import { OtpInput } from "@/components/kit/otp-input";
+import { forgotPassword, resetPassword } from "@/lib/actions/auth";
 import {
   PASSWORD_RULES,
-  RESET_LINK_TTL_MINUTES,
   checkPassword,
   isKuEmail,
   isPasswordValid,
@@ -34,32 +35,20 @@ function Rule({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
+/**
+ * `POST /auth/password/forgot` always "succeeds" — same message whether or
+ * not the email is registered (anti-enumeration) — so success here just
+ * means the request went through, not that a code was necessarily sent.
+ * Redirects to `/reset?email=...` on success (see `lib/actions/auth.ts`).
+ */
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-
-  if (sent) {
-    return (
-      <Surface
-        shape="card"
-        elevation="flat"
-        fill="sunken"
-        className="flex flex-col gap-3 p-5 text-center"
-      >
-        <p className="text-[0.875rem] font-semibold">Link sent</p>
-        {/* Deliberately does not confirm whether the address is registered —
-            that would let anyone probe which students have accounts. */}
-        <p className="text-[0.75rem] leading-[1.6] text-ink-muted">
-          If an account exists for this email, a reset link is on its way. It is
-          valid for {RESET_LINK_TTL_MINUTES} minutes.
-        </p>
-      </Surface>
-    );
-  }
+  const [state, formAction, isPending] = useActionState(forgotPassword, undefined);
 
   return (
-    <div className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4">
       <TextInput
+        name="email"
         label="University email"
         type="email"
         value={email}
@@ -68,46 +57,60 @@ export function ForgotPasswordForm() {
         icon={<Mail className="size-5" />}
       />
 
-      {/* TODO: POST the request; the server issues the reset link. */}
-      <Button
-        block
-        isDisabled={!isKuEmail(email)}
-        onPress={() => setSent(true)}
-      >
-        Send reset link
+      {state?.error ? (
+        <p role="alert" className="text-[0.8125rem] font-medium text-tone-danger-fg">
+          {state.error}
+        </p>
+      ) : null}
+
+      <Button block isDisabled={!isKuEmail(email)} isLoading={isPending} type="submit">
+        Send reset code
       </Button>
-    </div>
+    </form>
   );
 }
 
-/** The same password rules apply on reset as on registration. */
+/**
+ * The real backend has no magic-link token — `POST /auth/password/reset`
+ * takes `{ email, otp, newPassword }`, the same 6-digit-code shape as
+ * registration (`otp.service.ts`'s `password-reset:otp:*` namespace, same
+ * 10-minute TTL). This form asks for the code directly rather than reading a
+ * token out of the URL.
+ */
 export function ResetPasswordForm() {
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") ?? "";
+
+  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [done, setDone] = useState(false);
+  const [state, formAction, isPending] = useActionState(resetPassword, undefined);
 
   const rules = checkPassword(password);
   const matches = password !== "" && password === confirm;
-
-  if (done) {
-    return (
-      <div className="flex flex-col gap-4">
-        <p className="rounded-card bg-brand-subtle px-4 py-3 text-center text-[0.875rem] text-ink-brand">
-          Your password has been reset
-        </p>
-        <LinkButton href="/login" block pill>
-          Sign in
-        </LinkButton>
-      </div>
-    );
-  }
+  const canSubmit = otp.length === 6 && isPasswordValid(password) && matches;
 
   return (
-    <div className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4">
+      <input type="hidden" name="email" value={email} />
+      <input type="hidden" name="otp" value={otp} />
+
+      <div className="flex flex-col gap-1.5 rounded-card bg-surface-sunken p-4 shadow-sunken">
+        <span className="text-[0.75rem] font-semibold text-ink-secondary">
+          Resetting the password for
+        </span>
+        <span className="text-[0.9375rem] font-semibold text-ink">
+          {email || "no email given — go back and request a code"}
+        </span>
+      </div>
+
+      <OtpInput value={otp} onChange={setOtp} label="Reset code" autoFocus />
+
       <div className="flex flex-col gap-2">
         <TextInput
           label="New password"
           type="password"
+          autoComplete="new-password"
           value={password}
           onChange={setPassword}
           icon={<Lock className="size-5" />}
@@ -125,6 +128,7 @@ export function ResetPasswordForm() {
       <TextInput
         label="Confirm new password"
         type="password"
+        autoComplete="new-password"
         value={confirm}
         onChange={setConfirm}
         icon={<Lock className="size-5" />}
@@ -133,12 +137,13 @@ export function ResetPasswordForm() {
         }
       />
 
-      {/* TODO: POST the new password with the token from the URL. */}
-      <Button
-        block
-        isDisabled={!isPasswordValid(password) || !matches}
-        onPress={() => setDone(true)}
-      >
+      {state?.error ? (
+        <p role="alert" className="text-[0.8125rem] font-medium text-tone-danger-fg">
+          {state.error}
+        </p>
+      ) : null}
+
+      <Button block isDisabled={!email || !canSubmit} isLoading={isPending} type="submit">
         Save new password
       </Button>
 
@@ -148,6 +153,6 @@ export function ResetPasswordForm() {
       >
         Back to sign in
       </Link>
-    </div>
+    </form>
   );
 }

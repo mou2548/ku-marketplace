@@ -180,10 +180,9 @@ function LoginForm() {
  *
  * `flow4.png` originally ordered signup as email first, code second, password
  * and profile last. The real backend does not allow that split: password is a
- * required field on `POST /auth/register/request-otp` itself, sent before any
- * code exists, and there is no endpoint anywhere that would later accept a
- * Thai name or a phone number — so this form asks for exactly what
- * `request-otp` needs and nothing it cannot use. See `docs/design/api-gaps.md`.
+ * required field on `POST /auth/register` itself, sent before any code exists.
+ * Thai name and phone are collected later via `/account/edit` (`PATCH
+ * /users/me`) instead of at signup — nothing there needs them upfront.
  *
  * The identity is the KU email rather than a free username, because the code is
  * emailed and the `@ku.th` domain is the whole trust model (research T1).
