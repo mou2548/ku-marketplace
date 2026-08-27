@@ -1,0 +1,159 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateItemDto } from './dto/create-item.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
+
+@Injectable()
+export class ItemsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async count() {
+    const count = await this.prisma.item.count({
+      where: { deletedAt: null },
+    });
+    return { count };
+  }
+
+  async getCategories() {
+    const categories = await this.prisma.item.groupBy({
+      by: ['category'],
+      where: { deletedAt: null },
+    });
+    return categories.map((c) => c.category);
+  }
+
+  async create(createItemDto: CreateItemDto, userId: number) {
+    const { images, warranty_expiry, course_name, brand_model, ...itemData } =
+      createItemDto as any;
+
+    return this.prisma.item.create({
+      data: {
+        ...itemData,
+        ownerId: userId,
+        courseName: course_name ?? itemData.courseName,
+        brandModel: brand_model ?? itemData.brandModel,
+        warrantyExpiry: warranty_expiry ? new Date(warranty_expiry) : null,
+        images:
+          images && images.length > 0
+            ? {
+                create: images.map((img) => ({
+                  imageUrl: img.image_url ?? img.imageUrl,
+                  isPrimary: img.is_primary ?? img.isPrimary ?? false,
+                  displayOrder: img.display_order ?? img.displayOrder ?? 0,
+                  status: 'Active',
+                })),
+              }
+            : undefined,
+      },
+      include: {
+        images: { where: { status: 'Active' } },
+      },
+    });
+  }
+
+  async findAll() {
+    return this.prisma.item.findMany({
+      where: { deletedAt: null },
+      include: {
+        images: { where: { status: 'Active' } },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async findOne(id: number) {
+    const item = await this.prisma.item.findUnique({
+      where: { itemId: id, deletedAt: null },
+      include: {
+        images: { where: { status: 'Active' } },
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+
+    return item;
+  }
+
+  async update(id: number, updateItemDto: UpdateItemDto, userId: number) {
+    const item = await this.prisma.item.findUnique({
+      where: { itemId: id, deletedAt: null },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+
+    if (item.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to update this item',
+      );
+    }
+
+    const { images, warranty_expiry, course_name, brand_model, ...itemData } =
+      updateItemDto as any;
+
+    return this.prisma.item.update({
+      where: { itemId: id },
+      data: {
+        ...itemData,
+        ...(course_name !== undefined && { courseName: course_name }),
+        ...(brand_model !== undefined && { brandModel: brand_model }),
+        ...(warranty_expiry !== undefined && {
+          warrantyExpiry: warranty_expiry ? new Date(warranty_expiry) : null,
+        }),
+        ...(images && {
+          images: {
+            // §soft-delete — mark the previous set Inactive instead of
+            // physically deleting them, so image history survives (evidence
+            // for reports/disputes). Reads always filter to status: 'Active'
+            // (see findAll/findOne/create above), so this is invisible to
+            // normal API consumers.
+            updateMany: { where: {}, data: { status: 'Inactive' } },
+            create: images.map((img) => ({
+              imageUrl: img.image_url ?? img.imageUrl,
+              isPrimary: img.is_primary ?? img.isPrimary ?? false,
+              displayOrder: img.display_order ?? img.displayOrder ?? 0,
+              status: 'Active',
+            })),
+          },
+        }),
+      },
+      include: {
+        images: { where: { status: 'Active' } },
+      },
+    });
+  }
+
+  async remove(id: number, userId: number) {
+    const item = await this.prisma.item.findUnique({
+      where: { itemId: id, deletedAt: null },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+
+    if (item.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to delete this item',
+      );
+    }
+
+    // §soft-delete — Item is master data that Report/Appeal evidence may
+    // still point to, so this never physically removes the row. Hard
+    // deleting used to also blow up with a raw FK violation the moment the
+    // item had any Item_Image row, since nothing cleaned those up first.
+    return this.prisma.item.update({
+      where: { itemId: id },
+      data: { deletedAt: new Date() },
+    });
+  }
+}
