@@ -1,12 +1,13 @@
 /**
  * Fetch wrapper for the real backend.
  *
- * The real response envelope is `{ statusCode, message, data: { data, meta? } }`
- * — not the `{ success, message, data }` shape `lib/api/types.ts` was written
- * against (that shape mirrors `API_Marketplace.pdf`, not the actual
- * `backend/main` implementation). Per CLAUDE.md §0, the frontend adapts to the
- * real backend, so this unwraps to `data.data` and every caller only ever sees
- * the payload.
+ * Envelope per `backend/src/common/interceptors/response.interceptor.ts` +
+ * `http-exception.filter.ts`: `{ success: true, message, data }` on success,
+ * `{ success: false, message, data: null }` on error. This matches
+ * `lib/api/types.ts`'s `ApiResponse<T>` now — it did not always: the backend
+ * briefly returned `{ statusCode, message, data: { data } }` before the
+ * interceptor was rewritten to match the spec. If requests start failing to
+ * parse again, check this file against the interceptor first.
  *
  * Server-only: every call site so far is a Server Action or a Server
  * Component, so the backend URL never needs to reach the browser bundle.
@@ -25,9 +26,9 @@ export class ApiError extends Error {
 }
 
 interface Envelope<T> {
-  statusCode: number;
+  success: boolean;
   message: string;
-  data: { data: T; meta?: unknown };
+  data: T;
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -47,7 +48,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   const body = await res.json().catch(() => null);
 
-  if (!res.ok) {
+  if (!res.ok || !body?.success) {
     const message =
       body && typeof body === "object" && "message" in body && body.message
         ? String(body.message)
@@ -55,5 +56,5 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(message, res.status);
   }
 
-  return (body as Envelope<T>).data.data;
+  return (body as Envelope<T>).data;
 }

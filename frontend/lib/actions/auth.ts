@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { setSession } from "@/lib/api/session";
+import { clearSession, setSession } from "@/lib/api/session";
 
 function messageFor(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -79,4 +79,82 @@ export async function verifyRegisterOtp(
 
   await setSession(accessToken);
   redirect("/");
+}
+
+export interface ResendState {
+  error?: string;
+  resent?: boolean;
+}
+
+/** Reissues the pending signup's OTP. 404s if it already expired (see `otp.service.ts`). */
+export async function resendOtp(
+  _prevState: ResendState | undefined,
+  formData: FormData,
+): Promise<ResendState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  try {
+    await authApi.resendOtp(email);
+  } catch (err) {
+    return { error: messageFor(err) };
+  }
+
+  return { resent: true };
+}
+
+/**
+ * Stateless logout: clears our own session cookie, tells the backend to clear
+ * its refresh cookie (best-effort — nothing to recover if this call fails,
+ * since the local cookie is cleared either way), then sends the user back to
+ * `/login`.
+ */
+export async function logout() {
+  try {
+    await authApi.logout();
+  } catch {
+    // Nothing to do — the local session is cleared below regardless.
+  }
+  await clearSession();
+  redirect("/login");
+}
+
+export interface ForgotPasswordState {
+  error?: string;
+}
+
+/** Always "succeeds" (anti-enumeration) — an OTP is only actually sent if the email exists. */
+export async function forgotPassword(
+  _prevState: ForgotPasswordState | undefined,
+  formData: FormData,
+): Promise<ForgotPasswordState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  try {
+    await authApi.forgotPassword(email);
+  } catch (err) {
+    return { error: messageFor(err) };
+  }
+
+  redirect(`/reset?email=${encodeURIComponent(email)}`);
+}
+
+export interface ResetPasswordState {
+  error?: string;
+}
+
+export async function resetPassword(
+  _prevState: ResetPasswordState | undefined,
+  formData: FormData,
+): Promise<ResetPasswordState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const otp = String(formData.get("otp") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+
+  try {
+    await authApi.resetPassword(email, otp, newPassword);
+  } catch (err) {
+    return { error: messageFor(err) };
+  }
+
+  redirect("/login");
 }

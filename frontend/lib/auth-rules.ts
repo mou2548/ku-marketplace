@@ -56,5 +56,3 @@ export function isPasswordValid(password: string): boolean {
 /** §1.2 — the registration code's lifetime. */
 export const OTP_TTL_MINUTES = 10;
 
-/** §1.6 — the password-reset link's lifetime, deliberately longer than OTP. */
-export const RESET_LINK_TTL_MINUTES = 30;
