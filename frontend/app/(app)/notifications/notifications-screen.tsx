@@ -182,10 +182,7 @@ export function NotificationsScreen({
                       <Icon aria-hidden className="size-4" />
                     </span>
 
-                    {/* Capped so the title and the date are not at opposite
-                        ends of a 1180px row with nothing between them. The row
-                        fills; its text does not have to. */}
-                    <div className="min-w-0 flex-1 md:max-w-3xl">
+                    <div className="min-w-0 flex-1">
                       <p
                         className={cn(
                           "text-[0.9375rem]",

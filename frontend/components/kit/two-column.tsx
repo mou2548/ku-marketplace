@@ -20,13 +20,10 @@ export function TwoColumn({
   railSide = "right",
   railFirst = false,
   /**
-   * A raw `grid-template-columns` value for the two tracks, main first,
-   * rail second regardless of `railSide` (that only changes paint order).
-   * The default is the fixed-width rail every other screen uses; a form
-   * with a live preview (`/inventory/new`, `/inventory/[id]/list`) wants
-   * the two tracks genuinely balanced instead, so it can override this.
+   * A raw `grid-template-columns` value for the two tracks.
+   * By default, the rail gets 20rem and the main content gets minmax(0,1fr).
    */
-  columns = "minmax(0,1fr) 20rem",
+  columns,
   className,
 }: {
   children: React.ReactNode;
@@ -37,9 +34,12 @@ export function TwoColumn({
   columns?: string;
   className?: string;
 }) {
+  const gridTemplate =
+    columns ?? (railSide === "left" ? "20rem minmax(0,1fr)" : "minmax(0,1fr) 20rem");
+
   return (
     <div
-      style={{ "--two-col": columns } as React.CSSProperties}
+      style={{ "--two-col": gridTemplate } as React.CSSProperties}
       className={cn(
         "flex flex-col gap-6 lg:grid lg:items-start lg:gap-8 lg:grid-cols-[var(--two-col)]",
         // The two tracks are authored main-first; a left rail just swaps
