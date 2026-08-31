@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
-import { Clock, Gift, MapPin, Users } from "lucide-react";
+import { Clock, Dices, Gift, MapPin, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
@@ -10,6 +11,8 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
+import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS } from "@/lib/status";
 
@@ -30,13 +33,17 @@ export function GiveawayDetail({
   ticket?: GiveawayTicket;
   isGiver: boolean;
 }) {
+  const router = useRouter();
   const toast = useToast();
   const [joined, setJoined] = useState(!!ticket);
   const [busy, setBusy] = useState(false);
+  const [drawing, setDrawing] = useState(false);
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
   const image = giveaway.images[0]?.image_url;
 
+  // The backend has one deadline field, not a separate signup window and
+  // pickup window (docs/design/api-gaps.md §8) — it stands in for both here.
   const drawDeadline = giveaway.registered_deadline
     ? {
         kind: "giveaway-pickup" as const,
@@ -46,24 +53,42 @@ export function GiveawayDetail({
       }
     : undefined;
 
-  const pickupWindow =
-    giveaway.pickup_start_date && giveaway.pickup_end_date
-      ? `${new Date(giveaway.pickup_start_date).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-        })} – ${new Date(giveaway.pickup_end_date).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-        })}`
-      : null;
+  const pickupBy = giveaway.registered_deadline
+    ? new Date(giveaway.registered_deadline).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+      })
+    : null;
 
   async function join() {
     setBusy(true);
-    // POST /giveaways/{id}/join
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    setJoined(true);
-    toast.show("Registered. Wait for the draw.");
+    try {
+      await joinGiveaway(giveaway.giveaway_id);
+      setJoined(true);
+      toast.show("Registered. Wait for the draw.");
+      router.refresh();
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not register. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runDraw() {
+    setDrawing(true);
+    try {
+      const recipients = await drawGiveaway(giveaway.giveaway_id);
+      toast.show(
+        recipients.length > 0
+          ? "Draw complete. The winner has been notified."
+          : "Draw complete.",
+      );
+      router.refresh();
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not run the draw.");
+    } finally {
+      setDrawing(false);
+    }
   }
 
   return (
@@ -111,10 +136,10 @@ export function GiveawayDetail({
             <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
             {giveaway.pickup_location}
           </p>
-          {pickupWindow ? (
+          {pickupBy ? (
             <p className="flex items-center gap-2 text-[0.9375rem]">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              Collect {pickupWindow}
+              Collect by {pickupBy}
             </p>
           ) : null}
           {giveaway.registered_count ? (
@@ -153,6 +178,29 @@ export function GiveawayDetail({
               <Users className="size-5" />
               Choose recipients
             </LinkButton>
+          ) : giveaway.allocation_method === "Random" ? (
+            giveaway.status === "Active" ? (
+              <div className="flex flex-col gap-2">
+                <Button size="lg" block isLoading={drawing} onPress={runDraw}>
+                  <Dices className="size-5" />
+                  Run the draw
+                </Button>
+                <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                  Picks one entrant at random and closes registration. This
+                  cannot be undone.
+                </p>
+              </div>
+            ) : (
+              <Surface
+                shape="card"
+                elevation="flat"
+                className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4"
+              >
+                <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+                  The draw has run. A chat room is open with the winner.
+                </p>
+              </Surface>
+            )
           ) : (
             <Surface
               shape="card"
@@ -163,8 +211,8 @@ export function GiveawayDetail({
                 This is your giveaway. Nothing for you to do.
               </p>
               <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
-                {method.hint}. Recipients are allocated automatically, and a
-                chat room opens with each of them so you can arrange collection.
+                {method.hint}. A chat room opens with each entrant as they
+                register so you can arrange collection.
               </p>
             </Surface>
           )
@@ -174,7 +222,7 @@ export function GiveawayDetail({
             <LinkButton
               size="lg"
               block
-              href={`/giveaway/ticket/${ticket.ticket_id}`}
+              href={`/giveaway/${giveaway.giveaway_id}/ticket/${ticket.ticket_id}`}
             >
               Open my ticket
             </LinkButton>

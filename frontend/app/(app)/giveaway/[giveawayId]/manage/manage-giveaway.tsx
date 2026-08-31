@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ScanLine, Users } from "lucide-react";
 
@@ -13,22 +14,32 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
-import type { Entrant } from "@/lib/api/fixtures";
+import { scanTicketQr, selectRecipients } from "@/lib/actions/giveaways";
+import type { ApiError } from "@/lib/api/client";
+import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
+import { decodeTicketQr } from "@/lib/giveaway-qr";
 import { ALLOCATION_METHOD } from "@/lib/status";
 
 /**
  * Manual giveaways only — the route 404s for the other two methods, because
  * FirstCome allocates on registration and Random is drawn by the system, and
  * neither leaves a giver anything to decide.
+ *
+ * `entrants` is `GET /giveaways/{id}/recipients` before this giveaway has
+ * been drawn — every row is still `selected` (the backend's `Waiting`) until
+ * `select()` runs. There is no registration timestamp in that response, so
+ * the list is shown in the order the API returns it (ticket id ascending,
+ * i.e. join order) rather than a fabricated clock time.
  */
 export function ManageGiveaway({
   giveaway,
   entrants,
 }: {
   giveaway: GiveawayPost;
-  entrants: Entrant[];
+  entrants: RecipientRow[];
 }) {
+  const router = useRouter();
   const toast = useToast();
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -53,12 +64,33 @@ export function ManageGiveaway({
     });
   }
 
-  async function run(message: string) {
+  async function confirmSelection() {
     setBusy(true);
-    // POST /giveaways/{id}/draw  or  /giveaways/{id}/select
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show(message);
+    try {
+      const chosen = await selectRecipients(giveaway.giveaway_id, [...picked]);
+      toast.show(
+        `Selected ${chosen.length} recipient${chosen.length === 1 ? "" : "s"}. Chat rooms are open.`,
+      );
+      router.push(`/giveaway/${giveaway.giveaway_id}`);
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not confirm selection.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleScan(raw: string) {
+    const decoded = decodeTicketQr(raw);
+    if (!decoded) {
+      toast.show("That QR is not a giveaway ticket.");
+      return;
+    }
+    try {
+      const valid = await scanTicketQr(decoded.giveawayId, decoded.ticketId, decoded.token);
+      toast.show(valid ? "Ticket accepted. Handover recorded." : "This QR is not valid.");
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not check that QR.");
+    }
   }
 
   return (
@@ -98,7 +130,7 @@ export function ManageGiveaway({
           />
         ) : (
           <ul className="flex flex-col gap-2">
-            {entrants.map((e) => (
+            {entrants.map((e, index) => (
               <li key={e.receiver_id}>
                 <Surface
                   as="div"
@@ -121,15 +153,15 @@ export function ManageGiveaway({
                     />
                   </div>
 
-                  <time
-                    dateTime={e.registered_at}
+                  {/* No registration timestamp in the API response — the
+                      list itself is already in join order (ticket id
+                      ascending), so a rank stands in for a clock time. */}
+                  <span
+                    data-numeric
                     className="shrink-0 text-[0.75rem] text-ink-muted"
                   >
-                    {new Date(e.registered_at).toLocaleTimeString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </time>
+                    #{index + 1}
+                  </span>
                 </Surface>
               </li>
             ))}
@@ -154,7 +186,7 @@ export function ManageGiveaway({
             <QrScanner
               title="Scan to confirm the handover"
               hint="Point the camera at the recipient's ticket QR"
-              onScan={() => toast.show("Ticket accepted. Handover recorded.")}
+              onScan={handleScan}
             />
           </Overlay>
         </OverlayTrigger>
@@ -162,11 +194,7 @@ export function ManageGiveaway({
         <Button
           isDisabled={picked.size === 0}
           isLoading={busy}
-          onPress={() =>
-            run(
-              `Selected ${picked.size} recipient${picked.size === 1 ? "" : "s"}. Chat rooms are open.`,
-            )
-          }
+          onPress={confirmSelection}
         >
           <Users className="size-4" />
           Confirm {picked.size} recipient{picked.size === 1 ? "" : "s"}

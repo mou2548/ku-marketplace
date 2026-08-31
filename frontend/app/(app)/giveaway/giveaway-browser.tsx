@@ -77,7 +77,7 @@ export function GiveawayBrowser({
             <ul className="flex flex-col gap-2 pt-4">
               {tickets.map((t) => (
                 <li key={t.ticket_id}>
-                  <Link href={`/giveaway/ticket/${t.ticket_id}`}>
+                  <Link href={`/giveaway/${t.giveaway_id}/ticket/${t.ticket_id}`}>
                     <Surface
                       as="div"
                       shape="card"

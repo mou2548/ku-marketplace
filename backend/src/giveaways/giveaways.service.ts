@@ -14,17 +14,12 @@ export interface GiveawayImage {
 }
 
 export interface CreateGiveawayPayload {
-  giver_id: number;
   item_name?: string;
   description?: string;
   pickup_location?: string;
   allocation_method?: string;
   pickup_deadline?: string;
   images?: GiveawayImage[];
-}
-
-export interface JoinGiveawayPayload {
-  receiver_id: number;
 }
 
 export interface SelectRecipientsPayload {
@@ -53,7 +48,7 @@ export class GiveawaysService {
     return `${prefix}_${String(value).padStart(3, '0')}`;
   }
 
-  async create(payload: CreateGiveawayPayload) {
+  async create(payload: CreateGiveawayPayload, giverId: number) {
     if (
       !payload.item_name ||
       !payload.pickup_location ||
@@ -67,15 +62,6 @@ export class GiveawaysService {
       !['FirstCome', 'Random', 'Manual'].includes(payload.allocation_method)
     ) {
       throw new BadRequestException('allocation_method ไม่ถูกต้อง');
-    }
-    const giverId = payload.giver_id;
-    if (!Number.isInteger(giverId) || giverId < 1) {
-      throw new BadRequestException(
-        'giver_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
-      );
-    }
-    if (!(await this.prisma.user.findUnique({ where: { userId: giverId } }))) {
-      throw new NotFoundException('ไม่พบผู้แจก');
     }
     const deadline = payload.pickup_deadline
       ? new Date(payload.pickup_deadline)
@@ -149,14 +135,25 @@ export class GiveawaysService {
     return this.serializeGiveaway(giveaway, giveaway._count.tickets);
   }
 
-  async join(id: string, payload: JoinGiveawayPayload) {
+  /**
+   * Not in the original endpoint table — added so the browse screen can list
+   * real giveaways instead of reading from frontend mock data.
+   */
+  async findAll() {
+    const giveaways = await this.prisma.giveawayPost.findMany({
+      include: {
+        images: { orderBy: { displayOrder: 'asc' } },
+        _count: { select: { tickets: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return giveaways.map((giveaway) =>
+      this.serializeGiveaway(giveaway, giveaway._count.tickets),
+    );
+  }
+
+  async join(id: string, receiverId: number) {
     const giveawayId = this.id(id, 'giveaway');
-    const receiverId = payload.receiver_id;
-    if (!Number.isInteger(receiverId) || receiverId < 1) {
-      throw new BadRequestException(
-        'receiver_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
-      );
-    }
     const giveaway = await this.prisma.giveawayPost.findUnique({
       where: { giveawayId },
     });

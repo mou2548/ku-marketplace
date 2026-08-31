@@ -148,7 +148,7 @@ export function HistoryList({
           <ul className="flex flex-col gap-2">
             {tickets.map((ticket) => (
               <li key={ticket.ticket_id}>
-                <Link href={`/giveaway/ticket/${ticket.ticket_id}`}>
+                <Link href={`/giveaway/${ticket.giveaway_id}/ticket/${ticket.ticket_id}`}>
                   <Surface
                     as="div"
                     shape="card"

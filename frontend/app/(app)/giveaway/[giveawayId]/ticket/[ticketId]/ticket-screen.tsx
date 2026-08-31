@@ -1,35 +1,52 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Clock, MapPin } from "lucide-react";
 
+import { Button } from "@/components/kit/button";
 import { ChatThread } from "@/components/kit/chat-thread";
+import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { useToast } from "@/components/kit/toast";
+import { forfeitTicket, generateTicketQr } from "@/lib/actions/giveaways";
+import type { ApiError } from "@/lib/api/client";
 import type { GiveawayTicket } from "@/lib/api/types";
 import { TICKET_STATUS } from "@/lib/status";
 
 export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
   const { giveaway } = ticket;
+  const router = useRouter();
+  const toast = useToast();
+  const [forfeiting, setForfeiting] = useState(false);
 
-  // POST /giveaways/{id}/tickets/{ticket_id}/qr/generate
   const generate = useCallback(
-    async () => `ku-gv-${ticket.ticket_id}-${Date.now()}`,
-    [ticket.ticket_id],
+    () => generateTicketQr(giveaway.giveaway_id, ticket.ticket_id),
+    [giveaway.giveaway_id, ticket.ticket_id],
   );
 
-  const pickupWindow =
-    giveaway.pickup_start_date && giveaway.pickup_end_date
-      ? `${new Date(giveaway.pickup_start_date).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-        })} – ${new Date(giveaway.pickup_end_date).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-        })}`
-      : null;
+  async function forfeit() {
+    setForfeiting(true);
+    try {
+      await forfeitTicket(ticket.ticket_id);
+      toast.show("Ticket forfeited.");
+      router.push(`/giveaway/${giveaway.giveaway_id}`);
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not forfeit. Try again.");
+    } finally {
+      setForfeiting(false);
+    }
+  }
+
+  const pickupBy = giveaway.registered_deadline
+    ? new Date(giveaway.registered_deadline).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+      })
+    : null;
 
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
@@ -53,10 +70,10 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
             <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
             {giveaway.pickup_location}
           </p>
-          {pickupWindow ? (
+          {pickupBy ? (
             <p className="flex items-center gap-2 text-[0.9375rem]">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              Collect {pickupWindow}
+              Collect by {pickupBy}
             </p>
           ) : null}
           <TrustBadge
@@ -66,6 +83,31 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
             size="sm"
           />
         </Surface>
+
+        {ticket.status === "Waiting" ? (
+          <OverlayTrigger>
+            <Button variant="secondary">Forfeit this ticket</Button>
+            <Overlay
+              title="Forfeit this ticket?"
+              description="You will lose your place. This cannot be undone, and it will not be offered to anyone else."
+              footer={
+                <>
+                  <Button variant="ghost" slot="close">
+                    Keep my ticket
+                  </Button>
+                  <Button variant="danger" isLoading={forfeiting} onPress={forfeit}>
+                    Yes, forfeit
+                  </Button>
+                </>
+              }
+            >
+              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+                Forfeiting frees you from collecting {giveaway.item_name}, but
+                the giver will not re-open your place to anyone else.
+              </p>
+            </Overlay>
+          </OverlayTrigger>
+        ) : null}
       </div>
 
       {/* Flow 3: only the giver may type in a giveaway room. Receivers read the

@@ -24,6 +24,8 @@ import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { createGiveaway } from "@/lib/actions/giveaways";
+import type { ApiError } from "@/lib/api/client";
 import type { Item } from "@/lib/api/types";
 import {
   ALLOCATION_METHOD,
@@ -125,22 +127,52 @@ export function PostComposer({
 
   async function publish() {
     setBusy(true);
-    // POST /giveaways or POST /posts, once per selected item. A giveaway
-    // carries the item's name and description across because the giveaway
-    // table has no item_id to point at (docs/design/api-gaps.md).
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
 
     if (isGiveaway) {
-      toast.show(
-        picked.size === 1
-          ? "Giveaway posted. Registration is open."
-          : `Posted ${picked.size} giveaways. Registration is open.`,
-      );
-      router.push("/giveaway");
+      // POST /giveaways, once per selected item. A giveaway carries the
+      // item's name, description and primary image across because the
+      // giveaway table has no item_id to point at (docs/design/api-gaps.md
+      // §1). `pickupFrom`/`pickupTo` have nowhere to go — the backend has one
+      // deadline field, not a signup window and a separate pickup window
+      // (api-gaps.md §8) — so only `closeAt` is sent.
+      const pickedItems = items.filter((i) => picked.has(i.item_id));
+      try {
+        const created = [];
+        for (const item of pickedItems) {
+          const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
+          created.push(
+            await createGiveaway({
+              item_name: item.name,
+              description: description || item.description || undefined,
+              pickup_location: place,
+              allocation_method: method,
+              pickup_deadline: closeAt ? closeAt.toDate(tz).toISOString() : undefined,
+              images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
+            }),
+          );
+        }
+        toast.show(
+          created.length === 1
+            ? "Giveaway posted. Registration is open."
+            : `Posted ${created.length} giveaways. Registration is open.`,
+        );
+        // Straight to the new post when there's exactly one — /giveaway's
+        // "Open" tab lists real giveaways now (getGiveaways in
+        // lib/api/giveaways.ts), but jumping to the post itself skips a
+        // redundant round trip through the list.
+        router.push(created.length === 1 ? `/giveaway/${created[0].giveaway_id}` : "/giveaway");
+      } catch (error) {
+        toast.show((error as ApiError).message ?? "Could not post the giveaway.");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
+    // POST /posts is not wired yet — out of scope for the giveaway work this
+    // composer was touched for.
+    await new Promise((r) => setTimeout(r, 400));
+    setBusy(false);
     toast.show(
       picked.size === 1
         ? "Listed. It is live in the market now."
