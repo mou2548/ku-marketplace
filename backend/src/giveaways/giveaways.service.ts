@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageOverride } from '../dto/message-override.dto';
@@ -19,6 +21,8 @@ export interface CreateGiveawayPayload {
   description?: string;
   pickup_location?: string;
   allocation_method?: string;
+  quantity?: number;
+  registration_deadline?: string;
   pickup_deadline?: string;
   images?: GiveawayImage[];
 }
@@ -39,8 +43,14 @@ export interface ScanQrPayload {
   token?: string;
 }
 
+export interface ConfirmQrPayload {
+  token?: string;
+}
+
 @Injectable()
 export class GiveawaysService {
+  private readonly logger = new Logger(GiveawaysService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private id(value: string, prefix: string) {
@@ -77,11 +87,24 @@ export class GiveawaysService {
     if (!(await this.prisma.user.findUnique({ where: { userId: giverId } }))) {
       throw new NotFoundException('ไม่พบผู้แจก');
     }
+
+    const quantity = payload.quantity ?? 1;
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new BadRequestException('quantity ต้องเป็นจำนวนเต็มบวก');
+    }
+
     const deadline = payload.pickup_deadline
       ? new Date(payload.pickup_deadline)
       : null;
     if (deadline && Number.isNaN(deadline.getTime())) {
       throw new BadRequestException('pickup_deadline ไม่ถูกต้อง');
+    }
+
+    const regDeadline = payload.registration_deadline
+      ? new Date(payload.registration_deadline)
+      : null;
+    if (regDeadline && Number.isNaN(regDeadline.getTime())) {
+      throw new BadRequestException('registration_deadline ไม่ถูกต้อง');
     }
 
     const giveaway = await this.prisma.giveawayPost.create({
@@ -91,6 +114,8 @@ export class GiveawaysService {
         description: payload.description,
         pickupLocation: payload.pickup_location,
         allocationMethod: payload.allocation_method,
+        quantity,
+        registrationDeadline: regDeadline,
         pickupDeadline: deadline,
         images: {
           create: (payload.images ?? []).map((image) => ({
@@ -112,6 +137,8 @@ export class GiveawaysService {
       pickupLocation: string;
       giverId: number;
       allocationMethod: string;
+      quantity: number;
+      registrationDeadline: Date | null;
       pickupDeadline: Date | null;
       status: string | null;
       createdAt: Date | null;
@@ -126,6 +153,8 @@ export class GiveawaysService {
       pickup_location: giveaway.pickupLocation,
       giver_id: giveaway.giverId,
       allocation_method: giveaway.allocationMethod,
+      quantity: giveaway.quantity,
+      registration_deadline: giveaway.registrationDeadline,
       pickup_deadline: giveaway.pickupDeadline,
       participant_count: participantCount,
       status: giveaway.status,
@@ -163,6 +192,15 @@ export class GiveawaysService {
     if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
     if (giveaway.status !== 'Active')
       throw new ConflictException('กิจกรรมนี้ปิดรับแล้ว');
+
+    // เช็ค registration_deadline
+    if (
+      giveaway.registrationDeadline &&
+      new Date() > giveaway.registrationDeadline
+    ) {
+      throw new ConflictException('เลยกำหนดเวลาลงทะเบียนแล้ว');
+    }
+
     if (
       !(await this.prisma.user.findUnique({ where: { userId: receiverId } }))
     ) {
@@ -172,6 +210,20 @@ export class GiveawaysService {
       where: { giveawayId, receiverId },
     });
     if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
+
+    // เช็คโควต้าสำหรับ FirstCome
+    if (giveaway.allocationMethod === 'FirstCome') {
+      const activeCount = await this.prisma.giveawayTicket.count({
+        where: {
+          giveawayId,
+          status: { in: ['Waiting', 'Received'] },
+        },
+      });
+      if (activeCount >= giveaway.quantity) {
+        throw new ConflictException('สิทธิ์เต็มแล้ว');
+      }
+    }
+
     const ticket = await this.prisma.giveawayTicket.create({
       data: { giveawayId, receiverId, status: 'Waiting' },
     });
@@ -273,16 +325,44 @@ export class GiveawaysService {
     };
   }
 
+  /**
+   * Map สถานะตั๋วจาก DB ให้ครบ 4 สถานะตามสเปค
+   * DB เก็บแค่ 3 ค่า (Waiting, Received, Expired)
+   * แต่ถ้า Expired + qrToken === 'FORFEITED' → สละสิทธิ์
+   */
+  private resolveTicketStatus(ticket: {
+    status: string | null;
+    qrToken: string | null;
+  }): string {
+    if (ticket.status === 'Expired' && ticket.qrToken === 'FORFEITED') {
+      return 'forfeited';
+    }
+    switch (ticket.status) {
+      case 'Received':
+        return 'received';
+      case 'Expired':
+        return 'expired';
+      case 'Waiting':
+        return 'waiting';
+      default:
+        return 'selected';
+    }
+  }
+
   private asRecipient(ticket: {
     ticketId: number;
     receiverId: number;
     status: string | null;
+    qrToken?: string | null;
   }) {
     return {
       recipient_id: this.label('recipient', ticket.ticketId),
       receiver_id: ticket.receiverId,
       ticket_id: this.label('ticket', ticket.ticketId),
-      status: ticket.status === 'Received' ? 'received' : 'selected',
+      status: this.resolveTicketStatus({
+        status: ticket.status,
+        qrToken: ticket.qrToken ?? null,
+      }),
     };
   }
 
@@ -293,8 +373,9 @@ export class GiveawaysService {
     ) {
       throw new NotFoundException('ไม่พบโพสต์แจกของ');
     }
+    // ดึงตั๋วทุกสถานะเพื่อให้แดชบอร์ดเห็นครบ 4 สถานะ
     const tickets = await this.prisma.giveawayTicket.findMany({
-      where: { giveawayId, status: { in: ['Waiting', 'Received'] } },
+      where: { giveawayId },
       orderBy: { ticketId: 'asc' },
     });
     return {
@@ -310,9 +391,17 @@ export class GiveawaysService {
       where: { ticketId },
     });
     if (!ticket) throw new NotFoundException('ไม่พบผู้รับ');
+    if (ticket.status !== 'Waiting') {
+      throw new ConflictException('สถานะปัจจุบันไม่สามารถสละสิทธิ์ได้');
+    }
+    // เซ็ต status เป็น Expired (ค่าที่ DB ยอมรับ) + ใช้ qrToken เป็น flag
     await this.prisma.giveawayTicket.update({
       where: { ticketId },
-      data: { status: 'Expired', updatedAt: new Date() },
+      data: {
+        status: 'Expired',
+        qrToken: 'FORFEITED',
+        updatedAt: new Date(),
+      },
     });
     return {
       recipient_id: this.label('recipient', ticketId),
@@ -344,6 +433,10 @@ export class GiveawaysService {
     };
   }
 
+  /**
+   * สแกน QR — แค่ตรวจสอบความถูกต้อง ไม่เปลี่ยนสถานะ
+   * ต้องเรียก qrConfirm เพื่อยืนยันรับของจริง
+   */
   async qrScan(giveawayIdValue: string, ticketIdValue: string, token = '') {
     const giveawayId = this.id(giveawayIdValue, 'giveaway');
     const ticketId = this.id(ticketIdValue, 'ticket');
@@ -351,20 +444,92 @@ export class GiveawaysService {
       where: { ticketId, giveawayId },
     });
     if (!ticket) throw new NotFoundException('ไม่พบ ticket');
-    const valid =
-      Boolean(token) && ticket.qrToken === token && ticket.status === 'Waiting';
-    if (valid) {
-      await this.prisma.giveawayTicket.update({
-        where: { ticketId },
-        data: { status: 'Received', updatedAt: new Date() },
+
+    // เช็ควันหมดอายุ
+    const giveaway = await this.prisma.giveawayPost.findUnique({
+      where: { giveawayId },
+    });
+    if (giveaway?.pickupDeadline && new Date() > giveaway.pickupDeadline) {
+      return new MessageOverride('เลยกำหนดเวลารับของแล้ว', {
+        giveaway_id: this.label('giveaway', giveawayId),
+        ticket_id: this.label('ticket', ticketId),
+        valid: false,
+        status: 'expired',
+        checked_at: new Date(),
       });
     }
-    return new MessageOverride(valid ? 'ตรวจสอบ QR สำเร็จ' : 'QR ไม่ถูกต้อง', {
+
+    const valid =
+      Boolean(token) && ticket.qrToken === token && ticket.status === 'Waiting';
+
+    // ไม่เปลี่ยนสถานะ — แค่ตรวจสอบ
+    return new MessageOverride(valid ? 'QR ถูกต้อง รอยืนยัน' : 'QR ไม่ถูกต้อง', {
       giveaway_id: this.label('giveaway', giveawayId),
       ticket_id: this.label('ticket', ticketId),
       valid,
-      status: valid ? 'received' : 'invalid',
+      status: valid ? 'pending_confirm' : 'invalid',
       checked_at: new Date(),
     });
+  }
+
+  /**
+   * ยืนยันรับของหลังสแกน QR — เปลี่ยนสถานะเป็น Received
+   */
+  async qrConfirm(giveawayIdValue: string, ticketIdValue: string, token = '') {
+    const giveawayId = this.id(giveawayIdValue, 'giveaway');
+    const ticketId = this.id(ticketIdValue, 'ticket');
+    const ticket = await this.prisma.giveawayTicket.findFirst({
+      where: { ticketId, giveawayId },
+    });
+    if (!ticket) throw new NotFoundException('ไม่พบ ticket');
+
+    // เช็ควันหมดอายุ
+    const giveaway = await this.prisma.giveawayPost.findUnique({
+      where: { giveawayId },
+    });
+    if (giveaway?.pickupDeadline && new Date() > giveaway.pickupDeadline) {
+      throw new ConflictException('เลยกำหนดเวลารับของแล้ว');
+    }
+
+    const valid =
+      Boolean(token) && ticket.qrToken === token && ticket.status === 'Waiting';
+    if (!valid) {
+      throw new BadRequestException('QR ไม่ถูกต้องหรือตั๋วถูกใช้แล้ว');
+    }
+
+    await this.prisma.giveawayTicket.update({
+      where: { ticketId },
+      data: { status: 'Received', updatedAt: new Date() },
+    });
+
+    return new MessageOverride('ยืนยันรับของสำเร็จ', {
+      giveaway_id: this.label('giveaway', giveawayId),
+      ticket_id: this.label('ticket', ticketId),
+      valid: true,
+      status: 'received',
+      confirmed_at: new Date(),
+    });
+  }
+
+  /**
+   * Cron Job — ทุกชั่วโมง เปลี่ยนตั๋ว Waiting ที่เลยกำหนดรับของเป็น Expired
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async expireOverdueTickets() {
+    const now = new Date();
+    const result = await this.prisma.giveawayTicket.updateMany({
+      where: {
+        status: 'Waiting',
+        giveaway: {
+          pickupDeadline: { lt: now },
+        },
+      },
+      data: { status: 'Expired', updatedAt: now },
+    });
+    if (result.count > 0) {
+      this.logger.log(
+        `Expired ${result.count} overdue giveaway ticket(s)`,
+      );
+    }
   }
 }

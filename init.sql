@@ -141,6 +141,8 @@ CREATE TABLE "Giveaway_Post" (
     "pickup_location" VARCHAR(255) NOT NULL,
     "giver_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "allocation_method" VARCHAR(20) NOT NULL CHECK("allocation_method" IN ('FirstCome', 'Random', 'Manual')),
+    "quantity" INTEGER NOT NULL DEFAULT 1 CHECK("quantity" > 0),
+    "registration_deadline" TIMESTAMP,
     "pickup_deadline" TIMESTAMP,
     "giveaway_status" VARCHAR(20) DEFAULT 'Active' CHECK("giveaway_status" IN ('Active', 'Closed', 'Completed')),
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -328,12 +330,12 @@ INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time",
 (5, 6, '2026-08-15', '14:00:00', 'โรงอาหารกลาง 2', 'Rejected');
 
 -- 12. Giveaway_Post (5 posts)
-INSERT INTO "Giveaway_Post" ("item_name", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "giveaway_status") VALUES
-('ชีทสรุป Gen Chem พร้อมข้อสอบเก่า', 'แจกฟรีนิสิตปี 1 ครับ นัดรับที่ตึกเรียนรวม', 'ตึก LH1 ชั้น 1', 2, 'FirstCome', '2026-08-15 17:00:00', 'Active'),
-('เสื้อเชิ้ตนิสิตชาย ไซส์ L', 'สภาพดี 90% แจกเพราะสวมไม่ได้แล้ว', 'บาร์ใหม่', 3, 'Random', '2026-08-20 18:00:00', 'Active'),
-('หนังสือนิยายภาษาอังกฤษ 3 เล่ม', 'ส่งต่อให้คนที่สนใจฝึกภาษาครับ', 'หอพักนิสิตชาย', 4, 'Manual', '2026-08-18 20:00:00', 'Active'),
-('สายชาร์จ Type-C ความยาว 1m', 'ของใหม่ยังไม่ได้แกะกล่อง', 'หน้าตึก SC1', 5, 'FirstCome', '2026-08-10 12:00:00', 'Closed'),
-('กระติกน้ำเก็บความเย็น', 'แจกกระติกน้ำสภาพใช้งานได้ปกติ', 'บาร์ใหม่', 6, 'Random', '2026-08-05 15:00:00', 'Completed');
+INSERT INTO "Giveaway_Post" ("item_name", "description", "pickup_location", "giver_id", "allocation_method", "quantity", "registration_deadline", "pickup_deadline", "giveaway_status") VALUES
+('ชีทสรุป Gen Chem พร้อมข้อสอบเก่า', 'แจกฟรีนิสิตปี 1 ครับ นัดรับที่ตึกเรียนรวม', 'ตึก LH1 ชั้น 1', 2, 'FirstCome', 3, '2026-08-14 17:00:00', '2026-08-15 17:00:00', 'Active'),
+('เสื้อเชิ้ตนิสิตชาย ไซส์ L', 'สภาพดี 90% แจกเพราะสวมไม่ได้แล้ว', 'บาร์ใหม่', 3, 'Random', 1, '2026-08-18 18:00:00', '2026-08-20 18:00:00', 'Active'),
+('หนังสือนิยายภาษาอังกฤษ 3 เล่ม', 'ส่งต่อให้คนที่สนใจฝึกภาษาครับ', 'หอพักนิสิตชาย', 4, 'Manual', 1, '2026-08-16 20:00:00', '2026-08-18 20:00:00', 'Active'),
+('สายชาร์จ Type-C ความยาว 1m', 'ของใหม่ยังไม่ได้แกะกล่อง', 'หน้าตึก SC1', 5, 'FirstCome', 1, '2026-08-09 12:00:00', '2026-08-10 12:00:00', 'Closed'),
+('กระติกน้ำเก็บความเย็น', 'แจกกระติกน้ำสภาพใช้งานได้ปกติ', 'บาร์ใหม่', 6, 'Random', 1, '2026-08-04 15:00:00', '2026-08-05 15:00:00', 'Completed');
 
 -- 13. Giveaway_Ticket (5 tickets)
 INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status") VALUES
