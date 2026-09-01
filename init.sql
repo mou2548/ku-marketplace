@@ -136,12 +136,14 @@ CREATE TABLE "Appointment_Card" (
 CREATE TABLE "Giveaway_Post" (
     "giveaway_id" SERIAL PRIMARY KEY,
     "item_name" VARCHAR(255) NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1 CHECK("quantity" > 0),
     "description" TEXT,
     "pickup_location" VARCHAR(255) NOT NULL,
     "giver_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "allocation_method" VARCHAR(20) NOT NULL CHECK("allocation_method" IN ('FirstCome', 'Random', 'Manual')),
     "pickup_deadline" TIMESTAMP,
-    "giveaway_status" VARCHAR(20) DEFAULT 'Active' CHECK("giveaway_status" IN ('Active', 'Closed', 'Completed')),
+    "giveaway_status" VARCHAR(20) DEFAULT 'Active' CHECK("giveaway_status" IN ('Active', 'Closed', 'Completed', 'Waived')),
+    "register_deadline" TIMESTAMP,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
