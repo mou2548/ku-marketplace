@@ -24,7 +24,7 @@ import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { DeliveryCard } from "@/components/kit/delivery-card";
-import { TextInput } from "@/components/kit/field";
+import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
 import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
@@ -38,8 +38,25 @@ import {
   type Step,
 } from "@/components/kit/transaction-stepper";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import type { AppointmentSeed, Entrant } from "@/lib/api/fixtures";
-import type { GiveawayPost, Transaction, UserSummary } from "@/lib/api/types";
+import {
+  fetchAppointmentCards,
+  fetchChatHistory,
+  proposeAppointment,
+  respondToAppointment,
+  sendChatMessage,
+  uploadChatImage,
+} from "@/lib/actions/chat";
+import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
+import { ApiError } from "@/lib/api/client";
+import type {
+  AppointmentCardData,
+  ChatMessage,
+  Entrant,
+  GiveawayPost,
+  Transaction,
+  UserSummary,
+} from "@/lib/api/types";
+import { deriveAppointmentView } from "@/lib/appointment";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
 import {
@@ -53,20 +70,18 @@ import {
   type Deadline,
   type Party,
 } from "@/lib/status";
+import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
 
 /** Past this many, the rail sends the giver to the manage screen instead. */
 const ROSTER_LIMIT = 5;
 
-interface Message {
-  message_id: number;
-  sender_id: number;
-  content: string;
-  created_at: string;
-}
+/** No realtime transport exists — a short poll keeps the thread from going
+ * stale instead. See lib/use-polling.ts. */
+const CHAT_POLL_INTERVAL_MS = 5000;
 
 /** "Mon 10 Aug, 13:00 · สำนักหอสมุด มก." — the pinned one-liner. */
-function appointmentLabel(appointment: AppointmentSeed): string {
+function appointmentLabel(appointment: AppointmentCardData): string {
   const at = new Date(`${appointment.date}T${appointment.time}+07:00`);
   const when = at.toLocaleString("en-GB", {
     weekday: "short",
@@ -88,6 +103,8 @@ function ProposeMeetup({
   onPlaceChange,
   when,
   onWhenChange,
+  time,
+  onTimeChange,
   isBusy,
   onPropose,
 }: {
@@ -95,6 +112,8 @@ function ProposeMeetup({
   onPlaceChange: (value: string) => void;
   when: DateValue | null;
   onWhenChange: (value: DateValue | null) => void;
+  time: string;
+  onTimeChange: (value: string) => void;
   isBusy: boolean;
   onPropose: () => void;
 }) {
@@ -107,12 +126,26 @@ function ProposeMeetup({
         the same card from then on.
       </p>
 
-      <DatePickerField
-        label="Date"
-        value={when}
-        onChange={onWhenChange}
-        minValue={today(tz)}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <DatePickerField
+          label="Date"
+          value={when}
+          onChange={onWhenChange}
+          minValue={today(tz)}
+        />
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[0.875rem] leading-[1.65] font-medium text-ink-secondary">
+            Time
+          </span>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => onTimeChange(e.target.value)}
+            className={cn(controlBase, "h-12 px-3.5 text-[0.9375rem]")}
+          />
+        </label>
+      </div>
 
       <TextInput
         label="Where"
@@ -154,29 +187,57 @@ export function RoomScreen({
   viewerId,
   transaction,
   giveaway,
-  appointment,
+  appointment: initialAppointment,
   entrants,
-  messages,
+  messages: initialMessages,
 }: {
   summary: RoomSummary;
   viewerId: number;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
-  /** The Appointment_Card row for this deal, when one has been proposed. */
-  appointment?: AppointmentSeed;
+  /**
+   * The card currently worth showing for this deal — the most recent
+   * `Pending` proposal if one is awaiting a reply, else the pinned
+   * `Confirmed` card, else `undefined`. `lib/api/chat.ts`'s
+   * `deriveAppointmentView` computes this from the full history; there is no
+   * single "current appointment" row in the backend.
+   */
+  appointment?: AppointmentCardData;
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
-  messages: Message[];
+  messages: ChatMessage[];
 }) {
   const router = useRouter();
   const toast = useToast();
   const [tracking, setTracking] = useState("");
   const [place, setPlace] = useState("");
   const [when, setWhen] = useState<DateValue | null>(null);
+  const [time, setTime] = useState("12:00");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   /** The deal strip's disclosure — everything the desktop rail used to hold. */
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Real messages refresh on a poll (no realtime transport exists) — for
+  // either a transaction room or a giveaway group room. Appointments are a
+  // transaction-only concept.
+  const [messages, setMessages] = useState(initialMessages);
+  const [appointment, setAppointment] = useState(initialAppointment);
+
+  usePolling(() => {
+    if (transaction) {
+      const transactionId = transaction.transaction_id;
+      fetchChatHistory(transactionId).then(setMessages).catch(() => {});
+      fetchAppointmentCards(transactionId)
+        .then((cards) => {
+          const { pinned, pending } = deriveAppointmentView(cards);
+          setAppointment(pending ?? pinned);
+        })
+        .catch(() => {});
+    } else if (giveaway) {
+      fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
+    }
+  }, CHAT_POLL_INTERVAL_MS);
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -227,6 +288,78 @@ export function RoomScreen({
     setBusy(false);
     toast.show(message);
     if (next) router.push(next);
+  }
+
+  async function handleSend(text: string) {
+    try {
+      const sent = transaction
+        ? await sendChatMessage(transaction.transaction_id, { content: text })
+        : giveaway
+          ? await sendGiveawayMessage(giveaway.giveaway_id, { content: text })
+          : undefined;
+      if (sent) setMessages((prev) => [...prev, sent]);
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not send the message.");
+    }
+  }
+
+  /** §6.1 — up to 5 images per message; extra selections are dropped rather
+   * than rejected outright, since the picker has no way to un-select some. */
+  async function handleAttach(files: FileList) {
+    if (!transaction && !giveaway) return;
+    const selected = Array.from(files).slice(0, 5);
+    if (files.length > 5) toast.show("Only the first 5 photos were attached.");
+
+    setBusy(true);
+    try {
+      const image_urls: string[] = [];
+      for (const file of selected) {
+        const formData = new FormData();
+        formData.append("file", file);
+        image_urls.push(await uploadChatImage(formData));
+      }
+      const sent = transaction
+        ? await sendChatMessage(transaction.transaction_id, { image_urls })
+        : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
+      setMessages((prev) => [...prev, sent]);
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not send the photos.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePropose() {
+    if (!transaction || !when) return;
+    setBusy(true);
+    try {
+      const created = await proposeAppointment(transaction.transaction_id, {
+        date: when.toString(),
+        time,
+        location: place,
+      });
+      setAppointment(created);
+      setPlace("");
+      toast.show("Meetup proposed. Waiting on a reply.");
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not propose a meetup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAppointmentResponse(response: "confirm" | "reject") {
+    if (!appointment) return;
+    setBusy(true);
+    try {
+      const updated = await respondToAppointment(appointment.appointment_id, response);
+      setAppointment(updated);
+      toast.show(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not respond to the meetup.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function currentAction(): React.ReactNode {
@@ -536,8 +669,8 @@ export function RoomScreen({
                   place={appointment.location}
                   // Only the side that did not propose it can answer it.
                   awaitingViewer={appointment.proposed_by !== viewerId}
-                  onAccept={() => act("Meetup confirmed")}
-                  onDecline={() => act("Asked for another time")}
+                  onAccept={() => handleAppointmentResponse("confirm")}
+                  onDecline={() => handleAppointmentResponse("reject")}
                 />
               ) : (
                 /* Flow 1 puts the appointment after the payment is confirmed
@@ -548,8 +681,10 @@ export function RoomScreen({
                   onPlaceChange={setPlace}
                   when={when}
                   onWhenChange={setWhen}
+                  time={time}
+                  onTimeChange={setTime}
                   isBusy={busy}
-                  onPropose={() => act("Meetup proposed. Waiting on a reply.")}
+                  onPropose={handlePropose}
                 />
               )}
             </div>
@@ -565,7 +700,8 @@ export function RoomScreen({
         action={currentAction() ?? sellerQr}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-        onSend={async () => toast.show("Message sent")}
+        onSend={handleSend}
+        onAttach={handleAttach}
       />
     </div>
   );
@@ -594,7 +730,7 @@ function DealDetails({
 }: {
   transaction: Transaction;
   viewer: Party;
-  appointment?: AppointmentSeed;
+  appointment?: AppointmentCardData;
   counterpartyName: string;
   prompt?: ActorPrompt;
   steps: Step[];

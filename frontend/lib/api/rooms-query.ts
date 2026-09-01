@@ -1,77 +1,106 @@
-import {
-  getAppointment,
-  getEntrants,
-  getGiveaway,
-  getGiveaways,
-  getMessages,
-  getRoom,
-  getRoomMessages,
-  getRooms,
-  getTransaction,
-  getTransactions,
-  VIEWER_ID,
-  type AppointmentSeed,
-  type Entrant,
-} from "@/lib/api/fixtures";
-import type { GiveawayPost, Transaction } from "@/lib/api/types";
+import { getAppointmentCards, getChatHistory } from "@/lib/api/chat";
+import { getEntrants, getGiveawayMessages, getGiveaways, getMyTicket } from "@/lib/api/giveaways";
+import { getTransaction, getTransactions } from "@/lib/api/transactions";
+import type {
+  AppointmentCardData,
+  ChatMessage,
+  Entrant,
+  GiveawayPost,
+  Transaction,
+} from "@/lib/api/types";
+import { deriveAppointmentView } from "@/lib/appointment";
 import { buildRooms, type RoomSummary } from "@/lib/rooms";
-import { resolveTransactionActor } from "@/lib/status";
+import { resolveTransactionActor, type Party } from "@/lib/status";
+
+/**
+ * "My giveaways" — every giveaway the viewer gives, or ever held a ticket
+ * for. There is no bulk endpoint for either half, so this checks all of them
+ * (`getGiveaways()`, real but unfiltered) against the viewer one at a time.
+ * `getMyTicket` only sees `Waiting`/`Received` tickets (same limit as
+ * `GET /giveaways/{id}/recipients` — see docs/design/api-gaps.md §8), so a
+ * viewer whose ticket has since expired or been forfeited can drop out of
+ * their own inbox even though the backend still lets them open the room
+ * directly. Small, known gap — not worth a new endpoint for.
+ */
+async function myGiveaways(viewerId: number): Promise<GiveawayPost[]> {
+  const all = await getGiveaways();
+  const mine = await Promise.all(
+    all.map(async (giveaway) => {
+      if (giveaway.giver_id === viewerId) return giveaway;
+      const ticket = await getMyTicket(giveaway.giveaway_id, giveaway, viewerId).catch(
+        () => undefined,
+      );
+      return ticket ? giveaway : undefined;
+    }),
+  );
+  return mine.filter((g): g is GiveawayPost => g !== undefined);
+}
 
 /**
  * The inbox, assembled once and shared by every screen that shows it — the
  * `/chat` list, the room's own sidebar, and the nav badge. Building it in one
  * place is what stops the three from disagreeing, the same reason the action
  * count is derived once (docs/design/ia.md §7).
+ *
+ * There is no "list my chat rooms" endpoint (see `lib/rooms.ts`), so this
+ * starts from "my transactions" and "my giveaways" — both real — and reads
+ * each one's chat state to learn its `room_id` and last message.
  */
-export async function getRoomSummaries(): Promise<RoomSummary[]> {
-  const [rooms, transactions, giveaways] = await Promise.all([
-    getRooms(),
+export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]> {
+  const [transactions, giveaways] = await Promise.all([
     getTransactions(),
-    getGiveaways(),
+    myGiveaways(viewerId),
   ]);
 
-  // Whose turn it is, per transaction — the inbox sorts on it.
-  const needsYou = new Set<number>();
-  for (const tx of transactions) {
-    const viewer = tx.buyer_id === VIEWER_ID ? "buyer" : "seller";
-    if (tx.buyer_id !== VIEWER_ID && tx.seller_id !== VIEWER_ID) continue;
-    if (resolveTransactionActor(tx, viewer).actor === viewer) {
-      needsYou.add(tx.transaction_id);
-    }
-  }
+  const [transactionRooms, giveawayRooms] = await Promise.all([
+    Promise.all(
+      transactions.map(async (transaction) => {
+        const { roomId, messages } = await getChatHistory(transaction.transaction_id);
+        const last = messages.at(-1);
+        const viewer: Party = transaction.buyer_id === viewerId ? "buyer" : "seller";
+        return {
+          transaction,
+          roomId,
+          viewerId,
+          lastMessage: last?.content ?? undefined,
+          lastMessageAt: last?.created_at,
+          needsYou: resolveTransactionActor(transaction, viewer).actor === viewer,
+        };
+      }),
+    ),
+    Promise.all(
+      giveaways.map(async (giveaway) => {
+        const { roomId, messages } = await getGiveawayMessages(giveaway.giveaway_id);
+        const last = messages.at(-1);
+        return {
+          giveaway,
+          roomId,
+          lastMessage: last?.content ?? undefined,
+          lastMessageAt: last?.created_at,
+        };
+      }),
+    ),
+  ]);
 
-  const messages = (
-    await Promise.all(rooms.map((r) => getRoomMessages(r.room_id)))
-  ).flat();
-
-  return buildRooms({
-    rooms,
-    messages,
-    transactions,
-    giveaways,
-    viewerId: VIEWER_ID,
-    needsYouByTransaction: needsYou,
-  });
-}
-
-export interface RoomMessage {
-  message_id: number;
-  sender_id: number;
-  content: string;
-  created_at: string;
+  return buildRooms({ transactionRooms, giveawayRooms });
 }
 
 export interface RoomDetail {
   summary: RoomSummary;
-  messages: RoomMessage[];
+  messages: ChatMessage[];
   transaction?: Transaction;
   giveaway?: GiveawayPost;
-  appointment?: AppointmentSeed;
   /**
-   * Who else is in a giveaway room. `Chat_Room` stores no membership at all,
-   * so this is reconstructed from the giveaway's tickets — see
-   * docs/design/api-gaps.md. Absent for one-to-one transaction rooms, which
-   * have exactly two people and need no roster.
+   * The card currently worth showing — see `deriveAppointmentView` in
+   * `lib/appointment.ts`. Only ever set for a transaction room; a giveaway
+   * room has no `Appointment_Card` concept at all.
+   */
+  appointment?: AppointmentCardData;
+  /**
+   * Who else is in a giveaway room — real (`lib/api/giveaways.ts`'s
+   * `getEntrants`, `GET /giveaways/{id}/recipients`). A forfeited or expired
+   * ticket drops out of this list entirely rather than showing as
+   * `Not_Selected`. See docs/design/api-gaps.md §8.
    */
   entrants?: Entrant[];
 }
@@ -85,50 +114,41 @@ export interface RoomDetail {
  * loaded here.
  *
  * Returns `undefined` when the room does not exist, or when the viewer is not
- * part of it — `buildRooms` already drops rooms that are not theirs, so a
- * missing summary means exactly that.
+ * part of it — a failed real fetch (401/403/404) means exactly that, since
+ * every real endpoint behind this already checks membership itself.
  */
 export async function getRoomDetail(
   roomId: number,
+  viewerId: number,
   rooms?: RoomSummary[],
 ): Promise<RoomDetail | undefined> {
-  const room = await getRoom(roomId);
-  if (!room) return undefined;
-
-  const summaries = rooms ?? (await getRoomSummaries());
-  const summary = summaries.find((r) => r.room_id === room.room_id);
+  const summaries = rooms ?? (await getRoomSummaries(viewerId));
+  const summary = summaries.find((r) => r.room_id === roomId);
   if (!summary) return undefined;
 
-  const [messages, transaction, giveaway] = await Promise.all([
-    getRoomMessages(room.room_id),
-    room.transaction_id ? getTransaction(room.transaction_id) : undefined,
-    room.giveaway_id ? getGiveaway(room.giveaway_id) : undefined,
-  ]);
+  try {
+    if (summary.transaction) {
+      const transactionId = summary.transaction.transaction_id;
+      const [{ messages }, transaction, cards] = await Promise.all([
+        getChatHistory(transactionId),
+        getTransaction(transactionId),
+        getAppointmentCards(transactionId),
+      ]);
+      const { pinned, pending } = deriveAppointmentView(cards);
+      return { summary, transaction, appointment: pending ?? pinned, messages };
+    }
 
-  // The Appointment_Card row, if one has been proposed for this deal.
-  const appointment = transaction
-    ? await getAppointment(transaction.transaction_id)
-    : undefined;
+    if (summary.giveaway) {
+      const giveaway = summary.giveaway;
+      const [{ messages }, entrants] = await Promise.all([
+        getGiveawayMessages(giveaway.giveaway_id),
+        getEntrants(giveaway.giveaway_id, giveaway),
+      ]);
+      return { summary, giveaway, entrants, messages };
+    }
+  } catch {
+    return undefined;
+  }
 
-  // A giveaway room is the only kind with more than two people in it.
-  const entrants = giveaway
-    ? await getEntrants(giveaway.giveaway_id)
-    : undefined;
-
-  return {
-    summary,
-    transaction,
-    giveaway,
-    appointment,
-    entrants,
-    messages: messages.map((m) => ({
-      message_id: m.message_id,
-      sender_id: m.sender_id,
-      content: m.content,
-      created_at: m.created_at,
-    })),
-  };
+  return undefined;
 }
-
-/** Kept so callers that only need one transaction's thread do not import both. */
-export { getMessages };

@@ -71,14 +71,105 @@ is keyed on the **giveaway**, not the room, so it is only correct while a
 giveaway has at most one room. `RoomScreen` feeds it to `ChatThread` as the
 sender map and renders it in the rail.
 
-Two consequences a real backend should close:
+One consequence closed, one remaining:
 
-1. Message senders can only be named if they happen to be the giver or hold a
-   ticket. Anyone else in the thread falls back to "Unknown member".
-2. `buildRooms` in `lib/rooms.ts` still admits only the giver to a giveaway
-   room, so recipients cannot open the group chat they are in. That is
-   membership logic rather than a missing endpoint, and is deliberately left
-   alone here.
+1. **Closed.** `giveaways.service.ts` now has its own `GET/POST
+   /giveaways/{id}/message` (mirroring `transactions.service.ts`'s chat, same
+   `serializeUserSummary`/7-day-expiry shape), gated by `assertGiveawayMember`
+   — the giver, or anyone who ever held a ticket, not just the giver. Message
+   senders now carry a real `sender` summary. `RoomScreen`'s `onSend`/
+   `onAttach` are wired to this for real (`lib/actions/giveaways.ts`'s
+   `sendGiveawayMessage`/`fetchGiveawayMessages`); posting itself is still
+   giver-only (`giveawayReadOnly` in `room-screen.tsx`), but that's Flow 3's
+   own product rule, not a backend limit.
+2. **Still open.** `buildRooms`'s inputs now come from `lib/api/rooms-query.ts`'s
+   `myGiveaways()`, which admits both the giver and any ticket holder — but it
+   discovers "ticket holder" via `getMyTicket`, which (like
+   `GET /giveaways/{id}/recipients`) only ever sees `Waiting`/`Received`
+   tickets. Someone whose ticket expired or was forfeited drops out of their
+   own inbox, even though `assertGiveawayMember` (any ticket, any status)
+   still lets them open the room by URL. Would need either a
+   status-unfiltered "my tickets" endpoint or dropping the status filter on
+   `recipients` for this specific check.
+
+**Closed too.** The roster (`entrants`) now reads real data —
+`lib/api/giveaways.ts`'s `getEntrants(giveawayId, giveaway)` calls the real
+`GET /giveaways/{id}/recipients` and re-expands its flattened
+`"selected"|"received"` status through the same `deriveTicketStatus`
+pending-draw heuristic `getMyTicket` already used, then folds it down to the
+roster's `Registered | Selected`. `Not_Selected` is unreachable through this
+path (only a real `Expired` raw status produces it, and `getRecipients` drops
+those tickets before they get here) — the roster can still be shorter than a
+giveaway's full history, same limit as `getMyTicket` above.
+
+## 6a. Chat images have no storage-level expiry
+
+§6.2 asks for a 7-day *display* lifetime on chat images, "to control long-term
+storage cost." There is no column anywhere (`Chat_Message.image_urls` is a
+bare `JSONB` array) that marks a row as cleaned up, and adding one would mean
+touching `init.sql`/`schema.prisma`, which is off limits here. What exists
+instead: `transactions.service.ts`'s `serializeMessage` (and
+`giveaways.service.ts`'s `serializeGiveawayMessage`, same logic, duplicated
+rather than shared — matches this codebase's existing per-module convention,
+see `serializeUserSummary`) computes `Date.now() - created_at > 7 days` on
+every read and returns `image_urls: null` plus `images_expired: true` once
+that's true — the row and the underlying Cloudinary asset are both left
+alone. This satisfies the *display* half of §6.2 (`ChatThread` shows a notice
+instead of the image grid) but not the *storage cost* half — nothing ever
+actually deletes the Cloudinary asset, so the stated cost saving doesn't
+happen yet. A real fix needs either a schema field to mark a row as
+reclaimed, or a scheduled job that re-derives the same age check and calls
+Cloudinary's `destroy` on the public id parsed back out of the stored URL (no
+new column needed for that part) — out of scope here.
+
+## 6b. Appointment "pinned" is derived, not stored
+
+`Appointment_Card` has no boolean column for "this is the one pinned to the
+top" — §6.3's pin is computed client-side by `deriveAppointmentView`
+(`lib/appointment.ts`) from the full history `GET
+/transactions/{id}/appointment-cards` already returns: the most recent
+`Confirmed` card is the pin, and it survives a later `Rejected` re-proposal
+(the spec pins a confirmed card "until a new [appointment] replaces it", not
+until one is merely proposed again). A backend that wants to expose this
+directly would need either a `pinned` boolean toggled on confirm/superseded,
+or a dedicated "current appointment" endpoint — neither exists today.
+
+## 6c. There is no "list my chat rooms" endpoint
+
+Nothing anywhere returns "every `Chat_Room` this user is in" — a room is only
+ever created lazily, the first time its messages are read or written (see
+`getOrCreateChatRoom`/`getOrCreateGiveawayChatRoom`). So `getRoomSummaries`
+(`lib/api/rooms-query.ts`) builds the inbox from the other direction: it reads
+"my transactions" (`GET /transactions`, real) and "my giveaways"
+(`getGiveaways()` filtered client-side to giver-or-ticket-holder), then calls
+each one's message endpoint just to learn its `room_id` and last message.
+That's an N+1 fetch — fine at seed-data scale, not something a real inbox at
+scale should keep doing. A dedicated `GET /me/chat-rooms` (or similar) would
+let this collapse into one call; nothing invented here in its place.
+
+## 6d. `Transaction` responses were raw rows, not the documented shape
+
+`transaction.service.ts`'s `findAllForUser`/`findOneForUser` used to return
+the bare Prisma row — no `post`, no `item`, no `buyer`/`seller` summary — so
+nothing that actually needed `lib/api/types.ts`'s `Transaction` shape (chat
+chief among them) could be built from it. Both now `include` the full join
+(post → item → images, offer, buyer, seller) and serialize to the documented
+snake_case shape, including `final_amount` — not a stored column; derived as
+`post.price × quantity` for a straight purchase (`offer_id` null) or the
+offer's `additional_money` for a trade, matching `requiresPayment` in
+`lib/status.ts`. Every other method on that service (`ship`, `confirmDelivery`,
+the cancellation/refund flow, …) still reads through the original
+unincluded `findOneOrThrow` — they only ever touch scalar columns, so they
+were left alone.
+
+One real bug fell out of building this: `schema.prisma`'s `Post.deletedAt`
+(and `posts.service.ts`'s soft-delete queries against it) had no matching
+`deleted_at` column in the live database at all — every query touching `Post`
+failed outright, including this new one. The column now exists on the
+running database (added directly, since `init.sql` is off-limits to edit in
+this pass), but `init.sql` itself was **not** updated — a fresh
+`docker-compose up` from a clean volume will hit the same failure until
+someone adds `"deleted_at" TIMESTAMP` to `Post` there too.
 
 ## 7. Auth has no `/auth/refresh` endpoint
 
@@ -126,10 +217,15 @@ backend capability rather than reading one that exists:
   type are always `null` from the real API; `post-composer.tsx` still collects
   a pickup-open/pickup-close range from the giver, but only `closeAt` is ever
   sent, because there is nowhere to send the rest.
-- **No giver/entrant profile.** Same root cause as §3 — no `GET /users/{id}`.
-  `giveaways.ts`'s `placeholderUser` renders every giver and every entrant as
-  `User #<id>`. The Manual giver's "choose recipients" list (`ManageGiveaway`)
-  is therefore a list of ids and verification badges, not names.
+- **No standalone profile endpoint, but names are no longer fabricated.**
+  There is still no `GET /users/{id}` (§3 still applies for "what else is this
+  person selling?" and for a name-as-link), but `giveaways.service.ts` now
+  includes the `giver`/`receiver` relation and returns a `{ user_id, name,
+  isVerified }` summary alongside every id it names — `create`, `findAll`,
+  `detail`, `join`, `draw`, `select`, and `recipients` all carry it.
+  `giveaways.ts`'s `toUserSummary` reads that summary and only falls back to
+  `placeholderUser`'s `User #<id>` if it is missing. The Manual giver's
+  "choose recipients" list (`ManageGiveaway`) shows real names now, not ids.
 - **`ticket_status` is `Waiting | Received | Expired`, nothing else.**
   `Waiting` means "pending the draw" before a Random/Manual giveaway closes
   and "ready to collect" after — `deriveTicketStatus` in `giveaways.ts` tells

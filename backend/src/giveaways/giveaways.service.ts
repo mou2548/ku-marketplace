@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -34,6 +35,14 @@ export interface ScanQrPayload {
   token?: string;
 }
 
+export interface SendGiveawayMessagePayload {
+  content?: string;
+  image_urls?: string[];
+}
+
+/** §6.2 — same 7-day display lifetime as transactions.service.ts. */
+const IMAGE_DISPLAY_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class GiveawaysService {
   constructor(private readonly prisma: PrismaService) {}
@@ -46,6 +55,19 @@ export class GiveawaysService {
 
   private label(prefix: string, value: number) {
     return `${prefix}_${String(value).padStart(3, '0')}`;
+  }
+
+  private serializeUserSummary(user: {
+    userId: number;
+    firstNameEn: string;
+    lastNameEn: string;
+    emailVerifiedAt: Date | null;
+  }) {
+    return {
+      user_id: user.userId,
+      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      isVerified: user.emailVerifiedAt !== null,
+    };
   }
 
   async create(payload: CreateGiveawayPayload, giverId: number) {
@@ -85,7 +107,10 @@ export class GiveawaysService {
           })),
         },
       },
-      include: { images: { orderBy: { displayOrder: 'asc' } } },
+      include: {
+        images: { orderBy: { displayOrder: 'asc' } },
+        giver: true,
+      },
     });
     return this.serializeGiveaway(giveaway, 0);
   }
@@ -102,6 +127,12 @@ export class GiveawaysService {
       status: string | null;
       createdAt: Date | null;
       images: { imageUrl: string; displayOrder: number | null }[];
+      giver: {
+        userId: number;
+        firstNameEn: string;
+        lastNameEn: string;
+        emailVerifiedAt: Date | null;
+      };
     },
     participantCount: number,
   ) {
@@ -111,6 +142,7 @@ export class GiveawaysService {
       description: giveaway.description,
       pickup_location: giveaway.pickupLocation,
       giver_id: giveaway.giverId,
+      giver: this.serializeUserSummary(giveaway.giver),
       allocation_method: giveaway.allocationMethod,
       pickup_deadline: giveaway.pickupDeadline,
       participant_count: participantCount,
@@ -128,6 +160,7 @@ export class GiveawaysService {
       where: { giveawayId: this.id(id, 'giveaway') },
       include: {
         images: { orderBy: { displayOrder: 'asc' } },
+        giver: true,
         _count: { select: { tickets: true } },
       },
     });
@@ -143,6 +176,7 @@ export class GiveawaysService {
     const giveaways = await this.prisma.giveawayPost.findMany({
       include: {
         images: { orderBy: { displayOrder: 'asc' } },
+        giver: true,
         _count: { select: { tickets: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -171,6 +205,7 @@ export class GiveawaysService {
     if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
     const ticket = await this.prisma.giveawayTicket.create({
       data: { giveawayId, receiverId, status: 'Waiting' },
+      include: { receiver: true },
     });
     return this.serializeTicket(ticket);
   }
@@ -181,11 +216,18 @@ export class GiveawaysService {
     receiverId: number;
     status: string | null;
     updatedAt: Date | null;
+    receiver: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
   }) {
     return {
       ticket_id: this.label('ticket', ticket.ticketId),
       giveaway_id: this.label('giveaway', ticket.giveawayId),
       receiver_id: ticket.receiverId,
+      receiver: this.serializeUserSummary(ticket.receiver),
       status: ticket.status,
       updated_at: ticket.updatedAt,
     };
@@ -203,6 +245,7 @@ export class GiveawaysService {
       }
       const tickets = await tx.giveawayTicket.findMany({
         where: { giveawayId, status: 'Waiting' },
+        include: { receiver: true },
       });
       if (tickets.length === 0)
         throw new ConflictException('ยังไม่มีผู้เข้าร่วมที่รอจับฉลาก');
@@ -244,6 +287,7 @@ export class GiveawaysService {
       }
       const tickets = await tx.giveawayTicket.findMany({
         where: { giveawayId, receiverId: { in: uniqueIds }, status: 'Waiting' },
+        include: { receiver: true },
       });
       if (tickets.length !== uniqueIds.length) {
         throw new NotFoundException('ผู้รับบางคนไม่มี ticket ที่รอการเลือก');
@@ -274,10 +318,17 @@ export class GiveawaysService {
     ticketId: number;
     receiverId: number;
     status: string | null;
+    receiver: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
   }) {
     return {
       recipient_id: this.label('recipient', ticket.ticketId),
       receiver_id: ticket.receiverId,
+      receiver: this.serializeUserSummary(ticket.receiver),
       ticket_id: this.label('ticket', ticket.ticketId),
       status: ticket.status === 'Received' ? 'received' : 'selected',
     };
@@ -292,6 +343,7 @@ export class GiveawaysService {
     }
     const tickets = await this.prisma.giveawayTicket.findMany({
       where: { giveawayId, status: { in: ['Waiting', 'Received'] } },
+      include: { receiver: true },
       orderBy: { ticketId: 'asc' },
     });
     return {
@@ -363,5 +415,114 @@ export class GiveawaysService {
       status: valid ? 'received' : 'invalid',
       checked_at: new Date(),
     });
+  }
+
+  /**
+   * §6 Chat & Image System, extended to giveaways. `transactions.service.ts`
+   * only ever wired this for a 1:1 deal room — a giveaway room is a group
+   * chat (the giver plus every entrant, see frontend/docs/design/api-gaps.md
+   * §6), so membership here is "the giver, or anyone who ever held a ticket",
+   * not a party-of-two check.
+   */
+  private async assertGiveawayMember(giveawayId: number, userId: number) {
+    const giveaway = await this.prisma.giveawayPost.findUnique({
+      where: { giveawayId },
+    });
+    if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
+    if (giveaway.giverId === userId) return;
+    const ticket = await this.prisma.giveawayTicket.findFirst({
+      where: { giveawayId, receiverId: userId },
+    });
+    if (!ticket) {
+      throw new ForbiddenException('คุณไม่ได้อยู่ในห้องแชทนี้');
+    }
+  }
+
+  private async getOrCreateGiveawayChatRoom(giveawayId: number, userId: number) {
+    await this.assertGiveawayMember(giveawayId, userId);
+    let room = await this.prisma.chatRoom.findFirst({ where: { giveawayId } });
+    if (!room) {
+      room = await this.prisma.chatRoom.create({ data: { giveawayId } });
+    }
+    return room;
+  }
+
+  /** Same shape as `transactions.service.ts`'s `serializeMessage`. */
+  private serializeGiveawayMessage(message: {
+    messageId: number;
+    roomId: number;
+    senderId: number;
+    content: string | null;
+    imageUrls: unknown;
+    createdAt: Date | null;
+    sender: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
+  }) {
+    const createdAt = message.createdAt ?? new Date();
+    const expired = Date.now() - createdAt.getTime() > IMAGE_DISPLAY_LIFETIME_MS;
+    const hasImages = Array.isArray(message.imageUrls) && message.imageUrls.length > 0;
+
+    return {
+      message_id: message.messageId,
+      room_id: message.roomId,
+      sender_id: message.senderId,
+      sender: this.serializeUserSummary(message.sender),
+      content: message.content,
+      image_urls: hasImages && !expired ? (message.imageUrls as string[]) : null,
+      images_expired: hasImages && expired,
+      created_at: message.createdAt,
+    };
+  }
+
+  /**
+   * GET /giveaways/{id}/message. Wrapped in `{ room_id, messages }` — same
+   * reason as `transactions.service.ts`'s `getChatHistory`: a brand-new room
+   * with zero messages still needs to report its `room_id`.
+   */
+  async getGiveawayMessages(idValue: string, userId: number) {
+    const giveawayId = this.id(idValue, 'giveaway');
+    const room = await this.getOrCreateGiveawayChatRoom(giveawayId, userId);
+    const messages = await this.prisma.chatMessage.findMany({
+      where: { roomId: room.roomId },
+      include: { sender: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      room_id: room.roomId,
+      messages: messages.map((message) => this.serializeGiveawayMessage(message)),
+    };
+  }
+
+  /** POST /giveaways/{id}/message — max 5 images (§6.1), enforced in the DTO. */
+  async sendGiveawayMessage(
+    idValue: string,
+    payload: SendGiveawayMessagePayload,
+    userId: number,
+  ) {
+    const { content, image_urls } = payload;
+    if (!content && (!image_urls || image_urls.length === 0)) {
+      throw new BadRequestException('ข้อความต้องมี content หรือ image_urls อย่างน้อยหนึ่งอย่าง');
+    }
+    if (image_urls && image_urls.length > 5) {
+      throw new BadRequestException('ส่งรูปภาพได้สูงสุด 5 รูปต่อข้อความ');
+    }
+
+    const giveawayId = this.id(idValue, 'giveaway');
+    const room = await this.getOrCreateGiveawayChatRoom(giveawayId, userId);
+
+    const message = await this.prisma.chatMessage.create({
+      data: {
+        roomId: room.roomId,
+        senderId: userId,
+        content: content || null,
+        imageUrls: image_urls ?? undefined,
+      },
+      include: { sender: true },
+    });
+    return this.serializeGiveawayMessage(message);
   }
 }

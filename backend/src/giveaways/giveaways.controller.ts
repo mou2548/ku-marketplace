@@ -14,6 +14,7 @@ import type {
   ForfeitPayload,
   ScanQrPayload,
   SelectRecipientsPayload,
+  SendGiveawayMessagePayload,
 } from './giveaways.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
@@ -102,5 +103,30 @@ export class GiveawaysController {
     @Body() body: ScanQrPayload,
   ) {
     return this.giveawaysService.qrScan(id, ticketId, body.token);
+  }
+
+  /**
+   * §6, extended — the giver plus every entrant read/write here, unlike a
+   * transaction's 1:1 room. See `assertGiveawayMember` in the service.
+   */
+  @Get('giveaways/:id/message')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ดึงข้อความสำเร็จ')
+  getGiveawayMessages(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.getGiveawayMessages(id, user.userId);
+  }
+
+  @Post('giveaways/:id/message')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ส่งข้อความสำเร็จ')
+  sendGiveawayMessage(
+    @Param('id') id: string,
+    @Body() body: SendGiveawayMessagePayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.sendGiveawayMessage(id, body, user.userId);
   }
 }

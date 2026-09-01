@@ -7,15 +7,18 @@ import {
   ParseIntPipe,
   Post,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import { AppointmentCardsService } from './appointment-cards.service';
 import { RespondAppointmentDto } from './dto/respond-appointment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
+import { ClassValidatorPipe } from '../common/pipes/class-validator.pipe';
 
 @Controller('appointment-cards')
 @UseGuards(JwtAuthGuard)
+@UsePipes(ClassValidatorPipe)
 export class AppointmentCardsController {
   constructor(
     private readonly appointmentCardsService: AppointmentCardsService,

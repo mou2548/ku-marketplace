@@ -28,6 +28,9 @@ export interface ChatMessage {
   sender_id: number;
   content?: string | null;
   image_urls?: string[] | null;
+  /** §6.2 — past the 7-day display lifetime, `image_urls` is null and this
+   * is true; shown as a notice instead of the (no longer sent) image grid. */
+  images_expired?: boolean;
   created_at: string;
 }
 
@@ -171,7 +174,11 @@ export function ChatThread({
                     />
                   ) : null}
 
-                  {m.image_urls?.length ? (
+                  {m.images_expired ? (
+                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-[0.8125rem] text-ink-muted italic">
+                      Photos from this message have expired and are no longer shown.
+                    </p>
+                  ) : m.image_urls?.length ? (
                     <div className="grid grid-cols-2 gap-1.5">
                       {m.image_urls.slice(0, 5).map((url) => (
                         <OverlayTrigger key={url}>

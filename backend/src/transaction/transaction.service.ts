@@ -35,13 +35,171 @@ export class TransactionService {
     private readonly redis: RedisService,
   ) {}
 
-  findAllForUser(userId: number) {
-    return this.prisma.transaction.findMany({
+  private serializeUserSummary(user: {
+    userId: number;
+    firstNameEn: string;
+    lastNameEn: string;
+    emailVerifiedAt: Date | null;
+  }) {
+    return {
+      user_id: user.userId,
+      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      isVerified: user.emailVerifiedAt !== null,
+    };
+  }
+
+  /**
+   * Not a stored column — `Transaction` has no `final_amount`. A straight
+   * purchase (`offer_id` null) pays the post's price; a trade only ever
+   * carries the offer's `additional_money` top-up (`requiresPayment` in
+   * `lib/status.ts` uses the same `offer_id == null` split on the frontend).
+   */
+  private finalAmount(transaction: {
+    offerId: number | null;
+    quantity: number | null;
+    post: { price: { toNumber(): number } };
+    offer: { additionalMoney: { toNumber(): number } | null } | null;
+  }) {
+    if (transaction.offerId === null) {
+      return transaction.post.price.toNumber() * (transaction.quantity ?? 1);
+    }
+    return transaction.offer?.additionalMoney?.toNumber() ?? 0;
+  }
+
+  private serializeTransaction(transaction: {
+    transactionId: number;
+    postId: number;
+    offerId: number | null;
+    buyerId: number;
+    sellerId: number;
+    quantity: number | null;
+    status: string | null;
+    activeReportId: number | null;
+    deliveryMethod: string;
+    slipImageUrl: string | null;
+    trackingNumber: string | null;
+    estimatedDeliveryDate: Date | null;
+    paymentConfirmedByBuyerAt: Date | null;
+    paymentConfirmedBySellerAt: Date | null;
+    itemReceivedConfirmedByBuyerAt: Date | null;
+    itemReceivedConfirmedBySellerAt: Date | null;
+    createdAt: Date | null;
+    post: {
+      postId: number;
+      itemId: number;
+      postType: string;
+      price: { toNumber(): number };
+      quantityRemaining: number;
+      createdAt: Date | null;
+      item: {
+        itemId: number;
+        ownerId: number;
+        name: string;
+        category: string;
+        condition: string;
+        description: string | null;
+        status: string | null;
+        courseName: string | null;
+        brandModel: string | null;
+        warrantyExpiry: Date | null;
+        size: string | null;
+        createdAt: Date | null;
+        images: {
+          imageId: number;
+          itemId: number;
+          imageUrl: string;
+          isPrimary: boolean | null;
+          displayOrder: number | null;
+        }[];
+      };
+    };
+    offer: { additionalMoney: { toNumber(): number } | null } | null;
+    buyer: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
+    seller: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
+  }) {
+    const item = transaction.post.item;
+    return {
+      transaction_id: transaction.transactionId,
+      post_id: transaction.postId,
+      offer_id: transaction.offerId,
+      buyer_id: transaction.buyerId,
+      seller_id: transaction.sellerId,
+      quantity: transaction.quantity,
+      final_amount: this.finalAmount(transaction),
+      status: transaction.status,
+      delivery_method: transaction.deliveryMethod,
+      active_report_id: transaction.activeReportId,
+      slip_image_url: transaction.slipImageUrl,
+      tracking_number: transaction.trackingNumber,
+      estimated_delivery_date: transaction.estimatedDeliveryDate,
+      payment_confirmed_by_buyer_at: transaction.paymentConfirmedByBuyerAt,
+      payment_confirmed_by_seller_at: transaction.paymentConfirmedBySellerAt,
+      item_received_confirmed_by_buyer_at: transaction.itemReceivedConfirmedByBuyerAt,
+      item_received_confirmed_by_seller_at: transaction.itemReceivedConfirmedBySellerAt,
+      created_at: transaction.createdAt,
+      additional_money: transaction.offer?.additionalMoney?.toNumber() ?? null,
+      post: {
+        post_id: transaction.post.postId,
+        item_id: transaction.post.itemId,
+        post_type: transaction.post.postType,
+        price: transaction.post.price.toNumber(),
+        quantity_remaining: transaction.post.quantityRemaining,
+        created_at: transaction.post.createdAt,
+        item: {
+          item_id: item.itemId,
+          owner_id: item.ownerId,
+          name: item.name,
+          quantity: 1,
+          category: item.category,
+          condition: item.condition,
+          description: item.description,
+          status: item.status,
+          course_name: item.courseName,
+          brand_model: item.brandModel,
+          warranty_expiry: item.warrantyExpiry,
+          size: item.size,
+          created_at: item.createdAt,
+          images: item.images.map((image) => ({
+            image_id: image.imageId,
+            item_id: image.itemId,
+            image_url: image.imageUrl,
+            is_primary: image.isPrimary ?? false,
+            display_order: image.displayOrder ?? 0,
+          })),
+        },
+        seller: this.serializeUserSummary(transaction.seller),
+      },
+      buyer: this.serializeUserSummary(transaction.buyer),
+      seller: this.serializeUserSummary(transaction.seller),
+    };
+  }
+
+  private readonly transactionInclude = {
+    post: { include: { item: { include: { images: true } } } },
+    offer: true,
+    buyer: true,
+    seller: true,
+  } as const;
+
+  async findAllForUser(userId: number) {
+    const transactions = await this.prisma.transaction.findMany({
       where: {
         OR: [{ buyerId: userId }, { sellerId: userId }],
       },
+      include: this.transactionInclude,
       orderBy: { createdAt: 'desc' },
     });
+    return transactions.map((transaction) => this.serializeTransaction(transaction));
   }
 
   private async findOneOrThrow(transactionId: number) {
@@ -54,12 +212,21 @@ export class TransactionService {
     return transaction;
   }
 
+  /** Public GET /transactions/{id} — the only caller of this one; every
+   * mutating method below reads through `findOneOrThrow` instead, which
+   * stays a raw, unincluded row since they only ever touch scalar columns. */
   async findOneForUser(transactionId: number, userId: number) {
-    const transaction = await this.findOneOrThrow(transactionId);
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { transactionId },
+      include: this.transactionInclude,
+    });
+    if (!transaction) {
+      throw new NotFoundException(`Transaction ${transactionId} not found`);
+    }
     if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
       throw new ForbiddenException('You are not a party to this transaction');
     }
-    return transaction;
+    return this.serializeTransaction(transaction);
   }
 
   private assertIsBuyer(transaction: TransactionRow, userId: number) {

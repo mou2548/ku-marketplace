@@ -24,6 +24,9 @@ const nextConfig: NextConfig = {
       // sourced from real seed data render broken, but at least the page
       // itself no longer 500s (next/image throws on an unlisted hostname).
       { protocol: "https", hostname: "r2.ku-market.com" },
+      // Real uploads (chat images, via the shared POST /uploads/image
+      // endpoint — see lib/actions/chat.ts's uploadChatImage) land here.
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   async redirects() {

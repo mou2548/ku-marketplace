@@ -1,8 +1,8 @@
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
 import { encodeTicketQr } from "@/lib/giveaway-qr";
-import type { AllocationMethod, GiveawayStatus, TicketStatus } from "@/lib/status";
-import type { GiveawayPost, GiveawayTicket, UserSummary } from "./types";
+import type { AllocationMethod, EntrantStatus, GiveawayStatus, TicketStatus } from "@/lib/status";
+import type { ChatMessage, Entrant, GiveawayPost, GiveawayTicket, UserSummary } from "./types";
 
 /**
  * Wires the 9 endpoints in the "Giveaway Allocation System" table of
@@ -10,9 +10,13 @@ import type { GiveawayPost, GiveawayTicket, UserSummary } from "./types";
  * shapes. Two things the raw backend does not give us, adapted here rather
  * than invented as new endpoints (frontend/CLAUDE.md §0):
  *
- * - No `GET /users/{id}`, so a giver or entrant is never more than an id.
- *   `placeholderUser` stands in for the `UserSummary` every existing screen
- *   expects; see `docs/design/api-gaps.md` §3 and the new §8 entry.
+ * - There is still no standalone `GET /users/{id}`, but `giveaways.service.ts`
+ *   now includes the `giver`/`receiver` relation on every endpoint that names
+ *   one and returns a `{ user_id, name, isVerified }` summary alongside the
+ *   raw id. `toUserSummary` reads that when present and only falls back to
+ *   `placeholderUser`'s `User #<id>` if a caller is running against an older
+ *   backend build that doesn't send it yet. See `docs/design/api-gaps.md` §3
+ *   and §8.
  * - `ticket_status` is only ever `Waiting | Received | Expired`. What the UI
  *   needs — "pending the draw" vs "ready to collect" vs "not selected" vs
  *   "timed out" vs "forfeited" — is derived in `deriveTicketStatus` from the
@@ -28,6 +32,16 @@ function numFromLabel(label: string): number {
 
 function placeholderUser(userId: number): UserSummary {
   return { user_id: userId, name: `User #${userId}`, isVerified: false };
+}
+
+interface RawUserSummary {
+  user_id: number;
+  name: string;
+  isVerified: boolean;
+}
+
+function toUserSummary(raw: RawUserSummary | undefined, fallbackId: number): UserSummary {
+  return raw ? { user_id: raw.user_id, name: raw.name, isVerified: raw.isVerified } : placeholderUser(fallbackId);
 }
 
 async function authedInit(): Promise<RequestInit> {
@@ -52,6 +66,7 @@ interface RawGiveaway {
   description: string | null;
   pickup_location: string;
   giver_id: number;
+  giver?: RawUserSummary;
   allocation_method: string;
   pickup_deadline: string | null;
   participant_count: number;
@@ -64,6 +79,7 @@ interface RawTicket {
   ticket_id: string;
   giveaway_id: string;
   receiver_id: number;
+  receiver?: RawUserSummary;
   status: string | null;
   updated_at: string | null;
 }
@@ -71,6 +87,7 @@ interface RawTicket {
 interface RawRecipient {
   recipient_id: string;
   receiver_id: number;
+  receiver?: RawUserSummary;
   ticket_id: string;
   status: "selected" | "received";
 }
@@ -120,7 +137,7 @@ function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
       image_url: image.image_url,
       display_order: image.display_order ?? index,
     })),
-    giver: placeholderUser(raw.giver_id),
+    giver: toUserSummary(raw.giver, raw.giver_id),
     registered_count: raw.participant_count,
   };
 }
@@ -187,7 +204,7 @@ function toRecipientRow(raw: RawRecipient): RecipientRow {
     recipient_id: numFromLabel(raw.recipient_id),
     receiver_id: raw.receiver_id,
     ticket_id: numFromLabel(raw.ticket_id),
-    user: placeholderUser(raw.receiver_id),
+    user: toUserSummary(raw.receiver, raw.receiver_id),
     status: raw.status,
   };
 }
@@ -311,6 +328,30 @@ export async function getMyTicket(
   };
 }
 
+/**
+ * Who else is in the giveaway's group chat room — real replacement for
+ * `fixtures.ts`'s `getEntrants`. Same pending-draw heuristic as `getMyTicket`
+ * above (`RecipientRow.status` is already flattened to `selected`/`received`
+ * by the backend, so it's re-expanded through `deriveTicketStatus`), folded
+ * down to the roster's narrower `Registered | Selected` (`EntrantStatus`
+ * also allows `Not_Selected`, but `deriveTicketStatus` can never return it
+ * for a synthetic `Received`/`Waiting` input — that value only comes from a
+ * real `Expired` raw status, and `getRecipients` drops a forfeited/expired
+ * ticket before this ever sees it; see api-gaps.md §8).
+ */
+export async function getEntrants(giveawayId: number, giveaway: GiveawayPost): Promise<Entrant[]> {
+  const rows = await getRecipients(giveawayId);
+  return rows.map((row) => {
+    const ticketStatus = deriveTicketStatus(
+      row.status === "received" ? "Received" : "Waiting",
+      giveaway,
+      null,
+    );
+    const status: EntrantStatus = ticketStatus === "Registered" ? "Registered" : "Selected";
+    return { receiver_id: row.receiver_id, user: row.user, status };
+  });
+}
+
 /** `POST /giveaways/recipients/{id}/forfeit` — `id` is the ticket id. */
 export async function forfeitTicket(ticketId: number): Promise<void> {
   const init = await authedInit();
@@ -351,4 +392,64 @@ export async function scanTicketQr(
     { ...init, method: "POST", body: JSON.stringify({ token }) },
   );
   return raw.valid;
+}
+
+/* ------------------------------------------------------------------ *
+ * §6 Chat & Image System, extended to giveaways — a group chat (the
+ * giver plus every entrant), not in the original endpoint table. Same
+ * wire shape as `lib/api/chat.ts`'s transaction messages.
+ * ------------------------------------------------------------------ */
+
+interface RawGiveawayMessage {
+  message_id: number;
+  room_id: number;
+  sender_id: number;
+  sender: RawUserSummary;
+  content: string | null;
+  image_urls: string[] | null;
+  images_expired: boolean;
+  created_at: string;
+}
+
+function toGiveawayMessage(raw: RawGiveawayMessage): ChatMessage {
+  return {
+    message_id: raw.message_id,
+    room_id: raw.room_id,
+    sender_id: raw.sender_id,
+    sender: toUserSummary(raw.sender, raw.sender_id),
+    content: raw.content,
+    image_urls: raw.image_urls,
+    images_expired: raw.images_expired,
+    created_at: raw.created_at,
+  };
+}
+
+/**
+ * `GET /giveaways/{id}/message`. Wrapped in `{ room_id, messages }` — a
+ * brand-new room with zero messages still needs to report its `room_id`
+ * (lazily created server-side on first call).
+ */
+export async function getGiveawayMessages(
+  giveawayId: number,
+): Promise<{ roomId: number; messages: ChatMessage[] }> {
+  const init = await authedInit();
+  const raw = await apiFetch<{ room_id: number; messages: RawGiveawayMessage[] }>(
+    `/giveaways/${giveawayId}/message`,
+    init,
+  );
+  return { roomId: raw.room_id, messages: raw.messages.map(toGiveawayMessage) };
+}
+
+/** `POST /giveaways/{id}/message` — up to 5 image_urls (§6.1), enforced server-side too. */
+export async function sendGiveawayMessage(
+  giveawayId: number,
+  input: { content?: string; image_urls?: string[] },
+): Promise<ChatMessage> {
+  const init = await authedInit();
+  const raw = await apiFetch<RawGiveawayMessage>(`/giveaways/${giveawayId}/message`, {
+    ...init,
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return toGiveawayMessage(raw);
 }

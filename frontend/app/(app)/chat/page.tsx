@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
+
 import { RoomList } from "@/components/kit/room-list";
 import { EmptyState } from "@/components/kit/empty-state";
 import { MessagesSquare } from "lucide-react";
 
-import { VIEWER_ID } from "@/lib/api/fixtures";
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe } from "@/lib/api/users";
 
 import { RoomScreen } from "./[roomId]/room-screen";
 
@@ -22,11 +25,18 @@ export const metadata = { title: "Chat - KU Marketplace" };
  * Below `xl` it stays the plain list. That is the same breakpoint
  * `/chat/[roomId]` uses to show or hide the list beside a room, and on a phone
  * the inbox has to be the thing you land on.
+ *
+ * Built from real transactions/giveaways now (`rooms-query.ts`), so — same as
+ * `/chat/[roomId]` — it needs to know who is actually asking.
  */
 export default async function ChatInboxPage() {
-  const rooms = await getRoomSummaries();
+  if (!(await getAccessToken())) redirect("/login");
+  const viewer = await getMe().catch(() => undefined);
+  if (!viewer) redirect("/login");
+
+  const rooms = await getRoomSummaries(viewer.userId);
   const first = rooms[0]
-    ? await getRoomDetail(rooms[0].room_id, rooms)
+    ? await getRoomDetail(rooms[0].room_id, viewer.userId, rooms)
     : undefined;
 
   if (rooms.length === 0) {
@@ -55,7 +65,7 @@ export default async function ChatInboxPage() {
         <div className="hidden min-h-0 min-w-0 flex-1 xl:flex">
           <RoomScreen
             summary={first.summary}
-            viewerId={VIEWER_ID}
+            viewerId={viewer.userId}
             transaction={first.transaction}
             giveaway={first.giveaway}
             appointment={first.appointment}

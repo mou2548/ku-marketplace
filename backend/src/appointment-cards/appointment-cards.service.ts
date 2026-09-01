@@ -15,23 +15,67 @@ export class AppointmentCardsService {
     private readonly transactionService: TransactionService,
   ) {}
 
+  private serializeUserSummary(user: {
+    userId: number;
+    firstNameEn: string;
+    lastNameEn: string;
+    emailVerifiedAt: Date | null;
+  }) {
+    return {
+      user_id: user.userId,
+      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      isVerified: user.emailVerifiedAt !== null,
+    };
+  }
+
+  private serializeAppointment(appointment: {
+    appointmentId: number;
+    transactionId: number;
+    proposedBy: number;
+    date: Date;
+    time: Date;
+    location: string;
+    status: string | null;
+    createdAt: Date | null;
+    proposer: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
+  }) {
+    return {
+      appointment_id: appointment.appointmentId,
+      transaction_id: appointment.transactionId,
+      proposed_by: appointment.proposedBy,
+      proposer: this.serializeUserSummary(appointment.proposer),
+      date: appointment.date,
+      time: appointment.time,
+      location: appointment.location,
+      status: appointment.status,
+      created_at: appointment.createdAt,
+    };
+  }
+
   /** รายการนัดหมายทั้งหมดของธุรกรรมที่ user เป็นคู่กรณี (ผู้ซื้อหรือผู้ขาย) */
   async findAllForUser(userId: number) {
-    return this.prisma.appointmentCard.findMany({
+    const appointments = await this.prisma.appointmentCard.findMany({
       where: {
         transaction: {
           OR: [{ buyerId: userId }, { sellerId: userId }],
         },
       },
+      include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
+    return appointments.map((appointment) => this.serializeAppointment(appointment));
   }
 
   /** นัดหมายเดียว — เช็คสิทธิ์ว่า user เป็นคู่กรณีของธุรกรรมนี้จริง */
   async findOneForUser(appointmentId: number, userId: number) {
     const appointment = await this.prisma.appointmentCard.findUnique({
       where: { appointmentId },
-      include: { transaction: true },
+      include: { transaction: true, proposer: true },
     });
 
     if (!appointment) {
@@ -81,10 +125,12 @@ export class AppointmentCardsService {
       );
     }
 
-    return this.prisma.appointmentCard.update({
+    const updated = await this.prisma.appointmentCard.update({
       where: { appointmentId },
       data: { status: newStatus },
+      include: { proposer: true },
     });
+    return this.serializeAppointment(updated);
   }
 
   /**

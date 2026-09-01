@@ -14,7 +14,9 @@
 import type {
   AllocationMethod,
   AppealStatus,
+  AppointmentStatus,
   DeliveryMethod,
+  EntrantStatus,
   ItemCondition,
   ItemStatus,
   OfferStatus,
@@ -147,19 +149,34 @@ export interface ChatMessage {
   message_id: number;
   room_id: number;
   sender_id: number;
+  /** Absent for a fixture-sourced (giveaway) room — see lib/api/chat.ts. */
+  sender?: UserSummary;
   content?: string | null;
   image_urls?: string[] | null;
+  /** §6.2 — true once the message is older than the 7-day display lifetime;
+   * `image_urls` is null in that case, and the UI shows a notice instead. */
+  images_expired?: boolean;
   created_at: string;
 }
 
+/**
+ * Mirrors `Appointment_Card` (`DatabaseSchema.pdf` §2.13, init.sql). An
+ * earlier pass invented `Proposed|Accepted|Declined`, which meant a real row
+ * could never be passed in — see the fix note in `lib/status.ts`. `date`/
+ * `time` are plain `"YYYY-MM-DD"`/`"HH:mm:ss"` strings, matching what
+ * `AppointmentCard`/`appointmentLabel` already expect; `lib/api/chat.ts`'s
+ * adapter slices the backend's full ISO timestamps down to this shape.
+ */
 export interface AppointmentCardData {
   appointment_id: number;
   transaction_id: number;
-  scheduled_at: string;
-  place: string;
-  coordinates?: string | null;
-  status: "Proposed" | "Accepted" | "Declined";
   proposed_by: number;
+  proposer: UserSummary;
+  date: string;
+  time: string;
+  location: string;
+  status: AppointmentStatus;
+  created_at: string;
 }
 
 export interface GiveawayPost {
@@ -188,6 +205,19 @@ export interface GiveawayTicket {
   updated_at: string;
   created_at: string;
   giveaway: GiveawayPost;
+}
+
+/**
+ * Who else is in a giveaway's group chat room. Built from
+ * `GET /giveaways/{id}/recipients` (`lib/api/giveaways.ts`'s `getEntrants`),
+ * which only ever returns a `Waiting`/`Received` ticket — a forfeited or
+ * expired one drops out of this list entirely rather than showing up as
+ * `Not_Selected`. See docs/design/api-gaps.md §8.
+ */
+export interface Entrant {
+  receiver_id: number;
+  user: UserSummary;
+  status: EntrantStatus;
 }
 
 export interface Report {
