@@ -137,6 +137,12 @@ export interface Transaction {
   payment_confirmed_by_seller_at?: string | null;
   item_received_confirmed_by_buyer_at?: string | null;
   item_received_confirmed_by_seller_at?: string | null;
+  cancellation_requested_by?: number | null;
+  cancellation_reason?: string | null;
+  cancellation_requested_at?: string | null;
+  cancellation_response?: "Pending" | "Approved" | "Rejected" | null;
+  refund_slip_url?: string | null;
+  refund_confirmed_by_buyer?: boolean | null;
   created_at: string;
   /** Present on a trade — drives whether the payment sequence runs at all. */
   additional_money?: number | null;
@@ -223,19 +229,30 @@ export interface Entrant {
 export interface Report {
   report_id: number;
   reporter_id: number;
+  reporter: UserSummary;
   report_type: "Post" | "User" | "Transaction";
   target_id: number;
   reason_category: string;
   details?: string | null;
   evidence_urls?: string[] | null;
   status: ReportStatus;
+  handled_by?: number | null;
+  handler?: UserSummary | null;
   resolution_note?: string | null;
+  handled_at?: string | null;
   created_at: string;
 }
 
 export interface Appeal {
   appeal_id: number;
   report_id: number;
+  appellant_id: number;
+  appellant: UserSummary;
+  reason: string;
+  evidence_urls?: string[] | null;
   status: AppealStatus;
+  handled_by?: number | null;
+  resolution_note?: string | null;
   created_at: string;
+  handled_at?: string | null;
 }

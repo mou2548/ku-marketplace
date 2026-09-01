@@ -47,9 +47,14 @@ export class TransactionsService {
       lastNameEn: string;
       emailVerifiedAt: Date | null;
     };
-  }) {
+  },
+    // §7.1/§7.5.3 — an admin reviewing a report needs the real evidence, not
+    // the 7-day display expiry meant for the two parties' own view of it.
+    forAdmin = false,
+  ) {
     const createdAt = message.createdAt ?? new Date();
-    const expired = Date.now() - createdAt.getTime() > IMAGE_DISPLAY_LIFETIME_MS;
+    const expired =
+      !forAdmin && Date.now() - createdAt.getTime() > IMAGE_DISPLAY_LIFETIME_MS;
     const hasImages = Array.isArray(message.imageUrls) && message.imageUrls.length > 0;
 
     return {
@@ -219,6 +224,41 @@ export class TransactionsService {
   async getAppointmentCards(transactionId: number, userId: number) {
     await this.assertParticipant(transactionId, userId);
 
+    const appointments = await this.prisma.appointmentCard.findMany({
+      where: { transactionId },
+      include: { proposer: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return appointments.map((appointment) => this.serializeAppointment(appointment));
+  }
+
+  /**
+   * §7.1/§7.5.3 — GET /admin/transactions/{id}/message. No participant check
+   * (an admin is neither party), and the room is read, never created — if
+   * nobody has messaged yet there is simply no chat evidence to show, and an
+   * admin GET creating a room as a side effect would be strange.
+   */
+  async getChatHistoryForAdmin(transactionId: number) {
+    const room = await this.prisma.chatRoom.findFirst({
+      where: { transactionId },
+    });
+    if (!room) {
+      return { room_id: null, messages: [] };
+    }
+    const messages = await this.prisma.chatMessage.findMany({
+      where: { roomId: room.roomId },
+      include: { sender: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      room_id: room.roomId,
+      messages: messages.map((message) => this.serializeMessage(message, true)),
+    };
+  }
+
+  /** §7.1/§7.5.3 — GET /admin/transactions/{id}/appointment-cards, same
+   * no-participant-check reasoning as `getChatHistoryForAdmin`. */
+  async getAppointmentCardsForAdmin(transactionId: number) {
     const appointments = await this.prisma.appointmentCard.findMany({
       where: { transactionId },
       include: { proposer: true },

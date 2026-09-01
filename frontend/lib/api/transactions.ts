@@ -28,3 +28,10 @@ export async function getTransaction(transactionId: number): Promise<Transaction
   const init = await authedInit();
   return apiFetch<Transaction>(`/transactions/${transactionId}`, init);
 }
+
+/** §7.1/§7.5.3 — GET /admin/transactions/{id}, for an admin reviewing a
+ * Transaction-type report's evidence (no buyer/seller participant check). */
+export async function adminGetTransaction(transactionId: number): Promise<Transaction> {
+  const init = await authedInit();
+  return apiFetch<Transaction>(`/admin/transactions/${transactionId}`, init);
+}

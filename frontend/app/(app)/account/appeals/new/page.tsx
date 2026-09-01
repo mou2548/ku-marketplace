@@ -9,6 +9,8 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
+import { createAppeal } from "@/lib/actions/appeals";
+import type { ApiError } from "@/lib/api/client";
 
 const MIN_LENGTH = 40;
 
@@ -23,11 +25,15 @@ export default function NewAppealPage() {
 
   async function submit() {
     setBusy(true);
-    // POST /appeals
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show("Appeal submitted. A different admin will review it.");
-    router.push("/account/appeals");
+    try {
+      await createAppeal({ report_id: Number(reportId), reason });
+      toast.show("Appeal submitted. A different admin will review it.");
+      router.push("/account/appeals");
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not submit the appeal.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   /**

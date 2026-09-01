@@ -16,6 +16,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { TransactionModule } from './transaction/transaction.module';
 import { TransactionsController } from './transactions/transactions.controller';
 import { TransactionsService } from './transactions/transactions.service';
+import { AdminTransactionEvidenceController } from './transactions/admin-transaction-evidence.controller';
 import { AppointmentCardsModule } from './appointment-cards/appointment-cards.module';
 import { UsersModule } from './users/users.module';
 
@@ -33,7 +34,7 @@ import { UsersModule } from './users/users.module';
     CloudinaryModule,
     UsersModule,
   ],
-  controllers: [AppController, TransactionsController],
+  controllers: [AppController, TransactionsController, AdminTransactionEvidenceController],
   providers: [AppService, TransactionsService],
 })
 export class AppModule {}

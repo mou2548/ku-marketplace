@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Scale } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
@@ -5,21 +6,15 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getAdminAppeals } from "@/lib/api/fixtures";
+import { getMyAppeals } from "@/lib/api/appeals";
+import { getAccessToken } from "@/lib/api/session";
 import { APPEAL_STATUS, REPORT_STATUS, type AppealStatus } from "@/lib/status";
 
 export const metadata = { title: "My appeals - KU Marketplace" };
 
-/**
- * The order flow 2 moves an appeal through. `Not_Appealed` is the absence of
- * an appeal, so it is not a step on this page.
- */
-const APPEAL_FLOW: AppealStatus[] = [
-  "Appeal_Submitted",
-  "Appeal_Under_Review",
-  "Appeal_Upheld",
-  "Appeal_Rejected",
-];
+/** The order flow 2 moves an appeal through. There is no "not appealed" step
+ * here — that is the absence of an `Appeal`, not a status one can hold. */
+const APPEAL_FLOW: AppealStatus[] = ["Pending", "Under_Review", "Approved", "Rejected"];
 
 /**
  * Flow 2, the student's side. A penalty with no visible way to answer it is
@@ -27,7 +22,8 @@ const APPEAL_FLOW: AppealStatus[] = [
  * state are a first-class screen rather than an email thread.
  */
 export default async function MyAppealsPage() {
-  const appeals = await getAdminAppeals();
+  if (!(await getAccessToken())) redirect("/login");
+  const appeals = await getMyAppeals();
 
   if (appeals.length === 0) {
     return (

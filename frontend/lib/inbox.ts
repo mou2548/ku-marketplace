@@ -51,8 +51,16 @@ function partyOf(tx: Transaction, viewerId: number): Party {
  * Only one is live at a time — they belong to different steps.
  */
 export function deadlineFor(tx: Transaction): Deadline | undefined {
-  if (tx.status === "Pending" && tx.payment_confirmed_by_buyer_at) {
-    // Seller has 24h to confirm the slip.
+  // Seller has 24h to confirm the slip. `uploadPaymentSlip`
+  // (transaction.service.ts) sets `payment_confirmed_by_buyer_at` and moves
+  // `status` to `Processing` in the same write, so "Pending with a buyer
+  // payment timestamp already on it" can never actually occur — this used to
+  // check that combination and so never fired for a real transaction.
+  if (
+    tx.status === "Processing" &&
+    tx.payment_confirmed_by_buyer_at &&
+    !tx.payment_confirmed_by_seller_at
+  ) {
     return sellerConfirmDeadline(tx.payment_confirmed_by_buyer_at);
   }
   if (

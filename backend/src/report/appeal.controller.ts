@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Param,
   ParseIntPipe,
@@ -29,6 +30,18 @@ export class AppealController {
     @Body() dto: CreateAppealDto,
   ) {
     return this.appealService.create(user.userId, dto);
+  }
+
+  @Get('appeals')
+  @UseGuards(JwtAuthGuard)
+  findMine(@CurrentUser() user: CurrentUserPayload) {
+    return this.appealService.findAllForUser(user.userId);
+  }
+
+  @Get('admin/appeals')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  findAll() {
+    return this.appealService.findAll();
   }
 
   @Post('admin/appeals/:id/decide')

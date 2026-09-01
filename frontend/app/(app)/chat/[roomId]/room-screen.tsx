@@ -27,6 +27,7 @@ import { DeliveryCard } from "@/components/kit/delivery-card";
 import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
+import { ReportDialog } from "@/components/kit/report-dialog";
 import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -79,6 +80,25 @@ const ROSTER_LIMIT = 5;
 /** No realtime transport exists — a short poll keeps the thread from going
  * stale instead. See lib/use-polling.ts. */
 const CHAT_POLL_INTERVAL_MS = 5000;
+
+/** §7.5.2 — the system-provided reasons for a user report. */
+const USER_REPORT_REASONS = [
+  {
+    id: "rude-or-threatening",
+    label: "Rude or threatening behavior in chat",
+    description: "Insults, threats, or hostile messages",
+  },
+  {
+    id: "spam-or-disturbance",
+    label: "Spam or disturbance",
+    description: "Repeated unwanted messages",
+  },
+  {
+    id: "impersonation",
+    label: "Impersonating someone else",
+    description: "This is not who they claim to be",
+  },
+];
 
 /** "Mon 10 Aug, 13:00 · สำนักหอสมุด มก." — the pinned one-liner. */
 function appointmentLabel(appointment: AppointmentCardData): string {
@@ -503,6 +523,25 @@ export function RoomScreen({
               Giver
             </span>
           ) : null}
+
+          {/* §7.5.2 — rude/threatening behavior, spam, or impersonation "in
+              chat" is the spec's own framing for a User report, so the
+              trigger lives right where that happens. */}
+          <ReportDialog
+            reportType="User"
+            targetId={summary.counterparty.user_id}
+            reasons={USER_REPORT_REASONS}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                pill
+                aria-label={`Report ${summary.counterparty.name}`}
+              >
+                <Flag className="size-3.5" />
+              </Button>
+            }
+          />
         </span>
 
         <span className="ml-auto flex min-w-0 items-center gap-2">

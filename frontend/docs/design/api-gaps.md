@@ -272,3 +272,70 @@ backend capability rather than reading one that exists:
   `/giveaway/[giveawayId]/ticket/[ticketId]` for the same root cause: there
   is no `GET` for a single ticket by its own id, only by giveaway id via
   `recipients`, so the route now carries both.
+
+## 9. Report & Moderation (§7) — what adapts around real gaps
+
+`report`/`appeal.service.ts` were already a real, working backend
+implementation before this pass — the frontend was the fixture-driven half.
+Closed in this pass: §7.3's rate limit (Redis, 5/10 min), §7.1's sanctions
+(`User.status` → `Suspended`/`Banned`, reversed automatically when an appeal
+is later approved), a `Post` report confirmed as a violation now actually
+hides the post (and `restore` un-hides it), 3 new `GET /admin/transactions/...`
+routes so an admin can read a Transaction report's chat/appointment evidence
+without being a party to it, and the missing `GET /appeals`/`GET
+/admin/appeals` list routes the frontend needed. None of it touched
+`init.sql`/`schema.prisma` — `Suspended`/`Banned`/`Active`/`Inactive` all
+already existed.
+
+What's still adapted around rather than built:
+
+- **A "temporary" suspension has no stored end date.** There is no column for
+  one (would mean a schema change), so `suspend_temporary` and
+  `suspend_permanent` differ only by which `User.status` value they set
+  (`Suspended` vs `Banned`) — an admin lifts a temporary one manually later.
+  Matches §7.1's "no fixed criteria, case-by-case judgment" framing, but a
+  real deadline-driven unsuspend would need a new column and a scheduled job.
+- **A warning has no record beyond that one report's `resolution_note`.**
+  There is no running "warning count" on `User` — an admin deciding a new
+  case sees that account's own report history via `GET /admin/reports`
+  filtered by eye, not a computed strike count.
+- **Reporting a Post or a User sends a `target_id` from whatever page is
+  already showing that post/user** — `market/[postId]/page.tsx` and the whole
+  `/history` section are still on `fixtures.ts` (a separate, larger gap; see
+  their own screens), so a report filed from there only lands on a *real*
+  target when the fixture's id happens to coincide with a real seeded row.
+  The report submission itself (`POST /reports`) is real; the id feeding it
+  is only as real as the page it was opened from. The transaction-report flow
+  (`/history/[txId]/report`) has the same caveat for the same reason.
+- **No admin `GET /admin/reports/{id}`.** `admin/reports/[reportId]/page.tsx`
+  fetches the full list (`GET /admin/reports`) and finds the one it needs
+  client-side, same as the fixture version did — fine at seed-data scale, an
+  N-report fetch to open one report at real scale.
+- **The evidence panel for a Transaction report is assembled by hand**, not a
+  single endpoint: 3 separate `GET /admin/transactions/...` calls bundled by
+  `lib/api/reports.ts`'s `adminGetTransactionEvidence`. It shows confirmation
+  timestamps, the slip image, appointment cards, and a plain-text chat
+  transcript — not the full interactive `ChatThread` component, since this is
+  a read-only case file, not a conversation.
+- **§7.5.3's table arrived and is wired in `report-form.tsx`'s `REASONS`** —
+  5 reasons, each with an `eligible(transaction)` predicate re-checking the
+  table's own "occurs when" column against the real transaction (a fake-slip
+  report only becomes selectable once `sellerConfirmDeadline` has actually
+  passed, "item not as described" only once `status === "Completed"`, etc.)
+  rather than trusting the reporter to self-select correctly. An ineligible
+  reason is disabled, not hidden, with the precondition shown as the reason
+  it is greyed out. Needed extending `transaction.service.ts`'s
+  `serializeTransaction` (and the frontend `Transaction` type) with the
+  cancellation/refund columns — `cancellation_response`,
+  `cancellation_requested_at`, `refund_slip_url`,
+  `refund_confirmed_by_buyer` — none of which had ever been exposed past the
+  raw Prisma row before, for either of the two "went to Pending Refund"
+  reasons. One precondition is only approximate: "didn't ship or come to pick
+  up" has no dedicated meetup-pickup deadline anywhere in the codebase
+  (`lib/status.ts`'s `deadlineFor` only computes one for `Shipping`), so a
+  stuck `Meetup` transaction in `Processing` is treated as eligible
+  immediately rather than after some specific overdue window — matching how
+  `deadlineFor` already leaves Meetup with no deadline at all (see the report
+  button's own overall `allowed` gate, which is `false` for a stuck Meetup
+  deal today for the same underlying reason — a pre-existing gap, not
+  introduced here).

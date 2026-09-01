@@ -153,3 +153,32 @@ export async function respondAppointment(
   });
   return toAppointmentCard(raw);
 }
+
+/**
+ * §7.1/§7.5.3 — GET /admin/transactions/{id}/message, for an admin reviewing
+ * a Transaction-type report's evidence. Same shape as `getChatHistory`, just
+ * a different (participant-check-free) route; reused here rather than
+ * duplicated since the adapter is identical.
+ */
+export async function getAdminChatHistory(
+  transactionId: number,
+): Promise<{ roomId: number | null; messages: ChatMessage[] }> {
+  const init = await authedInit();
+  const raw = await apiFetch<{ room_id: number | null; messages: RawChatMessage[] }>(
+    `/admin/transactions/${transactionId}/message`,
+    init,
+  );
+  return { roomId: raw.room_id, messages: raw.messages.map(toChatMessage) };
+}
+
+/** §7.1/§7.5.3 — GET /admin/transactions/{id}/appointment-cards, admin variant of `getAppointmentCards`. */
+export async function getAdminAppointmentCards(
+  transactionId: number,
+): Promise<AppointmentCardData[]> {
+  const init = await authedInit();
+  const raw = await apiFetch<RawAppointmentCard[]>(
+    `/admin/transactions/${transactionId}/appointment-cards`,
+    init,
+  );
+  return raw.map(toAppointmentCard);
+}

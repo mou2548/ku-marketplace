@@ -83,6 +83,12 @@ export class TransactionService {
     paymentConfirmedBySellerAt: Date | null;
     itemReceivedConfirmedByBuyerAt: Date | null;
     itemReceivedConfirmedBySellerAt: Date | null;
+    cancellationRequestedBy: number | null;
+    cancellationReason: string | null;
+    cancellationRequestedAt: Date | null;
+    cancellationResponse: string | null;
+    refundSlipUrl: string | null;
+    refundConfirmedByBuyer: boolean | null;
     createdAt: Date | null;
     post: {
       postId: number;
@@ -146,6 +152,12 @@ export class TransactionService {
       payment_confirmed_by_seller_at: transaction.paymentConfirmedBySellerAt,
       item_received_confirmed_by_buyer_at: transaction.itemReceivedConfirmedByBuyerAt,
       item_received_confirmed_by_seller_at: transaction.itemReceivedConfirmedBySellerAt,
+      cancellation_requested_by: transaction.cancellationRequestedBy,
+      cancellation_reason: transaction.cancellationReason,
+      cancellation_requested_at: transaction.cancellationRequestedAt,
+      cancellation_response: transaction.cancellationResponse,
+      refund_slip_url: transaction.refundSlipUrl,
+      refund_confirmed_by_buyer: transaction.refundConfirmedByBuyer,
       created_at: transaction.createdAt,
       additional_money: transaction.offer?.additionalMoney?.toNumber() ?? null,
       post: {
@@ -225,6 +237,20 @@ export class TransactionService {
     }
     if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
       throw new ForbiddenException('You are not a party to this transaction');
+    }
+    return this.serializeTransaction(transaction);
+  }
+
+  /** §7.1/§7.5.3 — GET /admin/transactions/{id}. Same read as
+   * `findOneForUser`, minus the participant check: an admin reviewing a
+   * report is neither the buyer nor the seller. */
+  async findOneForAdmin(transactionId: number) {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { transactionId },
+      include: this.transactionInclude,
+    });
+    if (!transaction) {
+      throw new NotFoundException(`Transaction ${transactionId} not found`);
     }
     return this.serializeTransaction(transaction);
   }

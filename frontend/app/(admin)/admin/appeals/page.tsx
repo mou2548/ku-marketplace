@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { getAdminAppeals } from "@/lib/api/fixtures";
+import { adminListAppeals } from "@/lib/api/appeals";
 import { APPEAL_STATUS } from "@/lib/status";
 
 import { AppealDecision } from "./appeal-decision";
@@ -12,7 +12,7 @@ import { AppealDecision } from "./appeal-decision";
 export const metadata = { title: "Appeals - Admin" };
 
 export default async function AdminAppealsPage() {
-  const appeals = await getAdminAppeals();
+  const appeals = await adminListAppeals();
 
   if (appeals.length === 0) {
     return (
@@ -55,7 +55,6 @@ export default async function AdminAppealsPage() {
               <TrustBadge
                 name={a.appellant.name}
                 isVerified={a.appellant.isVerified}
-                faculty={a.appellant.faculty}
                 size="sm"
               />
 
@@ -63,7 +62,14 @@ export default async function AdminAppealsPage() {
                 {a.reason}
               </p>
 
-              <AppealDecision appealId={a.appeal_id} />
+              {a.status === "Pending" || a.status === "Under_Review" ? (
+                <AppealDecision appealId={a.appeal_id} />
+              ) : (
+                <p className="border-t border-line pt-3 text-[0.8125rem] leading-[1.6] text-ink-muted">
+                  Already decided.{" "}
+                  {a.resolution_note ? `Note: ${a.resolution_note}` : ""}
+                </p>
+              )}
             </Surface>
           </li>
         ))}

@@ -2,14 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeftRight, Flag, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
 import type { DeliveryMethod } from "@/lib/status";
 import type { Post } from "@/lib/api/types";
+
+/** §7.5.1 — the system-provided reasons for a post report. */
+const POST_REPORT_REASONS = [
+  {
+    id: "illegal-item",
+    label: "Illegal or prohibited item",
+    description: "The item itself is not allowed on the platform",
+  },
+  {
+    id: "inappropriate-content",
+    label: "Inappropriate content (scam or spam)",
+    description: "The listing looks like a scam, or is spam",
+  },
+  {
+    id: "false-info",
+    label: "False information in the listing",
+    description: "Photos, price, or details do not match reality",
+  },
+];
 
 /**
  * E3 entry point. Two decisions happen here and nowhere else:
@@ -134,6 +154,17 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           Offer a trade
         </LinkButton>
       ) : null}
+
+      <ReportDialog
+        reportType="Post"
+        targetId={post.post_id}
+        reasons={POST_REPORT_REASONS}
+        trigger={
+          <Button variant="ghost" size="lg" aria-label="Report this post">
+            <Flag className="size-5" />
+          </Button>
+        }
+      />
     </div>
   );
 }
