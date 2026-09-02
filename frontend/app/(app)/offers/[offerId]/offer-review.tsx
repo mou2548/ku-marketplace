@@ -7,15 +7,12 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
-  MapPin,
   MessageCircle,
-  Truck,
   Undo2,
   X,
 } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
-import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -24,7 +21,6 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
-import type { DeliveryMethod } from "@/lib/status";
 import { OFFER_STATUS } from "@/lib/status";
 
 /** The bench takes inventory slots; an offer carries full items. */
@@ -46,12 +42,11 @@ export function OfferReview({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const [method, setMethod] = useState<DeliveryMethod>("Meetup");
   const [busy, setBusy] = useState(false);
-  // Acceptance resolves in place instead of jumping to a fixed fixture room
-  // (transaction 5) that describes a different trade. The panel names this
-  // counterparty and this item, so the demo shows the right deal closing.
-  const [acceptedWith, setAcceptedWith] = useState<DeliveryMethod | null>(null);
+  // A trade is always handed over in person — there is no shipping branch for a
+  // swap (activity diagram: trade flow). Acceptance resolves in place; the
+  // panel names this counterparty and item so the right deal is seen closing.
+  const [accepted, setAccepted] = useState(false);
 
   // Both sides come from one derivation, shared with the inbox, so the piles
   // cannot land in one arrangement on the list and the opposite one here.
@@ -73,7 +68,7 @@ export function OfferReview({
     setBusy(true);
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
-    setAcceptedWith(method);
+    setAccepted(true);
   }
 
   return (
@@ -138,7 +133,7 @@ export function OfferReview({
         isReadOnly
       />
 
-      {acceptedWith || offer.status === "Accepted" ? (
+      {accepted || offer.status === "Accepted" ? (
         <Surface
           shape="card"
           className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
@@ -149,9 +144,8 @@ export function OfferReview({
           </p>
           <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
             You are trading with {sides.counterparty.name} for{" "}
-            {offer.post.item.name} by{" "}
-            {acceptedWith === "Shipping" ? "shipping" : "meetup"}. Every
-            other offer on this post is declined and a chat room is open.
+            {offer.post.item.name}, handed over in person. Every other offer on
+            this post is declined and a chat room is open.
           </p>
           {offer.transaction_id ? (
             // The accepted offer's transaction; /history/:id redirects to its
@@ -185,8 +179,8 @@ export function OfferReview({
               </Button>
 
               <Overlay
-                title="Choose how you will hand over"
-                description="Accepting automatically declines every other offer on this post and opens a chat room."
+                title="Confirm the trade"
+                description="A trade is always handed over in person. Accepting declines every other offer on this post and opens a chat room."
                 footer={
                   <>
                     <Button variant="ghost" slot="close">
@@ -198,36 +192,6 @@ export function OfferReview({
                   </>
                 }
               >
-                <RadioGroupField
-                  aria-label="Handover method"
-                  value={method}
-                  onChange={(v) => setMethod(v as DeliveryMethod)}
-                  variant="card"
-                >
-                  <Radio
-                    value="Meetup"
-                    description={
-                      offer.additional_money > 0
-                        ? "Meet up, inspect the items, the proposer transfers the difference and uploads a slip, you check it and scan the QR to close"
-                        : "Meet up, swap the items, scan the QR to close. No money involved."
-                    }
-                  >
-                    <span className="flex items-center gap-2">
-                      <MapPin aria-hidden className="size-4" />
-                      Meetup
-                    </span>
-                  </Radio>
-                  <Radio
-                    value="Shipping"
-                    description="Post the items to each other. Both sides enter a tracking number."
-                  >
-                    <span className="flex items-center gap-2">
-                      <Truck aria-hidden className="size-4" />
-                      Shipping
-                    </span>
-                  </Radio>
-                </RadioGroupField>
-
                 {offer.additional_money > 0 ? (
                   <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-warning-fg">
                     This offer adds cash: ฿

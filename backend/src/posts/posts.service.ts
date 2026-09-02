@@ -465,10 +465,11 @@ export class PostsService {
   ) {
     const postPk = this.id(postId, 'post');
     const offerPk = this.id(offerId, 'offer');
-    const deliveryMethod = payload.delivery_method ?? 'Shipping';
-    if (!['Meetup', 'Shipping'].includes(deliveryMethod)) {
-      throw new BadRequestException('delivery_method ไม่ถูกต้อง');
-    }
+    // §trade — a swap is always handed over in person. The trade flow in the
+    // activity diagram has only the meetup branch; `payload.delivery_method`
+    // is ignored here on purpose.
+    void payload;
+    const deliveryMethod = 'Meetup';
     const transaction = await this.prisma.$transaction(async (tx) => {
       const offer = await tx.offer.findFirst({
         where: { offerId: offerPk, postId: postPk },
