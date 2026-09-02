@@ -8,13 +8,12 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarPlus,
-  Check,
   ChevronDown,
   ChevronUp,
   Flag,
   MapPin,
   QrCode,
-  Receipt,
+  ScanLine,
   Truck,
   XCircle,
 } from "lucide-react";
@@ -25,23 +24,40 @@ import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { DeliveryCard } from "@/components/kit/delivery-card";
-import { TextInput } from "@/components/kit/field";
+import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
-import { QrTicket } from "@/components/kit/qr-ticket";
+import { ReportDialog } from "@/components/kit/report-dialog";
 import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
-import { TONE_CHIP, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
+import { TONE_CHIP } from "@/components/kit/tone";
 import {
   buildSteps,
   TransactionStepper,
   type Step,
 } from "@/components/kit/transaction-stepper";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import type { AppointmentSeed, Entrant } from "@/lib/api/fixtures";
-import type { GiveawayPost, Transaction, UserSummary } from "@/lib/api/types";
+import {
+  fetchAppointmentCards,
+  fetchChatHistory,
+  proposeAppointment,
+  respondToAppointment,
+  sendChatMessage,
+  uploadChatImage,
+} from "@/lib/actions/chat";
+import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
+import { ApiError } from "@/lib/api/client";
+import type {
+  AppointmentCardData,
+  ChatMessage,
+  Entrant,
+  GiveawayPost,
+  Transaction,
+  UserSummary,
+} from "@/lib/api/types";
+import { deriveAppointmentView } from "@/lib/appointment";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
 import {
@@ -55,20 +71,37 @@ import {
   type Deadline,
   type Party,
 } from "@/lib/status";
+import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
 
 /** Past this many, the rail sends the giver to the manage screen instead. */
 const ROSTER_LIMIT = 5;
 
-interface Message {
-  message_id: number;
-  sender_id: number;
-  content: string;
-  created_at: string;
-}
+/** No realtime transport exists — a short poll keeps the thread from going
+ * stale instead. See lib/use-polling.ts. */
+const CHAT_POLL_INTERVAL_MS = 5000;
+
+/** §7.5.2 — the system-provided reasons for a user report. */
+const USER_REPORT_REASONS = [
+  {
+    id: "rude-or-threatening",
+    label: "Rude or threatening behavior in chat",
+    description: "Insults, threats, or hostile messages",
+  },
+  {
+    id: "spam-or-disturbance",
+    label: "Spam or disturbance",
+    description: "Repeated unwanted messages",
+  },
+  {
+    id: "impersonation",
+    label: "Impersonating someone else",
+    description: "This is not who they claim to be",
+  },
+];
 
 /** "Mon 10 Aug, 13:00 · สำนักหอสมุด มก." — the pinned one-liner. */
-function appointmentLabel(appointment: AppointmentSeed): string {
+function appointmentLabel(appointment: AppointmentCardData): string {
   const at = new Date(`${appointment.date}T${appointment.time}+07:00`);
   const when = at.toLocaleString("en-GB", {
     weekday: "short",
@@ -90,6 +123,8 @@ function ProposeMeetup({
   onPlaceChange,
   when,
   onWhenChange,
+  time,
+  onTimeChange,
   isBusy,
   onPropose,
 }: {
@@ -97,6 +132,8 @@ function ProposeMeetup({
   onPlaceChange: (value: string) => void;
   when: DateValue | null;
   onWhenChange: (value: DateValue | null) => void;
+  time: string;
+  onTimeChange: (value: string) => void;
   isBusy: boolean;
   onPropose: () => void;
 }) {
@@ -109,12 +146,26 @@ function ProposeMeetup({
         the same card from then on.
       </p>
 
-      <DatePickerField
-        label="Date"
-        value={when}
-        onChange={onWhenChange}
-        minValue={today(tz)}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <DatePickerField
+          label="Date"
+          value={when}
+          onChange={onWhenChange}
+          minValue={today(tz)}
+        />
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[0.875rem] leading-[1.65] font-medium text-ink-secondary">
+            Time
+          </span>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => onTimeChange(e.target.value)}
+            className={cn(controlBase, "h-12 px-3.5 text-[0.9375rem]")}
+          />
+        </label>
+      </div>
 
       <TextInput
         label="Where"
@@ -154,143 +205,59 @@ function ProposeMeetup({
 export function RoomScreen({
   summary,
   viewerId,
-  transaction: initialTransaction,
+  transaction,
   giveaway,
-  appointment,
+  appointment: initialAppointment,
   entrants,
-  messages,
+  messages: initialMessages,
 }: {
   summary: RoomSummary;
   viewerId: number;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
-  /** The Appointment_Card row for this deal, when one has been proposed. */
-  appointment?: AppointmentSeed;
+  /**
+   * The card currently worth showing for this deal — the most recent
+   * `Pending` proposal if one is awaiting a reply, else the pinned
+   * `Confirmed` card, else `undefined`. `lib/api/chat.ts`'s
+   * `deriveAppointmentView` computes this from the full history; there is no
+   * single "current appointment" row in the backend.
+   */
+  appointment?: AppointmentCardData;
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
-  messages: Message[];
+  messages: ChatMessage[];
 }) {
   const router = useRouter();
   const toast = useToast();
   const [tracking, setTracking] = useState("");
   const [place, setPlace] = useState("");
   const [when, setWhen] = useState<DateValue | null>(null);
+  const [time, setTime] = useState("12:00");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   /** The deal strip's disclosure — everything the desktop rail used to hold. */
   const [detailOpen, setDetailOpen] = useState(false);
-  /**
-   * Nothing on this screen is backed by a real API yet. Local state lets a
-   * demo walk every step of the deal in one session — upload, confirm,
-   * ship, hand over — regardless of which side the mock viewer is on; it
-   * resets on refresh.
-   */
-  const [transaction, setTransaction] = useState(initialTransaction);
-  const [localAppointment, setLocalAppointment] = useState(appointment);
 
-  async function handleSlipUpload(file: File) {
-    const url = URL.createObjectURL(file);
-    setTransaction((tx) =>
-      tx
-        ? {
-            ...tx,
-            slip_image_url: url,
-            payment_confirmed_by_buyer_at: new Date().toISOString(),
-          }
-        : tx,
-    );
-    toast.show("Slip uploaded. Waiting on the seller to check it.");
-  }
+  // Real messages refresh on a poll (no realtime transport exists) — for
+  // either a transaction room or a giveaway group room. Appointments are a
+  // transaction-only concept.
+  const [messages, setMessages] = useState(initialMessages);
+  const [appointment, setAppointment] = useState(initialAppointment);
 
-  async function handleConfirmPayment() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    setTransaction((tx) =>
-      tx
-        ? {
-            ...tx,
-            payment_confirmed_by_seller_at: new Date().toISOString(),
-            status: "Processing",
-          }
-        : tx,
-    );
-    toast.show("Payment confirmed");
-  }
-
-  async function handleSaveTracking() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    setTransaction((tx) => (tx ? { ...tx, tracking_number: tracking } : tx));
-    toast.show("Tracking number saved");
-  }
-
-  /** Same as `handleSaveTracking`, for the convenience panel below — there is
-   * no tracking-number field there, so it fills in a placeholder. */
-  async function handleDemoTracking() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    setTransaction((tx) =>
-      tx ? { ...tx, tracking_number: `TH${Date.now()}DEMO` } : tx,
-    );
-    toast.show("Tracking number saved");
-  }
-
-  async function handleConfirmDelivery() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    setTransaction((tx) =>
-      tx
-        ? {
-            ...tx,
-            status: "Completed",
-            item_received_confirmed_by_buyer_at: new Date().toISOString(),
-          }
-        : tx,
-    );
-    toast.show("Deal closed");
-  }
-
-  // No real scanner in this demo, per the product call — the seller shows a
-  // QR (below) and the buyer closes the deal with a plain confirmation
-  // instead of a camera reading it.
-  async function handleConfirmHandover() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    setTransaction((tx) => (tx ? { ...tx, status: "Completed" } : tx));
-    toast.show("Receipt confirmed. The deal is closed.");
-  }
-
-  async function handleProposeMeetup() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    if (!transaction || !when) return;
-    setLocalAppointment({
-      appointment_id: Date.now(),
-      transaction_id: transaction.transaction_id,
-      proposed_by: viewerId,
-      date: when.toString(),
-      time: "12:00:00",
-      location: place,
-      status: "Pending",
-    });
-    toast.show("Meetup proposed. Waiting on a reply.");
-  }
-
-  function handleAcceptMeetup() {
-    setLocalAppointment((a) => (a ? { ...a, status: "Confirmed" } : a));
-    toast.show("Meetup confirmed");
-  }
-
-  function handleDeclineMeetup() {
-    setLocalAppointment((a) => (a ? { ...a, status: "Rejected" } : a));
-    toast.show("Asked for another time");
-  }
+  usePolling(() => {
+    if (transaction) {
+      const transactionId = transaction.transaction_id;
+      fetchChatHistory(transactionId).then(setMessages).catch(() => {});
+      fetchAppointmentCards(transactionId)
+        .then((cards) => {
+          const { pinned, pending } = deriveAppointmentView(cards);
+          setAppointment(pending ?? pinned);
+        })
+        .catch(() => {});
+    } else if (giveaway) {
+      fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
+    }
+  }, CHAT_POLL_INTERVAL_MS);
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -301,32 +268,13 @@ export function RoomScreen({
   const prompt =
     transaction && viewer ? resolveTransactionActor(transaction, viewer) : undefined;
   // Same derivation the stepper runs, for the "Step n of m" counter above it.
-  const steps = transaction ? buildSteps(transaction, localAppointment?.status) : [];
+  const steps = transaction ? buildSteps(transaction, appointment?.status) : [];
   const currentStep = steps.findIndex((s) => s.current);
   // Every step done means the deal is finished, not that it is back at step 1.
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
   const isYourTurn = prompt?.actor === viewer;
   const reportable = canReport(deadline ? [deadline] : []);
-
-  /**
-   * No real second account to log in as, so a demo that started on either
-   * side would otherwise stall the moment the *other* side's step comes up.
-   * This is that side's action, playable from here — everything but
-   * upload-slip, which already gets its own uploader in `DealDetails`.
-   */
-  const otherSideAdvance: (() => void) | undefined =
-    !prompt || prompt.actor === viewer
-      ? undefined
-      : prompt.action === "review-slip"
-        ? handleConfirmPayment
-        : prompt.action === "enter-tracking"
-          ? handleDemoTracking
-          : prompt.action === "confirm-delivery"
-            ? handleConfirmDelivery
-            : prompt.action === "scan-qr"
-              ? handleConfirmHandover
-              : undefined;
 
   // Flow 3: only the giver may type in a giveaway room.
   const giveawayReadOnly = !!giveaway && giveaway.giver_id !== viewerId;
@@ -362,6 +310,78 @@ export function RoomScreen({
     if (next) router.push(next);
   }
 
+  async function handleSend(text: string) {
+    try {
+      const sent = transaction
+        ? await sendChatMessage(transaction.transaction_id, { content: text })
+        : giveaway
+          ? await sendGiveawayMessage(giveaway.giveaway_id, { content: text })
+          : undefined;
+      if (sent) setMessages((prev) => [...prev, sent]);
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not send the message.");
+    }
+  }
+
+  /** §6.1 — up to 5 images per message; extra selections are dropped rather
+   * than rejected outright, since the picker has no way to un-select some. */
+  async function handleAttach(files: FileList) {
+    if (!transaction && !giveaway) return;
+    const selected = Array.from(files).slice(0, 5);
+    if (files.length > 5) toast.show("Only the first 5 photos were attached.");
+
+    setBusy(true);
+    try {
+      const image_urls: string[] = [];
+      for (const file of selected) {
+        const formData = new FormData();
+        formData.append("file", file);
+        image_urls.push(await uploadChatImage(formData));
+      }
+      const sent = transaction
+        ? await sendChatMessage(transaction.transaction_id, { image_urls })
+        : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
+      setMessages((prev) => [...prev, sent]);
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not send the photos.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePropose() {
+    if (!transaction || !when) return;
+    setBusy(true);
+    try {
+      const created = await proposeAppointment(transaction.transaction_id, {
+        date: when.toString(),
+        time,
+        location: place,
+      });
+      setAppointment(created);
+      setPlace("");
+      toast.show("Meetup proposed. Waiting on a reply.");
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not propose a meetup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAppointmentResponse(response: "confirm" | "reject") {
+    if (!appointment) return;
+    setBusy(true);
+    try {
+      const updated = await respondToAppointment(appointment.appointment_id, response);
+      setAppointment(updated);
+      toast.show(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not respond to the meetup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function currentAction(): React.ReactNode {
     if (!transaction || !isYourTurn) return null;
 
@@ -371,10 +391,7 @@ export function RoomScreen({
           <ActionCard title="Your step - pay and upload the slip">
             <SlipUploader
               amount={transaction.final_amount}
-              slipUrl={transaction.slip_image_url}
-              isUploaded={!!transaction.slip_image_url}
-              uploadedAt={transaction.payment_confirmed_by_buyer_at}
-              onUpload={handleSlipUpload}
+              onUpload={async () => act("Slip uploaded. Waiting on the seller.")}
             />
           </ActionCard>
         );
@@ -382,26 +399,18 @@ export function RoomScreen({
         return transaction.slip_image_url &&
           transaction.payment_confirmed_by_buyer_at ? (
           <ActionCard title="Your step - check the slip">
-            <OverlayTrigger>
-              <Button block size="lg">
-                <Receipt className="size-5" />
-                Check Slip
-              </Button>
-              <Overlay title="Check the slip" size="lg">
-                <SlipReviewer
-                  slipUrl={transaction.slip_image_url}
-                  amount={transaction.final_amount}
-                  buyer={{
-                    name: transaction.buyer.name,
-                    isVerified: transaction.buyer.isVerified,
-                  }}
-                  uploadedAt={transaction.payment_confirmed_by_buyer_at}
-                  isBusy={busy}
-                  onConfirm={handleConfirmPayment}
-                  onReject={() => act("Told the buyer the amount does not match")}
-                />
-              </Overlay>
-            </OverlayTrigger>
+            <SlipReviewer
+              slipUrl={transaction.slip_image_url}
+              amount={transaction.final_amount}
+              buyer={{
+                name: transaction.buyer.name,
+                isVerified: transaction.buyer.isVerified,
+              }}
+              uploadedAt={transaction.payment_confirmed_by_buyer_at}
+              isBusy={busy}
+              onConfirm={() => act("Payment confirmed")}
+              onReject={() => act("Told the buyer the amount does not match")}
+            />
           </ActionCard>
         ) : null;
       case "enter-tracking":
@@ -420,7 +429,7 @@ export function RoomScreen({
                 block
                 isDisabled={!tracking.trim()}
                 isLoading={busy}
-                onPress={handleSaveTracking}
+                onPress={() => act("Tracking number saved")}
               >
                 Save and notify the buyer
               </Button>
@@ -435,21 +444,23 @@ export function RoomScreen({
                 Did the parcel arrive and match what was agreed? Confirm to close
                 this deal.
               </p>
-              <Button block isLoading={busy} onPress={handleConfirmDelivery}>
+              <Button block isLoading={busy} onPress={() => act("Deal closed")}>
                 Confirm the item arrived
               </Button>
             </div>
           </ActionCard>
         );
       case "scan-qr":
-        // No scanner in this demo — the seller shows a QR (below) and this
-        // is the buyer's confirmation once they actually have the item.
         return (
-          <ActionCard title="Your step - confirm you have the item">
-            <Button block size="lg" isLoading={busy} onPress={handleConfirmHandover}>
-              <Check className="size-5" />
-              I have the item
-            </Button>
+          <ActionCard title="Your step - scan the QR at handover">
+            <LinkButton
+              block
+              size="lg"
+              href={`/history/${transaction.transaction_id}/scan`}
+            >
+              <ScanLine className="size-5" />
+              Open the scanner
+            </LinkButton>
           </ActionCard>
         );
       case "refund-slip":
@@ -471,22 +482,15 @@ export function RoomScreen({
     transaction.delivery_method === "Meetup" &&
     transaction.status === "Processing" &&
     viewer === "seller" ? (
-      <ActionCard title="Show your QR at handover">
-        <OverlayTrigger>
-          <Button block size="lg">
-            <QrCode className="size-5" />
-            Show QR
-          </Button>
-          <Overlay
-            title="Let the buyer see this"
-            description="Hand the item over first. There is no scanner in this demo — the buyer closes the deal with a button once they have it, not by reading this code."
-          >
-            <QrTicket
-              onGenerate={async () => `ku-tx-${transaction.transaction_id}-${Date.now()}`}
-              caption="For show only in this demo — nothing reads it."
-            />
-          </Overlay>
-        </OverlayTrigger>
+      <ActionCard title="Let the buyer scan">
+        <LinkButton
+          block
+          size="lg"
+          href={`/history/${transaction.transaction_id}/qr`}
+        >
+          <QrCode className="size-5" />
+          Open QR
+        </LinkButton>
       </ActionCard>
     ) : null;
 
@@ -519,22 +523,35 @@ export function RoomScreen({
               Giver
             </span>
           ) : null}
+
+          {/* §7.5.2 — rude/threatening behavior, spam, or impersonation "in
+              chat" is the spec's own framing for a User report, so the
+              trigger lives right where that happens. */}
+          <ReportDialog
+            reportType="User"
+            targetId={summary.counterparty.user_id}
+            reasons={USER_REPORT_REASONS}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                pill
+                aria-label={`Report ${summary.counterparty.name}`}
+              >
+                <Flag className="size-3.5" />
+              </Button>
+            }
+          />
         </span>
 
         <span className="ml-auto flex min-w-0 items-center gap-2">
-          <span className="flex shrink-0 items-center gap-1">
-            <span
-              aria-hidden
-              className={cn("size-1.5 rounded-full", TONE_DOT[ROOM_KIND_TONE[summary.kind]])}
-            />
-            <span
-              className={cn(
-                "text-[0.75rem] font-semibold",
-                TONE_TEXT[ROOM_KIND_TONE[summary.kind]],
-              )}
-            >
-              {summary.kind}
-            </span>
+          <span
+            className={cn(
+              "shrink-0 rounded-chip border px-1.5 py-0.5 text-[0.6875rem] font-semibold",
+              TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
+            )}
+          >
+            {summary.kind}
           </span>
           {/* The subject was dead text, and on anything under 640px it was
               not even shown — so a room had no route back to the thing it is
@@ -608,7 +625,7 @@ export function RoomScreen({
             <DealDetails
               transaction={transaction}
               viewer={viewer}
-              appointment={localAppointment}
+              appointment={appointment}
               counterpartyName={summary.counterparty.name}
               prompt={prompt}
               steps={steps}
@@ -617,8 +634,6 @@ export function RoomScreen({
               reportable={reportable}
               busy={busy}
               onAct={act}
-              onDemoUpload={handleSlipUpload}
-              onDemoAdvance={otherSideAdvance}
             />
           ) : null}
 
@@ -686,15 +701,15 @@ export function RoomScreen({
             <div className="px-4 pb-4">
               {transaction.delivery_method !== "Meetup" ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
-              ) : localAppointment ? (
+              ) : appointment ? (
                 <AppointmentCard
-                  status={localAppointment.status}
-                  scheduledAt={`${localAppointment.date}T${localAppointment.time}+07:00`}
-                  place={localAppointment.location}
+                  status={appointment.status}
+                  scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
+                  place={appointment.location}
                   // Only the side that did not propose it can answer it.
-                  awaitingViewer={localAppointment.proposed_by !== viewerId}
-                  onAccept={handleAcceptMeetup}
-                  onDecline={handleDeclineMeetup}
+                  awaitingViewer={appointment.proposed_by !== viewerId}
+                  onAccept={() => handleAppointmentResponse("confirm")}
+                  onDecline={() => handleAppointmentResponse("reject")}
                 />
               ) : (
                 /* Flow 1 puts the appointment after the payment is confirmed
@@ -705,8 +720,10 @@ export function RoomScreen({
                   onPlaceChange={setPlace}
                   when={when}
                   onWhenChange={setWhen}
+                  time={time}
+                  onTimeChange={setTime}
                   isBusy={busy}
-                  onPropose={handleProposeMeetup}
+                  onPropose={handlePropose}
                 />
               )}
             </div>
@@ -722,7 +739,8 @@ export function RoomScreen({
         action={currentAction() ?? sellerQr}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-        onSend={async () => toast.show("Message sent")}
+        onSend={handleSend}
+        onAttach={handleAttach}
       />
     </div>
   );
@@ -748,12 +766,10 @@ function DealDetails({
   reportable,
   busy,
   onAct,
-  onDemoUpload,
-  onDemoAdvance,
 }: {
   transaction: Transaction;
   viewer: Party;
-  appointment?: AppointmentSeed;
+  appointment?: AppointmentCardData;
   counterpartyName: string;
   prompt?: ActorPrompt;
   steps: Step[];
@@ -762,11 +778,6 @@ function DealDetails({
   reportable: boolean;
   busy: boolean;
   onAct: (message: string) => void;
-  onDemoUpload: (file: File) => Promise<void>;
-  /** The other side's next step, played from here. `undefined` on the
-   * upload-slip step (its own uploader below covers it) and once it is
-   * genuinely the viewer's own turn. */
-  onDemoAdvance?: () => void;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
@@ -786,33 +797,14 @@ function DealDetails({
         </div>
 
         {prompt ? (
-          prompt.action === "upload-slip" && prompt.actor !== viewer ? (
-            // The real buyer's own turn already gets the full uploader
-            // through the composer's ActionCard — this box only stands in
-            // for it when nobody but the mock viewer can trigger that step.
-            <SlipUploader amount={transaction.final_amount} onUpload={onDemoUpload} />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p
-                className={cn(
-                  "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
-                  TONE_CHIP[prompt.tone],
-                )}
-              >
-                {prompt.label}
-              </p>
-              {onDemoAdvance ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="w-fit"
-                  onPress={onDemoAdvance}
-                >
-                  Play {counterpartyName}&apos;s step (demo)
-                </Button>
-              ) : null}
-            </div>
-          )
+          <p
+            className={cn(
+              "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
+              TONE_CHIP[prompt.tone],
+            )}
+          >
+            {prompt.label}
+          </p>
         ) : null}
 
         {transaction.delivery_method === "Shipping" ? (

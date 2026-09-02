@@ -22,7 +22,6 @@
  * problems Thai causes. See docs/design/tokens.md §7.
  */
 
-import type { AppealStatus, ReportStatus } from "@/lib/status";
 import type {
   GiveawayPost,
   GiveawayTicket,
@@ -1576,62 +1575,6 @@ export async function getMembership(): Promise<Membership> {
     expires_at: at("2026-09-01T00:00:00+07:00"),
     pending_review: false,
   };
-}
-
-export interface AdminReportRow {
-  report_id: number;
-  reporter: UserSummary;
-  reason_category: string;
-  status: ReportStatus;
-  created_at: string;
-  target: string;
-  details: string;
-}
-
-export async function getAdminReports(): Promise<AdminReportRow[]> {
-  return [
-    {
-      report_id: 1,
-      reporter: USERS[3],
-      reason_category: "Non-responsive seller",
-      status: "Under_Investigation",
-      created_at: ago(1 * DAY),
-      target: "Deal 1",
-      details: "ผู้ขายไม่ยอมมาตามนัดหมายที่หอสมุดและติดต่อไม่ได้",
-    },
-    {
-      report_id: 2,
-      reporter: USERS[6],
-      reason_category: "Misleading description",
-      status: "Pending",
-      created_at: ago(8 * HOUR),
-      target: "Post 5",
-      details: "จักรยานเบรคเสื่อมสภาพมากไม่ตรงตามที่ลงไว้",
-    },
-  ];
-}
-
-export interface AdminAppealRow {
-  appeal_id: number;
-  report_id: number;
-  appellant: UserSummary;
-  status: AppealStatus;
-  created_at: string;
-  reason: string;
-}
-
-export async function getAdminAppeals(): Promise<AdminAppealRow[]> {
-  return [
-    {
-      appeal_id: 1,
-      report_id: 1,
-      appellant: USERS[2],
-      status: "Appeal_Submitted",
-      created_at: ago(6 * HOUR),
-      reason:
-        "วันนั้นติดสอบกะทันหันครับ พยายามติดต่อผู้ซื้อแล้วแต่สัญญาณโทรศัพท์ไม่มี",
-    },
-  ];
 }
 
 export interface MembershipRequest {

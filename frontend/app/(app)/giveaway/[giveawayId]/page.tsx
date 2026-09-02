@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { getGiveaways, getMyTickets, VIEWER_ID } from "@/lib/api/fixtures";
+import { getMyTicket, getGiveaway } from "@/lib/api/giveaways";
+import { getMe } from "@/lib/api/users";
+import { getAccessToken } from "@/lib/api/session";
 
 import { GiveawayDetail } from "./giveaway-detail";
 
@@ -10,21 +12,24 @@ export default async function GiveawayDetailPage({
   params: Promise<{ giveawayId: string }>;
 }) {
   const { giveawayId } = await params;
-  const [giveaways, tickets] = await Promise.all([
-    getGiveaways(),
-    getMyTickets(),
-  ]);
+  const id = Number(giveawayId);
+  if (!Number.isInteger(id) || id < 1) notFound();
 
-  const giveaway = giveaways.find((g) => g.giveaway_id === Number(giveawayId));
-  if (!giveaway) notFound();
+  let giveaway;
+  try {
+    giveaway = await getGiveaway(id);
+  } catch {
+    notFound();
+  }
 
-  const ticket = tickets.find((t) => t.giveaway_id === giveaway.giveaway_id);
+  const viewer = (await getAccessToken()) ? await getMe().catch(() => undefined) : undefined;
+  const ticket = viewer ? await getMyTicket(id, giveaway, viewer.userId) : undefined;
 
   return (
     <GiveawayDetail
       giveaway={giveaway}
       ticket={ticket}
-      isGiver={giveaway.giver_id === VIEWER_ID}
+      isGiver={viewer ? giveaway.giver_id === viewer.userId : false}
     />
   );
 }

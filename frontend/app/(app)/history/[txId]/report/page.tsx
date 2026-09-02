@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 
 import { PostImage } from "@/components/kit/post-image";
@@ -6,7 +6,9 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getTransaction, VIEWER_ID } from "@/lib/api/fixtures";
+import { getTransaction } from "@/lib/api/transactions";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe } from "@/lib/api/users";
 import { deadlineFor } from "@/lib/inbox";
 import { canReport, requiresPayment, TRANSACTION_STATUS } from "@/lib/status";
 
@@ -19,19 +21,28 @@ import { ReportForm } from "./report-form";
  * actually passed. Reaching this URL early is not an error page, it is a
  * *explanation* — telling a worried student "not yet, here is when" is the
  * whole job of this screen in that state.
+ *
+ * Real now: `getTransaction` requires the viewer to actually be the buyer or
+ * seller (backend `assertParticipant`), so a failed fetch means "not signed
+ * in" or "not your deal" — both collapse to `notFound()` the same way a
+ * missing fixture id used to.
  */
 export default async function ReportPage({
   params,
 }: {
   params: Promise<{ txId: string }>;
 }) {
+  if (!(await getAccessToken())) redirect("/login");
+  const viewerProfile = await getMe().catch(() => undefined);
+  if (!viewerProfile) redirect("/login");
+
   const { txId } = await params;
-  const tx = await getTransaction(Number(txId));
+  const tx = await getTransaction(Number(txId)).catch(() => undefined);
   if (!tx) notFound();
 
   const deadline = deadlineFor(tx);
   const allowed = canReport(deadline ? [deadline] : []);
-  const viewer = tx.buyer_id === VIEWER_ID ? "buyer" : "seller";
+  const viewer = tx.buyer_id === viewerProfile.userId ? "buyer" : "seller";
   const other = viewer === "buyer" ? tx.seller : tx.buyer;
 
   /**
@@ -93,7 +104,6 @@ export default async function ReportPage({
         <TrustBadge
           name={other.name}
           isVerified={other.isVerified}
-          faculty={other.faculty}
         />
       </div>
     </Surface>
@@ -102,6 +112,7 @@ export default async function ReportPage({
   return (
     <TwoColumn rail={subject}>
       <ReportForm
+        transaction={tx}
         transactionId={tx.transaction_id}
         itemName={tx.post.item.name}
         counterparty={other.name}

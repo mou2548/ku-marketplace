@@ -14,7 +14,9 @@
 import type {
   AllocationMethod,
   AppealStatus,
+  AppointmentStatus,
   DeliveryMethod,
+  EntrantStatus,
   ItemCondition,
   ItemStatus,
   OfferStatus,
@@ -135,6 +137,12 @@ export interface Transaction {
   payment_confirmed_by_seller_at?: string | null;
   item_received_confirmed_by_buyer_at?: string | null;
   item_received_confirmed_by_seller_at?: string | null;
+  cancellation_requested_by?: number | null;
+  cancellation_reason?: string | null;
+  cancellation_requested_at?: string | null;
+  cancellation_response?: "Pending" | "Approved" | "Rejected" | null;
+  refund_slip_url?: string | null;
+  refund_confirmed_by_buyer?: boolean | null;
   created_at: string;
   /** Present on a trade — drives whether the payment sequence runs at all. */
   additional_money?: number | null;
@@ -147,19 +155,34 @@ export interface ChatMessage {
   message_id: number;
   room_id: number;
   sender_id: number;
+  /** Absent for a fixture-sourced (giveaway) room — see lib/api/chat.ts. */
+  sender?: UserSummary;
   content?: string | null;
   image_urls?: string[] | null;
+  /** §6.2 — true once the message is older than the 7-day display lifetime;
+   * `image_urls` is null in that case, and the UI shows a notice instead. */
+  images_expired?: boolean;
   created_at: string;
 }
 
+/**
+ * Mirrors `Appointment_Card` (`DatabaseSchema.pdf` §2.13, init.sql). An
+ * earlier pass invented `Proposed|Accepted|Declined`, which meant a real row
+ * could never be passed in — see the fix note in `lib/status.ts`. `date`/
+ * `time` are plain `"YYYY-MM-DD"`/`"HH:mm:ss"` strings, matching what
+ * `AppointmentCard`/`appointmentLabel` already expect; `lib/api/chat.ts`'s
+ * adapter slices the backend's full ISO timestamps down to this shape.
+ */
 export interface AppointmentCardData {
   appointment_id: number;
   transaction_id: number;
-  scheduled_at: string;
-  place: string;
-  coordinates?: string | null;
-  status: "Proposed" | "Accepted" | "Declined";
   proposed_by: number;
+  proposer: UserSummary;
+  date: string;
+  time: string;
+  location: string;
+  status: AppointmentStatus;
+  created_at: string;
 }
 
 export interface GiveawayPost {
@@ -190,22 +213,46 @@ export interface GiveawayTicket {
   giveaway: GiveawayPost;
 }
 
+/**
+ * Who else is in a giveaway's group chat room. Built from
+ * `GET /giveaways/{id}/recipients` (`lib/api/giveaways.ts`'s `getEntrants`),
+ * which only ever returns a `Waiting`/`Received` ticket — a forfeited or
+ * expired one drops out of this list entirely rather than showing up as
+ * `Not_Selected`. See docs/design/api-gaps.md §8.
+ */
+export interface Entrant {
+  receiver_id: number;
+  user: UserSummary;
+  status: EntrantStatus;
+}
+
 export interface Report {
   report_id: number;
   reporter_id: number;
+  reporter: UserSummary;
   report_type: "Post" | "User" | "Transaction";
   target_id: number;
   reason_category: string;
   details?: string | null;
   evidence_urls?: string[] | null;
   status: ReportStatus;
+  handled_by?: number | null;
+  handler?: UserSummary | null;
   resolution_note?: string | null;
+  handled_at?: string | null;
   created_at: string;
 }
 
 export interface Appeal {
   appeal_id: number;
   report_id: number;
+  appellant_id: number;
+  appellant: UserSummary;
+  reason: string;
+  evidence_urls?: string[] | null;
   status: AppealStatus;
+  handled_by?: number | null;
+  resolution_note?: string | null;
   created_at: string;
+  handled_at?: string | null;
 }

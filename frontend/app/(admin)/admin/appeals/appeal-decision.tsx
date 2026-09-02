@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, X } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextAreaField } from "@/components/kit/field";
 import { useToast } from "@/components/kit/toast";
+import { adminDecideAppeal } from "@/lib/actions/appeals";
+import type { ApiError } from "@/lib/api/client";
 
 export function AppealDecision({ appealId }: { appealId: number }) {
+  const router = useRouter();
   const toast = useToast();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,15 +20,23 @@ export function AppealDecision({ appealId }: { appealId: number }) {
 
   async function decide(upheld: boolean) {
     setBusy(true);
-    // POST /admin/appeals/{id}/decide
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show(
-      upheld
-        ? `Appeal #${appealId} upheld. The penalty is lifted.`
-        : `Appeal #${appealId} rejected. The original decision stands.`,
-    );
-    setNote("");
+    try {
+      await adminDecideAppeal(appealId, {
+        status: upheld ? "Approved" : "Rejected",
+        resolution_note: note,
+      });
+      toast.show(
+        upheld
+          ? `Appeal #${appealId} upheld. The penalty is lifted.`
+          : `Appeal #${appealId} rejected. The original decision stands.`,
+      );
+      setNote("");
+      router.refresh();
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not record the decision.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

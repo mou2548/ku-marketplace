@@ -12,15 +12,15 @@ import { GiveawaysService } from './giveaways.service';
 import type {
   CreateGiveawayPayload,
   ForfeitPayload,
-  JoinGiveawayPayload,
   ScanQrPayload,
   SelectRecipientsPayload,
+  SendGiveawayMessagePayload,
 } from './giveaways.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
 
-// เช่นเดียวกับ posts — เพิ่มแค่ guard กันคนไม่ login ยังไม่ได้เปลี่ยนวิธีรับ
-// giver_id/receiver_id ที่ยังมาจาก body เหมือนเดิม
 @Controller()
 export class GiveawaysController {
   constructor(private readonly giveawaysService: GiveawaysService) {}
@@ -28,8 +28,17 @@ export class GiveawaysController {
   @Post('giveaways')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('สร้างโพสต์แจกของสำเร็จ')
-  create(@Body() body: CreateGiveawayPayload) {
-    return this.giveawaysService.create(body);
+  create(
+    @Body() body: CreateGiveawayPayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.create(body, user.userId);
+  }
+
+  @Get('giveaways')
+  @ResponseMessage('รายการโพสต์แจกของสำเร็จ')
+  findAll() {
+    return this.giveawaysService.findAll();
   }
 
   @Get('giveaways/:id')
@@ -41,8 +50,8 @@ export class GiveawaysController {
   @Post('giveaways/:id/join')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('เข้าร่วมการแจกของสำเร็จ')
-  join(@Param('id') id: string, @Body() body: JoinGiveawayPayload) {
-    return this.giveawaysService.join(id, body);
+  join(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.giveawaysService.join(id, user.userId);
   }
 
   @Post('giveaways/:id/draw')
@@ -94,5 +103,30 @@ export class GiveawaysController {
     @Body() body: ScanQrPayload,
   ) {
     return this.giveawaysService.qrScan(id, ticketId, body.token);
+  }
+
+  /**
+   * §6, extended — the giver plus every entrant read/write here, unlike a
+   * transaction's 1:1 room. See `assertGiveawayMember` in the service.
+   */
+  @Get('giveaways/:id/message')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ดึงข้อความสำเร็จ')
+  getGiveawayMessages(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.getGiveawayMessages(id, user.userId);
+  }
+
+  @Post('giveaways/:id/message')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ส่งข้อความสำเร็จ')
+  sendGiveawayMessage(
+    @Param('id') id: string,
+    @Body() body: SendGiveawayMessagePayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.sendGiveawayMessage(id, body, user.userId);
   }
 }

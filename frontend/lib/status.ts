@@ -480,23 +480,23 @@ export const REPORT_STATUS: Record<ReportStatus, StatusPresentation> = {
   Report_Dismissed: { tone: "neutral", label: "Dismissed", icon: "ShieldOff" },
 };
 
-export type AppealStatus =
-  | "Not_Appealed"
-  | "Appeal_Submitted"
-  | "Appeal_Under_Review"
-  | "Appeal_Upheld"
-  | "Appeal_Rejected";
+/**
+ * Mirrors `Appeal.appeal_status` (`DatabaseSchema.pdf`, init.sql,
+ * `backend/src/common/enums/report.enums.ts`). An earlier pass invented
+ * `Not_Appealed|Appeal_Submitted|Appeal_Under_Review|Appeal_Upheld|
+ * Appeal_Rejected`, which meant a real `Appeal` row could never be passed in
+ * — same mistake, same fix, as `AppointmentStatus` above. There is no
+ * "not appealed" value: an `Appeal` row only exists once one is actually
+ * filed, so that state is the absence of an `Appeal`, not a status a real one
+ * can hold.
+ */
+export type AppealStatus = "Pending" | "Under_Review" | "Approved" | "Rejected";
 
 export const APPEAL_STATUS: Record<AppealStatus, StatusPresentation> = {
-  Not_Appealed: { tone: "neutral", label: "Not appealed", icon: "Minus" },
-  Appeal_Submitted: { tone: "warning", label: "Appeal submitted", icon: "Send" },
-  Appeal_Under_Review: {
-    tone: "info",
-    label: "Appeal under review",
-    icon: "Scale",
-  },
-  Appeal_Upheld: { tone: "success", label: "Appeal upheld", icon: "ShieldCheck" },
-  Appeal_Rejected: { tone: "danger", label: "Appeal rejected", icon: "ShieldX" },
+  Pending: { tone: "warning", label: "Appeal submitted", icon: "Send" },
+  Under_Review: { tone: "info", label: "Appeal under review", icon: "Scale" },
+  Approved: { tone: "success", label: "Appeal upheld", icon: "ShieldCheck" },
+  Rejected: { tone: "danger", label: "Appeal rejected", icon: "ShieldX" },
 };
 
 /* ================================================================== *

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { getAdminReports } from "@/lib/api/fixtures";
+import { adminListReports } from "@/lib/api/reports";
 import { REPORT_STATUS } from "@/lib/status";
 
 export const metadata = { title: "Reports - Admin" };
@@ -14,7 +14,7 @@ export const metadata = { title: "Reports - Admin" };
  * cases that have been waiting longest.
  */
 export default async function AdminReportsPage() {
-  const reports = [...(await getAdminReports())].sort(
+  const reports = [...(await adminListReports())].sort(
     (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
   );
 
@@ -38,7 +38,9 @@ export default async function AdminReportsPage() {
                   <p className="font-semibold">
                     #{r.report_id} · {r.reason_category}
                   </p>
-                  <p className="text-[0.8125rem] text-ink-muted">{r.target}</p>
+                  <p className="text-[0.8125rem] text-ink-muted">
+                    {r.report_type} #{r.target_id}
+                  </p>
                 </div>
 
                 <TrustBadge

@@ -34,3 +34,18 @@ export const AppealStatus = {
   Rejected: 'Rejected',
 } as const;
 export type AppealStatus = (typeof AppealStatus)[keyof typeof AppealStatus];
+
+/**
+ * §7.1 — not a DB column (no `Sanction` table/enum in init.sql). A
+ * `Violation_Confirmed` report carries one of these; `report.service.ts`
+ * turns `Suspend_*` into a `User.status` update (`Suspended`/`Banned` already
+ * exist on that column) and leaves `Warn`/`None` as the report's own
+ * `resolution_note` with no side effect on the account.
+ */
+export const Sanction = {
+  None: 'none',
+  Warn: 'warn',
+  Suspend_Temporary: 'suspend_temporary',
+  Suspend_Permanent: 'suspend_permanent',
+} as const;
+export type Sanction = (typeof Sanction)[keyof typeof Sanction];

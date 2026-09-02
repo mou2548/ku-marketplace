@@ -12,12 +12,16 @@ import {
 } from '../common/enums/report.enums';
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
+import { ReportService } from './report.service';
 
 const APPEAL_WINDOW_DAYS = 7;
 
 @Injectable()
 export class AppealService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reportService: ReportService,
+  ) {}
 
   /**
    * `targetId` means a different thing per reportType, so the user the report
@@ -59,6 +63,71 @@ export class AppealService {
     }
 
     return undefined;
+  }
+
+  private serializeUserSummary(user: {
+    userId: number;
+    firstNameEn: string;
+    lastNameEn: string;
+    emailVerifiedAt: Date | null;
+  }) {
+    return {
+      user_id: user.userId,
+      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      isVerified: user.emailVerifiedAt !== null,
+    };
+  }
+
+  private serializeAppeal(appeal: {
+    appealId: number;
+    reportId: number;
+    appellantId: number;
+    reason: string;
+    evidenceUrls: unknown;
+    status: string;
+    handledBy: number | null;
+    resolutionNote: string | null;
+    createdAt: Date | null;
+    handledAt: Date | null;
+    appellant: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
+  }) {
+    return {
+      appeal_id: appeal.appealId,
+      report_id: appeal.reportId,
+      appellant_id: appeal.appellantId,
+      appellant: this.serializeUserSummary(appeal.appellant),
+      reason: appeal.reason,
+      evidence_urls: appeal.evidenceUrls,
+      status: appeal.status,
+      handled_by: appeal.handledBy,
+      resolution_note: appeal.resolutionNote,
+      created_at: appeal.createdAt,
+      handled_at: appeal.handledAt,
+    };
+  }
+
+  private readonly appealInclude = { appellant: true } as const;
+
+  async findAllForUser(appellantId: number) {
+    const appeals = await this.prisma.appeal.findMany({
+      where: { appellantId },
+      include: this.appealInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+    return appeals.map((appeal) => this.serializeAppeal(appeal));
+  }
+
+  async findAll() {
+    const appeals = await this.prisma.appeal.findMany({
+      include: this.appealInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+    return appeals.map((appeal) => this.serializeAppeal(appeal));
   }
 
   async create(appellantId: number, dto: CreateAppealDto) {
@@ -103,7 +172,7 @@ export class AppealService {
       );
     }
 
-    return this.prisma.appeal.create({
+    const created = await this.prisma.appeal.create({
       data: {
         reportId: dto.report_id,
         appellantId: appellantId,
@@ -113,7 +182,9 @@ export class AppealService {
         // unlike Report.status — so the starting status must be set here.
         status: AppealStatus.Pending,
       },
+      include: this.appealInclude,
     });
+    return this.serializeAppeal(created);
   }
 
   async decide(appealId: number, adminId: number, dto: DecideAppealDto) {
@@ -138,8 +209,8 @@ export class AppealService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updatedAppeal = await tx.appeal.update({
+    const updatedAppeal = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.appeal.update({
         where: { appealId },
         data: {
           status: dto.status,
@@ -147,6 +218,7 @@ export class AppealService {
           handledBy: adminId,
           handledAt: new Date(),
         },
+        include: this.appealInclude,
       });
 
       if (dto.status === AppealStatus.Approved) {
@@ -159,7 +231,17 @@ export class AppealService {
         });
       }
 
-      return updatedAppeal;
+      return updated;
     });
+
+    // §7.4 — "reverse the decision" has to undo what the decision actually
+    // did (a suspension, a ban, a hidden post), not just the Report row's own
+    // status. Run after the transaction commits, same as `report.service.ts`'s
+    // `resolve()` calling `settleCancellationDispute` outside its own update.
+    if (dto.status === AppealStatus.Approved) {
+      await this.reportService.undoConsequences(appeal.reportId);
+    }
+
+    return this.serializeAppeal(updatedAppeal);
   }
 }

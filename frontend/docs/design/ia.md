@@ -269,8 +269,8 @@ being replaced by an in-page state.
 | `/giveaway/new` | `/giveaway/new` | unchanged |
 | `/giveaway/[itemId]` | `/giveaway/[giveawayId]` | |
 | `/giveaway/manager` | `/giveaway/[giveawayId]/manage` | was not scoped to a giveaway |
-| `/giveaway/ticket/[id]` | `/giveaway/ticket/[id]` | unchanged |
-| `/giveaway/ticket/[id]/scan` | `/giveaway/ticket/[id]/scan` | unchanged |
+| `/giveaway/ticket/[id]` | `/giveaway/[giveawayId]/ticket/[ticketId]` | moved under the giveaway — `qr/generate` and `qr/scan` are both scoped by giveaway id + ticket id, and there is no single-ticket `GET` to resolve one from a bare ticket id |
+| `/giveaway/ticket/[id]/scan` | `/giveaway/[giveawayId]/manage` | scanning happens from the giver's manage screen, not a standalone route |
 | `/account/*` | `/account/*` | unchanged |
 | `/account/premium` | `/account/membership` | |
 | `/notifications` | `/notifications` | unchanged |

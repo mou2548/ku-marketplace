@@ -1,22 +1,36 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft, Crown, Scale, ShieldAlert } from "lucide-react";
 
 import { ToastProvider } from "@/components/kit/toast";
-import { getAdminAppeals, getAdminReports, getMembershipRequests } from "@/lib/api/fixtures";
+import { getMembershipRequests } from "@/lib/api/fixtures";
+import { adminListAppeals } from "@/lib/api/appeals";
+import { adminListReports } from "@/lib/api/reports";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe } from "@/lib/api/users";
 
 /**
  * Moderation is a different job from using the marketplace, so it gets its own
  * shell rather than a hidden branch of the student navigation. Three queues,
  * each with its pending count, and a way back out.
+ *
+ * This used to have no authentication check at all — anyone could browse
+ * `/admin/*`. Reports and appeals are real now, so the gate has to be too:
+ * same `redirect("/login")` pattern as `account/page.tsx`, plus a redirect
+ * for a signed-in non-admin.
  */
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (!(await getAccessToken())) redirect("/login");
+  const viewer = await getMe().catch(() => undefined);
+  if (!viewer || !viewer.isAdmin) redirect("/");
+
   const [reports, appeals, memberships] = await Promise.all([
-    getAdminReports(),
-    getAdminAppeals(),
+    adminListReports(),
+    adminListAppeals(),
     getMembershipRequests(),
   ]);
 
@@ -33,7 +47,8 @@ export default async function AdminLayout({
       href: "/admin/appeals",
       label: "Appeals",
       icon: Scale,
-      count: appeals.filter((a) => a.status !== "Appeal_Upheld").length,
+      count: appeals.filter((a) => a.status === "Pending" || a.status === "Under_Review")
+        .length,
     },
     {
       href: "/admin/memberships",

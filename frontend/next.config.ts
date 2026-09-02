@@ -18,11 +18,19 @@ const nextConfig: NextConfig = {
   output: "standalone",
   images: {
     remotePatterns: [
-      // The seed in init.sql stores every photo on picsum.photos.
+      // Fixtures (lib/api/fixtures.ts, mock data) use picsum.photos.
       { protocol: "https", hostname: "picsum.photos" },
       { protocol: "https", hostname: "fastly.picsum.photos" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
       { protocol: "https", hostname: "images.unsplash.com" },
+      // The real seed in init.sql stores every photo on this placeholder
+      // host instead — it does not resolve to a real image, so pictures
+      // sourced from real seed data render broken, but at least the page
+      // itself no longer 500s (next/image throws on an unlisted hostname).
+      { protocol: "https", hostname: "r2.ku-market.com" },
+      // Real uploads (chat images, via the shared POST /uploads/image
+      // endpoint — see lib/actions/chat.ts's uploadChatImage) land here.
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   async redirects() {

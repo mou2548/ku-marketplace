@@ -1,4 +1,5 @@
-import { getGiveaways, getMyTickets, getQueuePosition } from "@/lib/api/fixtures";
+import { getMyTickets } from "@/lib/api/fixtures";
+import { getGiveaways } from "@/lib/api/giveaways";
 
 import { GiveawayBrowser } from "./giveaway-browser";
 
@@ -12,35 +13,20 @@ import { GiveawayBrowser } from "./giveaway-browser";
  */
 export const metadata = { title: "Giveaways - KU Marketplace" };
 
+/**
+ * Reads real data now (`getGiveaways`) instead of the static mock array
+ * `lib/api/fixtures.ts` used to return, so this can no longer be prerendered
+ * once at build time — a giveaway created after the build would never show
+ * up, and a `next build` run without the backend reachable would fail the
+ * whole build outright (as it did before this was added).
+ */
+export const dynamic = "force-dynamic";
+
 export default async function GiveawayPage() {
   const [giveaways, tickets] = await Promise.all([
     getGiveaways(),
     getMyTickets(),
   ]);
 
-  // R7 follow-up: FirstCome entrants who are still waiting on the draw could
-  // only see a headcount, not where they stood in it. Queue position is
-  // derived the same way the manage screen derives entrant status — see
-  // `getQueuePosition`.
-  const queuePositions = new Map<number, number>();
-  await Promise.all(
-    tickets
-      .filter(
-        (t) =>
-          t.status === "Registered" &&
-          t.giveaway.allocation_method === "FirstCome",
-      )
-      .map(async (t) => {
-        const position = await getQueuePosition(t.giveaway_id, t.receiver_id);
-        if (position !== undefined) queuePositions.set(t.ticket_id, position);
-      }),
-  );
-
-  return (
-    <GiveawayBrowser
-      giveaways={giveaways}
-      tickets={tickets}
-      queuePositions={queuePositions}
-    />
-  );
+  return <GiveawayBrowser giveaways={giveaways} tickets={tickets} />;
 }

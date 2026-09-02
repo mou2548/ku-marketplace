@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { getEntrants, getGiveaways, VIEWER_ID } from "@/lib/api/fixtures";
+import { getGiveaway, getRecipients } from "@/lib/api/giveaways";
+import { getMe } from "@/lib/api/users";
+import { getAccessToken } from "@/lib/api/session";
 
 import { ManageGiveaway } from "./manage-giveaway";
 
@@ -9,10 +11,9 @@ import { ManageGiveaway } from "./manage-giveaway";
  * are decided by the system, Manual is decided by a person. Only one of those
  * needs a screen, and this is it.
  *
- * The other two used to land here as well and were handed a "Run the draw now"
- * button, which is nonsense for first come, first served — the places were
- * already allocated as people registered. The route now belongs to Manual
- * alone; the detail page tells the other two givers what is happening instead.
+ * `GET /giveaways/{id}/recipients` doubles as the entrant roster before the
+ * giver has picked (everyone who joined is still `Waiting`) — see
+ * `lib/api/giveaways.ts`'s `getRecipients` and api-gaps.md §8.
  */
 export default async function ManageGiveawayPage({
   params,
@@ -20,12 +21,18 @@ export default async function ManageGiveawayPage({
   params: Promise<{ giveawayId: string }>;
 }) {
   const { giveawayId } = await params;
-  const giveaways = await getGiveaways();
-  const giveaway = giveaways.find((g) => g.giveaway_id === Number(giveawayId));
+  const id = Number(giveawayId);
+  if (!Number.isInteger(id) || id < 1) notFound();
+
+  if (!(await getAccessToken())) notFound();
+  const viewer = await getMe().catch(() => undefined);
+  if (!viewer) notFound();
+
+  const giveaway = await getGiveaway(id).catch(() => undefined);
   if (!giveaway) notFound();
-  if (giveaway.giver_id !== VIEWER_ID) notFound();
+  if (giveaway.giver_id !== viewer.userId) notFound();
   if (giveaway.allocation_method !== "Manual") notFound();
 
-  const entrants = await getEntrants(giveaway.giveaway_id);
+  const entrants = await getRecipients(id);
   return <ManageGiveaway giveaway={giveaway} entrants={entrants} />;
 }

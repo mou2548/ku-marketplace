@@ -19,7 +19,12 @@ export class CloudinaryService {
   uploadBuffer(buffer: Buffer, folder = 'ku-marketplace'): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder },
+        {
+          folder,
+          // §6.2 — บีบอัดอัตโนมัติก่อนจัดเก็บ: ให้ Cloudinary เลือกคุณภาพ/ฟอร์แมต
+          // ที่เล็กที่สุดเท่าที่ยังดูดีแทนการเก็บไฟล์ต้นฉบับตรงๆ
+          transformation: [{ quality: 'auto:good', fetch_format: 'auto' }],
+        },
         (error, result) => {
           if (error || !result) {
             return reject(
