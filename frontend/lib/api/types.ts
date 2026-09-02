@@ -1,14 +1,12 @@
 /**
  * Response shapes for the KU Marketplace API.
  *
- * These mirror `fornewdesign/API_Marketplace.pdf` and `DatabaseSchema.pdf`
- * exactly — snake_case field names included — so that swapping the fixtures in
- * `lib/api/fixtures.ts` for real `fetch` calls is a one-line change per module
- * and no screen has to be touched.
+ * snake_case field names, mirroring the database. Every `lib/api/*.ts` module
+ * adapts its endpoint's wire form to these; the old `lib/api/fixtures.ts` mock
+ * layer has been removed — the whole app now runs on the real backend.
  *
- * The backend is fixed and untouchable (CLAUDE.md §0). If a screen needs a
- * field that is not here, it does not exist: record the gap in
- * docs/design/api-gaps.md and design around it.
+ * If a screen needs a field the API does not return, record the gap in
+ * docs/design/api-gaps.md and design around it (or add it to the backend).
  */
 
 import type {
