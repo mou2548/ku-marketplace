@@ -19,6 +19,11 @@ export function TwoColumn({
   rail,
   railSide = "right",
   railFirst = false,
+  /**
+   * A raw `grid-template-columns` value for the two tracks.
+   * By default, the rail gets 20rem and the main content gets minmax(0,1fr).
+   */
+  columns,
   className,
 }: {
   children: React.ReactNode;
@@ -26,15 +31,19 @@ export function TwoColumn({
   railSide?: "left" | "right";
   /** Stack the rail above the main column on small screens. */
   railFirst?: boolean;
+  columns?: string;
   className?: string;
 }) {
+  const gridTemplate =
+    columns ?? (railSide === "left" ? "20rem minmax(0,1fr)" : "minmax(0,1fr) 20rem");
+
   return (
     <div
+      style={{ "--two-col": gridTemplate } as React.CSSProperties}
       className={cn(
-        "flex flex-col gap-6 lg:grid lg:items-start lg:gap-8",
-        railSide === "left"
-          ? "lg:grid-cols-[20rem_minmax(0,1fr)]"
-          : "lg:grid-cols-[minmax(0,1fr)_20rem]",
+        "flex flex-col gap-6 lg:grid lg:items-start lg:gap-8 lg:grid-cols-[var(--two-col)]",
+        // The two tracks are authored main-first; a left rail just swaps
+        // which cell each side paints into, via the col-start rules below.
         className,
       )}
     >

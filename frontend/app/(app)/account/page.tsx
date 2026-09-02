@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Surface } from "@/components/kit/surface";
+import { TONE_SOLID } from "@/components/kit/tone";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import {
@@ -19,6 +20,7 @@ import {
   getViewerProfile,
   VIEWER_ID,
 } from "@/lib/api/fixtures";
+import { cn } from "@/lib/utils";
 
 import { ProfileFields } from "./profile-fields";
 
@@ -75,7 +77,12 @@ export default async function AccountPage() {
       />
 
       <div className="flex flex-wrap gap-2.5">
-        <span className="flex items-center gap-1.5 rounded-pill bg-tone-success-bg px-3 py-1.5 text-[0.875rem] font-medium text-tone-success-fg">
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-[0.875rem] font-medium",
+            TONE_SOLID.success,
+          )}
+        >
           <ShieldCheck aria-hidden className="size-4" />
           Verified KU student
         </span>
@@ -86,8 +93,13 @@ export default async function AccountPage() {
           {completed} completed {completed === 1 ? "deal" : "deals"}
         </span>
         {membership.tier !== "Free" ? (
-          <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-3 py-1.5 text-[0.875rem] font-medium text-amber-700">
-            <Crown aria-hidden className="size-4" />
+          <span
+            className={cn(
+              "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[0.8125rem] font-semibold",
+              TONE_SOLID.warning,
+            )}
+          >
+            <Crown aria-hidden className="size-3.5" />
             {membership.tier}
           </span>
         ) : null}

@@ -1,6 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BookOpen, Package, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BookOpen, Package, ShieldCheck } from "lucide-react";
 
 import { PostCard } from "@/components/kit/post-card";
 import { StatusBadge } from "@/components/kit/status-badge";
@@ -73,6 +74,14 @@ export default async function PostDetailPage({
 
   return (
     <div className="flex flex-col gap-10">
+      <Link
+        href="/"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to market
+      </Link>
+
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
       {/* The image is bounded, the page is not. Capping the whole page just
           moves the empty half from the middle to the right; capping the photo

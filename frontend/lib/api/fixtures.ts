@@ -150,7 +150,9 @@ export const ITEMS: Item[] = [
     category: "Clothing",
     condition: "Very Good",
     description: "ใส่เฉพาะวันสอบ 2 ครั้ง สภาพเหมือนใหม่",
-    status: "Listed",
+    // Transaction 2 on this item is Completed — it already changed hands,
+    // so it belongs in the "handed over" state, not still Listed.
+    status: "Transferred",
     size: "42",
     brand_model: "มุมทอง",
     created_at: ago(10 * DAY),
@@ -675,6 +677,77 @@ export const TRANSACTIONS: Transaction[] = [
     buyer: USERS[8],
     seller: USERS[5],
   },
+  // --- UI mock: slip already uploaded, waiting on the seller to check it —
+  // "review-slip" is otherwise unreachable, since the viewer is the seller
+  // in every other payment-required fixture.
+  {
+    transaction_id: 7,
+    post_id: 11,
+    buyer_id: 9,
+    seller_id: 2,
+    quantity: 1,
+    final_amount: 45,
+    status: "Pending",
+    delivery_method: "Meetup",
+    slip_image_url: "https://picsum.photos/id/29/600/800",
+    payment_confirmed_by_buyer_at: ago(1 * HOUR),
+    created_at: ago(26 * HOUR),
+    post: postById(11),
+    buyer: USERS[9],
+    seller: USERS[2],
+  },
+  // --- UI mocks covering the three transaction states the viewer never
+  // otherwise lands in: Cancelled, Refunded, Pending Refund.
+  {
+    transaction_id: 8,
+    post_id: 9,
+    buyer_id: 5,
+    seller_id: 2,
+    quantity: 1,
+    final_amount: 0,
+    status: "Cancelled",
+    delivery_method: "Meetup",
+    created_at: ago(4 * DAY),
+    post: postById(9),
+    buyer: USERS[5],
+    seller: USERS[2],
+  },
+  {
+    transaction_id: 9,
+    post_id: 10,
+    buyer_id: 8,
+    seller_id: 2,
+    quantity: 1,
+    final_amount: 60,
+    status: "Refunded",
+    delivery_method: "Shipping",
+    tracking_number: "TH1120084455KE",
+    payment_confirmed_by_buyer_at: ago(9 * DAY),
+    payment_confirmed_by_seller_at: ago(9 * DAY - 2 * HOUR),
+    item_received_confirmed_by_buyer_at: ago(6 * DAY),
+    created_at: ago(10 * DAY),
+    post: postById(10),
+    buyer: USERS[8],
+    seller: USERS[2],
+  },
+  // The seller (the viewer) owes the refund here — resolveTransactionActor's
+  // "Pending Refund" branch is otherwise unreachable as the viewer.
+  {
+    transaction_id: 10,
+    post_id: 1,
+    buyer_id: 6,
+    seller_id: 2,
+    quantity: 1,
+    final_amount: 250,
+    status: "Pending Refund",
+    delivery_method: "Meetup",
+    payment_confirmed_by_buyer_at: ago(2 * DAY),
+    payment_confirmed_by_seller_at: ago(2 * DAY - 1 * HOUR),
+    created_at: ago(3 * DAY),
+    post: postById(1),
+    buyer: USERS[6],
+    seller: USERS[2],
+  },
 ];
 
 export interface AppointmentSeed {
@@ -727,6 +800,18 @@ export const APPOINTMENTS: AppointmentSeed[] = [
     date: "2026-08-08",
     time: "09:00:00",
     location: "หน้าหอพักหญิง ซอย 2",
+    status: "Rejected",
+  },
+  // Rejected on a transaction the viewer is actually part of (transaction 4,
+  // the viewer as seller) — appointment_id 4 above proved the state renders,
+  // but not for the viewer.
+  {
+    appointment_id: 5,
+    transaction_id: 4,
+    proposed_by: 7,
+    date: "2026-08-11",
+    time: "10:00:00",
+    location: "ตึกวิศวกรรมคอมพิวเตอร์",
     status: "Rejected",
   },
 ];
@@ -884,6 +969,62 @@ export const GIVEAWAYS: GiveawayPost[] = [
     giver: USERS[10],
     registered_count: 8,
   },
+  {
+    giveaway_id: 9,
+    item_name: "ปากกาเจล 12 สี (ยังไม่แกะกล่อง)",
+    description: "ได้มาจากงานบูธ ใช้ไม่หมดครับ ใครอยากได้ลงชื่อไว้เลย",
+    pickup_location: "ตึกเรียนรวม 4 (ศร.4) ชั้น 1",
+    giver_id: 4,
+    allocation_method: "FirstCome",
+    registered_deadline: at("2026-08-16T18:00:00+07:00"),
+    pickup_start_date: at("2026-08-17T10:00:00+07:00"),
+    pickup_end_date: at("2026-08-20T17:00:00+07:00"),
+    status: "Active",
+    created_at: ago(3 * DAY),
+    images: [
+      { image_id: 9, image_url: "https://picsum.photos/id/1053/800/600", display_order: 1 },
+    ],
+    giver: USERS[4],
+    registered_count: 4,
+  },
+  // --- UI mocks: the viewer's own two giveaways (1, 3) were both Active, so
+  // Closed and Completed as a *giver* had no fixture to render from.
+  {
+    giveaway_id: 10,
+    item_name: "เครื่องคิดเลขวิทยาศาสตร์ fx-991",
+    description: "เรียนจบวิชานี้แล้ว ส่งต่อให้รุ่นน้องครับ",
+    pickup_location: "ตึกคณะวิทยาศาสตร์ ชั้น 1",
+    giver_id: 2,
+    allocation_method: "Random",
+    registered_deadline: at("2026-08-06T17:00:00+07:00"),
+    pickup_start_date: at("2026-08-07T10:00:00+07:00"),
+    pickup_end_date: at("2026-08-10T17:00:00+07:00"),
+    status: "Closed",
+    created_at: ago(9 * DAY),
+    images: [
+      { image_id: 10, image_url: "https://picsum.photos/id/119/800/600", display_order: 1 },
+    ],
+    giver: USERS[2],
+    registered_count: 5,
+  },
+  {
+    giveaway_id: 11,
+    item_name: "แจกันดอกไม้พลาสติกตกแต่งโต๊ะ",
+    description: "ของตกแต่งหอเก่า ไม่ได้ใช้แล้วครับ",
+    pickup_location: "หอพักนิสิตชาย โซน A",
+    giver_id: 2,
+    allocation_method: "FirstCome",
+    registered_deadline: at("2026-07-20T17:00:00+07:00"),
+    pickup_start_date: at("2026-07-21T10:00:00+07:00"),
+    pickup_end_date: at("2026-07-24T17:00:00+07:00"),
+    status: "Completed",
+    created_at: ago(25 * DAY),
+    images: [
+      { image_id: 11, image_url: "https://picsum.photos/id/160/800/600", display_order: 1 },
+    ],
+    giver: USERS[2],
+    registered_count: 3,
+  },
 ];
 
 const giveawayById = (id: number) => GIVEAWAYS.find((g) => g.giveaway_id === id)!;
@@ -891,7 +1032,9 @@ const giveawayById = (id: number) => GIVEAWAYS.find((g) => g.giveaway_id === id)
 /**
  * Tickets 4-8 belong to the viewer and cover all five `TicketStatus` values;
  * 9-13 are other entrants, so the Manual manage screen has a roster and the
- * derived entrant status below has something to derive from.
+ * derived entrant status below has something to derive from. 14-17 put the
+ * viewer in a still-open FirstCome giveaway behind three other entrants, so
+ * `getQueuePosition` has a case where the answer is not 1.
  */
 export const TICKETS: GiveawayTicket[] = [
   {
@@ -1013,6 +1156,44 @@ export const TICKETS: GiveawayTicket[] = [
     created_at: ago(6 * DAY),
     giveaway: giveawayById(4),
   },
+  // --- FirstCome giveaway still open: three entrants ahead of the viewer,
+  // registered before the draw, so a queue position is derivable and non-1.
+  {
+    ticket_id: 14,
+    giveaway_id: 9,
+    receiver_id: 9,
+    status: "Registered",
+    updated_at: ago(3 * DAY),
+    created_at: ago(3 * DAY),
+    giveaway: giveawayById(9),
+  },
+  {
+    ticket_id: 15,
+    giveaway_id: 9,
+    receiver_id: 10,
+    status: "Registered",
+    updated_at: ago(2 * DAY),
+    created_at: ago(2 * DAY),
+    giveaway: giveawayById(9),
+  },
+  {
+    ticket_id: 16,
+    giveaway_id: 9,
+    receiver_id: 6,
+    status: "Registered",
+    updated_at: ago(1 * DAY),
+    created_at: ago(1 * DAY),
+    giveaway: giveawayById(9),
+  },
+  {
+    ticket_id: 17,
+    giveaway_id: 9,
+    receiver_id: 2,
+    status: "Registered",
+    updated_at: ago(5 * HOUR),
+    created_at: ago(5 * HOUR),
+    giveaway: giveawayById(9),
+  },
 ];
 
 /**
@@ -1034,6 +1215,10 @@ export const CHAT_ROOMS: ChatRoom[] = [
   { room_id: 4, transaction_id: 4, giveaway_id: null },
   { room_id: 5, transaction_id: 5, giveaway_id: null },
   { room_id: 6, transaction_id: 6, giveaway_id: null },
+  { room_id: 7, transaction_id: 7, giveaway_id: null },
+  { room_id: 8, transaction_id: 8, giveaway_id: null },
+  { room_id: 9, transaction_id: 9, giveaway_id: null },
+  { room_id: 10, transaction_id: 10, giveaway_id: null },
 ];
 
 export interface ChatSeed {
@@ -1130,6 +1315,33 @@ export const CHAT: ChatSeed[] = [
     content: "แลกกันเลยครับ ไม่ต้องเพิ่มเงิน นัดที่ลานเกียร์ได้ไหมครับ",
   },
   {
+    message_id: 11,
+    created_at: ago(2 * HOUR),
+    room_id: 7,
+    sender_id: 9,
+    transaction_id: 7,
+    giveaway_id: null,
+    content: "สนใจสมุดโน้ต A5 ครับ ขอซื้อ 1 เล่มนะครับ",
+  },
+  {
+    message_id: 12,
+    created_at: ago(1.5 * HOUR),
+    room_id: 7,
+    sender_id: 2,
+    transaction_id: 7,
+    giveaway_id: null,
+    content: "ได้เลยครับ โอนมาได้เลยนะครับ 45 บาท",
+  },
+  {
+    message_id: 13,
+    created_at: ago(1 * HOUR),
+    room_id: 7,
+    sender_id: 9,
+    transaction_id: 7,
+    giveaway_id: null,
+    content: "โอนแล้วครับ แนบสลิปให้เลยนะครับ",
+  },
+  {
     message_id: 6,
     created_at: ago(48 * HOUR),
     room_id: 3,
@@ -1137,6 +1349,43 @@ export const CHAT: ChatSeed[] = [
     transaction_id: null,
     giveaway_id: 1,
     content: "ยินดีด้วยกับน้องๆ ที่กดรับสิทธิ์ทันนะครับ นัดรับชีทที่บาร์ใหม่ได้เลย",
+  },
+  // --- Rooms 8-10, paired with the Cancelled/Refunded/Pending-Refund mocks.
+  {
+    message_id: 14,
+    created_at: ago(4 * DAY),
+    room_id: 8,
+    sender_id: 2,
+    transaction_id: 8,
+    giveaway_id: null,
+    content: "ขอโทษนะครับ ของเพิ่งมีคนมาเอาไปก่อนหน้านี้ ยกเลิกให้เลยครับ",
+  },
+  {
+    message_id: 15,
+    created_at: ago(6 * DAY),
+    room_id: 9,
+    sender_id: 8,
+    transaction_id: 9,
+    giveaway_id: null,
+    content: "ของที่ได้รับไม่ตรงกับที่ลงไว้ครับ ขอคืนเงินได้ไหมครับ",
+  },
+  {
+    message_id: 16,
+    created_at: ago(6 * DAY - 1 * HOUR),
+    room_id: 9,
+    sender_id: 2,
+    transaction_id: 9,
+    giveaway_id: null,
+    content: "ได้ครับ เดี๋ยวโอนคืนให้เลยครับ ขอโทษด้วยนะครับ",
+  },
+  {
+    message_id: 17,
+    created_at: ago(2 * DAY),
+    room_id: 10,
+    sender_id: 6,
+    transaction_id: 10,
+    giveaway_id: null,
+    content: "หนังสือหน้าปกฉีกครับ ไม่ตรงกับรูปที่ลงไว้เลย ขอคืนเงินหน่อยครับ",
   },
 ];
 
@@ -1184,6 +1433,34 @@ export async function getRoom(roomId: number): Promise<ChatRoom | undefined> {
 
 export async function getRoomMessages(roomId: number): Promise<ChatSeed[]> {
   return CHAT.filter((m) => m.room_id === roomId);
+}
+
+/**
+ * UI mock: the room a post's fixture transaction already opened, so "Open
+ * chat" after a demo buy lands on the room that actually discusses this
+ * post instead of the generic room list. `undefined` when the post has no
+ * matching transaction/room fixture — callers fall back to `/chat`.
+ */
+export function getRoomIdForPost(postId: number): number | undefined {
+  const tx = TRANSACTIONS.find((t) => t.post_id === postId);
+  if (!tx) return undefined;
+  return CHAT_ROOMS.find((r) => r.transaction_id === tx.transaction_id)?.room_id;
+}
+
+/** Same lookup from the offer side — an accepted offer's transaction is the one that carries a room. */
+export function getRoomIdForOffer(offerId: number): number | undefined {
+  const tx = TRANSACTIONS.find((t) => t.offer_id === offerId);
+  if (!tx) return undefined;
+  return CHAT_ROOMS.find((r) => r.transaction_id === tx.transaction_id)?.room_id;
+}
+
+/**
+ * Same lookup for a giveaway. Only `giveaway_id: 1` has a fixture room —
+ * every other giveaway's ticket screen falls back to the placeholder note,
+ * same as a post/offer with no matching transaction.
+ */
+export function getRoomIdForGiveaway(giveawayId: number): number | undefined {
+  return CHAT_ROOMS.find((r) => r.giveaway_id === giveawayId)?.room_id;
 }
 
 export async function getGiveaway(id: number): Promise<GiveawayPost | undefined> {
@@ -1252,6 +1529,23 @@ export async function getEntrants(giveawayId: number): Promise<Entrant[]> {
       status,
     };
   });
+}
+
+/**
+ * FirstCome position in the registration queue, per `flow3.png`: the system
+ * grants places in order of `registered_at` once registration closes, so
+ * "queue position" is just that ordering read back before the close happens.
+ * Meaningless once the ticket has left `Registered` — the draw already ran.
+ */
+export async function getQueuePosition(
+  giveawayId: number,
+  receiverId: number,
+): Promise<number | undefined> {
+  const entrants = (await getEntrants(giveawayId)).slice().sort(
+    (a, b) => Date.parse(a.registered_at) - Date.parse(b.registered_at),
+  );
+  const index = entrants.findIndex((e) => e.receiver_id === receiverId);
+  return index === -1 ? undefined : index + 1;
 }
 
 export interface Notification {

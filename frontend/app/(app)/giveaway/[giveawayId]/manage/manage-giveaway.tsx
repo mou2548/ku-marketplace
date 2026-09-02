@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ScanLine, Users } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ScanLine, Users } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { Checkbox } from "@/components/kit/choice";
@@ -63,6 +64,14 @@ export function ManageGiveaway({
 
   return (
     <div className="flex w-full flex-col gap-5">
+      <Link
+        href={`/giveaway/${giveaway.giveaway_id}`}
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to giveaway
+      </Link>
+
       <header className="flex flex-col gap-2">
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           {giveaway.item_name}

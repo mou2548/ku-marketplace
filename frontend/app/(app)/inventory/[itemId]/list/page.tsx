@@ -33,7 +33,7 @@ export default async function ListItemPage({
    * cannot see is the one thing this screen must not ask for.
    */
   const preview = (
-    <Surface shape="card" className="flex flex-col gap-3 p-5">
+    <Surface shape="card" className="flex w-full max-w-md flex-col gap-3 p-5 mx-auto">
       <p className="text-overline text-ink-muted uppercase">
         What you are listing
       </p>
@@ -45,8 +45,9 @@ export default async function ListItemPage({
         <PostImage
           src={item.images.find((i) => i.is_primary)?.image_url}
           alt=""
-          aspectRatio={4 / 3}
+          aspectRatio={1}
           sizes="320px"
+          className="!aspect-square"
         />
       </span>
 
@@ -81,7 +82,7 @@ export default async function ListItemPage({
   );
 
   return (
-    <TwoColumn rail={preview}>
+    <TwoColumn rail={preview} columns="minmax(0,1fr) minmax(0,1fr)">
       <ListItemForm item={item} />
     </TwoColumn>
   );

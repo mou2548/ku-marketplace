@@ -6,7 +6,7 @@ import { OfferComposer } from "./offer-composer";
 
 /**
  * E4 — composing a trade offer. The screen the brief asked to feel like a game
- * inventory: drag items out of your own stash and onto the table.
+ * inventory: tap items in your own stash to place them on the table.
  */
 export default async function NewOfferPage({
   searchParams,

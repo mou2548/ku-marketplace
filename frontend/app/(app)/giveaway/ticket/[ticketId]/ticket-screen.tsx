@@ -1,17 +1,54 @@
 "use client";
 
 import { useCallback } from "react";
-import { Clock, MapPin } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CircleX,
+  Clock,
+  Hourglass,
+  MapPin,
+  PartyPopper,
+  TimerOff,
+} from "lucide-react";
 
 import { ChatThread } from "@/components/kit/chat-thread";
+import { CountdownPill } from "@/components/kit/countdown-pill";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { CHAT, getRoomIdForGiveaway } from "@/lib/api/fixtures";
 import type { GiveawayTicket } from "@/lib/api/types";
-import { TICKET_STATUS } from "@/lib/status";
+import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
 
-export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
+// Flow 3: the shared chat room only opens once a ticket has a place —
+// `Waiting`, `Received` and `Expired` all had one at some point. `Registered`
+// (still queuing) and `Not_Selected` never did, so there is nothing to read.
+const HAS_CHAT_ROOM: Record<GiveawayTicket["status"], boolean> = {
+  Registered: false,
+  Waiting: true,
+  Received: true,
+  Not_Selected: false,
+  Expired: true,
+};
+
+const SUBTITLE: Record<GiveawayTicket["status"], string> = {
+  Registered: "Waiting for the draw",
+  Waiting: "You were selected",
+  Received: "Collected",
+  Not_Selected: "This place went to someone else",
+  Expired: "The pickup window closed before you collected",
+};
+
+export function TicketScreen({
+  ticket,
+  queuePosition,
+}: {
+  ticket: GiveawayTicket;
+  /** Only set while `status` is `Registered` on a `FirstCome` giveaway. */
+  queuePosition?: number;
+}) {
   const { giveaway } = ticket;
 
   // POST /giveaways/{id}/tickets/{ticket_id}/qr/generate
@@ -31,22 +68,129 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
         })}`
       : null;
 
+  const drawDeadline = giveaway.registered_deadline
+    ? {
+        kind: "giveaway-pickup" as const,
+        expiresAt: Date.parse(giveaway.registered_deadline),
+        label: "Draw",
+        onExpiry: "forfeit" as const,
+      }
+    : undefined;
+
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+    <div className="flex flex-col gap-5">
+      <Link
+        href="/giveaway"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to giveaways
+      </Link>
+
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
       <div className="flex flex-1 flex-col gap-4">
         <header className="flex items-start justify-between gap-2">
           <div>
             <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
               {giveaway.item_name}
             </h1>
-            <p className="text-[0.875rem] text-ink-muted">You were selected</p>
+            <p className="text-[0.875rem] text-ink-muted">
+              {SUBTITLE[ticket.status]}
+            </p>
           </div>
           <StatusBadge status={TICKET_STATUS[ticket.status]} />
         </header>
 
-        <Surface shape="panel" fill="plate" noise className="p-5">
-          <QrTicket onGenerate={generate} />
-        </Surface>
+        {ticket.status === "Waiting" ? (
+          <Surface shape="panel" fill="plate" noise className="p-5">
+            <QrTicket onGenerate={generate} />
+          </Surface>
+        ) : ticket.status === "Registered" ? (
+          <div className="flex flex-col gap-3">
+            <Surface
+              shape="card"
+              elevation="flat"
+              className="flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-5"
+            >
+              <div className="flex items-center gap-3">
+                <Hourglass
+                  aria-hidden
+                  className="size-6 shrink-0 text-tone-info-fg"
+                />
+                {queuePosition !== undefined ? (
+                  <p
+                    data-numeric
+                    className="text-[1.125rem] font-bold text-tone-info-fg"
+                  >
+                    #{queuePosition} in line
+                  </p>
+                ) : (
+                  <p className="text-[0.9375rem] font-medium text-tone-info-fg">
+                    Registered
+                  </p>
+                )}
+              </div>
+              <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                {ALLOCATION_METHOD[giveaway.allocation_method].hint}
+              </p>
+              {drawDeadline ? (
+                <CountdownPill deadline={drawDeadline} showLabel />
+              ) : null}
+            </Surface>
+
+            {/* FirstCome allocates on registration, same as giveaway-detail's
+                isFirstCome branch — the QR is already yours, not something a
+                future draw grants. */}
+            {giveaway.allocation_method === "FirstCome" ? (
+              <Surface shape="panel" fill="plate" noise className="p-5">
+                <QrTicket onGenerate={generate} />
+              </Surface>
+            ) : null}
+          </div>
+        ) : ticket.status === "Received" ? (
+          <Surface
+            shape="card"
+            elevation="flat"
+            className="flex items-center gap-3 bg-tone-success-bg border-l-4 border-l-tone-success-solid p-5"
+          >
+            <PartyPopper
+              aria-hidden
+              className="size-6 shrink-0 text-tone-success-fg"
+            />
+            <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+              You collected this at {giveaway.pickup_location}.
+            </p>
+          </Surface>
+        ) : ticket.status === "Not_Selected" ? (
+          <Surface
+            shape="card"
+            elevation="flat"
+            className="flex items-center gap-3 bg-tone-danger-bg border-l-4 border-l-tone-danger-solid p-5"
+          >
+            <CircleX
+              aria-hidden
+              className="size-6 shrink-0 text-tone-danger-fg"
+            />
+            <p className="text-[0.9375rem] font-medium text-tone-danger-fg">
+              Someone else was chosen for this giveaway.
+            </p>
+          </Surface>
+        ) : (
+          <Surface
+            shape="card"
+            elevation="flat"
+            className="flex items-center gap-3 bg-tone-danger-bg border-l-4 border-l-tone-danger-solid p-5"
+          >
+            <TimerOff
+              aria-hidden
+              className="size-6 shrink-0 text-tone-danger-fg"
+            />
+            <p className="text-[0.9375rem] font-medium text-tone-danger-fg">
+              This place was yours, but the pickup window closed before it was
+              collected.
+            </p>
+          </Surface>
+        )}
 
         <Surface shape="card" className="flex flex-col gap-2.5 p-4">
           <p className="flex items-center gap-2 text-[0.9375rem]">
@@ -69,29 +213,48 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
       </div>
 
       {/* Flow 3: only the giver may type in a giveaway room. Receivers read the
-          instructions and show their QR — a broadcast, not a conversation. */}
-      <Surface
-        shape="card"
-        elevation="raised"
-        className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
-      >
-        <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
-          Notes from the giver
-        </h2>
-        <ChatThread
-          viewerId={ticket.receiver_id}
-          isReadOnly
-          readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-          messages={[
-            {
-              message_id: 1,
-              sender_id: giveaway.giver_id,
-              content: `Collect at ${giveaway.pickup_location} during the stated window. Open your QR in the app so I can scan it.`,
-              created_at: ticket.created_at,
-            },
-          ]}
-        />
-      </Surface>
+          instructions and show their QR — a broadcast, not a conversation.
+          The room itself only exists once a ticket has held a place. */}
+      {HAS_CHAT_ROOM[ticket.status] ? (
+        (() => {
+          // UI mock: pull the real fixture room's messages when this
+          // giveaway has one (only giveaway_id 1 does). Every other
+          // giveaway falls back to a single instructional line, same as
+          // the room-less fallback on the post/offer chat buttons.
+          const roomId = getRoomIdForGiveaway(giveaway.giveaway_id);
+          const messages = roomId
+            ? CHAT.filter((m) => m.room_id === roomId)
+            : [
+                {
+                  message_id: 1,
+                  sender_id: giveaway.giver_id,
+                  content:
+                    ticket.status === "Waiting"
+                      ? `Collect at ${giveaway.pickup_location} during the stated window. Open your QR in the app so I can scan it.`
+                      : `Collect at ${giveaway.pickup_location} during the stated window.`,
+                  created_at: ticket.created_at,
+                },
+              ];
+          return (
+            <Surface
+              shape="card"
+              elevation="raised"
+              className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
+            >
+              <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+                Notes from the giver
+              </h2>
+              <ChatThread
+                viewerId={ticket.receiver_id}
+                isReadOnly
+                readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
+                messages={messages}
+              />
+            </Surface>
+          );
+        })()
+      ) : null}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { PostImage } from "./post-image";
 import { StatusIcon } from "./icon";
 import { Surface } from "./surface";
+import { TONE_SOLID } from "./tone";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -75,16 +76,19 @@ export function PostCard({
       <Link href={`/market/${postId}`} className="block focus:outline-none">
         <div className="relative">
           <PostImage src={imageUrl} alt={name} aspectRatio={aspectRatio} />
-          {/* Filled, with white text. Two hues only, both from the five the
-              product allows: green for anything sellable, amber for a pure
-              swap. The palette's own 600 steps are 4.04:1 and 3.50:1 against
-              white — below AA for a 12px label — so the fill is the 700 step
-              of the same colour. Same hue, deep enough to carry the text. */}
+          {/* Filled, with white text — `TONE_SOLID`, the same treatment
+              `warning` and `danger` chips already use. Used to be a local
+              `amber-700`/`green-700` ternary that bypassed the tone system
+              entirely and, worse, picked the same hue `warning` chips use for
+              a pure trade — see the trade tone comment in globals.css.
+              No `shadow-raised`: its inset white top-highlight is meant for a
+              flat card surface, and traced around this pill's full rounded
+              edge as a visible white rim, worst over a photo. */}
           <span
             className={cn(
               "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
-              "rounded-pill px-2.5 py-1 text-[0.75rem] font-semibold text-white shadow-raised",
-              postType === "TradeOnly" ? "bg-amber-700" : "bg-green-700",
+              "rounded-pill px-2.5 py-1 text-[0.75rem] font-semibold",
+              TONE_SOLID[POST_TYPE[postType].tone],
             )}
           >
             <StatusIcon name={POST_TYPE[postType].icon} className="size-3.5" />

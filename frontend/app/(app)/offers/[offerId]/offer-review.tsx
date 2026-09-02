@@ -3,15 +3,26 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, MapPin, Truck, Undo2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  MapPin,
+  MessageCircle,
+  Truck,
+  Undo2,
+  X,
+} from "lucide-react";
 
-import { Button } from "@/components/kit/button";
+import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { Surface } from "@/components/kit/surface";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { getRoomIdForOffer } from "@/lib/api/fixtures";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
 import type { DeliveryMethod } from "@/lib/status";
@@ -38,6 +49,10 @@ export function OfferReview({
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
   const [busy, setBusy] = useState(false);
+  // Acceptance resolves in place instead of jumping to a fixed fixture room
+  // (transaction 5) that describes a different trade. The panel names this
+  // counterparty and this item, so the demo shows the right deal closing.
+  const [acceptedWith, setAcceptedWith] = useState<DeliveryMethod | null>(null);
 
   // Both sides come from one derivation, shared with the inbox, so the piles
   // cannot land in one arrangement on the list and the opposite one here.
@@ -45,16 +60,33 @@ export function OfferReview({
   const isOwner = !sides.viewerIsProposer;
   const pending = offer.status === "Pending";
 
-  async function respond(message: string, next?: string) {
+  // Decline and withdraw send the viewer back to the inbox; only acceptance
+  // opens a room, so only it needs an in-place confirmation.
+  async function respond(message: string) {
     setBusy(true);
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
     toast.show(message);
-    router.push(next ?? "/offers");
+    router.push("/offers");
+  }
+
+  async function accept() {
+    setBusy(true);
+    await new Promise((r) => setTimeout(r, 400));
+    setBusy(false);
+    setAcceptedWith(method);
   }
 
   return (
     <div className="flex flex-col gap-5">
+      <Link
+        href="/offers"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to offers
+      </Link>
+
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           {/* Same two lines as the card the viewer tapped to get here. */}
@@ -96,7 +128,6 @@ export function OfferReview({
       {/* The bench, read-only. Sides are labelled from the viewer's
           perspective, so "You give" always means what leaves your hands. */}
       <TradeBench
-        inventory={[]}
         youGet={sides.youGet.map(toSlot)}
         youGive={sides.youGive.map(toSlot)}
         onYouGiveChange={() => {}}
@@ -108,7 +139,39 @@ export function OfferReview({
         isReadOnly
       />
 
-      {pending ? (
+      {acceptedWith || offer.status === "Accepted" ? (
+        // UI mock: a real acceptance returns the new transaction's room id.
+        // Derived here from the fixture data already on hand — the offer's
+        // own transaction/room, if the fixture set has one.
+        (() => {
+          const roomId = getRoomIdForOffer(offer.offer_id) ?? 5;
+          return (
+            <Surface
+              shape="card"
+              className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
+            >
+              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
+                <CheckCircle2 aria-hidden className="size-5 shrink-0" />
+                Offer accepted
+              </p>
+              <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+                You are trading with {sides.counterparty.name} for{" "}
+                {offer.post.item.name} by{" "}
+                {acceptedWith === "Shipping" ? "shipping" : "meetup"}. Every
+                other offer on this post is declined and a chat room is open.
+              </p>
+              <LinkButton
+                variant="secondary"
+                href={`/chat/${roomId}`}
+                className="w-fit"
+              >
+                <MessageCircle className="size-4" />
+                Open chat
+              </LinkButton>
+            </Surface>
+          );
+        })()
+      ) : pending ? (
         isOwner ? (
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
@@ -134,18 +197,7 @@ export function OfferReview({
                     <Button variant="ghost" slot="close">
                       Not yet
                     </Button>
-                    <Button
-                      isLoading={busy}
-                      onPress={() =>
-                        // UI mock: accepting returns a new transaction id. 5 is
-                        // the fixture trade where the viewer is the seller, so
-                        // this lands in a room rather than on a 404.
-                        respond(
-                          "Offer accepted. A chat room has been opened for you.",
-                          "/history/5",
-                        )
-                      }
-                    >
+                    <Button isLoading={busy} slot="close" onPress={accept}>
                       Confirm acceptance
                     </Button>
                   </>

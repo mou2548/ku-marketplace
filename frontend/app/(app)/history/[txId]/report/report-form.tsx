@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flag, ImagePlus, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Flag, ImagePlus, ShieldAlert } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
@@ -98,6 +99,14 @@ export function ReportForm({
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-5">
+      <Link
+        href={`/history/${transactionId}`}
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to the chat
+      </Link>
+
       <header className="flex flex-col gap-1">
         <h1 className="text-h1">Report a problem</h1>
         <p className="text-[0.875rem] text-ink-muted">

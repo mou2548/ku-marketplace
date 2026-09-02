@@ -109,7 +109,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
   return (
     <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>
-      <header className="sticky top-0 z-[50] w-full border-b border-green-200 bg-surface text-ink-brand shadow-flat">
+      <header className="sticky top-0 z-[50] w-full bg-surface text-ink-brand shadow-raised">
         <div className="flex h-16 w-full items-center gap-6 px-4 lg:px-8">
           <DrawerTrigger isOpen={menuOpen} onOpenChange={setMenuOpen}>
             <Button
@@ -156,11 +156,11 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   aria-current={active ? "page" : undefined}
                   title={label}
                   className={cn(
-                    "flex min-h-10 items-center gap-1.5 rounded-pill px-3 text-[0.9375rem] lg:px-4",
+                    "relative flex min-h-10 items-center gap-1.5 px-3 text-[0.9375rem] lg:px-4",
                     "transition-colors duration-[--dur-fast]",
                     active
-                      ? "bg-brand-subtle font-semibold text-ink-brand"
-                      : "text-ink-secondary hover:bg-green-50 hover:text-ink-brand",
+                      ? "font-semibold text-ink"
+                      : "text-ink-secondary hover:text-ink-brand",
                   )}
                 >
                   {/* Between 768 and 1024 there is room for icons but not
@@ -168,6 +168,15 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   <Icon aria-hidden className="size-5 lg:hidden" />
                   <span className="hidden lg:inline">{label}</span>
                   <Count value={badge ? badges[badge] : undefined} />
+                  {/* Underline, not a pill — matches the reference layout: a
+                      short brand-coloured bar under the active label only,
+                      no filled background on the tab itself. */}
+                  {active ? (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-3 -bottom-[3px] h-[2px] rounded-pill bg-brand lg:inset-x-4"
+                    />
+                  ) : null}
                 </Link>
               );
             })}
@@ -205,17 +214,13 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               aria-label="Account"
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
               className={cn(
-                "grid size-9 place-items-center rounded-pill text-[0.75rem] font-semibold transition-colors",
+                "grid size-9 place-items-center rounded-pill transition-colors",
                 isActive(pathname, "/account")
                   ? "bg-brand text-on-brand"
                   : "bg-brand-subtle text-ink-brand hover:bg-green-200",
               )}
             >
-              {user?.name ? (
-                user.name.slice(0, 2)
-              ) : (
-                <User aria-hidden className="size-4" />
-              )}
+              <User aria-hidden className="size-4" />
             </Link>
           </div>
         </div>

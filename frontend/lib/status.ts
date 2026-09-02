@@ -525,7 +525,14 @@ export interface ActorPrompt {
   actor: Party | null;
   /** Second person when it is the viewer's turn, third person otherwise. */
   label: string;
-  /** The action the actor should take, if any. */
+  /**
+   * The action the actor should take, if any — set regardless of whether
+   * the actor is the viewer. Callers that only want to render a button for
+   * the viewer's own turn already gate on `actor === viewer` themselves
+   * (or on the tri-state "is it my turn" this implies); this field does not
+   * do that gating itself, so a caller can also use it to know what step is
+   * pending on the *other* side.
+   */
   action?: string;
   tone: Tone;
 }
@@ -553,7 +560,7 @@ export function resolveTransactionActor(
   ): ActorPrompt => ({
     actor,
     label: actor === viewer ? second : third,
-    action: actor === viewer ? action : undefined,
+    action,
     tone,
   });
 

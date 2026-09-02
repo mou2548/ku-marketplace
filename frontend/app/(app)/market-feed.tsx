@@ -22,8 +22,8 @@ import { cn } from "@/lib/utils";
  *    every card and part of what the search box matches.
  *  - **Pinterest-style density** the brief asked for: variable card heights via
  *    CSS multi-column, so the grid looks full rather than gridded.
- *  - **Sell vs Trade must be readable before the tap** — the card chip is
- *    filled green for anything sellable and amber for a pure swap.
+ *  - **Sale vs Trade must be readable before the tap** — the card chip is
+ *    filled with the tone system's success/trade solid (green / teal).
  *
  * Filters live in a sheet on mobile and a rail on desktop; the filter *state*
  * is identical, so nothing is unreachable on a phone.
@@ -33,7 +33,7 @@ type Segment = "all" | "sell" | "trade";
 
 const SEGMENTS: Array<{ id: Segment; label: string }> = [
   { id: "all", label: "All" },
-  { id: "sell", label: "Sell" },
+  { id: "sell", label: "Sale" },
   { id: "trade", label: "Trade" },
 ];
 

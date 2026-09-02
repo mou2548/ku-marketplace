@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
-import { Clock, Gift, MapPin, Users } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Clock, Gift, MapPin, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
+import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
@@ -57,17 +59,37 @@ export function GiveawayDetail({
         })}`
       : null;
 
+  // FirstCome allocates the moment you register, so its success is a QR ticket,
+  // not a wait. Random and Manual still resolve later.
+  const isFirstCome = giveaway.allocation_method === "FirstCome";
+
+  // POST /giveaways/{id}/tickets/{ticket_id}/qr/generate — stable so the QR
+  // rotation effect does not restart on every render.
+  const generateQr = useCallback(
+    async () => `ku-gv-${giveaway.giveaway_id}-${Date.now()}`,
+    [giveaway.giveaway_id],
+  );
+
   async function join() {
     setBusy(true);
     // POST /giveaways/{id}/join
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
     setJoined(true);
-    toast.show("Registered. Wait for the draw.");
+    toast.show(isFirstCome ? "You got it. Ticket issued." : "Registered. Wait for the draw.");
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+    <div className="flex flex-col gap-6">
+      <Link
+        href="/giveaway"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to giveaways
+      </Link>
+
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
       <div className="lg:w-1/2">
         <Surface shape="card" className="relative aspect-[4/3] overflow-hidden">
           {image ? (
@@ -180,14 +202,30 @@ export function GiveawayDetail({
             </LinkButton>
           </div>
         ) : joined ? (
-          <Surface shape="card" elevation="flat" className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4">
-            <p className="text-[0.9375rem] font-medium text-tone-success-fg">
-              Registered. Waiting for the draw.
-            </p>
-            <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
-              If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page.
-            </p>
-          </Surface>
+          isFirstCome ? (
+            <div className="flex flex-col gap-3">
+              <Surface shape="card" elevation="flat" className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4">
+                <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+                  You got it. Your spot is confirmed.
+                </p>
+                <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                  First come, first served — no draw to wait for. Show the QR below at pickup, and a chat room with {giveaway.giver.name} is open to arrange collection.
+                </p>
+              </Surface>
+              <Surface shape="panel" fill="plate" noise className="p-5">
+                <QrTicket onGenerate={generateQr} />
+              </Surface>
+            </div>
+          ) : (
+            <Surface shape="card" elevation="flat" className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4">
+              <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+                Registered. Waiting for the draw.
+              </p>
+              <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page.
+              </p>
+            </Surface>
+          )
         ) : giveaway.status === "Active" ? (
           <Button size="lg" block isLoading={busy} onPress={join}>
             <Gift className="size-5" />
@@ -203,6 +241,7 @@ export function GiveawayDetail({
             </p>
           </Surface>
         )}
+      </div>
       </div>
     </div>
   );

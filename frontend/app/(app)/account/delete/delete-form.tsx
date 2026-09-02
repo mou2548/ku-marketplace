@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
@@ -37,6 +38,14 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
 
   return (
     <>
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to account
+      </Link>
+
       <h1 className="text-h1">Close your account</h1>
 
       <Surface

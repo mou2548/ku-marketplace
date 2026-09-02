@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { TONE_CHIP } from "@/components/kit/tone";
+import { TONE_SOLID } from "@/components/kit/tone";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
 import { deadlineFor } from "@/lib/inbox";
 import {
@@ -319,8 +319,8 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
         {prompt.actor ? (
           <span
             className={cn(
-              "rounded-pill border px-2.5 py-1 text-[0.8125rem] font-medium",
-              TONE_CHIP[prompt.tone],
+              "rounded-pill px-2 py-0.5 text-[0.75rem] font-medium",
+              TONE_SOLID[prompt.tone],
             )}
           >
             {prompt.label}

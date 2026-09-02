@@ -102,7 +102,7 @@ one place to change, 24 enum values, zero raw enum strings in JSX.
 | neutral | gray-100 | gray-400 | gray-700 | gray-600 |
 | info | green-100 | green-400 | green-700 | green-400 |
 | success | green-200 | green-600 | green-800 | green-700 |
-| warning | amber-100 | amber-600 | amber-800 | amber-500 |
+| warning | amber-100 | amber-600 | amber-800 | amber-700 |
 | danger | rose-100 | rose-400 | rose-600 | rose-500 |
 | trade | gray-100 | gray-400 | gray-700 | gray-600 |
 
