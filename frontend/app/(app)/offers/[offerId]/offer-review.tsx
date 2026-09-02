@@ -22,7 +22,6 @@ import { Surface } from "@/components/kit/surface";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
-import { getRoomIdForOffer } from "@/lib/api/fixtures";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
 import type { DeliveryMethod } from "@/lib/status";
@@ -140,37 +139,33 @@ export function OfferReview({
       />
 
       {acceptedWith || offer.status === "Accepted" ? (
-        // UI mock: a real acceptance returns the new transaction's room id.
-        // Derived here from the fixture data already on hand — the offer's
-        // own transaction/room, if the fixture set has one.
-        (() => {
-          const roomId = getRoomIdForOffer(offer.offer_id) ?? 5;
-          return (
-            <Surface
-              shape="card"
-              className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
+        <Surface
+          shape="card"
+          className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
+        >
+          <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
+            <CheckCircle2 aria-hidden className="size-5 shrink-0" />
+            Offer accepted
+          </p>
+          <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+            You are trading with {sides.counterparty.name} for{" "}
+            {offer.post.item.name} by{" "}
+            {acceptedWith === "Shipping" ? "shipping" : "meetup"}. Every
+            other offer on this post is declined and a chat room is open.
+          </p>
+          {offer.transaction_id ? (
+            // The accepted offer's transaction; /history/:id redirects to its
+            // chat room.
+            <LinkButton
+              variant="secondary"
+              href={`/history/${offer.transaction_id}`}
+              className="w-fit"
             >
-              <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
-                <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-                Offer accepted
-              </p>
-              <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
-                You are trading with {sides.counterparty.name} for{" "}
-                {offer.post.item.name} by{" "}
-                {acceptedWith === "Shipping" ? "shipping" : "meetup"}. Every
-                other offer on this post is declined and a chat room is open.
-              </p>
-              <LinkButton
-                variant="secondary"
-                href={`/chat/${roomId}`}
-                className="w-fit"
-              >
-                <MessageCircle className="size-4" />
-                Open chat
-              </LinkButton>
-            </Surface>
-          );
-        })()
+              <MessageCircle className="size-4" />
+              Open chat
+            </LinkButton>
+          ) : null}
+        </Surface>
       ) : pending ? (
         isOwner ? (
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

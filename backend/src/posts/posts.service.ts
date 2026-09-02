@@ -550,4 +550,105 @@ export class PostsService {
       status: status.toLowerCase(),
     };
   }
+
+  /**
+   * §feed/§E4 — every offer the signed-in user is a party to: ones they
+   * proposed, and ones sitting on a post whose item they own. The spec only
+   * has `GET /posts/:id/offers` (one post at a time), which cannot build the
+   * "what did I offer" half of the inbox at all.
+   */
+  async getMyOffers(userId: number) {
+    const includeItem = {
+      include: {
+        images: { where: { status: 'Active' }, orderBy: { displayOrder: 'asc' } },
+        owner: {
+          select: { userId: true, firstNameEn: true, lastNameEn: true },
+        },
+      },
+    } as const;
+
+    const offers = await this.prisma.offer.findMany({
+      where: {
+        OR: [{ proposerId: userId }, { post: { item: { ownerId: userId } } }],
+      },
+      include: {
+        proposer: {
+          select: { userId: true, firstNameEn: true, lastNameEn: true },
+        },
+        items: { include: { item: includeItem } },
+        post: { include: { item: includeItem } },
+        transactions: {
+          select: { transactionId: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return offers.map((offer) => ({
+      offer_id: offer.offerId,
+      post_id: offer.postId,
+      proposer_id: offer.proposerId,
+      additional_money: offer.additionalMoney?.toNumber() ?? 0,
+      status: offer.status,
+      created_at: offer.createdAt,
+      transaction_id: offer.transactions[0]?.transactionId ?? null,
+      proposer: {
+        user_id: offer.proposer.userId,
+        name: [offer.proposer.firstNameEn, offer.proposer.lastNameEn]
+          .filter(Boolean)
+          .join(' ')
+          .trim(),
+        isVerified: true,
+      },
+      items: offer.items.map((oi) => this.serializeInlineItem(oi.item)),
+      post: this.serializePost(offer.post),
+    }));
+  }
+
+  /** The nested `item` shape `serializePost` emits, for a bare item row. */
+  private serializeInlineItem(item: {
+    itemId: number;
+    ownerId: number;
+    name: string;
+    description: string | null;
+    status: string | null;
+    category: string;
+    condition: string;
+    courseName: string | null;
+    brandModel: string | null;
+    warrantyExpiry: Date | null;
+    size: string | null;
+    quantity: number;
+    images?: Array<{
+      imageId: number;
+      itemId: number;
+      imageUrl: string;
+      isPrimary: boolean | null;
+      displayOrder: number | null;
+    }>;
+  }) {
+    return {
+      item_id: item.itemId,
+      owner_id: item.ownerId,
+      name: item.name,
+      quantity: item.quantity,
+      category: item.category,
+      condition: item.condition,
+      description: item.description,
+      status: item.status,
+      course_name: item.courseName,
+      brand_model: item.brandModel,
+      warranty_expiry: item.warrantyExpiry,
+      size: item.size,
+      images: (item.images ?? []).map((img) => ({
+        image_id: img.imageId,
+        item_id: img.itemId,
+        image_url: img.imageUrl,
+        is_primary: img.isPrimary ?? false,
+        display_order: img.displayOrder ?? 0,
+      })),
+    };
+  }
 }

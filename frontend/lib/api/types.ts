@@ -114,6 +114,8 @@ export interface Offer {
   additional_money: number;
   status: OfferStatus;
   created_at: string;
+  /** Set once the offer is accepted — the transaction it opened. */
+  transaction_id?: number | null;
   items: Item[];
   proposer: UserSummary;
   post: Post;

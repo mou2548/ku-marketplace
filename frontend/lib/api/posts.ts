@@ -67,7 +67,7 @@ interface RawPostItem {
   size: string | null;
   images: RawPostItemImage[];
 }
-interface RawPost extends PostSummary {
+export interface RawPost extends PostSummary {
   quantity_remaining?: number;
   item?: RawPostItem;
   seller?: {

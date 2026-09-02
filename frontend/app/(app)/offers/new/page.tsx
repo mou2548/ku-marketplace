@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { getMyItems, getPost } from "@/lib/api/fixtures";
+import { getMyItems } from "@/lib/api/items";
+import { getPost } from "@/lib/api/posts";
 
 import { OfferComposer } from "./offer-composer";
 
@@ -14,7 +15,9 @@ export default async function NewOfferPage({
   searchParams: Promise<{ post?: string }>;
 }) {
   const { post: postParam } = await searchParams;
-  const post = postParam ? await getPost(Number(postParam)) : undefined;
+  const post = postParam
+    ? await getPost(Number(postParam)).catch(() => undefined)
+    : undefined;
   if (!post) notFound();
 
   const items = await getMyItems();
