@@ -7,7 +7,7 @@ import { Bell, Gift, Handshake, Inbox, ShieldAlert, Wallet } from "lucide-react"
 import { EmptyState } from "@/components/kit/empty-state";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
-import type { Notification } from "@/lib/api/fixtures";
+import type { Notification } from "@/lib/api/notifications";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<Notification["kind"], typeof Bell> = {
