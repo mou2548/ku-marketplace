@@ -159,8 +159,11 @@ model GiveawayPost {
   pickupLocation   String           @map("pickup_location") @db.VarChar(255)
   giverId          Int              @map("giver_id")
   allocationMethod String           @map("allocation_method") @db.VarChar(20)
+  quantity         Int              @default(1) @map("quantity")
+  registrationDeadline DateTime?    @map("register_deadline") @db.Timestamp(6)
   pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
   status           String?          @default("Active") @db.VarChar(20) @map("giveaway_status")
+  drawnAt          DateTime?        @map("drawn_at") @db.Timestamp(6)
   createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   giver            User             @relation(fields: [giverId], references: [userId])
   images           GiveawayImage[]

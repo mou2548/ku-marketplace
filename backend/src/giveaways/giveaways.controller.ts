@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { GiveawaysService } from './giveaways.service';
 import type {
+  ConfirmQrPayload,
   CreateGiveawayPayload,
   ForfeitPayload,
   ScanQrPayload,
@@ -102,5 +103,17 @@ export class GiveawaysController {
     @Body() body: ScanQrPayload,
   ) {
     return this.giveawaysService.qrScan(id, ticketId, body.token);
+  }
+
+  @Post('giveaways/:id/tickets/:ticket_id/qr/confirm')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ยืนยันรับของสำเร็จ')
+  qrConfirm(
+    @Param('id') id: string,
+    @Param('ticket_id') ticketId: string,
+    @Body() body: ConfirmQrPayload,
+  ) {
+    return this.giveawaysService.qrConfirm(id, ticketId, body.token);
   }
 }
