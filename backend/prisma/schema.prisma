@@ -160,7 +160,7 @@ model GiveawayPost {
   giverId          Int              @map("giver_id")
   allocationMethod String           @map("allocation_method") @db.VarChar(20)
   quantity         Int              @default(1) @map("quantity")
-  registrationDeadline DateTime?    @map("registration_deadline") @db.Timestamp(6)
+  registrationDeadline DateTime?    @map("register_deadline") @db.Timestamp(6)
   pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
   status           String?          @default("Active") @db.VarChar(20) @map("giveaway_status")
   createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)

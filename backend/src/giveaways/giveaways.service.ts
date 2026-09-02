@@ -327,21 +327,18 @@ export class GiveawaysService {
 
   /**
    * Map สถานะตั๋วจาก DB ให้ครบ 4 สถานะตามสเปค
-   * DB เก็บแค่ 3 ค่า (Waiting, Received, Expired)
-   * แต่ถ้า Expired + qrToken === 'FORFEITED' → สละสิทธิ์
+   * (Waiting, Received, Expired, Waived)
    */
   private resolveTicketStatus(ticket: {
     status: string | null;
-    qrToken: string | null;
   }): string {
-    if (ticket.status === 'Expired' && ticket.qrToken === 'FORFEITED') {
-      return 'forfeited';
-    }
     switch (ticket.status) {
       case 'Received':
         return 'received';
       case 'Expired':
         return 'expired';
+      case 'Waived':
+        return 'forfeited'; // Frontend expects 'forfeited' for สละสิทธิ์
       case 'Waiting':
         return 'waiting';
       default:
@@ -353,7 +350,6 @@ export class GiveawaysService {
     ticketId: number;
     receiverId: number;
     status: string | null;
-    qrToken?: string | null;
   }) {
     return {
       recipient_id: this.label('recipient', ticket.ticketId),
@@ -361,7 +357,6 @@ export class GiveawaysService {
       ticket_id: this.label('ticket', ticket.ticketId),
       status: this.resolveTicketStatus({
         status: ticket.status,
-        qrToken: ticket.qrToken ?? null,
       }),
     };
   }
@@ -394,12 +389,11 @@ export class GiveawaysService {
     if (ticket.status !== 'Waiting') {
       throw new ConflictException('สถานะปัจจุบันไม่สามารถสละสิทธิ์ได้');
     }
-    // เซ็ต status เป็น Expired (ค่าที่ DB ยอมรับ) + ใช้ qrToken เป็น flag
+    // ใช้สถานะ Waived โดยตรง
     await this.prisma.giveawayTicket.update({
       where: { ticketId },
       data: {
-        status: 'Expired',
-        qrToken: 'FORFEITED',
+        status: 'Waived',
         updatedAt: new Date(),
       },
     });
