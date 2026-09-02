@@ -56,6 +56,7 @@ CREATE TABLE "Post" (
     "price" DECIMAL(10,2) NOT NULL CHECK("price" >= 0),
     "quantity_total" INTEGER NOT NULL DEFAULT 1 CHECK ("quantity_total" > 0),
     "quantity_remaining" INTEGER NOT NULL DEFAULT 1 CHECK ("quantity_remaining" >= 0),
+    "deleted_at" TIMESTAMP,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
