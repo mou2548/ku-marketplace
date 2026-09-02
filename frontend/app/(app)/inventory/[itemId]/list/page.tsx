@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getMyItems } from "@/lib/api/fixtures";
+import { getMyItems } from "@/lib/api/items";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";

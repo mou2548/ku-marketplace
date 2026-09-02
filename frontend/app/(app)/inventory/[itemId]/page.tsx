@@ -13,8 +13,8 @@ import { LinkButton } from "@/components/kit/button";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { getPosts } from "@/lib/api/fixtures";
 import { getItem, getMyItems } from "@/lib/api/items";
+import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 import { ITEM_CONDITION, ITEM_STATUS, POST_TYPE } from "@/lib/status";
 
@@ -48,7 +48,7 @@ export default async function ItemDetailPage({
   ]);
   if (!item || !items.some((i) => i.item_id === item.item_id)) notFound();
 
-  const posts = await getPosts();
+  const posts = await listPosts();
   const post = posts.find((p) => p.item_id === item.item_id);
   const rarity = ITEM_CONDITION[item.condition];
   const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
@@ -160,12 +160,6 @@ export default async function ItemDetailPage({
               {post.post_type !== "TradeOnly" ? (
                 <p data-numeric className="text-[1.5rem] leading-[1.2] font-bold">
                   ฿{post.price.toLocaleString("en-GB")}
-                </p>
-              ) : null}
-
-              {post.wanted_item_offer ? (
-                <p className="rounded-control bg-tone-trade-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-trade-fg">
-                  Wants in trade: {post.wanted_item_offer}
                 </p>
               ) : null}
 

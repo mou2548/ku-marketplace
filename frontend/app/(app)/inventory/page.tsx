@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getPosts } from "@/lib/api/fixtures";
 import { getMyItems } from "@/lib/api/items";
+import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 
 import { InventoryScreen } from "./inventory-screen";
@@ -25,7 +25,7 @@ export default async function InventoryPage() {
     redirect("/login");
   }
 
-  const [allItems, posts] = await Promise.all([getMyItems(), getPosts()]);
+  const [allItems, posts] = await Promise.all([getMyItems(), listPosts()]);
 
   /**
    * The third state never belongs on this screen. `Transferred` means the item
