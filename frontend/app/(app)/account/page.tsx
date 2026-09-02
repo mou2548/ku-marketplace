@@ -14,9 +14,9 @@ import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { logout } from "@/lib/actions/auth";
-import { getTransactions, getViewer, VIEWER_ID } from "@/lib/api/fixtures";
 import { getMembership } from "@/lib/api/membership";
 import { getAccessToken } from "@/lib/api/session";
+import { getTransactions } from "@/lib/api/transactions";
 import { getMe, toUser } from "@/lib/api/users";
 
 import { ProfileFields } from "./profile-fields";
@@ -36,17 +36,31 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  const [viewer, profile, membership, transactions] = await Promise.all([
-    getViewer(),
-    getMe().then(toUser),
+  const [me, membership, transactions] = await Promise.all([
+    getMe(),
     getMembership(),
     getTransactions(),
   ]);
 
+  const profile = toUser(me);
+  const displayName =
+    [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
+
+  // faculty / year / avatar are not on `GET /users/me` (docs/design/api-gaps.md
+  // §3). Every account is a verified `@ku.th` address, so `isVerified` is a
+  // fact, not a guess.
+  const viewer = {
+    name: displayName,
+    isVerified: true,
+    faculty: null as string | null,
+    year: null as number | null,
+    avatar_url: null as string | null,
+  };
+
   const completed = transactions.filter(
     (t) =>
       t.status === "Completed" &&
-      (t.buyer_id === VIEWER_ID || t.seller_id === VIEWER_ID),
+      (t.buyer_id === me.userId || t.seller_id === me.userId),
   ).length;
 
   /** Shown at every width. */
