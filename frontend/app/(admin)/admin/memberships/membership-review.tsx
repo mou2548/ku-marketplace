@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { SlipReviewer } from "@/components/kit/slip";
 import { useToast } from "@/components/kit/toast";
 import { decideMembershipPayment } from "@/lib/actions/membership";
-import type { MembershipTier } from "@/lib/api/fixtures";
+import type { MembershipTier } from "@/lib/api/membership";
 
 export function MembershipReview({
   requestId,

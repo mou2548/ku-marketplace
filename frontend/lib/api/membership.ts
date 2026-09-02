@@ -1,6 +1,23 @@
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
-import type { Membership, MembershipRequest, MembershipTier } from "./fixtures";
+import type { UserSummary } from "./types";
+
+export type MembershipTier = "Free" | "Silver" | "Gold" | "Diamond";
+
+export interface Membership {
+  tier: MembershipTier;
+  expires_at?: string | null;
+  pending_review: boolean;
+}
+
+export interface MembershipRequest {
+  request_id: number;
+  user: UserSummary;
+  tier: MembershipTier;
+  amount: number;
+  slip_image_url: string;
+  created_at: string;
+}
 
 /** Raw `GET /membership/status` shape — camelCase, `membership.service.ts`'s `getStatus()`. */
 interface RawStatus {

@@ -12,7 +12,7 @@ import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
 import { subscribeToMembership } from "@/lib/actions/membership";
 import { uploadFile } from "@/lib/actions/uploads";
-import type { Membership, MembershipTier } from "@/lib/api/fixtures";
+import type { Membership, MembershipTier } from "@/lib/api/membership";
 import { cn } from "@/lib/utils";
 
 /**

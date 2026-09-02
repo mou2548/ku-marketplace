@@ -2,7 +2,7 @@
 
 import { getAccessToken } from "@/lib/api/session";
 import { requestUpgrade, reviewPayment } from "@/lib/api/membership";
-import type { MembershipTier } from "@/lib/api/fixtures";
+import type { MembershipTier } from "@/lib/api/membership";
 
 export async function subscribeToMembership(tier: MembershipTier, proofImageUrl: string) {
   if (!(await getAccessToken())) {
