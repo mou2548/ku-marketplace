@@ -1,11 +1,11 @@
+import { redirect } from "next/navigation";
 import { Crown } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
 import { Surface } from "@/components/kit/surface";
-import { TONE_SOLID } from "@/components/kit/tone";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { getMembershipRequests } from "@/lib/api/fixtures";
-import { cn } from "@/lib/utils";
+import { listPendingPayments } from "@/lib/api/membership";
+import { getAccessToken, isCurrentUserAdmin } from "@/lib/api/session";
 
 import { MembershipReview } from "./membership-review";
 
@@ -18,7 +18,14 @@ export const metadata = { title: "Memberships - Admin" };
  * this queue expects.
  */
 export default async function AdminMembershipsPage() {
-  const requests = await getMembershipRequests();
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
+  if (!(await isCurrentUserAdmin())) {
+    redirect("/");
+  }
+
+  const requests = await listPendingPayments();
 
   if (requests.length === 0) {
     return (
@@ -47,12 +54,7 @@ export default async function AdminMembershipsPage() {
                   faculty={r.user.faculty}
                   size="sm"
                 />
-                <span
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[0.8125rem] font-semibold",
-                    TONE_SOLID.warning,
-                  )}
-                >
+                <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-2.5 py-1 text-[0.75rem] font-semibold text-amber-700">
                   <Crown aria-hidden className="size-3.5" />
                   {r.tier}
                 </span>
@@ -63,6 +65,7 @@ export default async function AdminMembershipsPage() {
                 slipUrl={r.slip_image_url}
                 userName={r.user.name}
                 tier={r.tier}
+                amount={r.amount}
                 createdAt={r.created_at}
               />
             </Surface>

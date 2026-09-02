@@ -14,12 +14,8 @@ import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { logout } from "@/lib/actions/auth";
-import {
-  getMembership,
-  getTransactions,
-  getViewer,
-  VIEWER_ID,
-} from "@/lib/api/fixtures";
+import { getTransactions, getViewer, VIEWER_ID } from "@/lib/api/fixtures";
+import { getMembership } from "@/lib/api/membership";
 import { getAccessToken } from "@/lib/api/session";
 import { getMe, toUser } from "@/lib/api/users";
 
