@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/kit/app-shell";
 import { ToastProvider } from "@/components/kit/toast";
-import { getOffers, getTransactions, getViewer, VIEWER_ID } from "@/lib/api/fixtures";
-import { actionCount, buildInbox, offersNeedingAnswer } from "@/lib/inbox";
+import { getCurrentUserId } from "@/lib/api/session";
+import { getTransactions } from "@/lib/api/transactions";
+import { getMe } from "@/lib/api/users";
+import { actionCount, buildInbox } from "@/lib/inbox";
 
 /**
  * The app shell (docs/design/ia.md §4). A Server Component: the badge counts
@@ -11,30 +13,48 @@ import { actionCount, buildInbox, offersNeedingAnswer } from "@/lib/inbox";
  * The previous build had a sticky top navbar but no route group, so the header
  * was pasted into pages individually and drifted. The navbar shape is kept —
  * the team preferred it — but it now lives in exactly one place.
+ *
+ * Runs for every `(app)` route, including before a page's own auth guard
+ * redirects a signed-out visitor, so every backend read here is guarded: no
+ * token means the plain shell, and a failed fetch degrades the badges to zero
+ * rather than taking the whole app down.
  */
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [transactions, offers, viewer] = await Promise.all([
-    getTransactions(),
-    getOffers(),
-    getViewer(),
-  ]);
+  const viewerId = await getCurrentUserId();
 
-  const inbox = buildInbox(transactions, offers, VIEWER_ID);
+  let user: { name: string } | undefined;
+  let badges = { actions: 0, offers: 0, deals: 0 };
+
+  if (viewerId) {
+    const [transactions, me] = await Promise.all([
+      getTransactions().catch(() => []),
+      getMe().catch(() => undefined),
+    ]);
+
+    if (me) {
+      user = {
+        name: [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email,
+      };
+    }
+
+    try {
+      // No endpoint lists a user's offers across posts (docs/design/api-gaps.md),
+      // so the inbox and its badges are built from transactions alone. The
+      // offers badge stays at zero until such an endpoint exists.
+      const inbox = buildInbox(transactions, [], viewerId);
+      badges = { actions: actionCount(inbox), offers: 0, deals: inbox.yours.length };
+    } catch {
+      badges = { actions: 0, offers: 0, deals: 0 };
+    }
+  }
 
   return (
     <ToastProvider>
-      <AppShell
-        user={{ name: viewer.name }}
-        badges={{
-          actions: actionCount(inbox),
-          offers: offersNeedingAnswer(offers, VIEWER_ID),
-          deals: inbox.yours.length,
-        }}
-      >
+      <AppShell user={user} badges={badges}>
         {children}
       </AppShell>
     </ToastProvider>
