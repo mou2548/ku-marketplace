@@ -142,7 +142,7 @@ CREATE TABLE "Giveaway_Post" (
     "giver_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "allocation_method" VARCHAR(20) NOT NULL CHECK("allocation_method" IN ('FirstCome', 'Random', 'Manual')),
     "pickup_deadline" TIMESTAMP,
-    "giveaway_status" VARCHAR(20) DEFAULT 'Active' CHECK("giveaway_status" IN ('Active', 'Closed', 'Completed', 'Waived')),
+    "giveaway_status" VARCHAR(20) DEFAULT 'Active' CHECK("giveaway_status" IN ('Active', 'Closed', 'Completed')),
     "register_deadline" TIMESTAMP,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -153,7 +153,7 @@ CREATE TABLE "Giveaway_Ticket" (
     "giveaway_id" INTEGER NOT NULL REFERENCES "Giveaway_Post"("giveaway_id"),
     "receiver_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "qr_token" VARCHAR(255) UNIQUE,
-    "ticket_status" VARCHAR(20) DEFAULT 'Waiting' CHECK("ticket_status" IN ('Waiting', 'Received', 'Expired')),
+    "ticket_status" VARCHAR(20) DEFAULT 'Waiting' CHECK("ticket_status" IN ('Waiting', 'Received', 'Expired', 'Waived')),
     "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -226,7 +226,7 @@ CREATE TABLE "Subscription_Payment" (
 );
 
 -- ==========================================
--- KU MARKETPLACE - EXTENDED MOCK DATA SCRIPT
+-- KU MARKETPLACE - EXTENDED MOCK DATA SCRIPT (UPDATED)
 -- ==========================================
 
 -- 1. User (10 Users: 2 Admins, 7 Active, 1 Suspended)
@@ -301,19 +301,19 @@ INSERT INTO "Offer" ("post_id", "proposer_id", "additional_money", "offer_status
 (7, 3, 0.00, 'Withdrawn'),
 (4, 7, 100.00, 'Cancelled');
 
--- 6. Offer_Item (7 Rows - Linking items to offers for trade)
+-- 6. Offer_Item (7 Rows)
 INSERT INTO "Offer_Item" ("offer_id", "item_id") VALUES
-(1, 4),  -- User 5 offers เครื่องคิดเลข + เงิน 12000 แลก iPad (Post 3)
-(1, 6),  -- User 5 offers รองเท้า แลก iPad ด้วย
-(2, 1),  -- User 3 offers หนังสือ Physics แลก เครื่องคิดเลข (Post 4)
-(3, 7),  -- User 6 offers หนังสือ Calc แลก iPad
-(4, 9),  -- User 4 offers แว่นตา + เงิน 6000 แลก หูฟัง Sony
-(5, 6),  -- User 5 offers รองเท้า + เงิน 50 แลก ตุ๊กตาหมี
-(6, 10); -- User 3 offers กระเป๋า แลก ชีทสรุป
+(1, 4),  
+(1, 6),  
+(2, 1),  
+(3, 7),  
+(4, 9),  
+(5, 6),  
+(6, 10); 
 
 -- 7. Report (5 Reports)
 INSERT INTO "Report" ("reporter_id", "report_type", "target_id", "reason_category", "details", "report_status", "handled_by", "resolution_note", "handled_at") VALUES
-(5, 'Post', 2, 'Inappropriate Content', 'รูปโป๊เปลือย (จำลอง)', 'Violation_Confirmed', 1, 'แบนโพสต์เรียบร้อย', '2026-09-01 10:00:00'),
+(5, 'Post', 2, 'Inappropriate Content', 'รูปภาพไม่เหมาะสม', 'Violation_Confirmed', 1, 'แบนโพสต์เรียบร้อย', '2026-09-01 10:00:00'),
 (4, 'User', 10, 'Scam', 'โอนแล้วไม่ส่งของ', 'Under_Investigation', 2, 'รอตรวจสอบสลิปเพิ่มเติม', NULL),
 (3, 'Transaction', 1, 'Payment Issue', 'สลิปปลอม', 'Pending', NULL, NULL, NULL),
 (6, 'Post', 1, 'Duplicate Post', 'โพสต์ซ้ำ', 'Report_Dismissed', 1, 'ไม่ซ้ำ เป็นคนละสภาพ', '2026-09-02 08:00:00'),
@@ -339,16 +339,16 @@ INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time",
 (1, 4, '2026-09-04', '11:00:00', 'หน้า มก.', 'Rejected'),
 (8, 9, '2026-09-08', '17:00:00', 'Kasetsart BTS', 'Pending');
 
--- 10. Giveaway_Post (6 Giveaways with the new fields)
+-- 10. Giveaway_Post (6 Giveaways - อัปเดตตาม Schema ใหม่)
 INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "register_deadline", "giveaway_status") VALUES
 ('สรุปสูตรฟิสิกส์', 5, 'แจก 5 ชุด นัดรับพร้อมกัน', 'ตึก LH1', 3, 'FirstCome', '2026-09-10 17:00:00', '2026-09-08 17:00:00', 'Active'),
 ('เสื้อพละ มก.', 1, 'สภาพดี แจกฟรี', 'บาร์ใหม่', 4, 'Random', '2026-09-15 18:00:00', '2026-09-10 12:00:00', 'Active'),
 ('หนังสือศัพท์ TOEIC', 2, 'แจก 2 เล่ม', 'หอพัก', 5, 'Manual', '2026-09-12 20:00:00', '2026-09-09 23:59:59', 'Active'),
 ('สายชาร์จ iPhone', 1, 'ยังใช้งานได้ดี', 'หน้าตึก SC1', 6, 'FirstCome', '2026-08-30 12:00:00', '2026-08-28 12:00:00', 'Closed'),
 ('แก้วน้ำ YETI (ปลอม)', 1, 'เก็บความเย็นได้อยู่', 'บาร์ใหม่', 7, 'Random', '2026-08-25 15:00:00', '2026-08-20 15:00:00', 'Completed'),
-('ไม้บรรทัดเหล็ก', 3, 'ไม่มีคนมารับ ยกเลิกการแจก', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Waived');
+('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Closed'); 
 
--- 11. Giveaway_Ticket (8 Tickets)
+-- 11. Giveaway_Ticket (9 Tickets - เพิ่มสถานะ Waived ตาม Schema ใหม่)
 INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status") VALUES
 (1, 4, 'TOK_1_PHY_A', 'Waiting'),
 (1, 5, 'TOK_1_PHY_B', 'Waiting'),
@@ -357,7 +357,8 @@ INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket
 (3, 8, 'TOK_3_TOEIC_A', 'Waiting'),
 (4, 3, 'TOK_4_CABLE', 'Expired'),
 (5, 4, 'TOK_5_GLASS', 'Received'),
-(5, 5, 'TOK_5_GLASS_LOSE', 'Expired');
+(5, 5, 'TOK_5_GLASS_LOSE', 'Expired'),
+(6, 4, 'TOK_6_RULER_WAIVED', 'Waived'); -- เพิ่มสถานะ Waived เข้ามาตรงนี้ครับ
 
 -- 12. Giveaway_Image (6 Images)
 INSERT INTO "Giveaway_Image" ("giveaway_id", "image_status", "image_url", "display_order") VALUES
@@ -399,7 +400,7 @@ INSERT INTO "Chat_Message" ("room_id", "sender_id", "content", "image_urls") VAL
 
 -- 15. Appeal (3 Appeals)
 INSERT INTO "Appeal" ("report_id", "appellant_id", "reason", "appeal_status", "handled_by", "resolution_note", "handled_at") VALUES
-(1, 3, 'ไม่ใช่รูปโป๊ครับ เป็นรูปศิลปะ', 'Pending', NULL, NULL, NULL),
+(1, 3, 'ภาพถ่ายถูกต้องตามระเบียบครับ', 'Pending', NULL, NULL, NULL),
 (2, 10, 'เพิ่งสอบเสร็จครับ กำลังจะไปส่งของ', 'Under_Review', 2, NULL, NULL),
 (4, 6, 'สเปคสินค้ามันคล้ายกัน แต่คนละชิ้นครับ', 'Approved', 1, 'ปลดล็อคโพสต์ให้แล้ว', '2026-09-02 08:30:00');
 
