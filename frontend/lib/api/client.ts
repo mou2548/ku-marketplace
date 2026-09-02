@@ -4,12 +4,13 @@
  * Two things every caller would otherwise re-derive live here: the response
  * envelope, and auth.
  *
- * Envelope — the backend wraps every successful body twice. A global
- * `ResponseInterceptor` produces `{ statusCode, message, data: { data } }`, and
- * each service method wraps its own payload again in `{ success, message, data }`
- * before that. So the value a caller actually wants sits at `body.data.data.data`.
- * `unwrap` peels those layers so functions return the payload directly. Paginated
- * bodies (`{ data, meta }`) are left one layer up so callers keep `meta`.
+ * Envelope — successful bodies are wrapped by a global `ResponseInterceptor` as
+ * `{ statusCode, message, data: { data } }`. Endpoints that also wrap their own
+ * payload in a service `{ success, message, data }` (the posts module) end up
+ * three layers deep; endpoints that return a raw row (the transactions module)
+ * are two. `unwrap` peels whichever applies so functions return the payload
+ * directly. Paginated bodies (`{ data, meta }`) are left one layer up so callers
+ * keep `meta`.
  *
  * Auth — mutating endpoints are behind `JwtAuthGuard`. On the client the bearer
  * token is read from `localStorage`; server components pass one explicitly since
