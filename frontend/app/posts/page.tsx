@@ -1,18 +1,12 @@
-async function getPosts() {
-  const res = await fetch('http://localhost:3000/posts', { cache: 'no-store' });
-  if (!res.ok) {
-    throw new Error('Failed to fetch posts');
-  }
-  return res.json();
-}
+import { listPosts } from "@/lib/api/posts";
 
 export default async function PostsPage() {
-  const data = await getPosts();
+  const posts = await listPosts({ cache: "no-store" });
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+    <main style={{ padding: "2rem", fontFamily: "sans-serif" }}>
       <h1>Posts</h1>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
+      <pre>{JSON.stringify(posts, null, 2)}</pre>
     </main>
   );
 }
