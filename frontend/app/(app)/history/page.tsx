@@ -1,4 +1,9 @@
-import { getMyTickets, getTransactions, VIEWER_ID } from "@/lib/api/fixtures";
+import { redirect } from "next/navigation";
+
+import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
+import { getCurrentUserId } from "@/lib/api/session";
+import { getTransactions } from "@/lib/api/transactions";
+import type { GiveawayTicket } from "@/lib/api/types";
 
 import { HistoryList } from "./history-list";
 
@@ -20,16 +25,33 @@ import { HistoryList } from "./history-list";
 export const metadata = { title: "History - KU Marketplace" };
 
 export default async function DealsPage() {
-  const [transactions, tickets] = await Promise.all([
+  const viewerId = await getCurrentUserId();
+  if (!viewerId) redirect("/login");
+
+  const [transactions, giveaways] = await Promise.all([
     getTransactions(),
-    getMyTickets(),
+    getGiveaways(),
   ]);
+
+  // There is no "my tickets" endpoint — check each giveaway for a live ticket
+  // the viewer holds. Same bounded N+1 the chat inbox already accepts
+  // (`rooms-query.ts`); a forfeited or expired ticket drops out here, same as
+  // it does there (docs/design/api-gaps.md §8).
+  const tickets = (
+    await Promise.all(
+      giveaways.map((giveaway) =>
+        getMyTicket(giveaway.giveaway_id, giveaway, viewerId).catch(
+          () => undefined,
+        ),
+      ),
+    )
+  ).filter((ticket): ticket is GiveawayTicket => ticket !== undefined);
 
   return (
     <HistoryList
       transactions={transactions}
       tickets={tickets}
-      viewerId={VIEWER_ID}
+      viewerId={viewerId}
     />
   );
 }

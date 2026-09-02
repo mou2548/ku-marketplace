@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
-import { getTransaction } from "@/lib/api/fixtures";
+import { getCurrentUserId } from "@/lib/api/session";
+import { getTransaction } from "@/lib/api/transactions";
 
 import { DealQr } from "./deal-qr";
 
@@ -15,8 +16,15 @@ export default async function DealQrPage({
   params: Promise<{ txId: string }>;
 }) {
   const { txId } = await params;
-  const tx = await getTransaction(Number(txId));
+  if (!(await getCurrentUserId())) redirect("/login");
+
+  const tx = await getTransaction(Number(txId)).catch(() => undefined);
   if (!tx) notFound();
 
-  return <DealQr transactionId={tx.transaction_id} itemName={tx.post.item.name} />;
+  return (
+    <DealQr
+      transactionId={tx.transaction_id}
+      itemName={tx.post?.item?.name ?? "the item"}
+    />
+  );
 }
