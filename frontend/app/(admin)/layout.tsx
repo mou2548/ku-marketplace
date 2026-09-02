@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Crown, Scale, ShieldAlert } from "lucide-react";
 
 import { ToastProvider } from "@/components/kit/toast";
-import { getMembershipRequests } from "@/lib/api/fixtures";
 import { adminListAppeals } from "@/lib/api/appeals";
+import { listPendingPayments } from "@/lib/api/membership";
 import { adminListReports } from "@/lib/api/reports";
 import { getAccessToken } from "@/lib/api/session";
 import { getMe } from "@/lib/api/users";
@@ -31,7 +31,7 @@ export default async function AdminLayout({
   const [reports, appeals, memberships] = await Promise.all([
     adminListReports(),
     adminListAppeals(),
-    getMembershipRequests(),
+    listPendingPayments(),
   ]);
 
   const queues = [
