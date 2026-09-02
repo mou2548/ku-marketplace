@@ -3,17 +3,19 @@
 import { useActionState, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowRight, Lock, Mail } from "lucide-react";
+import { ArrowRight, Check, Lock, Mail, X } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import {
   ALLOWED_EMAIL_DOMAINS,
   OTP_TTL_MINUTES,
+  PASSWORD_RULES,
+  checkPassword,
   isKuEmail,
+  isPasswordValid,
 } from "@/lib/auth-rules";
-import { login } from "@/lib/actions/auth";
+import { login, requestRegisterOtp } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 /**
@@ -128,14 +130,10 @@ function LoginForm() {
 
   return (
     <form action={formAction} className="flex w-full max-w-lg flex-col gap-6">
-      {/* Not `type="email"`: the browser refuses to submit anything without an
-          `@` in it, which silently blocked every non-email account — including
-          the development one. The server decides what is valid, not the input
-          type. */}
       <TextInput
-        name="username"
+        name="email"
         label="KU email"
-        type="text"
+        type="email"
         autoComplete="username"
         isRequired
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
@@ -178,39 +176,40 @@ function LoginForm() {
 }
 
 /**
- * One field.
+ * Email and password, in one step.
  *
- * `flow4.png` orders signup: enter a KU email, the system sends a one-time
- * code, **then** you set a password and fill in your profile, and only then is
- * the account opened. The form used to take the password here, before the
- * address had been proved to belong to anyone — so a full set of credentials
- * could be typed for an address the person did not hold.
+ * `flow4.png` originally ordered signup as email first, code second, password
+ * and profile last. The real backend does not allow that split: password is a
+ * required field on `POST /auth/register` itself, sent before any code exists.
+ * Thai name and phone are collected later via `/account/edit` (`PATCH
+ * /users/me`) instead of at signup — nothing there needs them upfront.
  *
  * The identity is the KU email rather than a free username, because the code is
  * emailed and the `@ku.th` domain is the whole trust model (research T1).
  */
 function RegisterForm() {
-  const router = useRouter();
+  const [state, formAction, isPending] = useActionState(
+    requestRegisterOtp,
+    undefined,
+  );
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const emailOk = isKuEmail(email);
-  const canSubmit = emailOk;
-
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!canSubmit) return;
-    // TODO: POST /auth/register; the server emails the one-time code.
-    router.push(`/verify?email=${encodeURIComponent(email)}`);
-  }
+  const passwordOk = isPasswordValid(password);
+  const rules = checkPassword(password);
+  const canSubmit = emailOk && passwordOk;
 
   return (
-    <form onSubmit={submit} className="flex w-full max-w-lg flex-col gap-6">
+    <form action={formAction} className="flex w-full max-w-lg flex-col gap-6">
       <TextInput
+        name="email"
         label="KU email"
         type="email"
         value={email}
         onChange={setEmail}
-        placeholder={`username  @${ALLOWED_EMAIL_DOMAINS[0]}`}
+        isRequired
+        placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
         inputClassName="h-14 text-[1.0625rem]"
         errorMessage={
@@ -220,18 +219,71 @@ function RegisterForm() {
         }
       />
 
-      <Button type="submit" size="lg" block pill isDisabled={!canSubmit}>
+      <div className="flex flex-col gap-2">
+        <TextInput
+          name="password"
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          isRequired
+          placeholder="········"
+          icon={<Lock className="size-5" />}
+          inputClassName="h-14 text-[1.0625rem]"
+        />
+        <ul className="flex flex-col gap-1">
+          <PasswordRule
+            ok={rules.longEnough && rules.shortEnough}
+            label={`${PASSWORD_RULES.minLength}–${PASSWORD_RULES.maxLength} characters`}
+          />
+          <PasswordRule ok={rules.hasLetter} label="At least one letter" />
+          <PasswordRule ok={rules.hasDigit} label="At least one number" />
+        </ul>
+      </div>
+
+      {state?.error ? (
+        <p role="alert" className="text-center text-[0.875rem] text-tone-danger-fg">
+          {state.error}
+        </p>
+      ) : null}
+
+      <Button
+        type="submit"
+        size="lg"
+        block
+        pill
+        isDisabled={!canSubmit}
+        isLoading={isPending}
+      >
         Send me the code
         <ArrowRight className="size-5" />
       </Button>
 
       <p className="text-center text-[0.875rem] leading-[1.65] text-ink-muted">
         We will email you a 6-digit code, valid for {OTP_TTL_MINUTES} minutes.
-        You pick a password and fill in your profile after that.
       </p>
 
       <Terms />
     </form>
+  );
+}
+
+function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-2 text-[0.75rem]",
+        ok ? "text-ink-brand" : "text-ink-muted",
+      )}
+    >
+      {ok ? (
+        <Check aria-hidden className="size-3.5" />
+      ) : (
+        <X aria-hidden className="size-3.5" />
+      )}
+      {label}
+    </li>
   );
 }
 

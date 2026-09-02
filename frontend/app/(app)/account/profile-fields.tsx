@@ -5,6 +5,8 @@ import { useState } from "react";
 import { EditableField } from "@/components/kit/editable-field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { updateProfile } from "@/lib/actions/account";
+import type { UpdateProfilePayload } from "@/lib/api/users";
 import type { User } from "@/lib/api/types";
 
 /**
@@ -35,9 +37,13 @@ export function ProfileFields({
   const [lastNameTh, setLastNameTh] = useState(profile.last_name_th);
   const [phone, setPhone] = useState(profile.phone_number ?? "");
 
-  async function save(what: string, apply: () => void) {
-    // PATCH /users/me
-    await new Promise((r) => setTimeout(r, 300));
+  async function save(patch: UpdateProfilePayload, what: string, apply: () => void) {
+    try {
+      await updateProfile(patch);
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : `Could not save ${what.toLowerCase()}`);
+      return;
+    }
     apply();
     toast.show(`${what} saved`);
   }
@@ -51,12 +57,12 @@ export function ProfileFields({
       <EditableField
         label="First name (Thai)"
         value={firstNameTh}
-        onSave={(v) => save("First name", () => setFirstNameTh(v))}
+        onSave={(v) => save({ first_name_th: v }, "First name", () => setFirstNameTh(v))}
       />
       <EditableField
         label="Last name (Thai)"
         value={lastNameTh}
-        onSave={(v) => save("Last name", () => setLastNameTh(v))}
+        onSave={(v) => save({ last_name_th: v }, "Last name", () => setLastNameTh(v))}
       />
       <EditableField
         label="Phone number"
@@ -64,7 +70,7 @@ export function ProfileFields({
         placeholder="Not set"
         inputMode="tel"
         sanitise={(v) => v.replace(/[^\d-]/g, "")}
-        onSave={(v) => save("Phone number", () => setPhone(v))}
+        onSave={(v) => save({ phone_number: v }, "Phone number", () => setPhone(v))}
       />
       <EditableField
         label="Name (English)"

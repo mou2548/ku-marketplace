@@ -10,7 +10,12 @@ import { OtpService } from './otp.service';
 import { TokenService } from './token.service';
 import { MailService } from '../mail/mail.service';
 import { extractFirstNameFromEmail } from '../common/utils/ku-email.util';
-import type { RequestOtpPayload, LoginPayload } from './validation/register.validation';
+import type {
+  RequestOtpPayload,
+  LoginPayload,
+  ForgotPasswordPayload,
+  ResetPasswordPayload,
+} from './validation/register.validation';
 
 @Injectable()
 export class AuthService {
@@ -37,7 +42,14 @@ export class AuthService {
 
     await this.mailService.sendOtp(payload.email, otp);
 
-    return { message: 'ส่งรหัส OTP ไปยังอีเมลแล้ว กรุณายืนยันภายใน 10 นาที' };
+    return { email: payload.email };
+  }
+
+  /** §resend — ออก OTP ใหม่ให้คำขอสมัครที่ยัง pending อยู่ (ไม่สร้างคำขอใหม่) */
+  async resendRegisterOtp(email: string) {
+    const otp = await this.otpService.resendRegisterOtp(email);
+    await this.mailService.sendOtp(email, otp);
+    return { email };
   }
 
   /**
@@ -95,6 +107,17 @@ export class AuthService {
       throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
+    // §users/me DELETE — บัญชีที่ soft-delete ตัวเองไปแล้ว (status: Deleted) หรือถูก
+    // แอดมิน Suspended/Banned ต้อง login ไม่ได้อีก ไม่งั้น DELETE /users/me จะไม่มี
+    // ความหมายอะไรเลย (ลบแล้วแต่ยังใช้งานได้ปกติ)
+    if (user.status !== 'Active') {
+      throw new UnauthorizedException(
+        user.status === 'Deleted'
+          ? 'บัญชีนี้ถูกลบไปแล้ว'
+          : 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อแอดมิน',
+      );
+    }
+
     const tokenUser = { userId: user.userId, email: user.email, isAdmin: user.isAdmin };
     const accessToken = this.tokenService.generateAccessToken(tokenUser);
     const refreshToken = this.tokenService.generateRefreshToken(tokenUser);
@@ -109,5 +132,41 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  /**
+   * §password-forgot — ส่ง OTP รีเซ็ตรหัสผ่าน "เสมอ" ไม่ว่าอีเมลนี้จะมีอยู่จริงหรือไม่
+   * (ตอบข้อความเดียวกันทั้งสองกรณี) กันไม่ให้ endpoint นี้ถูกใช้เดาว่าอีเมลไหน
+   * ลงทะเบียนไว้บ้าง (email enumeration)
+   */
+  async forgotPassword(payload: ForgotPasswordPayload) {
+    const user = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    if (user && user.status === 'Active') {
+      const otp = await this.otpService.createPasswordResetOtp(payload.email);
+      await this.mailService.sendPasswordResetOtp(payload.email, otp);
+    }
+    return { email: payload.email };
+  }
+
+  async resetPassword(payload: ResetPasswordPayload) {
+    const otpValid = await this.otpService.verifyPasswordResetOtp(payload.email, payload.otp);
+    if (!otpValid) {
+      throw new BadRequestException('OTP ไม่ถูกต้องหรือหมดอายุแล้ว');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    if (!user) {
+      // ไม่ควรเกิดขึ้นจริง (OTP ถูก issue จาก forgotPassword ที่เช็ค user มาก่อนแล้ว)
+      // แต่กันไว้เผื่อ user ถูกลบไประหว่างที่ OTP ยังไม่หมดอายุ
+      throw new BadRequestException('ไม่พบบัญชีผู้ใช้สำหรับอีเมลนี้');
+    }
+
+    const passwordHash = await bcrypt.hash(payload.newPassword, 10);
+    await this.prisma.user.update({
+      where: { userId: user.userId },
+      data: { passwordHash },
+    });
+
+    return { email: payload.email };
   }
 }

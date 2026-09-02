@@ -17,6 +17,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { TransactionsController } from './transactions/transactions.controller';
 import { TransactionsService } from './transactions/transactions.service';
 import { AppointmentCardsModule } from './appointment-cards/appointment-cards.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AppointmentCardsModule } from './appointment-cards/appointment-cards.mo
     MembershipModule,
     AppointmentCardsModule,
     CloudinaryModule,
+    UsersModule,
   ],
   controllers: [AppController, TransactionsController],
   providers: [AppService, TransactionsService],

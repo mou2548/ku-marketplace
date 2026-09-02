@@ -86,3 +86,30 @@ Two consequences a real backend should close:
    room, so recipients cannot open the group chat they are in. That is
    membership logic rather than a missing endpoint, and is deliberately left
    alone here.
+
+## 7. Auth has no `/auth/refresh` endpoint
+
+A later backend pass (`origin/backend/main` commit `b232f58`) added everything
+§7 used to list as missing: `POST /auth/otp/resend`, `POST /auth/logout`,
+`POST /auth/password/forgot`, `POST /auth/password/reset`, and
+`GET`/`PATCH`/`DELETE /users/me`. All of it is wired now. Two decisions from
+that pass are permanent product shape, not workarounds, and are worth recording
+here so nobody tries to "fix" them back:
+
+- **Register is email + password in one step**, not email-then-password. The
+  real `POST /auth/register` requires `password` before any OTP exists, so
+  `app/(auth)/auth-panel.tsx`'s `RegisterForm` asks for both up front. `phone`
+  stays out of the signup flow entirely — it was always optional on the DTO,
+  and asking for it there bought nothing once profile fields moved to
+  `/account/edit`.
+- **Password reset is email + a 6-digit code**, not a magic link.
+  `POST /auth/password/reset` takes `{ email, otp, newPassword }` — the same
+  OTP mechanism as registration, on its own Redis namespace. `app/(auth)/reset`
+  reads `?email=` now, not `?token=`.
+
+What's still genuinely missing: **no `POST /auth/refresh`**, despite `login`
+and `otp/verify` both setting a `refreshToken` httpOnly cookie — nothing
+anywhere consumes it. The access token is 15 minutes
+(`token.service.ts`); the frontend session cookie (`lib/api/session.ts`) is set
+to match that lifetime and simply expires with it. No silent-refresh logic
+exists to write, and there is nothing to build it against.

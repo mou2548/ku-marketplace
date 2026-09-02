@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ChevronRight,
   Crown,
@@ -10,17 +11,17 @@ import {
 } from "lucide-react";
 
 import { Surface } from "@/components/kit/surface";
-import { TONE_SOLID } from "@/components/kit/tone";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
+import { logout } from "@/lib/actions/auth";
 import {
   getMembership,
   getTransactions,
   getViewer,
-  getViewerProfile,
   VIEWER_ID,
 } from "@/lib/api/fixtures";
-import { cn } from "@/lib/utils";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe, toUser } from "@/lib/api/users";
 
 import { ProfileFields } from "./profile-fields";
 
@@ -35,9 +36,13 @@ export const metadata = { title: "Account - KU Marketplace" };
  * Everything else here is settings, and settings are a list.
  */
 export default async function AccountPage() {
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
+
   const [viewer, profile, membership, transactions] = await Promise.all([
     getViewer(),
-    getViewerProfile(),
+    getMe().then(toUser),
     getMembership(),
     getTransactions(),
   ]);
@@ -77,12 +82,7 @@ export default async function AccountPage() {
       />
 
       <div className="flex flex-wrap gap-2.5">
-        <span
-          className={cn(
-            "flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-[0.875rem] font-medium",
-            TONE_SOLID.success,
-          )}
-        >
+        <span className="flex items-center gap-1.5 rounded-pill bg-tone-success-bg px-3 py-1.5 text-[0.875rem] font-medium text-tone-success-fg">
           <ShieldCheck aria-hidden className="size-4" />
           Verified KU student
         </span>
@@ -93,13 +93,8 @@ export default async function AccountPage() {
           {completed} completed {completed === 1 ? "deal" : "deals"}
         </span>
         {membership.tier !== "Free" ? (
-          <span
-            className={cn(
-              "flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[0.8125rem] font-semibold",
-              TONE_SOLID.warning,
-            )}
-          >
-            <Crown aria-hidden className="size-3.5" />
+          <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-3 py-1.5 text-[0.875rem] font-medium text-amber-700">
+            <Crown aria-hidden className="size-4" />
             {membership.tier}
           </span>
         ) : null}
@@ -174,13 +169,15 @@ export default async function AccountPage() {
         </ul>
       </nav>
 
-      <Link
-        href="/login"
-        className="flex min-h-12 items-center justify-center gap-2 text-[0.9375rem] font-medium text-tone-danger-fg"
-      >
-        <LogOut aria-hidden className="size-4" />
-        Sign out
-      </Link>
+      <form action={logout}>
+        <button
+          type="submit"
+          className="flex min-h-12 w-full items-center justify-center gap-2 text-[0.9375rem] font-medium text-tone-danger-fg"
+        >
+          <LogOut aria-hidden className="size-4" />
+          Sign out
+        </button>
+      </form>
     </TwoColumn>
   );
 }

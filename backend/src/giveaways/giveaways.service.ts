@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessageOverride } from '../dto/message-override.dto';
 
 export interface GiveawayImage {
   image_url: string;
@@ -41,10 +42,6 @@ export interface ScanQrPayload {
 @Injectable()
 export class GiveawaysService {
   constructor(private readonly prisma: PrismaService) {}
-
-  private ok(message: string, data: Record<string, unknown> | unknown[]) {
-    return { success: true, message, data };
-  }
 
   private id(value: string, prefix: string) {
     const match = value.match(new RegExp(`^(?:${prefix}_)?(\\d+)$`, 'i'));
@@ -104,10 +101,7 @@ export class GiveawaysService {
       },
       include: { images: { orderBy: { displayOrder: 'asc' } } },
     });
-    return this.ok(
-      'สร้างโพสต์แจกของสำเร็จ',
-      this.serializeGiveaway(giveaway, 0),
-    );
+    return this.serializeGiveaway(giveaway, 0);
   }
 
   private serializeGiveaway(
@@ -152,10 +146,7 @@ export class GiveawaysService {
       },
     });
     if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
-    return this.ok(
-      'รายละเอียดโพสต์แจกของสำเร็จ',
-      this.serializeGiveaway(giveaway, giveaway._count.tickets),
-    );
+    return this.serializeGiveaway(giveaway, giveaway._count.tickets);
   }
 
   async join(id: string, payload: JoinGiveawayPayload) {
@@ -184,7 +175,7 @@ export class GiveawaysService {
     const ticket = await this.prisma.giveawayTicket.create({
       data: { giveawayId, receiverId, status: 'Waiting' },
     });
-    return this.ok('เข้าร่วมการแจกของสำเร็จ', this.serializeTicket(ticket));
+    return this.serializeTicket(ticket);
   }
 
   private serializeTicket(ticket: {
@@ -233,12 +224,12 @@ export class GiveawaysService {
       });
       return winner;
     });
-    return this.ok('จับฉลากสำเร็จ', {
+    return {
       giveaway_id: this.label('giveaway', giveawayId),
       allocation_method: 'Random',
       recipients: [this.asRecipient(result)],
       status: 'drawn',
-    });
+    };
   }
 
   async select(id: string, receiverIds: number[]) {
@@ -274,12 +265,12 @@ export class GiveawaysService {
       });
       return tickets;
     });
-    return this.ok('เลือกผู้ชนะสำเร็จ', {
+    return {
       giveaway_id: this.label('giveaway', giveawayId),
       allocation_method: 'Manual',
       recipients: selected.map((ticket) => this.asRecipient(ticket)),
       status: 'selected',
-    });
+    };
   }
 
   private asRecipient(ticket: {
@@ -306,10 +297,10 @@ export class GiveawaysService {
       where: { giveawayId, status: { in: ['Waiting', 'Received'] } },
       orderBy: { ticketId: 'asc' },
     });
-    return this.ok('สรุปผู้รับของสำเร็จ', {
+    return {
       giveaway_id: this.label('giveaway', giveawayId),
       recipients: tickets.map((ticket) => this.asRecipient(ticket)),
-    });
+    };
   }
 
   async forfeit(id: string, confirm: boolean) {
@@ -323,11 +314,11 @@ export class GiveawaysService {
       where: { ticketId },
       data: { status: 'Expired', updatedAt: new Date() },
     });
-    return this.ok('สละสิทธิ์สำเร็จ', {
+    return {
       recipient_id: this.label('recipient', ticketId),
       confirm: true,
       status: 'forfeited',
-    });
+    };
   }
 
   async qrGenerate(giveawayIdValue: string, ticketIdValue: string) {
@@ -345,12 +336,12 @@ export class GiveawaysService {
     const giveaway = await this.prisma.giveawayPost.findUnique({
       where: { giveawayId },
     });
-    return this.ok('สร้าง QR สำเร็จ', {
+    return {
       giveaway_id: this.label('giveaway', giveawayId),
       ticket_id: this.label('ticket', ticketId),
       token,
       expires_at: giveaway?.pickupDeadline,
-    });
+    };
   }
 
   async qrScan(giveawayIdValue: string, ticketIdValue: string, token = '') {
@@ -368,7 +359,7 @@ export class GiveawaysService {
         data: { status: 'Received', updatedAt: new Date() },
       });
     }
-    return this.ok(valid ? 'ตรวจสอบ QR สำเร็จ' : 'QR ไม่ถูกต้อง', {
+    return new MessageOverride(valid ? 'ตรวจสอบ QR สำเร็จ' : 'QR ไม่ถูกต้อง', {
       giveaway_id: this.label('giveaway', giveawayId),
       ticket_id: this.label('ticket', ticketId),
       valid,

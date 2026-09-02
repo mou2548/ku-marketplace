@@ -104,4 +104,17 @@ export class TransactionsService {
       },
     });
   }
+
+  /** §appointment-cards GET — เดิมมีแค่ POST เส้นนี้ ดูรายการนัดหมายต้องไปทาง
+   * GET /appointment-cards แยกต่างหาก (กรองเอาเองฝั่ง client) ตอนนี้เพิ่ม GET ตรงนี้
+   * ให้ scope ตาม transaction เดียวเลย เข้าถึงได้เฉพาะคู่กรณี (ใช้ guard เดียวกับ
+   * ที่เหลือใน controller นี้ทั้งหมด) */
+  async getAppointmentCards(transactionId: number, userId: number) {
+    await this.assertParticipant(transactionId, userId);
+
+    return this.prisma.appointmentCard.findMany({
+      where: { transactionId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

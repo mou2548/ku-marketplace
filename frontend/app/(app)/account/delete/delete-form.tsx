@@ -9,6 +9,7 @@ import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { deleteAccount } from "@/lib/actions/account";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -29,8 +30,13 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
 
   async function remove() {
     setBusy(true);
-    // DELETE /users/me
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      await deleteAccount();
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not close account");
+      return;
+    }
     setBusy(false);
     toast.show("Account closed");
     router.push("/login");

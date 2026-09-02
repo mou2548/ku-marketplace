@@ -11,6 +11,46 @@ import type { RequestMembershipPayload } from './validation/membership.validatio
 export class MembershipService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * §users-facing — เดิมไม่มี endpoint ให้ user เช็คสถานะสมาชิกตัวเองเลยไม่ว่าชื่อไหน
+   * รวม tier ที่ซื้อไว้ (`tier`) กับ tier ที่ใช้ได้จริงตอนนี้ (`effectiveTier`, ผ่าน
+   * getEffectiveTier ที่มีอยู่แล้ว) แยกกัน เพราะถ้า Silver/Gold/Diamond หมดอายุไปแล้ว
+   * แต่ยังไม่ผ่าน downgradeExpiredMemberships (รัน scheduled job) ทั้งสองค่าจะไม่ตรงกัน
+   * — user ควรเห็นว่า "ที่จริงตอนนี้ใช้ได้แค่ Free" แม้ column ในตารางยังไม่ถูกอัปเดต
+   */
+  async getStatus(userId: number) {
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { userId },
+    });
+    if (!subscription) {
+      throw new NotFoundException('ไม่พบข้อมูลสมาชิกของผู้ใช้นี้ กรุณาติดต่อแอดมิน');
+    }
+
+    const tier = subscription.tier as MembershipTier;
+    const effectiveTier = this.getEffectiveTier(tier, subscription.endDate);
+    const quota = MEMBERSHIP_CONFIG[effectiveTier].postQuota;
+    const postsUsed = subscription.postsUsedThisMonth ?? 0;
+
+    const pendingPayment = await this.prisma.subscriptionPayment.findFirst({
+      where: { userId, status: 'Pending' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      tier,
+      effectiveTier,
+      status: subscription.status,
+      startDate: subscription.startDate,
+      endDate: subscription.endDate,
+      postsUsedThisMonth: postsUsed,
+      postQuota: quota,
+      postsRemaining: quota === null ? null : Math.max(quota - postsUsed, 0),
+      pendingPayment: pendingPayment
+        ? { paymentId: pendingPayment.paymentId, amount: pendingPayment.amount }
+        : null,
+    };
+  }
+
   async requestUpgrade(userId: number, payload: RequestMembershipPayload) {
     const subscription = await this.prisma.subscription.findFirst({ where: { userId } });
     if (!subscription) {
