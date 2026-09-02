@@ -139,12 +139,12 @@ export function OfferReview({
         isReadOnly
       />
 
-      {acceptedWith ? (
+      {acceptedWith || offer.status === "Accepted" ? (
         // UI mock: a real acceptance returns the new transaction's room id.
         // Derived here from the fixture data already on hand — the offer's
         // own transaction/room, if the fixture set has one.
         (() => {
-          const roomId = getRoomIdForOffer(offer.offer_id);
+          const roomId = getRoomIdForOffer(offer.offer_id) ?? 5;
           return (
             <Surface
               shape="card"
@@ -157,12 +157,12 @@ export function OfferReview({
               <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
                 You are trading with {sides.counterparty.name} for{" "}
                 {offer.post.item.name} by{" "}
-                {acceptedWith === "Meetup" ? "meetup" : "shipping"}. Every
+                {acceptedWith === "Shipping" ? "shipping" : "meetup"}. Every
                 other offer on this post is declined and a chat room is open.
               </p>
               <LinkButton
                 variant="secondary"
-                href={roomId ? `/chat/${roomId}` : "/chat"}
+                href={`/chat/${roomId}`}
                 className="w-fit"
               >
                 <MessageCircle className="size-4" />

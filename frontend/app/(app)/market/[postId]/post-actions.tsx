@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeftRight, CheckCircle2, Handshake, MapPin, MessageCircle, ShoppingBag, Truck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeftRight, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
-import { Surface } from "@/components/kit/surface";
-import { getRoomIdForPost, USERS, VIEWER_ID } from "@/lib/api/fixtures";
-import type { RoomSummary } from "@/lib/rooms";
+import { getRoomIdForPost } from "@/lib/api/fixtures";
 import type { DeliveryMethod } from "@/lib/status";
-import type { Post, Transaction } from "@/lib/api/types";
-
-import { RoomScreen } from "../../chat/[roomId]/room-screen";
+import type { Post } from "@/lib/api/types";
 
 /**
  * E3 entry point. Two decisions happen here and nowhere else:
@@ -27,90 +24,12 @@ import { RoomScreen } from "../../chat/[roomId]/room-screen";
  * fold on a phone.
  */
 export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
+  const router = useRouter();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
   const [busy, setBusy] = useState(false);
-  // The purchase is confirmed in place rather than by jumping to a fixture chat
-  // room that belongs to a different item. The success panel names this item
-  // and this seller, so the demo shows the right deal was made.
-  const [boughtWith, setBoughtWith] = useState<DeliveryMethod | null>(null);
 
   const canBuy = post.post_type !== "TradeOnly";
   const canTrade = post.post_type !== "SellOnly";
-
-  if (boughtWith) {
-    // UI mock: a real purchase returns the new transaction's room id. Where
-    // the fixture set already has one for this post, land there — same
-    // buyer/seller conversation and history as anyone else who bought it.
-    const roomId = getRoomIdForPost(post.post_id);
-    if (roomId) {
-      return (
-        <Surface
-          shape="card"
-          className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
-        >
-          <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
-            <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-            Deal created
-          </p>
-          <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
-            You bought {post.item.name} from {post.seller.name} by{" "}
-            {boughtWith === "Meetup" ? "meetup" : "shipping"}. A chat room is
-            open so you can arrange the handover.
-          </p>
-          <LinkButton variant="secondary" href={`/chat/${roomId}`} className="w-fit">
-            <MessageCircle className="size-4" />
-            Open chat
-          </LinkButton>
-        </Surface>
-      );
-    }
-
-    // No fixture transaction exists for this post — there is nowhere real
-    // to send "Open chat" to. Rather than a dead link to the room list, the
-    // deal is synthesized right here and the same room screen everyone else
-    // gets is rendered in place, so buying any post — not just the ones the
-    // fixture set scripted — walks all the way to a closed deal.
-    const transaction: Transaction = {
-      transaction_id: -post.post_id,
-      post_id: post.post_id,
-      buyer_id: VIEWER_ID,
-      seller_id: post.seller.user_id,
-      quantity: 1,
-      final_amount: post.price,
-      status: "Pending",
-      delivery_method: boughtWith,
-      created_at: new Date().toISOString(),
-      post,
-      buyer: USERS[VIEWER_ID],
-      seller: post.seller,
-    };
-    const summary: RoomSummary = {
-      room_id: transaction.transaction_id,
-      kind: "Sale",
-      counterparty: post.seller,
-      subject: post.item.name,
-      needsYou: true,
-      href: `/market/${post.post_id}`,
-    };
-
-    return (
-      <div className="flex h-[70vh] min-h-[32rem] flex-col overflow-hidden rounded-card shadow-raised">
-        <RoomScreen
-          summary={summary}
-          viewerId={VIEWER_ID}
-          transaction={transaction}
-          messages={[
-            {
-              message_id: 1,
-              sender_id: VIEWER_ID,
-              content: `Hi, I'd like to buy ${post.item.name}.`,
-              created_at: new Date().toISOString(),
-            },
-          ]}
-        />
-      </div>
-    );
-  }
 
   if (isMine) {
     return (
@@ -132,7 +51,12 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
     // POST /posts/{id}/buy → { delivery_method, quantity }
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
-    setBoughtWith(method);
+    const roomId = getRoomIdForPost(post.post_id);
+    if (roomId) {
+      router.push(`/chat/${roomId}`);
+    } else {
+      router.push("/chat");
+    }
   }
 
   return (
