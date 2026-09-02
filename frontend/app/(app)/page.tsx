@@ -1,7 +1,14 @@
 import { PostFab } from "@/components/kit/post-fab";
-import { getPosts } from "@/lib/api/fixtures";
+import { listPosts } from "@/lib/api/posts";
 
 import { MarketFeed } from "./market-feed";
+
+/**
+ * Reads real listings now (`GET /posts`), so it cannot be prerendered once at
+ * build time — a post made after the build would never appear, and a `next
+ * build` without the backend reachable would fail outright.
+ */
+export const dynamic = "force-dynamic";
 
 /**
  * Home is the marketplace. Nothing else.
@@ -18,7 +25,7 @@ import { MarketFeed } from "./market-feed";
  * R4 and persona P2 are served without spending the top of the feed on it.
  */
 export default async function HomePage() {
-  const posts = await getPosts();
+  const posts = await listPosts();
 
   return (
     <div className="flex flex-col gap-5">

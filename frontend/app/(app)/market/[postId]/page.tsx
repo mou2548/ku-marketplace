@@ -7,7 +7,8 @@ import { PostCard } from "@/components/kit/post-card";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { getPost, getPosts, VIEWER_ID } from "@/lib/api/fixtures";
+import { getPost, listPosts } from "@/lib/api/posts";
+import { getCurrentUserId } from "@/lib/api/session";
 import type { Post } from "@/lib/api/types";
 
 import { ITEM_CONDITION, POST_TYPE } from "@/lib/status";
@@ -29,11 +30,12 @@ export default async function PostDetailPage({
   params: Promise<{ postId: string }>;
 }) {
   const { postId } = await params;
-  const post = await getPost(Number(postId));
+  const post = await getPost(Number(postId)).catch(() => undefined);
   if (!post) notFound();
 
+  const viewerId = await getCurrentUserId();
   const rarity = ITEM_CONDITION[post.item.condition];
-  const isMine = post.seller.user_id === VIEWER_ID;
+  const isMine = post.seller.user_id === viewerId;
   const image = post.item.images[0]?.image_url;
 
   const specs: Array<[string, string]> = [
@@ -59,7 +61,7 @@ export default async function PostDetailPage({
 
   // Two grids under the fold, both derived from the posts list because the API
   // defines no related-posts route (docs/design/api-gaps.md).
-  const all = await getPosts();
+  const all = await listPosts();
   const others = all.filter((p) => p.post_id !== post.post_id);
   const fromSeller = others
     .filter((p) => p.seller.user_id === post.seller.user_id)

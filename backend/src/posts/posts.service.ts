@@ -58,19 +58,84 @@ export class PostsService {
     quantityTotal: number;
     quantityRemaining: number;
     createdAt: Date | null;
-    item: { name: string; description: string | null; status: string | null };
+    item: {
+      itemId?: number;
+      name: string;
+      description: string | null;
+      status: string | null;
+      category?: string;
+      condition?: string;
+      courseName?: string | null;
+      brandModel?: string | null;
+      warrantyExpiry?: Date | null;
+      size?: string | null;
+      quantity?: number;
+      ownerId?: number;
+      images?: Array<{
+        imageId: number;
+        itemId: number;
+        imageUrl: string;
+        isPrimary: boolean | null;
+        displayOrder: number | null;
+      }>;
+      owner?: {
+        userId: number;
+        firstNameEn: string;
+        lastNameEn: string;
+      } | null;
+    };
   }) {
+    const item = post.item;
+    const owner = item.owner;
     return {
       post_id: this.label('post', post.postId),
       item_id: post.itemId,
       post_type: post.postType,
-      item_name: post.item.name,
-      description: post.item.description,
+      // Flat fields kept for backward compatibility with existing callers.
+      item_name: item.name,
+      description: item.description,
       price: post.price.toNumber(),
       quantity_total: post.quantityTotal,
       quantity_available: post.quantityRemaining,
+      quantity_remaining: post.quantityRemaining,
       status: post.quantityRemaining > 0 ? 'active' : 'sold_out',
       created_at: post.createdAt,
+      // §feed — nested item + seller so the marketplace grid and the post
+      // detail screen can render category, condition, course code, images and
+      // the seller trust badge without a second round trip.
+      item: {
+        item_id: item.itemId ?? post.itemId,
+        owner_id: item.ownerId ?? owner?.userId ?? null,
+        name: item.name,
+        quantity: item.quantity ?? 1,
+        category: item.category ?? null,
+        condition: item.condition ?? null,
+        description: item.description,
+        status: item.status,
+        course_name: item.courseName ?? null,
+        brand_model: item.brandModel ?? null,
+        warranty_expiry: item.warrantyExpiry ?? null,
+        size: item.size ?? null,
+        images: (item.images ?? []).map((img) => ({
+          image_id: img.imageId,
+          item_id: img.itemId,
+          image_url: img.imageUrl,
+          is_primary: img.isPrimary ?? false,
+          display_order: img.displayOrder ?? 0,
+        })),
+      },
+      seller: owner
+        ? {
+            user_id: owner.userId,
+            name: [owner.firstNameEn, owner.lastNameEn]
+              .filter(Boolean)
+              .join(' ')
+              .trim(),
+            // Every account is a verified @ku.th address (research T1); the
+            // schema has no separate verification flag.
+            isVerified: true,
+          }
+        : null,
     };
   }
 
@@ -123,7 +188,19 @@ export class PostsService {
   async findAllPosts() {
     const posts = await this.prisma.post.findMany({
       where: { deletedAt: null },
-      include: { item: true },
+      include: {
+        item: {
+          include: {
+            images: {
+              where: { status: 'Active' },
+              orderBy: { displayOrder: 'asc' },
+            },
+            owner: {
+              select: { userId: true, firstNameEn: true, lastNameEn: true },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return posts.map((p) => this.serializePost(p));
@@ -132,7 +209,19 @@ export class PostsService {
   async getPostById(postId: string) {
     const post = await this.prisma.post.findUnique({
       where: { postId: this.id(postId, 'post'), deletedAt: null },
-      include: { item: true },
+      include: {
+        item: {
+          include: {
+            images: {
+              where: { status: 'Active' },
+              orderBy: { displayOrder: 'asc' },
+            },
+            owner: {
+              select: { userId: true, firstNameEn: true, lastNameEn: true },
+            },
+          },
+        },
+      },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
     return this.serializePost(post);
@@ -208,7 +297,19 @@ export class PostsService {
     const transaction = await this.prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { postId: id, deletedAt: null },
-        include: { item: true },
+        include: {
+        item: {
+          include: {
+            images: {
+              where: { status: 'Active' },
+              orderBy: { displayOrder: 'asc' },
+            },
+            owner: {
+              select: { userId: true, firstNameEn: true, lastNameEn: true },
+            },
+          },
+        },
+      },
       });
       if (!post) throw new NotFoundException('ไม่พบโพสต์');
       if (!['SellOnly', 'Both'].includes(post.postType)) {
@@ -265,7 +366,19 @@ export class PostsService {
     }
     const post = await this.prisma.post.findUnique({
       where: { postId: id, deletedAt: null },
-      include: { item: true },
+      include: {
+        item: {
+          include: {
+            images: {
+              where: { status: 'Active' },
+              orderBy: { displayOrder: 'asc' },
+            },
+            owner: {
+              select: { userId: true, firstNameEn: true, lastNameEn: true },
+            },
+          },
+        },
+      },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
     if (!['TradeOnly', 'Both'].includes(post.postType)) {
