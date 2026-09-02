@@ -12,10 +12,19 @@
  * directly. Paginated bodies (`{ data, meta }`) are left one layer up so callers
  * keep `meta`.
  *
- * Auth — mutating endpoints are behind `JwtAuthGuard`. On the client the bearer
- * token is read from `localStorage`; server components pass one explicitly since
- * they have no `localStorage`. Public reads (`GET /posts`, `GET /posts/:id`) work
- * with no token at all.
+ * Auth — mutating endpoints are behind `JwtAuthGuard`. Callers reach the bearer
+ * token two ways, both supported here:
+ *   - pass `token` explicitly (server components / actions read it from the
+ *     session cookie via `session.ts`);
+ *   - pass an `Authorization` header directly in `headers` (the older
+ *     `authHeader()` helper style);
+ *   - on the client, nothing is passed and the token is read from
+ *     `localStorage`.
+ * An `Authorization` header the caller set always wins over `token`.
+ *
+ * Body — a caller may hand `body` as a plain object (serialised here), a
+ * pre-stringified JSON string, or a `FormData` (passed through untouched so
+ * `fetch` writes its own multipart boundary).
  */
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000").replace(
@@ -44,7 +53,7 @@ export interface RequestOptions {
   /** Forwarded to `fetch`; Next.js reads `cache` / `next` from here. */
   cache?: RequestCache;
   next?: { revalidate?: number | false; tags?: string[] };
-  signal?: AbortSignal;
+  signal?: AbortSignal | null;
 }
 
 function clientToken(): string | null {
@@ -85,26 +94,56 @@ async function parseBody(res: Response): Promise<unknown> {
   }
 }
 
-interface FetchInit extends RequestOptions {
-  method?: string;
+/**
+ * Superset of `fetch`'s init: everything `RequestInit` allows (so the older
+ * `{ method, headers, body: JSON.stringify(...) }` call style still type-checks),
+ * plus `token` and a widened `body` that also accepts a plain object.
+ */
+export interface FetchInit extends Omit<RequestInit, "body"> {
+  /** Explicit bearer token; an `Authorization` header still wins over it. */
+  token?: string | null;
+  next?: { revalidate?: number | false; tags?: string[] };
   body?: unknown;
 }
 
+function isBinaryBody(body: unknown): body is BodyInit {
+  return (
+    body instanceof FormData ||
+    body instanceof URLSearchParams ||
+    body instanceof Blob ||
+    body instanceof ArrayBuffer ||
+    ArrayBuffer.isView(body)
+  );
+}
+
 export async function apiFetch<T>(path: string, init: FetchInit = {}): Promise<T> {
-  const { token, cache, next, signal, method = "GET", body } = init;
+  const { token, method = "GET", body, headers: initHeaders, ...rest } = init;
   const bearer = token ?? clientToken();
 
-  const headers: Record<string, string> = {};
-  if (bearer) headers.Authorization = `Bearer ${bearer}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const headers = new Headers(initHeaders as HeadersInit | undefined);
+  if (bearer && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${bearer}`);
+  }
+
+  let outBody: BodyInit | undefined;
+  if (body === undefined || body === null) {
+    outBody = undefined;
+  } else if (typeof body === "string") {
+    outBody = body;
+    if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  } else if (isBinaryBody(body)) {
+    // FormData &c. — let `fetch` set its own Content-Type (multipart boundary).
+    outBody = body;
+  } else {
+    outBody = JSON.stringify(body);
+    if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  }
 
   const res = await fetch(`${BASE}${path}`, {
+    ...rest,
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    cache,
-    next,
-    signal,
+    body: outBody,
   });
 
   const raw = await parseBody(res);

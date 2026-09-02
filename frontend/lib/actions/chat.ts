@@ -72,7 +72,7 @@ export async function uploadChatImage(formData: FormData): Promise<string> {
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(`Could not reach the server at ${API_URL}`, 0);
+    throw new ApiError(0, `Could not reach the server at ${API_URL}`);
   }
 
   const body = await res.json().catch(() => null);
@@ -81,7 +81,7 @@ export async function uploadChatImage(formData: FormData): Promise<string> {
       body && typeof body === "object" && "message" in body && body.message
         ? String(body.message)
         : `Upload failed with status ${res.status}`;
-    throw new ApiError(message, res.status);
+    throw new ApiError(res.status, message);
   }
   return (body.data as { url: string }).url;
 }
