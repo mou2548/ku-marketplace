@@ -1,3 +1,7 @@
+import { redirect } from "next/navigation";
+
+import { getAccessToken } from "@/lib/api/session";
+
 import { ItemForm } from "../item-form";
 
 /**
@@ -11,6 +15,9 @@ import { ItemForm } from "../item-form";
  */
 export const metadata = { title: "Add an item - KU Marketplace" };
 
-export default function NewItemPage() {
+export default async function NewItemPage() {
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
   return <ItemForm mode="create" />;
 }

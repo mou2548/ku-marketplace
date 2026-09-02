@@ -2,13 +2,12 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   parseDate,
   type DateValue,
 } from "@internationalized/date";
-import { ArrowLeft, ImagePlus, Save, X } from "lucide-react";
+import { ImagePlus, Save, X } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import {
@@ -23,21 +22,31 @@ import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
+import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
+import type { ItemPayload } from "@/lib/api/items";
+import { uploadImage } from "@/lib/api/uploads";
 import type { Item, ItemCategory } from "@/lib/api/types";
 import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 
+interface Photo {
+  key: string;
+  /** Present for a newly picked file, still local, not yet uploaded. */
+  file?: File;
+  previewUrl: string;
+}
+
 /**
  * Best first, worst last — the order the rarity ramp runs in, so the colour of
  * the border a student is choosing goes one way down the list.
+ *
+ * Four grades, not five: the real `Item.condition` column is
+ * `CHECK IN ('New', 'Good', 'Acceptable', 'Poor')` (`init.sql`) — `'Very
+ * Good'` exists in `lib/status.ts`'s `ItemCondition` because seed *display*
+ * data used it before this screen posted to a real backend, but submitting it
+ * here fails the database constraint. Not offered as a choice.
  */
-const CONDITION_ORDER: ItemCondition[] = [
-  "New",
-  "Very Good",
-  "Good",
-  "Acceptable",
-  "Poor",
-];
+const CONDITION_ORDER: ItemCondition[] = ["New", "Good", "Acceptable", "Poor"];
 
 /** What each grade means, in the words a seller has to be honest in. */
 const CONDITION_HINT: Record<ItemCondition, string> = {
@@ -85,8 +94,11 @@ export function ItemForm({
   const [warranty, setWarranty] = useState<DateValue | null>(
     item?.warranty_expiry ? parseDate(item.warranty_expiry.slice(0, 10)) : null,
   );
-  const [previews, setPreviews] = useState<string[]>(
-    item?.images.map((i) => i.image_url) ?? [],
+  const [photos, setPhotos] = useState<Photo[]>(
+    item?.images.map((i) => ({
+      key: `existing-${i.image_id}`,
+      previewUrl: i.image_url,
+    })) ?? [],
   );
   const [busy, setBusy] = useState(false);
 
@@ -104,8 +116,40 @@ export function ItemForm({
 
   async function save() {
     setBusy(true);
-    // POST /items  or  PATCH /items/{item_id}
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      // New photos are still local `File`s (blob preview only) — upload each
+      // to get a real hosted URL before the item itself can reference it.
+      const images = await Promise.all(
+        photos.map(async (p, i) => ({
+          image_url: p.file ? await uploadImage(p.file) : p.previewUrl,
+          is_primary: i === 0,
+          display_order: i,
+        })),
+      );
+
+      const payload: ItemPayload = {
+        name: name.trim(),
+        category,
+        condition,
+        quantity: Number(quantity) || 1,
+        description: description.trim() || undefined,
+        course_name: needsCourse ? courseName.trim() || undefined : undefined,
+        brand_model: needsBrand ? brandModel.trim() || undefined : undefined,
+        warranty_expiry: needsWarranty && warranty ? warranty.toString() : undefined,
+        size: needsSize ? size.trim() || undefined : undefined,
+        images,
+      };
+
+      if (mode === "create") {
+        await saveNewItem(payload);
+      } else if (item) {
+        await saveItemEdits(item.item_id, payload);
+      }
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not save item");
+      return;
+    }
     setBusy(false);
     toast.show(mode === "create" ? "Item added to your inventory" : "Changes saved");
     router.push("/inventory");
@@ -121,7 +165,7 @@ export function ItemForm({
    * thing worth seeing while filling this form in.
    */
   const preview = (
-    <Surface shape="card" className="flex w-full max-w-md flex-col gap-3 p-5 mx-auto">
+    <Surface shape="card" className="flex flex-col gap-3 p-5">
       <p className="text-overline text-ink-muted uppercase">In your stash</p>
 
       <span
@@ -132,19 +176,7 @@ export function ItemForm({
         }
         className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
       >
-        {/* PostImage shrinks itself to a short 16:7 plate when there is no
-            photo yet (right, for a feed card — a card with nothing to show
-            should not leave a tall gap) and only takes the square
-            `aspectRatio` once a photo lands. Here that swap reads as the
-            whole preview card jumping size as you add the first photo, so
-            the square is forced regardless of which state PostImage is in. */}
-        <PostImage
-          src={previews[0]}
-          alt=""
-          aspectRatio={1}
-          sizes="320px"
-          className="!aspect-square"
-        />
+        <PostImage src={photos[0]?.previewUrl} alt="" aspectRatio={1} sizes="320px" />
       </span>
 
       <p className="font-semibold">{name.trim() || "Untitled item"}</p>
@@ -172,15 +204,7 @@ export function ItemForm({
   );
 
   return (
-    <TwoColumn rail={preview} columns="minmax(0,1fr) minmax(0,1fr)">
-      <Link
-        href={mode === "create" ? "/inventory" : `/inventory/${item?.item_id}`}
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        {mode === "create" ? "Back to my stuff" : "Back to item"}
-      </Link>
-
+    <TwoColumn rail={preview}>
       <h1 className="text-h1">
         {mode === "create" ? "Add an item" : "Edit details"}
       </h1>
@@ -196,17 +220,17 @@ export function ItemForm({
         </p>
 
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {previews.map((src, i) => (
+          {photos.map((p, i) => (
             <div
-              key={src}
+              key={p.key}
               className="relative aspect-square overflow-hidden rounded-slot bg-surface-sunken shadow-sunken"
             >
-              <Image src={src} alt="" fill className="object-cover" />
+              <Image src={p.previewUrl} alt="" fill className="object-cover" />
               <button
                 type="button"
                 aria-label={`Remove photo ${i + 1}`}
                 onClick={() =>
-                  setPreviews((list) => list.filter((s) => s !== src))
+                  setPhotos((list) => list.filter((x) => x.key !== p.key))
                 }
                 className="absolute top-1 right-1 grid size-6 place-items-center rounded-pill bg-surface-inverse/80 text-white"
               >
@@ -233,15 +257,20 @@ export function ItemForm({
           hidden
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
-            setPreviews((list) => [
+            setPhotos((list) => [
               ...list,
-              ...files.map((f) => URL.createObjectURL(f)),
+              ...files.map((f) => ({
+                key: `new-${f.name}-${f.lastModified}-${Math.random()}`,
+                file: f,
+                previewUrl: URL.createObjectURL(f),
+              })),
             ]);
           }}
         />
       </Surface>
 
       <TextInput
+        className="max-w-2xl"
         label="Item name"
         value={name}
         onChange={setName}
@@ -249,7 +278,7 @@ export function ItemForm({
         placeholder="e.g. Calculus textbook, volume 1"
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <SelectField
           label="Category"
           selectedKey={category}
@@ -272,6 +301,7 @@ export function ItemForm({
 
       {needsCourse ? (
         <TextInput
+          className="max-w-2xl"
           label="Course code"
           value={courseName}
           onChange={setCourseName}
@@ -326,6 +356,7 @@ export function ItemForm({
       </RadioGroupField>
 
       <TextAreaField
+        className="max-w-2xl"
         label="Details"
         value={description}
         onChange={setDescription}

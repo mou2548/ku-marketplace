@@ -39,3 +39,28 @@ export async function authHeader(): Promise<Record<string, string>> {
   const token = await getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+/**
+ * Reads `userId` out of the access token's payload — no signature check,
+ * because none is needed: this is our own token, just handed back to us by
+ * the backend, used only to filter "my items" client-side. Every write the
+ * frontend makes is still re-authorized server-side against the real
+ * `Authorization` header (`items.service.ts` checks `item.ownerId !== userId`
+ * itself), so a forged or stale value here can't do anything, only show the
+ * wrong list.
+ */
+export async function getCurrentUserId(): Promise<number | undefined> {
+  const token = await getAccessToken();
+  if (!token) return undefined;
+
+  const payload = token.split(".")[1];
+  if (!payload) return undefined;
+
+  try {
+    const json = Buffer.from(payload, "base64url").toString("utf-8");
+    const decoded = JSON.parse(json) as { userId?: number };
+    return decoded.userId;
+  } catch {
+    return undefined;
+  }
+}

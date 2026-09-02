@@ -25,6 +25,7 @@ CREATE TABLE "Item" (
     "name" VARCHAR(255) NOT NULL,
     "category" VARCHAR(50) NOT NULL,
     "condition" VARCHAR(50) NOT NULL CHECK("condition" IN ('New', 'Good', 'Acceptable', 'Poor')),
+    "quantity" INTEGER NOT NULL DEFAULT 1,
     "description" TEXT,
     "item_status" VARCHAR(20) DEFAULT 'Unlisted' CHECK("item_status" IN ('Unlisted', 'Listed', 'Transferred')),
     "course_name" VARCHAR(100),

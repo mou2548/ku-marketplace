@@ -50,6 +50,11 @@ model Item {
   name           String      @db.VarChar(255)
   category       String      @db.VarChar(50)
   condition      String      @db.VarChar(50)
+  // §quantity — how many units this one Item row represents (stackable
+  // possessions: notebooks, printed sheets). Distinct from Post's
+  // quantityTotal/quantityRemaining, which track how many of that quantity are
+  // still for sale after a listing goes up.
+  quantity       Int         @default(1)
   description    String?
   status         String?     @default("Unlisted") @db.VarChar(20) @map("item_status")
   courseName     String?     @map("course_name") @db.VarChar(100)
