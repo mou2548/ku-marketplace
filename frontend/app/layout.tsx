@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Prompt } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "@/lib/i18n/locale";
 import "./globals.css";
 
 /**
@@ -20,13 +22,18 @@ export const metadata: Metadata = {
     "Buy, sell, trade, and give away items inside Kasetsart University.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /* `lang` is real, not decorative: it drives Thai line breaking and hyphenation
+     and tells a screen reader which voice to use. It was hardcoded to "en"
+     while the product already rendered Thai. */
+  const locale = await getLocale();
+
   return (
-    <html lang="en" className={`${prompt.variable} h-full antialiased`}>
+    <html lang={locale} className={`${prompt.variable} h-full antialiased`}>
       <body className="min-h-full">
         <a
           href="#main"
@@ -34,7 +41,7 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        {children}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
   );
