@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { CameraOff, ScanLine } from "lucide-react";
 
@@ -45,6 +46,7 @@ export function QrScanner({
   hint = "Point the camera at the other person's QR code",
   className,
 }: QrScannerProps) {
+  const t = useTranslations();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"idle" | "running" | "denied" | "unsupported">(
     "idle",
@@ -162,13 +164,11 @@ export function QrScanner({
           <input
             value={manual}
             onChange={(e) => setManual(e.target.value)}
-            placeholder="Type the code from the QR"
-            aria-label="Type the code from the QR"
+            placeholder={t("qr.typeCode")}
+            aria-label={t("qr.typeCode")}
             className="h-12 flex-1 rounded-control bg-white/10 px-3.5 text-body text-white placeholder:text-white/70"
           />
-          <Button type="submit" isDisabled={!manual.trim()}>
-            Confirm
-          </Button>
+          <Button type="submit" isDisabled={!manual.trim()}>{t("qr.confirm")}</Button>
         </form>
       ) : null}
     </div>

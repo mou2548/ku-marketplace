@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -147,6 +148,7 @@ function ProposeMeetup({
   isBusy: boolean;
   onPropose: () => void;
 }) {
+  const t = useTranslations();
   const tz = getLocalTimeZone();
 
   return (
@@ -158,16 +160,14 @@ function ProposeMeetup({
 
       <div className="grid grid-cols-2 gap-3">
         <DatePickerField
-          label="Date"
+          label={t("deal.date")}
           value={when}
           onChange={onWhenChange}
           minValue={today(tz)}
         />
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-body-sm font-medium text-ink-secondary">
-            Time
-          </span>
+          <span className="text-body-sm font-medium text-ink-secondary">{t("deal.time")}</span>
           <input
             type="time"
             value={time}
@@ -178,12 +178,12 @@ function ProposeMeetup({
       </div>
 
       <TextInput
-        label="Where"
+        label={t("deal.where")}
         value={place}
         onChange={onPlaceChange}
         icon={<MapPin className="size-4" />}
-        placeholder="e.g. สำนักหอสมุด มก. (หน้าประตูทางเข้าหลัก)"
-        hint="Somewhere public and busy on campus"
+        placeholder={t("deal.wherePlaceholder")}
+        hint={t("deal.whereHint")}
       />
 
       <Button
@@ -192,9 +192,7 @@ function ProposeMeetup({
         isLoading={isBusy}
         onPress={onPropose}
       >
-        <CalendarPlus className="size-4" />
-        Propose this meetup
-      </Button>
+        <CalendarPlus className="size-4" />{t("deal.proposeMeetup")}</Button>
     </Surface>
   );
 }
@@ -237,6 +235,7 @@ export function RoomScreen({
   entrants?: Entrant[];
   messages: ChatMessage[];
 }) {
+  const t = useTranslations();
   const router = useRouter();
   const toast = useToast();
   const st = useStatusText();
@@ -373,7 +372,7 @@ export function RoomScreen({
   async function handleAttach(files: FileList) {
     if (!transaction && !giveaway) return;
     const selected = Array.from(files).slice(0, 5);
-    if (files.length > 5) toast.show("Only the first 5 photos were attached.");
+    if (files.length > 5) toast.show(t("deal.photoLimit"));
 
     setBusy(true);
     try {
@@ -405,7 +404,7 @@ export function RoomScreen({
       });
       setAppointment(created);
       setPlace("");
-      toast.show("Meetup proposed. Waiting on a reply.");
+      toast.show(t("deal.meetupProposed"));
     } catch (error) {
       toast.show((error as ApiError).message ?? "Could not propose a meetup.");
     } finally {
@@ -437,7 +436,7 @@ export function RoomScreen({
         // "Your turn: propose a meetup" and the screen offered nothing —
         // the form for it lives in the appointment pin, which starts closed.
         return (
-          <ActionCard title="Your step - arrange the meetup">
+          <ActionCard title={t("deal.stepArrangeMeetup")}>
             <div className="flex flex-col gap-3">
               <p className="text-body text-ink-secondary">
                 There is no money in this trade, so the next thing to settle is
@@ -452,15 +451,13 @@ export function RoomScreen({
                   });
                 }}
               >
-                <CalendarClock className="size-4" />
-                Propose a time and place
-              </Button>
+                <CalendarClock className="size-4" />{t("deal.proposeTimeAndPlace")}</Button>
             </div>
           </ActionCard>
         );
       case "upload-slip":
         return (
-          <ActionCard title="Your step - pay and upload the slip">
+          <ActionCard title={t("deal.stepUploadSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
               onUpload={(file) =>
@@ -476,7 +473,7 @@ export function RoomScreen({
       case "review-slip":
         return transaction.slip_image_url &&
           transaction.payment_confirmed_by_buyer_at ? (
-          <ActionCard title="Your step - check the slip">
+          <ActionCard title={t("deal.stepCheckSlip")}>
             <SlipReviewer
               slipUrl={transaction.slip_image_url}
               amount={transaction.final_amount}
@@ -509,15 +506,15 @@ export function RoomScreen({
         ) : null;
       case "enter-tracking":
         return (
-          <ActionCard title="Your step - enter the tracking number">
+          <ActionCard title={t("deal.stepEnterTracking")}>
             <div className="flex flex-col gap-3">
               <TextInput
-                label="Tracking number"
+                label={t("deal.trackingNumber")}
                 value={tracking}
                 onChange={setTracking}
-                placeholder="TH123456789KE"
+                placeholder={t("deal.trackingPlaceholder")}
                 icon={<Truck className="size-4" />}
-                hint="The buyer sees this the moment you save it"
+                hint={t("deal.trackingHint")}
               />
               <Button
                 block
@@ -530,15 +527,13 @@ export function RoomScreen({
                     "Could not save the tracking number",
                   )
                 }
-              >
-                Save and notify the buyer
-              </Button>
+              >{t("deal.saveAndNotify")}</Button>
             </div>
           </ActionCard>
         );
       case "confirm-delivery":
         return (
-          <ActionCard title="Your step - confirm the item arrived">
+          <ActionCard title={t("deal.stepConfirmArrived")}>
             <div className="flex flex-col gap-3">
               <p className="text-body text-ink-secondary">
                 Did the parcel arrive and match what was agreed? Confirm to close
@@ -554,28 +549,24 @@ export function RoomScreen({
                     "Could not confirm the delivery",
                   )
                 }
-              >
-                Confirm the item arrived
-              </Button>
+              >{t("deal.confirmArrived")}</Button>
             </div>
           </ActionCard>
         );
       case "scan-qr":
         return (
-          <ActionCard title="Your step - scan the QR at handover">
+          <ActionCard title={t("deal.stepScanQr")}>
             <LinkButton
               block
               size="lg"
               href={`/history/${transaction.transaction_id}/scan`}
             >
-              <ScanLine className="size-5" />
-              Open the scanner
-            </LinkButton>
+              <ScanLine className="size-5" />{t("deal.openScanner")}</LinkButton>
           </ActionCard>
         );
       case "refund-slip":
         return (
-          <ActionCard title="Your step - refund and upload the slip">
+          <ActionCard title={t("deal.stepRefundSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
               onUpload={(file) =>
@@ -616,15 +607,13 @@ export function RoomScreen({
     transaction.delivery_method === "Meetup" &&
     transaction.status === "Processing" &&
     viewer === "seller" ? (
-      <ActionCard title="Let the buyer scan">
+      <ActionCard title={t("deal.letBuyerScan")}>
         <OverlayTrigger>
           <Button block size="lg">
-            <QrCode className="size-5" />
-            Show the QR
-          </Button>
+            <QrCode className="size-5" />{t("deal.showQr")}</Button>
           <Overlay
-            title="Let the buyer scan to close the deal"
-            description="Hand the item over first. Scanning closes the deal immediately and cannot be undone."
+            title={t("deal.letBuyerScanTitle")}
+            description={t("deal.letBuyerScanBody")}
             size="sm"
           >
             <div className="flex justify-center py-2">
@@ -648,7 +637,7 @@ export function RoomScreen({
       <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
         <Link
           href="/chat"
-          aria-label="Back to conversations"
+          aria-label={t("deal.backToConversations")}
           className="touch-target grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
         >
           <ArrowLeft aria-hidden className="size-5" />
@@ -665,9 +654,7 @@ export function RoomScreen({
             size="sm"
           />
           {isGroupRoom ? (
-            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">
-              Giver
-            </span>
+            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">{t("chat.giver")}</span>
           ) : null}
 
           {/* §7.5.2 — rude/threatening behavior, spam, or impersonation "in
@@ -940,6 +927,7 @@ function DealDetails({
   busy: boolean;
   onCancel: (reason: string) => void;
 }) {
+  const t = useTranslations();
   const st = useStatusText();
   // The reason was collected by an input bound to nothing and thrown away. A
   // rejected cancellation flips dispute_status to under_review immediately, so
@@ -990,44 +978,36 @@ function DealDetails({
               size="sm"
               href={`/history/${transaction.transaction_id}/report`}
             >
-              <Flag className="size-4" />
-              Report a problem
-            </LinkButton>
+              <Flag className="size-4" />{t("deal.reportProblem")}</LinkButton>
           ) : null}
 
           {transaction.status === "Pending" ||
           transaction.status === "Processing" ? (
             <OverlayTrigger>
               <Button variant="ghost" size="sm">
-                <XCircle className="size-4" />
-                Request cancellation
-              </Button>
+                <XCircle className="size-4" />{t("deal.requestCancellation")}</Button>
               <Overlay
-                title="Request to cancel this deal"
-                description="The other side has 72 hours to respond. If they do not, it goes to an admin."
+                title={t("deal.cancelTitle")}
+                description={t("deal.cancelBody")}
                 footer={
                   <>
-                    <Button variant="ghost" slot="close">
-                      Keep the deal
-                    </Button>
+                    <Button variant="ghost" slot="close">{t("deal.keepDeal")}</Button>
                     <Button
                       variant="danger"
                       isLoading={busy}
                       isDisabled={!cancelReason.trim()}
                       onPress={() => onCancel(cancelReason.trim())}
-                    >
-                      Send cancellation request
-                    </Button>
+                    >{t("deal.sendCancelRequest")}</Button>
                   </>
                 }
               >
                 <TextInput
-                  label="Reason"
+                  label={t("deal.reason")}
                   value={cancelReason}
                   onChange={setCancelReason}
                   isRequired
-                  placeholder="e.g. I can no longer make the meetup"
-                  hint="A reason helps a lot. If the other side rejects it, this is the context an admin will see."
+                  placeholder={t("deal.reasonPlaceholder")}
+                  hint={t("deal.reasonHint")}
                 />
               </Overlay>
             </OverlayTrigger>
@@ -1038,7 +1018,7 @@ function DealDetails({
       {/* A bare column of dots does not announce what it is measuring. */}
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-overline text-ink-muted uppercase">Deal progress</p>
+          <p className="text-overline text-ink-muted uppercase">{t("deal.progress")}</p>
           <p data-numeric className="text-meta text-ink-muted">
             Step {currentStepNumber} of {steps.length}
           </p>
@@ -1065,6 +1045,7 @@ function GiveawayDetails({
   entrants?: Entrant[];
   viewerId: number;
 }) {
+  const t = useTranslations();
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
       <div className="flex flex-col gap-2">
@@ -1092,18 +1073,14 @@ function GiveawayDetails({
             size="sm"
             className="w-fit"
             href={`/giveaway/${giveaway.giveaway_id}/manage`}
-          >
-            Choose recipients
-          </LinkButton>
+          >{t("chat.chooseRecipients")}</LinkButton>
         ) : (
           <LinkButton
             variant="secondary"
             size="sm"
             className="w-fit"
             href={`/giveaway/${giveaway.giveaway_id}`}
-          >
-            Open the giveaway
-          </LinkButton>
+          >{t("chat.openGiveaway")}</LinkButton>
         )}
       </div>
 
@@ -1111,7 +1088,7 @@ function GiveawayDetails({
           in the one kind of room that holds more than two people. */}
       {entrants?.length ? (
         <div className="flex flex-col gap-2">
-          <p className="text-overline text-ink-muted uppercase">In this room</p>
+          <p className="text-overline text-ink-muted uppercase">{t("chat.inThisRoom")}</p>
 
           <span className="flex items-center gap-2">
             <TrustBadge
@@ -1120,9 +1097,7 @@ function GiveawayDetails({
               isVerified={giveaway.giver.isVerified}
               avatarUrl={giveaway.giver.avatar_url}
             />
-            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">
-              Giver
-            </span>
+            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">{t("chat.giver")}</span>
           </span>
 
           <ul className="flex flex-col gap-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Calendar, Check, MapPin, X } from "lucide-react";
 
 import { APPOINTMENT_STATUS, type AppointmentStatus } from "@/lib/status";
@@ -54,6 +55,7 @@ export function AppointmentCard({
   onDecline,
   className,
 }: AppointmentCardProps) {
+  const t = useTranslations();
   const when = new Date(scheduledAt);
   const copy = APPOINTMENT_STATUS[status];
 
@@ -77,7 +79,7 @@ export function AppointmentCard({
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
-        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">Meetup</h4>
+        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("appointment.meetup")}</h4>
         <StatusBadge status={copy} size="sm" />
       </div>
 
@@ -85,7 +87,7 @@ export function AppointmentCard({
         <div className="flex items-start gap-2.5">
           <Calendar aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <dt className="sr-only">Date and time</dt>
+            <dt className="sr-only">{t("appointment.dateAndTime")}</dt>
             <dd>
               <time dateTime={scheduledAt} className="font-medium">
                 {when.toLocaleDateString("en-GB", {
@@ -105,7 +107,7 @@ export function AppointmentCard({
         <div className="flex items-start gap-2.5">
           <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <dt className="sr-only">Place</dt>
+            <dt className="sr-only">{t("appointment.place")}</dt>
             <dd className="font-medium">{place}</dd>
           </div>
         </div>
@@ -125,9 +127,7 @@ export function AppointmentCard({
           target="_blank"
           rel="noreferrer"
           className="block px-4 pb-2 text-body-sm font-medium text-ink-brand underline"
-        >
-          Open in Google Maps
-        </a>
+        >{t("appointment.openInMaps")}</a>
       ) : null}
 
       {status === "Pending" && awaitingViewer ? (
@@ -138,13 +138,9 @@ export function AppointmentCard({
            scrolled. Stacked below sm:, and the label is shorter. */
         <div className="flex flex-col-reverse gap-2 p-4 pt-3 sm:flex-row">
           <Button variant="secondary" block onPress={onDecline}>
-            <X className="size-4" />
-            Another time
-          </Button>
+            <X className="size-4" />{t("appointment.anotherTime")}</Button>
           <Button variant="primary" block onPress={onAccept}>
-            <Check className="size-4" />
-            Accept
-          </Button>
+            <Check className="size-4" />{t("appointment.accept")}</Button>
         </div>
       ) : null}
     </Surface>

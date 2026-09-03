@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -21,6 +22,7 @@ import { CountdownPill } from "./countdown-pill";
  * there is nothing waiting.
  */
 export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
+  const t = useTranslations();
   const st = useStatusText();
   const [open, setOpen] = useState(false);
 
@@ -30,7 +32,7 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
 
   return (
     <section
-      aria-label="Waiting on you"
+      aria-label={t("deal.waitingOnYou")}
       className="overflow-hidden rounded-card bg-brand-band text-white shadow-raised"
     >
       <button

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Handshake, MessagesSquare, Store } from "lucide-react";
@@ -67,6 +68,7 @@ export function HistoryList({
   tickets: GiveawayTicket[];
   viewerId: number;
 }) {
+  const t = useTranslations();
   const st = useStatusText();
   const [lens, setLens] = useState<Lens>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -87,9 +89,7 @@ export function HistoryList({
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          History
-        </h1>
+        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">{t("history.title")}</h1>
         <p className="text-body-sm text-ink-muted">
           Every deal you have been part of, including the ones that were
           cancelled or refunded.
@@ -98,13 +98,13 @@ export function HistoryList({
 
       <div className="flex flex-wrap gap-4">
         <Filters
-          label="Side"
+          label={t("history.side")}
           options={LENSES.map((l) => ({ id: l.id, label: l.label }))}
           value={lens}
           onChange={(v) => setLens(v as Lens)}
         />
         <Filters
-          label="Status"
+          label={t("history.status")}
           options={STATUSES.map((s) => ({
             id: s,
             label: s === "all" ? "All" : st.of(TRANSACTION_STATUS[s]).label,
@@ -117,13 +117,11 @@ export function HistoryList({
       {rows.length === 0 ? (
         <EmptyState
           icon={<Handshake className="size-6" />}
-          title="Nothing matches those filters"
-          description="Clear a filter, or start something in the market — a room opens by itself when you buy or when an offer is accepted."
+          title={t("history.emptyTitle")}
+          description={t("history.emptyBody")}
           action={
             <LinkButton href="/">
-              <Store className="size-4" />
-              Go to the market
-            </LinkButton>
+              <Store className="size-4" />{t("history.goToMarket")}</LinkButton>
           }
         />
       ) : (
@@ -139,13 +137,11 @@ export function HistoryList({
       {tickets.length > 0 ? (
         <section className="flex flex-col gap-2 border-t border-line pt-5">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-[1.125rem] font-semibold">Giveaways</h2>
+            <h2 className="text-[1.125rem] font-semibold">{t("history.giveaways")}</h2>
             <Link
               href="/giveaway"
               className="text-body-sm font-medium text-ink-brand hover:underline"
-            >
-              See all
-            </Link>
+            >{t("history.seeAll")}</Link>
           </div>
           <ul className="flex flex-col gap-2">
             {tickets.map((ticket) => (

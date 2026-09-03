@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Check, Copy, PackageCheck, Truck } from "lucide-react";
 
@@ -31,6 +32,7 @@ export function DeliveryCard({
   compact?: boolean;
   className?: string;
 }) {
+  const t = useTranslations();
   const [copied, setCopied] = useState(false);
   const tracking = transaction.tracking_number;
   const eta = transaction.estimated_delivery_date;
@@ -92,7 +94,7 @@ export function DeliveryCard({
           <button
             type="button"
             onClick={copy}
-            aria-label="Copy the tracking number"
+            aria-label={t("delivery.copyTracking")}
             className="touch-target grid size-9 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary shadow-raised hover:text-ink"
           >
             {copied ? (
@@ -108,9 +110,7 @@ export function DeliveryCard({
           than as a surprise when the report button appears. */}
       {eta ? (
         <div className="flex flex-col gap-1.5">
-          <p className="text-meta text-ink-muted">
-            You can report a problem after this
-          </p>
+          <p className="text-meta text-ink-muted">{t("delivery.reportAfter")}</p>
           <CountdownPill deadline={shippingDeadline(eta)} />
         </div>
       ) : null}

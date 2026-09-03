@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronUp, ImagePlus, Send } from "lucide-react";
@@ -104,6 +105,7 @@ export function ChatThread({
   showSenders = false,
   className,
 }: ChatThreadProps) {
+  const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -175,16 +177,14 @@ export function ChatThread({
                   ) : null}
 
                   {m.images_expired ? (
-                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">
-                      Photos from this message have expired and are no longer shown.
-                    </p>
+                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">{t("chat.photosExpired")}</p>
                   ) : m.image_urls?.length ? (
                     <div className="grid grid-cols-2 gap-1.5">
                       {m.image_urls.slice(0, 5).map((url) => (
                         <OverlayTrigger key={url}>
                           <button
                             type="button"
-                            aria-label="View photo full size"
+                            aria-label={t("chat.viewFullSize")}
                             className="block overflow-hidden rounded-control"
                           >
                             <Image
@@ -195,7 +195,7 @@ export function ChatThread({
                               className="aspect-square object-cover shadow-raised"
                             />
                           </button>
-                          <Overlay title="Photo" size="lg">
+                          <Overlay title={t("chat.photo")} size="lg">
                             <div className="flex items-center justify-center">
                               <Image
                                 src={url}
@@ -295,7 +295,7 @@ export function ChatThread({
             variant="ghost"
             size="icon"
             pill
-            aria-label="Attach images, up to 5"
+            aria-label={t("chat.attachImages")}
             onPress={() => fileRef.current?.click()}
           >
             <ImagePlus className="size-5" />
@@ -313,12 +313,12 @@ export function ChatThread({
 
           <input
             ref={inputRef}
-            aria-label="Message"
-            placeholder="Write a message"
+            aria-label={t("chat.message")}
+            placeholder={t("chat.writeMessage")}
             className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-body shadow-sunken"
           />
 
-          <Button type="submit" size="icon" pill aria-label="Send">
+          <Button type="submit" size="icon" pill aria-label={t("chat.send")}>
             <Send className="size-5" />
           </Button>
         </form>

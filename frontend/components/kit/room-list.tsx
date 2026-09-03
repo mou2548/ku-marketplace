@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 import { MessagesSquare, Search } from "lucide-react";
@@ -35,6 +36,7 @@ export function RoomList({
   heading?: string;
   className?: string;
 }) {
+  const t = useTranslations();
   const [filter, setFilter] = useState<"all" | RoomKind>("all");
   const [query, setQuery] = useState("");
 
@@ -62,8 +64,8 @@ export function RoomList({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search conversations"
-            placeholder="Search"
+            aria-label={t("chat.searchConversations")}
+            placeholder={t("chat.search")}
             className="h-10 w-full rounded-pill bg-surface-sunken pr-4 pl-10 text-body-sm shadow-sunken"
           />
         </div>
@@ -72,11 +74,11 @@ export function RoomList({
           selectedKey={filter}
           onSelectionChange={(k) => setFilter(k as "all" | RoomKind)}
         >
-          <TabList aria-label="Conversation type" variant="segment">
-            <SegmentTab id="all">All</SegmentTab>
-            <SegmentTab id="Sale">Sale</SegmentTab>
-            <SegmentTab id="Trade">Trade</SegmentTab>
-            <SegmentTab id="Giveaway">Giveaway</SegmentTab>
+          <TabList aria-label={t("chat.conversationType")} variant="segment">
+            <SegmentTab id="all">{t("history.all")}</SegmentTab>
+            <SegmentTab id="Sale">{t("chat.sale")}</SegmentTab>
+            <SegmentTab id="Trade">{t("chat.trade")}</SegmentTab>
+            <SegmentTab id="Giveaway">{t("chat.giveaway")}</SegmentTab>
           </TabList>
         </Tabs>
       </div>
@@ -113,6 +115,7 @@ function RoomRow({
   room: RoomSummary;
   isActive: boolean;
 }) {
+  const t = useTranslations();
   return (
     <Link
       href={room.href}
@@ -191,9 +194,7 @@ function RoomRow({
             solid amber turned the list into a column of alarms. Brand, and a
             chip: "you are up" is not a warning. */}
         {room.needsYou ? (
-          <span className="mt-0.5 w-fit rounded-pill border border-brand-subtle-hover bg-brand-subtle px-2 py-0.5 text-meta font-medium text-ink-brand">
-            Your turn
-          </span>
+          <span className="mt-0.5 w-fit rounded-pill border border-brand-subtle-hover bg-brand-subtle px-2 py-0.5 text-meta font-medium text-ink-brand">{t("chat.yourTurn")}</span>
         ) : null}
       </span>
     </Link>

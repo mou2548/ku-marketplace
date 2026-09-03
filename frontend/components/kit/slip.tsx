@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { Check, ImagePlus, X, ZoomIn } from "lucide-react";
@@ -44,6 +45,7 @@ export function SlipUploader({
   slipUrl,
   className,
 }: SlipUploaderProps) {
+  const t = useTranslations();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,9 +76,7 @@ export function SlipUploader({
   return (
     <Surface shape="card" className={cn("p-4", className)}>
       <header className="mb-3 flex items-baseline justify-between gap-2">
-        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">
-          Upload your transfer slip
-        </h4>
+        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("slip.upload")}</h4>
         <span data-numeric className="text-body-lg font-semibold">
           ฿{amount.toLocaleString("en-GB")}
         </span>
@@ -87,7 +87,7 @@ export function SlipUploader({
           href={preview ?? slipUrl ?? undefined}
           target="_blank"
           rel="noreferrer"
-          aria-label="View the full slip in a new tab"
+          aria-label={t("slip.viewInNewTab")}
           className={cn(
             "relative block aspect-[3/4] w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
             !preview && !slipUrl && "pointer-events-none",
@@ -104,9 +104,7 @@ export function SlipUploader({
           ) : null}
           {preview || slipUrl ? (
             <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-pill bg-surface-inverse/80 px-2 py-1.5 text-meta font-medium text-white">
-              <ZoomIn aria-hidden className="size-3.5" />
-              View full slip
-            </span>
+              <ZoomIn aria-hidden className="size-3.5" />{t("slip.viewFull")}</span>
           ) : null}
         </a>
       ) : (
@@ -121,10 +119,8 @@ export function SlipUploader({
           )}
         >
           <ImagePlus aria-hidden className="size-7" />
-          <span className="text-body font-medium">
-            Choose a slip image
-          </span>
-          <span className="text-caption">JPG or PNG, up to 8 MB</span>
+          <span className="text-body font-medium">{t("slip.choose")}</span>
+          <span className="text-caption">{t("slip.formats")}</span>
         </button>
       )}
 
@@ -140,7 +136,7 @@ export function SlipUploader({
       />
 
       {busy ? (
-        <p className="mt-3 text-body-sm text-ink-muted">Uploading</p>
+        <p className="mt-3 text-body-sm text-ink-muted">{t("slip.uploading")}</p>
       ) : null}
 
       {uploadedAt ? (
@@ -193,14 +189,13 @@ export function SlipReviewer({
   isBusy = false,
   className,
 }: SlipReviewerProps) {
+  const t = useTranslations();
   const [zoomed, setZoomed] = useState(false);
 
   return (
     <Surface shape="card" className={cn("p-4", className)}>
       <header className="mb-3 flex flex-col gap-2">
-        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">
-          Check the slip and confirm payment
-        </h4>
+        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("slip.check")}</h4>
         <TrustBadge name={buyer.name} isVerified={buyer.isVerified} size="sm" />
       </header>
 
@@ -226,7 +221,7 @@ export function SlipReviewer({
       </button>
 
       <dl className="mt-3 flex items-baseline justify-between text-body-sm">
-        <dt className="text-ink-muted">Amount due</dt>
+        <dt className="text-ink-muted">{t("slip.amountDue")}</dt>
         <dd data-numeric className="text-body-lg font-semibold">
           ฿{amount.toLocaleString("en-GB")}
         </dd>
@@ -245,13 +240,9 @@ export function SlipReviewer({
 
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
         <Button variant="secondary" block onPress={onReject} isDisabled={isBusy}>
-          <X className="size-4" />
-          Amount is wrong
-        </Button>
+          <X className="size-4" />{t("slip.amountWrong")}</Button>
         <Button variant="primary" block onPress={onConfirm} isLoading={isBusy}>
-          <Check className="size-4" />
-          Confirm payment received
-        </Button>
+          <Check className="size-4" />{t("slip.confirmReceived")}</Button>
       </div>
     </Surface>
   );
