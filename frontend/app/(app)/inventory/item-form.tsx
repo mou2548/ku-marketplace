@@ -232,7 +232,10 @@ export function ItemForm({
                 onClick={() =>
                   setPhotos((list) => list.filter((x) => x.key !== p.key))
                 }
-                className="absolute top-1 right-1 grid size-6 place-items-center rounded-pill bg-surface-inverse/80 text-white"
+                // The smallest control in the product at 24px, sitting in a photo corner
+                // where a thumb has the least room. touch-target lifts the hit area
+                // to 44px on a phone without growing the drawn circle.
+                className="touch-target absolute top-1 right-1 grid size-7 place-items-center rounded-pill bg-surface-inverse/80 text-white"
               >
                 <X aria-hidden className="size-3.5" />
               </button>

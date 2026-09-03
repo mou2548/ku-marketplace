@@ -71,7 +71,7 @@ export function DatePickerField<T extends DateValue>({
           )}
         </DateInput>
         <Button
-          className="grid size-8 shrink-0 place-items-center rounded-chip text-ink-muted data-[hovered]:bg-gray-200"
+          className="touch-target grid size-8 shrink-0 place-items-center rounded-chip text-ink-muted data-[hovered]:bg-gray-200"
           aria-label="Pick a date from the calendar"
         >
           <CalendarDays aria-hidden className="size-4" />
@@ -94,7 +94,7 @@ export function DatePickerField<T extends DateValue>({
               <Button
                 slot="previous"
                 aria-label="Previous month"
-                className="grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
+                className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
               >
                 <ChevronLeft aria-hidden className="size-4" />
               </Button>
@@ -102,7 +102,7 @@ export function DatePickerField<T extends DateValue>({
               <Button
                 slot="next"
                 aria-label="Next month"
-                className="grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
+                className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
               >
                 <ChevronRight aria-hidden className="size-4" />
               </Button>
@@ -121,7 +121,7 @@ export function DatePickerField<T extends DateValue>({
                   <CalendarCell
                     date={date}
                     className={cn(
-                      "m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
+                      "touch-target m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
                       "text-body-sm tabular-nums outline-none",
                       "data-[hovered]:bg-brand-subtle",
                       "data-[selected]:bg-brand data-[selected]:font-semibold data-[selected]:text-on-brand",

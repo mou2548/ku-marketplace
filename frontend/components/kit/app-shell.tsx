@@ -204,7 +204,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
             <Link
               href="/notifications"
               aria-label="Notifications"
-              className="grid size-9 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
+              className="touch-target grid size-9 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
             >
               <Bell className="size-5" />
             </Link>
@@ -214,7 +214,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               aria-label="Account"
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
               className={cn(
-                "grid size-9 place-items-center rounded-pill transition-colors",
+                "touch-target grid size-9 place-items-center rounded-pill transition-colors",
                 isActive(pathname, "/account")
                   ? "bg-brand text-on-brand"
                   : "bg-brand-subtle text-ink-brand hover:bg-green-200",

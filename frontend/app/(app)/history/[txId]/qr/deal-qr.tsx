@@ -43,6 +43,7 @@ export function DealQr({
 
       <QrTicket
         onGenerate={generate}
+        ariaLabel={`QR code for handing over ${itemName}`}
         caption="Hand the item over before letting them scan. Scanning closes the deal immediately and cannot be undone."
       />
     </div>

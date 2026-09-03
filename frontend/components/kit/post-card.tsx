@@ -73,7 +73,14 @@ export function PostCard({
         className,
       )}
     >
-      <Link href={`/market/${postId}`} className="block focus:outline-none">
+      {/* The global :focus-visible rule paints --shadow-focus, a box-shadow,
+          and the Surface above carries overflow-hidden, so the ring was
+          clipped away on the one card in the product that is entirely a link.
+          An inset ring is drawn inside the element and survives the clip. */}
+      <Link
+        href={`/market/${postId}`}
+        className="block rounded-card outline-none focus-visible:[box-shadow:inset_0_0_0_2px_var(--ring)]"
+      >
         <div className="relative">
           <PostImage src={imageUrl} alt={name} aspectRatio={aspectRatio} />
           {/* Filled, with white text — `TONE_SOLID`, the same treatment

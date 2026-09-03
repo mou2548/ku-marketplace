@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 const button = cva(
   [
     "relative inline-flex items-center justify-center gap-2",
+    // The 44px floor on phones. See globals.css, TOUCH TARGETS.
+    "touch-target",
     "font-medium whitespace-nowrap select-none",
     "transition-[transform,background-color,box-shadow] duration-[--dur-fast] ease-[--ease-out]",
     "disabled:pointer-events-none disabled:opacity-45",
@@ -93,7 +95,6 @@ export function Button({
       {...props}
       ref={ref}
       isDisabled={isDisabled || isLoading}
-      // Touch targets stay >=44px on coarse pointers even at size="sm".
       className={cn(button({ variant, size, block, pill }), className)}
     >
       {isLoading ? (

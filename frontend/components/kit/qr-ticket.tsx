@@ -25,6 +25,12 @@ export interface QrTicketProps {
   onGenerate: () => Promise<string>;
   /** Rotation period. Defaults to the 15 minutes the flow specifies. */
   periodMs?: number;
+  /**
+   * The label was hardcoded to the giveaway wording while `deal-qr.tsx`
+   * reuses this component for a transaction handover, so a screen-reader user
+   * closing a purchase was told they were collecting a giveaway item.
+   */
+  ariaLabel?: string;
   caption?: string;
   className?: string;
 }
@@ -34,6 +40,7 @@ const SIZE = 264;
 export function QrTicket({
   onGenerate,
   periodMs = TICKET_ROTATION_MS,
+  ariaLabel = "QR code for collecting your giveaway item",
   caption = "This code refreshes every 15 minutes for security. You do not need to do anything.",
   className,
 }: QrTicketProps) {
@@ -131,7 +138,7 @@ export function QrTicket({
             width={SIZE}
             height={SIZE}
             role="img"
-            aria-label="QR code for collecting your giveaway item"
+            aria-label={ariaLabel}
             className="block size-[264px]"
           />
         </div>

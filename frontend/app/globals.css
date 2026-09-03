@@ -659,6 +659,26 @@
    ========================================================================= */
 
 /* =========================================================================
+   TOUCH TARGETS
+
+   CLAUDE.md §5 sets a 44px floor. button.tsx carried a comment claiming the
+   floor held "on coarse pointers even at size=sm" — there was no
+   `pointer: coarse` rule anywhere in the codebase, so the claim was false and
+   36px shipped to every phone.
+
+   Density on a mouse is worth keeping, so the floor applies only where the
+   primary pointer is a finger. Everything that can be pressed gets the class;
+   a control already larger than 44px is unaffected.
+   ========================================================================= */
+
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}
+
+/* =========================================================================
    ENTER / EXIT ANIMATIONS
 
    These replace `tw-animate-css`, which CLAUDE.md §2 lists as removed and

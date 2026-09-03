@@ -85,6 +85,7 @@ export function InventorySlot({
   return (
     <GridListItem
       {...props}
+      isDisabled={isPlaced || props.isDisabled}
       textValue={`${item.name}, condition ${rarity.label}, quantity ${item.quantity}`}
       style={
         {
@@ -98,7 +99,12 @@ export function InventorySlot({
         "hover:-translate-y-0.5 data-[pressed]:scale-95",
         "data-[selected]:-translate-y-1 data-[selected]:brightness-105",
         showName ? "flex flex-col gap-1.5" : "relative aspect-square",
-        isPlaced && "pointer-events-none opacity-35 grayscale",
+        // Was pointer-events-none, which blocks a mouse and not a keyboard:
+        // the item stayed focusable and Enter still fired onAction, so a
+        // keyboard user could place an item that was already on the bench.
+        // The GridListItem is disabled instead (see isDisabled below).
+        // 35% also put the item name well under 4.5:1.
+        isPlaced && "opacity-55 grayscale",
         className,
       )}
     >

@@ -95,7 +95,7 @@ export function DeliveryCard({
             type="button"
             onClick={copy}
             aria-label="Copy the tracking number"
-            className="grid size-9 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary shadow-raised hover:text-ink"
+            className="touch-target grid size-9 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary shadow-raised hover:text-ink"
           >
             {copied ? (
               <Check aria-hidden className="size-4 text-brand" />
