@@ -32,6 +32,14 @@ import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import {
+  askToCancel,
+  confirmItemArrived,
+  confirmSlip,
+  saveTracking,
+  submitPaymentSlip,
+  submitRefundSlip,
+} from "@/lib/actions/transactions";
 import { TONE_CHIP } from "@/components/kit/tone";
 import {
   buildSteps,
@@ -302,12 +310,36 @@ export function RoomScreen({
       transaction.post.item.images[0]?.image_url)
     : giveaway?.images[0]?.image_url;
 
-  async function act(message: string, next?: string) {
+  /**
+   * Every transition on this screen goes through here. It used to be a 400ms
+   * timer that toasted success, which is why the stepper — derived from the
+   * transaction's timestamp columns — could never advance.
+   *
+   * `router.refresh()` re-runs the server component that fetched the
+   * transaction, so the stepper, the prompt and the pinned card all move on
+   * the answer rather than on the toast.
+   */
+  async function act(
+    call: () => Promise<unknown>,
+    message: string,
+    failure: string,
+    next?: string,
+  ) {
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      await call();
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : failure);
+      return;
+    }
     setBusy(false);
     toast.show(message);
-    if (next) router.push(next);
+    if (next) {
+      router.push(next);
+    } else {
+      router.refresh();
+    }
   }
 
   async function handleSend(text: string) {
@@ -391,7 +423,13 @@ export function RoomScreen({
           <ActionCard title="Your step - pay and upload the slip">
             <SlipUploader
               amount={transaction.final_amount}
-              onUpload={async () => act("Slip uploaded. Waiting on the seller.")}
+              onUpload={(file) =>
+                act(
+                  () => submitPaymentSlip(transaction.transaction_id, file),
+                  "Slip uploaded. Waiting on the seller.",
+                  "Could not upload the slip",
+                )
+              }
             />
           </ActionCard>
         );
@@ -408,8 +446,24 @@ export function RoomScreen({
               }}
               uploadedAt={transaction.payment_confirmed_by_buyer_at}
               isBusy={busy}
-              onConfirm={() => act("Payment confirmed")}
-              onReject={() => act("Told the buyer the amount does not match")}
+              onConfirm={() =>
+                act(
+                  () => confirmSlip(transaction.transaction_id),
+                  "Payment confirmed",
+                  "Could not confirm the payment",
+                )
+              }
+              // There is no reject endpoint. `API_Marketplace.pdf` gives the
+              // seller `confirm-payment-received` and nothing else; the only
+              // contract route out of a bad slip is a cancellation request,
+              // and routing this button there is a product decision nobody has
+              // taken. Until then it says so rather than reporting a rejection
+              // that never reached the buyer. See docs/design/api-gaps.md.
+              onReject={() =>
+                toast.show(
+                  "Rejecting a slip is not supported yet. Ask the buyer in chat, or request a cancellation.",
+                )
+              }
             />
           </ActionCard>
         ) : null;
@@ -429,7 +483,13 @@ export function RoomScreen({
                 block
                 isDisabled={!tracking.trim()}
                 isLoading={busy}
-                onPress={() => act("Tracking number saved")}
+                onPress={() =>
+                  act(
+                    () => saveTracking(transaction.transaction_id, tracking.trim()),
+                    "Tracking number saved",
+                    "Could not save the tracking number",
+                  )
+                }
               >
                 Save and notify the buyer
               </Button>
@@ -444,7 +504,17 @@ export function RoomScreen({
                 Did the parcel arrive and match what was agreed? Confirm to close
                 this deal.
               </p>
-              <Button block isLoading={busy} onPress={() => act("Deal closed")}>
+              <Button
+                block
+                isLoading={busy}
+                onPress={() =>
+                  act(
+                    () => confirmItemArrived(transaction.transaction_id),
+                    "Deal closed",
+                    "Could not confirm the delivery",
+                  )
+                }
+              >
                 Confirm the item arrived
               </Button>
             </div>
@@ -468,7 +538,13 @@ export function RoomScreen({
           <ActionCard title="Your step - refund and upload the slip">
             <SlipUploader
               amount={transaction.final_amount}
-              onUpload={async () => act("Refund slip uploaded")}
+              onUpload={(file) =>
+                act(
+                  () => submitRefundSlip(transaction.transaction_id, file),
+                  "Refund slip uploaded",
+                  "Could not upload the refund slip",
+                )
+              }
             />
           </ActionCard>
         );
@@ -633,7 +709,13 @@ export function RoomScreen({
               deadline={deadline}
               reportable={reportable}
               busy={busy}
-              onAct={act}
+              onCancel={(reason) =>
+                act(
+                  () => askToCancel(transaction.transaction_id, reason),
+                  "Cancellation requested",
+                  "Could not send the cancellation request",
+                )
+              }
             />
           ) : null}
 
@@ -765,7 +847,7 @@ function DealDetails({
   deadline,
   reportable,
   busy,
-  onAct,
+  onCancel,
 }: {
   transaction: Transaction;
   viewer: Party;
@@ -777,8 +859,13 @@ function DealDetails({
   deadline?: Deadline;
   reportable: boolean;
   busy: boolean;
-  onAct: (message: string) => void;
+  onCancel: (reason: string) => void;
 }) {
+  // The reason was collected by an input bound to nothing and thrown away. A
+  // rejected cancellation flips dispute_status to under_review immediately, so
+  // this text is the only context the admin who picks it up will have.
+  const [cancelReason, setCancelReason] = useState("");
+
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
       <div className="flex flex-col gap-3">
@@ -846,7 +933,8 @@ function DealDetails({
                     <Button
                       variant="danger"
                       isLoading={busy}
-                      onPress={() => onAct("Cancellation requested")}
+                      isDisabled={!cancelReason.trim()}
+                      onPress={() => onCancel(cancelReason.trim())}
                     >
                       Send cancellation request
                     </Button>
@@ -855,6 +943,9 @@ function DealDetails({
               >
                 <TextInput
                   label="Reason"
+                  value={cancelReason}
+                  onChange={setCancelReason}
+                  isRequired
                   placeholder="e.g. I can no longer make the meetup"
                   hint="A reason helps a lot. If the other side rejects it, this is the context an admin will see."
                 />

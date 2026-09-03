@@ -373,3 +373,28 @@ asked, so this needs an owner decision rather than a quiet deletion:
 Also noted: a trade-only post has no meaningful asking price, and `price` is
 required. The wiring sends `0` for `TradeOnly`. If the API treats `0` as a
 real price, a trade-only listing may render as "free" somewhere.
+
+## A seller cannot reject a payment slip
+
+Recorded 2026-09-03 while wiring the deal screen's transitions
+(UX-REVISION-PLAN.md step 2.0.5).
+
+`API_Marketplace.pdf`, "Transactions, Fulfillment & Payment", gives the seller
+exactly one slip verb: `POST /transactions/{id}/confirm-payment-received`.
+There is no reject. `SlipReviewer` offers both, and the reject button was a
+placeholder that toasted "Told the buyer the amount does not match" without
+telling anyone anything.
+
+The only contract route out of a bad slip is
+`POST /transactions/{id}/cancel-request`, which is a different act with
+different consequences: it starts a 72h clock, and a rejection by the other
+side flips `dispute_status` to `under_review`. Wiring the reject button to it
+would be inventing product behaviour, so it is not wired.
+
+What the UI does now: the button stays, and says the action is not supported
+yet, pointing at chat or a cancellation request. It asserts nothing false.
+Needs an owner decision:
+
+- route reject to `cancel-request` with a canned reason, or
+- remove the button and leave chat as the channel, or
+- add the endpoint (outside this scope, `CLAUDE.md` 0).
