@@ -226,10 +226,10 @@ CREATE TABLE "Subscription_Payment" (
 );
 
 -- ==========================================
--- KU MARKETPLACE - EXTENDED MOCK DATA SCRIPT (UPDATED)
+-- KU MARKETPLACE - EXTENDED MOCK DATA SCRIPT (WITH WORKING IMAGE URLS)
 -- ==========================================
 
--- 1. User (10 Users: 2 Admins, 7 Active, 1 Suspended)
+-- 1. User (10 Users)
 INSERT INTO "User" ("email", "first_name_en", "last_name_en", "first_name_th", "last_name_th", "password_hash", "phone_number", "user_status", "email_verified_at", "isAdmin") VALUES
 ('admin1@ku.th', 'Admin', 'One', 'แอดมิน', 'หนึ่ง', '$2b$10$hash1', '0811111111', 'Active', NOW(), TRUE),
 ('admin2@ku.th', 'Admin', 'Two', 'แอดมิน', 'สอง', '$2b$10$hash2', '0811111112', 'Active', NOW(), TRUE),
@@ -260,23 +260,23 @@ INSERT INTO "Item" ("owner_id", "name", "category", "condition", "description", 
 (9, 'เมาส์ไร้สาย Logitech', 'Electronics', 'Poor', 'คลิกซ้ายเบิ้ลนิดหน่อย', 'Listed', NULL, 'Logitech', NULL, NULL),
 (9, 'กางเกงวอร์ม KU', 'Clothing', 'Good', 'ใส่ไป 2 ครั้ง', 'Listed', NULL, 'KU Shop', NULL, 'L');
 
--- 3. Item_Image (15 Images)
+-- 3. Item_Image (15 Images - Using picsum.photos for real mock images)
 INSERT INTO "Item_Image" ("item_id", "item_image_status", "image_url", "is_primary", "display_order") VALUES
-(1, 'Active', 'https://r2.ku.th/img/phy1.jpg', TRUE, 1),
-(2, 'Active', 'https://r2.ku.th/img/shirt1.jpg', TRUE, 1),
-(3, 'Active', 'https://r2.ku.th/img/ipad1.jpg', TRUE, 1),
-(3, 'Active', 'https://r2.ku.th/img/ipad2.jpg', FALSE, 2),
-(4, 'Active', 'https://r2.ku.th/img/casio.jpg', TRUE, 1),
-(5, 'Active', 'https://r2.ku.th/img/sony.jpg', TRUE, 1),
-(6, 'Active', 'https://r2.ku.th/img/converse.jpg', TRUE, 1),
-(7, 'Active', 'https://r2.ku.th/img/calc.jpg', TRUE, 1),
-(8, 'Active', 'https://r2.ku.th/img/fan.jpg', TRUE, 1),
-(11, 'Active', 'https://r2.ku.th/img/keychron.jpg', TRUE, 1),
-(12, 'Active', 'https://r2.ku.th/img/chem.jpg', TRUE, 1),
-(13, 'Active', 'https://r2.ku.th/img/bear.jpg', TRUE, 1),
-(14, 'Active', 'https://r2.ku.th/img/mouse.jpg', TRUE, 1),
-(15, 'Active', 'https://r2.ku.th/img/pants.jpg', TRUE, 1),
-(15, 'Active', 'https://r2.ku.th/img/pants2.jpg', FALSE, 2);
+(1, 'Active', 'https://picsum.photos/seed/item1/600/600', TRUE, 1),
+(2, 'Active', 'https://picsum.photos/seed/item2/600/600', TRUE, 1),
+(3, 'Active', 'https://picsum.photos/seed/item3/600/600', TRUE, 1),
+(3, 'Active', 'https://picsum.photos/seed/item3b/600/600', FALSE, 2),
+(4, 'Active', 'https://picsum.photos/seed/item4/600/600', TRUE, 1),
+(5, 'Active', 'https://picsum.photos/seed/item5/600/600', TRUE, 1),
+(6, 'Active', 'https://picsum.photos/seed/item6/600/600', TRUE, 1),
+(7, 'Active', 'https://picsum.photos/seed/item7/600/600', TRUE, 1),
+(8, 'Active', 'https://picsum.photos/seed/item8/600/600', TRUE, 1),
+(11, 'Active', 'https://picsum.photos/seed/item11/600/600', TRUE, 1),
+(12, 'Active', 'https://picsum.photos/seed/item12/600/600', TRUE, 1),
+(13, 'Active', 'https://picsum.photos/seed/item13/600/600', TRUE, 1),
+(14, 'Active', 'https://picsum.photos/seed/item14/600/600', TRUE, 1),
+(15, 'Active', 'https://picsum.photos/seed/item15/600/600', TRUE, 1),
+(15, 'Active', 'https://picsum.photos/seed/item15b/600/600', FALSE, 2);
 
 -- 4. Post (10 Posts)
 INSERT INTO "Post" ("item_id", "post_type", "post_status", "price", "quantity_total", "quantity_remaining") VALUES
@@ -319,16 +319,16 @@ INSERT INTO "Report" ("reporter_id", "report_type", "target_id", "reason_categor
 (6, 'Post', 1, 'Duplicate Post', 'โพสต์ซ้ำ', 'Report_Dismissed', 1, 'ไม่ซ้ำ เป็นคนละสภาพ', '2026-09-02 08:00:00'),
 (7, 'User', 4, 'Harassment', 'ด่าทอในแชท', 'Pending', NULL, NULL, NULL);
 
--- 8. Transaction (8 Transactions)
+-- 8. Transaction (8 Transactions - Using placehold.co for Slips)
 INSERT INTO "Transaction" ("post_id", "offer_id", "buyer_id", "seller_id", "quantity", "transaction_status", "active_report_id", "delivery_method", "slip_image_url", "tracking_number", "payment_confirmed_by_buyer_at", "payment_confirmed_by_seller_at") VALUES 
-(1, NULL, 4, 3, 1, 'Processing', NULL, 'Meetup', 'https://r2.ku.th/slip/tx1.jpg', NULL, '2026-09-01 14:00:00', '2026-09-01 14:05:00'),
-(2, NULL, 5, 3, 1, 'Completed', NULL, 'Shipping', 'https://r2.ku.th/slip/tx2.jpg', 'TH123456789', '2026-08-25 09:00:00', '2026-08-25 09:10:00'),
+(1, NULL, 4, 3, 1, 'Processing', NULL, 'Meetup', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX1', NULL, '2026-09-01 14:00:00', '2026-09-01 14:05:00'),
+(2, NULL, 5, 3, 1, 'Completed', NULL, 'Shipping', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX2', 'TH123456789', '2026-08-25 09:00:00', '2026-08-25 09:10:00'),
 (4, 2, 3, 5, 1, 'Completed', NULL, 'Meetup', NULL, NULL, NULL, NULL),
 (3, NULL, 6, 4, 1, 'Pending', NULL, 'Meetup', NULL, NULL, NULL, NULL),
-(8, 5, 5, 8, 1, 'Processing', NULL, 'Meetup', 'https://r2.ku.th/slip/tx5.jpg', NULL, '2026-09-01 15:00:00', '2026-09-01 15:30:00'),
-(6, NULL, 8, 7, 1, 'Pending Refund', 3, 'Shipping', 'https://r2.ku.th/slip/tx6.jpg', NULL, '2026-09-02 07:00:00', NULL),
+(8, 5, 5, 8, 1, 'Processing', NULL, 'Meetup', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX5', NULL, '2026-09-01 15:00:00', '2026-09-01 15:30:00'),
+(6, NULL, 8, 7, 1, 'Pending Refund', 3, 'Shipping', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX6', NULL, '2026-09-02 07:00:00', NULL),
 (9, NULL, 3, 9, 1, 'Cancelled', NULL, 'Shipping', NULL, NULL, NULL, NULL),
-(10, NULL, 4, 9, 1, 'Processing', NULL, 'Meetup', 'https://r2.ku.th/slip/tx8.jpg', NULL, '2026-09-02 09:00:00', '2026-09-02 09:10:00');
+(10, NULL, 4, 9, 1, 'Processing', NULL, 'Meetup', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX8', NULL, '2026-09-02 09:00:00', '2026-09-02 09:10:00');
 
 -- 9. Appointment_Card (6 Cards)
 INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time", "location", "appointment_status") VALUES
@@ -339,7 +339,7 @@ INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time",
 (1, 4, '2026-09-04', '11:00:00', 'หน้า มก.', 'Rejected'),
 (8, 9, '2026-09-08', '17:00:00', 'Kasetsart BTS', 'Pending');
 
--- 10. Giveaway_Post (6 Giveaways - อัปเดตตาม Schema ใหม่)
+-- 10. Giveaway_Post (6 Giveaways)
 INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "register_deadline", "giveaway_status") VALUES
 ('สรุปสูตรฟิสิกส์', 5, 'แจก 5 ชุด นัดรับพร้อมกัน', 'ตึก LH1', 3, 'FirstCome', '2026-09-10 17:00:00', '2026-09-08 17:00:00', 'Active'),
 ('เสื้อพละ มก.', 1, 'สภาพดี แจกฟรี', 'บาร์ใหม่', 4, 'Random', '2026-09-15 18:00:00', '2026-09-10 12:00:00', 'Active'),
@@ -348,7 +348,7 @@ INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_loc
 ('แก้วน้ำ YETI (ปลอม)', 1, 'เก็บความเย็นได้อยู่', 'บาร์ใหม่', 7, 'Random', '2026-08-25 15:00:00', '2026-08-20 15:00:00', 'Completed'),
 ('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Closed'); 
 
--- 11. Giveaway_Ticket (9 Tickets - เพิ่มสถานะ Waived ตาม Schema ใหม่)
+-- 11. Giveaway_Ticket (9 Tickets)
 INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status") VALUES
 (1, 4, 'TOK_1_PHY_A', 'Waiting'),
 (1, 5, 'TOK_1_PHY_B', 'Waiting'),
@@ -358,16 +358,16 @@ INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket
 (4, 3, 'TOK_4_CABLE', 'Expired'),
 (5, 4, 'TOK_5_GLASS', 'Received'),
 (5, 5, 'TOK_5_GLASS_LOSE', 'Expired'),
-(6, 4, 'TOK_6_RULER_WAIVED', 'Waived'); -- เพิ่มสถานะ Waived เข้ามาตรงนี้ครับ
+(6, 4, 'TOK_6_RULER_WAIVED', 'Waived');
 
--- 12. Giveaway_Image (6 Images)
+-- 12. Giveaway_Image (6 Images - Using picsum.photos)
 INSERT INTO "Giveaway_Image" ("giveaway_id", "image_status", "image_url", "display_order") VALUES
-(1, 'Active', 'https://r2.ku.th/giveaways/phy_sum.jpg', 1),
-(2, 'Active', 'https://r2.ku.th/giveaways/ku_shirt.jpg', 1),
-(3, 'Active', 'https://r2.ku.th/giveaways/toeic.jpg', 1),
-(4, 'Active', 'https://r2.ku.th/giveaways/cable.jpg', 1),
-(5, 'Active', 'https://r2.ku.th/giveaways/yeti.jpg', 1),
-(6, 'Active', 'https://r2.ku.th/giveaways/ruler.jpg', 1);
+(1, 'Active', 'https://picsum.photos/seed/gw1/600/600', 1),
+(2, 'Active', 'https://picsum.photos/seed/gw2/600/600', 1),
+(3, 'Active', 'https://picsum.photos/seed/gw3/600/600', 1),
+(4, 'Active', 'https://picsum.photos/seed/gw4/600/600', 1),
+(5, 'Active', 'https://picsum.photos/seed/gw5/600/600', 1),
+(6, 'Active', 'https://picsum.photos/seed/gw6/600/600', 1);
 
 -- 13. Chat_Room (8 Rooms)
 INSERT INTO "Chat_Room" ("transaction_id", "giveaway_id", "chat_room_status") VALUES
@@ -385,14 +385,14 @@ INSERT INTO "Chat_Message" ("room_id", "sender_id", "content", "image_urls") VAL
 (1, 4, 'สวัสดีครับ สะดวกเจอบาร์ใหม่กี่โมงครับ?', NULL),
 (1, 3, 'เที่ยงครึ่งวันพุธได้เลยครับ', NULL),
 (1, 4, 'โอเคครับ ตามนั้นเลย', NULL),
-(2, 5, 'โอนเงินแล้วนะครับ ขอเลขพัสดุด้วย', '["https://r2.ku.th/chat/slip_msg.jpg"]'),
+(2, 5, 'โอนเงินแล้วนะครับ ขอเลขพัสดุด้วย', '["https://placehold.co/400x600/222222/FFF?text=Chat+Slip"]'),
 (2, 3, 'จัดส่งเรียบร้อยครับ เลขพัสดุ TH123456789', NULL),
 (3, 3, 'ผมเอาหนังสือไปให้ที่ตึกเลยมั้ยครับ?', NULL),
 (3, 5, 'ได้ครับ รออยู่ใต้ตึก', NULL),
 (6, 4, 'ลงทะเบียนรับสรุปเรียบร้อยครับ ขอบคุณมากครับ', NULL),
 (6, 3, 'ยินดีครับ เจอกันตามนัดนะ', NULL),
 (7, 7, 'ลุ้นๆ ขอให้สุ่มได้ทีเถอะ', NULL),
-(8, 8, 'เลือกผมหน่อยค้าบบบ อยากได้มากก', '["https://r2.ku.th/chat/please.jpg"]'),
+(8, 8, 'เลือกผมหน่อยค้าบบบ อยากได้มากก', '["https://picsum.photos/seed/please/400/400"]'),
 (4, 6, 'iPad ลดได้อีกไหมครับ?', NULL),
 (4, 4, 'เต็มที่แล้วครับผม ราคานี้เน็ตแล้ว', NULL),
 (5, 5, 'ตุ๊กตาสภาพโอเคไหมครับ', NULL),
@@ -415,13 +415,13 @@ INSERT INTO "Subscription" ("user_id", "tier", "posts_used_this_month", "subscri
 (9, 'Silver', 0, 'Cancelled', '2026-08-01 00:00:00', '2026-08-31 23:59:59'),
 (10, 'Diamond', 0, 'Active', '2026-09-01 00:00:00', '2026-09-30 23:59:59');
 
--- 17. Subscription_Payment (8 Payments)
+-- 17. Subscription_Payment (8 Payments - Using placehold.co for Slips)
 INSERT INTO "Subscription_Payment" ("subscription_id", "user_id", "amount", "slip_image_url", "payment_status", "rejection_reason", "handled_by", "handled_at") VALUES
-(1, 3, 99, 'https://r2.ku.th/sub/gold3.jpg', 'Verified', NULL, 1, '2026-09-01 09:00:00'),
-(3, 5, 49, 'https://r2.ku.th/sub/sil5.jpg', 'Verified', NULL, 1, '2026-09-01 09:10:00'),
-(4, 6, 199, 'https://r2.ku.th/sub/dia6.jpg', 'Verified', NULL, 2, '2026-09-01 09:15:00'),
-(6, 8, 99, 'https://r2.ku.th/sub/gold8_old.jpg', 'Verified', NULL, 1, '2026-07-01 10:00:00'),
-(7, 9, 49, 'https://r2.ku.th/sub/sil9.jpg', 'Verified', NULL, 2, '2026-08-01 11:00:00'),
-(8, 10, 199, 'https://r2.ku.th/sub/dia10.jpg', 'Pending', NULL, NULL, NULL),
-(1, 3, 99, 'https://r2.ku.th/sub/fake.jpg', 'Rejected', 'สลิปซ้ำซ้อน', 1, '2026-09-01 08:30:00'),
-(5, 7, 49, 'https://r2.ku.th/sub/sil7_pend.jpg', 'Pending', NULL, NULL, NULL);
+(1, 3, 99, 'https://placehold.co/400x600/000000/FFF?text=Sub+Gold', 'Verified', NULL, 1, '2026-09-01 09:00:00'),
+(3, 5, 49, 'https://placehold.co/400x600/000000/FFF?text=Sub+Silver', 'Verified', NULL, 1, '2026-09-01 09:10:00'),
+(4, 6, 199, 'https://placehold.co/400x600/000000/FFF?text=Sub+Diamond', 'Verified', NULL, 2, '2026-09-01 09:15:00'),
+(6, 8, 99, 'https://placehold.co/400x600/000000/FFF?text=Sub+Gold+Old', 'Verified', NULL, 1, '2026-07-01 10:00:00'),
+(7, 9, 49, 'https://placehold.co/400x600/000000/FFF?text=Sub+Silver+Cancel', 'Verified', NULL, 2, '2026-08-01 11:00:00'),
+(8, 10, 199, 'https://placehold.co/400x600/000000/FFF?text=Sub+Diamond+Pend', 'Pending', NULL, NULL, NULL),
+(1, 3, 99, 'https://placehold.co/400x600/000000/FFF?text=Sub+Fake', 'Rejected', 'สลิปซ้ำซ้อน', 1, '2026-09-01 08:30:00'),
+(5, 7, 49, 'https://placehold.co/400x600/000000/FFF?text=Sub+Silver+Pend', 'Pending', NULL, NULL, NULL);
