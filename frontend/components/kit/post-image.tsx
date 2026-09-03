@@ -42,7 +42,7 @@ export function PostImage({
     <div
       className={cn(
         "relative w-full overflow-hidden",
-        showPlate ? "bg-brand-subtle" : "bg-surface-sunken",
+        "bg-surface-sunken",
         className,
       )}
       // A plate is short on purpose: an empty tall box is the thing we are
@@ -50,11 +50,11 @@ export function PostImage({
       style={{ aspectRatio: showPlate ? "16 / 7" : String(aspectRatio) }}
     >
       {showPlate ? (
-        <span className="texture-grid absolute inset-0 flex items-center justify-center gap-2 text-ink-brand">
+        <span className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted">
           {failed ? (
-            <ImageOff aria-hidden className="size-5 opacity-70" />
+            <ImageOff aria-hidden className="size-5 text-ink-brand opacity-75" />
           ) : (
-            <Package aria-hidden className="size-5 opacity-70" />
+            <Package aria-hidden className="size-5 text-ink-brand opacity-75" />
           )}
           <span className="text-meta font-medium opacity-80">
             {failed ? "Photo unavailable" : "No photo"}

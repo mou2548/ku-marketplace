@@ -403,10 +403,10 @@
    remains stable while surfaces move through a deep, green-tinted neutral
    scale. Status washes are deliberately quiet so photos still lead the feed. */
 [data-theme="dark"] {
-  --green-50: #142018;
-  --green-100: #1b3022;
-  --green-200: #25452f;
-  --green-300: #356043;
+  --green-50: #171d19;
+  --green-100: #1d2821;
+  --green-200: #26392d;
+  --green-300: #365542;
   --green-400: #6bca96;
   --green-500: #52c684;
   --green-600: #3ab572;
@@ -415,37 +415,37 @@
   --green-900: #d9f4e4;
   --green-950: #f1f7f3;
 
-  --gray-50: #18211b;
-  --gray-100: #202b24;
-  --gray-200: #2a382f;
-  --gray-300: #3b4c41;
-  --gray-400: #637269;
-  --gray-500: #829188;
-  --gray-600: #9cac9f;
-  --gray-700: #bac7bf;
-  --gray-800: #d6dfd9;
-  --gray-900: #e8efea;
-  --gray-950: #f4f8f5;
+  --gray-50: #1b1e1c;
+  --gray-100: #232725;
+  --gray-200: #303532;
+  --gray-300: #424945;
+  --gray-400: #68716c;
+  --gray-500: #89918c;
+  --gray-600: #a6ada9;
+  --gray-700: #c3c9c5;
+  --gray-800: #dce0dd;
+  --gray-900: #ecefec;
+  --gray-950: #f7f9f7;
 
-  --bg-page: #101713;
-  --bg-surface: #172019;
-  --bg-surface-raised: #1b271f;
-  --bg-surface-sunken: #0c120e;
+  --bg-page: #111412;
+  --bg-surface: #191c1a;
+  --bg-surface-raised: #202421;
+  --bg-surface-sunken: #0c0f0d;
   --bg-surface-inverse: #f1f7f3;
   --bg-brand-strong: #19432c;
   --bg-brand-band: #257248;
   --on-brand-strong: #ffffff;
   --bg-overlay: rgb(2 8 4 / 0.72);
 
-  --border-subtle: #29372e;
-  --border-default: #35473c;
-  --border-strong: #4e6557;
+  --border-subtle: #2b302d;
+  --border-default: #393f3b;
+  --border-strong: #535c56;
   --border-brand: #6bca96;
 
   --text-primary: #f1f7f3;
-  --text-secondary: #c7d3cb;
-  --text-muted: #9cac9f;
-  --text-disabled: #637269;
+  --text-secondary: #c9ceca;
+  --text-muted: #a3aaa5;
+  --text-disabled: #68716c;
   --text-brand: #8bdcad;
   --text-inverse: #122b1d;
 
