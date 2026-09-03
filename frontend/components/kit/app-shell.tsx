@@ -27,21 +27,9 @@ import { ThemeSwitch } from "@/components/patterns/theme-switch";
 import { Drawer, DrawerTrigger } from "./drawer";
 
 /**
- * The app shell (docs/design/ia.md §4).
- *
- * Revised 2026-08-07 after a design review on the built product. Three things
- * were wrong and are fixed here:
- *
- *  1. **The brand was invisible.** A first fix made the bar solid green; the
- *     team preferred white. So the bar is white with green type and a green
- *     hairline, and the brand still leads because the wordmark, the links, the
- *     active pill, and the outlined Post button are all green. The colour now
- *     comes from what is *on* the bar rather than the bar itself.
- *  2. **The links were crammed left** with a long dead gap before the actions.
- *     Nav is centred in its own flexible column now.
- *  3. **Chat had no entry point.** Messages were folded into Deals (decision
- *     D1) with nothing left behind, so anyone who used the old site could not
- *     find them. Chat is back as its own item pointing at the deal list.
+ * White/black consumer chrome with KU green reserved for identity, active
+ * navigation, and state. The logo already contains "KU", so the adjacent
+ * wordmark deliberately says only "Marketplace".
  */
 
 export interface NavBadges {
@@ -165,8 +153,8 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                 priority
               />
             </span>
-            <span className="hidden text-body-lg leading-[1.2] font-bold tracking-[-0.018em] text-ink sm:block">
-              KU <span className="text-ink-brand">Marketplace</span>
+            <span className="hidden text-body-lg leading-[1.2] font-bold tracking-[-0.018em] text-ink-brand sm:block">
+              Marketplace
             </span>
           </Link>
 
@@ -187,11 +175,11 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   aria-current={active ? "page" : undefined}
                   title={t(labelKey)}
                   className={cn(
-                    "relative flex min-h-10 items-center gap-1.5 rounded-pill px-3 text-body-sm lg:px-4",
-                    "transition-[color,background-color] duration-[--dur-fast]",
+                    "relative flex min-h-10 items-center gap-1.5 px-3 text-body-sm lg:px-4",
+                    "transition-colors duration-[--dur-fast]",
                     active
-                      ? "bg-brand-subtle font-semibold text-ink-brand"
-                      : "text-ink-secondary hover:bg-surface-sunken hover:text-ink",
+                      ? "font-semibold text-ink-brand"
+                      : "text-ink-secondary hover:text-ink-brand",
                   )}
                 >
                   {/* Between 768 and 1024 there is room for icons but not
@@ -199,30 +187,18 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   <Icon aria-hidden className="size-5 lg:hidden" />
                   <span className="hidden lg:inline">{t(labelKey)}</span>
                   <Count value={badge ? badges[badge] : undefined} />
+                  {active ? (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-3 -bottom-[0.9rem] h-0.5 rounded-pill bg-brand lg:inset-x-4"
+                    />
+                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-            {/* Tinted rather than filled: a solid green button next to green
-                links made the bar read as two competing calls to action.
-                `subtle` is that tint and is already what the avatar chip two
-                places along uses, so the cluster is one family — this used to
-                ask for `secondary` and then override its fill, shadow and
-                border, which matched no variant in the system. `pill` because
-                every one of its neighbours is round. */}
-            <LinkButton
-              variant="subtle"
-              size="sm"
-              pill
-              href="/post"
-              className="hidden md:inline-flex"
-            >
-              <Plus className="size-4" />
-              Post
-            </LinkButton>
-
             <LocaleSwitch className="hidden sm:flex" />
 
             <ThemeSwitch />
