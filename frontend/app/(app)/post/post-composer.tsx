@@ -23,6 +23,7 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { createGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
@@ -228,14 +229,10 @@ export function PostComposer({
       </div>
 
       {unlisted.length === 0 ? (
-        <Surface
-          shape="card"
-          elevation="flat"
-          className="bg-brand-subtle border-l-4 border-l-brand p-4 text-body-sm text-ink-secondary"
-        >
+        <Notice tone="brand" className="text-body-sm text-ink-secondary">
           Everything you own is already on the market. Add a new item to list
           something else.
-        </Surface>
+        </Notice>
       ) : (
         // `min-w-0` on each item: a grid track defaults to `min-width:auto`,
         // so without it the row cannot shrink below its content and the page

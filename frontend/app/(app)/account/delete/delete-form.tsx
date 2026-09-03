@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowLeft, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
-import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { deleteAccount } from "@/lib/actions/account";
 
@@ -54,11 +54,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
 
       <h1 className="text-h1">Close your account</h1>
 
-      <Surface
-        shape="card"
-        elevation="flat"
-        className="flex max-w-xl gap-3 bg-tone-danger-bg border-l-4 border-l-tone-danger-solid p-4"
-      >
+      <Notice tone="danger" className="flex max-w-xl gap-3">
         <AlertTriangle
           aria-hidden
           className="mt-0.5 size-5 shrink-0 text-tone-danger-fg"
@@ -80,7 +76,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
             </li>
           </ul>
         </div>
-      </Surface>
+      </Notice>
 
       {blocked > 0 ? (
         <p className="max-w-xl rounded-control bg-tone-warning-bg p-3 text-body-sm text-tone-warning-fg">

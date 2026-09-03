@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Package, ShieldCheck } from "lucide-react";
 import { PostCard } from "@/components/kit/post-card";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { getPost, listPosts } from "@/lib/api/posts";
 import { getCurrentUserId } from "@/lib/api/session";
@@ -172,11 +173,7 @@ export default async function PostDetailPage({
         ) : null}
 
         {post.post_type !== "SellOnly" && post.wanted_item_offer ? (
-          <Surface
-            shape="card"
-            elevation="flat"
-            className="flex gap-3 bg-tone-trade-bg border-l-4 border-l-tone-trade-solid p-4"
-          >
+          <Notice tone="trade" className="flex gap-3">
             <Package aria-hidden className="mt-0.5 size-5 shrink-0 text-tone-trade-fg" />
             <div>
               <p className="text-caption font-semibold text-tone-trade-fg">
@@ -186,7 +183,7 @@ export default async function PostDetailPage({
                 {post.wanted_item_offer}
               </p>
             </div>
-          </Surface>
+          </Notice>
         ) : null}
 
         {/* The specs were a bare text grid floating on the page; at any width

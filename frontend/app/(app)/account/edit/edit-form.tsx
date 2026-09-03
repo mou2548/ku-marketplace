@@ -8,6 +8,7 @@ import { ArrowLeft, Lock, Save } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
@@ -82,7 +83,7 @@ export function EditProfileForm({ profile }: { profile: User }) {
 
       <h1 className="text-h1">Edit profile</h1>
 
-      <Surface shape="card" elevation="flat" className="flex max-w-3xl gap-3 bg-gray-100 border-l-4 border-l-line-strong p-4">
+      <Notice tone="neutral" className="flex max-w-3xl gap-3">
         <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
         <div className="flex flex-col gap-1">
           <p className="text-body-sm font-medium">
@@ -94,7 +95,7 @@ export function EditProfileForm({ profile }: { profile: User }) {
             you say you are.
           </p>
         </div>
-      </Surface>
+      </Notice>
 
       <div className="grid max-w-xl gap-4 sm:grid-cols-2">
         <TextInput

@@ -7,8 +7,9 @@ import type { Transaction } from "@/lib/api/types";
 import { shippingDeadline } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
+import { Notice } from "@/components/patterns/notice";
+
 import { CountdownPill } from "./countdown-pill";
-import { Surface } from "./surface";
 
 /**
  * What a shipping deal has instead of a meetup.
@@ -69,10 +70,7 @@ export function DeliveryCard({
   }
 
   return (
-    <Surface
-      shape="card"
-      elevation="flat"
-      className={cn("flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4", className)}
+    <Notice tone="info" className={cn("flex flex-col gap-3", className)}
     >
       <p className="flex items-center gap-2 text-body font-semibold text-tone-info-fg">
         {tracking ? (
@@ -122,6 +120,6 @@ export function DeliveryCard({
           ? "Confirm once it arrives and matches what was agreed. That closes the deal."
           : "The buyer confirms when it arrives. Nothing else is needed from you."}
       </p>
-    </Surface>
+    </Notice>
   );
 }

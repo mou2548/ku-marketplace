@@ -8,6 +8,7 @@ import { ArrowLeft, Scale } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
 import { createAppeal } from "@/lib/actions/appeals";
@@ -83,14 +84,14 @@ export default function NewAppealPage() {
 
       <h1 className="text-h1">Submit an appeal</h1>
 
-      <Surface shape="card" elevation="flat" className="max-w-xl bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
+      <Notice tone="info" className="max-w-xl">
         <p className="text-body-sm text-ink-secondary">
           A different admin from the one who made the original decision reviews
           your appeal. Say what the decision got wrong and what evidence has not
           been considered yet — restating the original complaint does not help
           them.
         </p>
-      </Surface>
+      </Notice>
 
       <TextInput
         label="Report number"

@@ -13,6 +13,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { QrScanner } from "@/components/kit/qr-scanner";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { scanTicketQr, selectRecipients } from "@/lib/actions/giveaways";
@@ -114,12 +115,12 @@ export function ManageGiveaway({
         </div>
       </header>
 
-      <Surface shape="card" elevation="flat" className="bg-tone-trade-bg border-l-4 border-l-tone-trade-solid p-4">
+      <Notice tone="trade">
         <p className="text-body text-ink-secondary">
           You chose to pick recipients yourself. Select them below once
           registration closes, and a chat room opens for each one.
         </p>
-      </Surface>
+      </Notice>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-2">

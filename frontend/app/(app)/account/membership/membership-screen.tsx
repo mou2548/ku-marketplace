@@ -8,6 +8,7 @@ import { Button } from "@/components/kit/button";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { SlipUploader } from "@/components/kit/slip";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
 import { subscribeToMembership } from "@/lib/actions/membership";
@@ -113,12 +114,12 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
       </Surface>
 
       {membership.pending_review ? (
-        <Surface shape="card" elevation="flat" className="bg-tone-warning-bg border-l-4 border-l-tone-warning-solid p-4">
+        <Notice tone="warning">
           <p className="text-body text-tone-warning-fg">
             Your slip is with an admin. Your tier changes as soon as it is
             approved, and you do not need to send it again.
           </p>
-        </Surface>
+        </Notice>
       ) : null}
     </>
   );

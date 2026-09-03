@@ -9,6 +9,7 @@ import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
@@ -154,7 +155,7 @@ export function GiveawayDetail({
         </Surface>
 
         {/* How you will find out, stated before you commit. */}
-        <Surface shape="card" elevation="flat" className="flex flex-col gap-2 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
+        <Notice tone="info" className="flex flex-col gap-2">
           <p className="text-body-sm font-semibold text-tone-info-fg">
             {method.label}
           </p>
@@ -162,7 +163,7 @@ export function GiveawayDetail({
             {method.hint}
           </p>
           {drawDeadline ? <CountdownPill deadline={drawDeadline} showLabel /> : null}
-        </Surface>
+        </Notice>
 
         {isGiver ? (
           /* Only a Manual giveaway has anything for its giver to do. FirstCome
@@ -191,22 +192,14 @@ export function GiveawayDetail({
                 </p>
               </div>
             ) : (
-              <Surface
-                shape="card"
-                elevation="flat"
-                className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4"
-              >
+              <Notice tone="success">
                 <p className="text-body font-medium text-tone-success-fg">
                   The draw has run. A chat room is open with the winner.
                 </p>
-              </Surface>
+              </Notice>
             )
           ) : (
-            <Surface
-              shape="card"
-              elevation="flat"
-              className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4"
-            >
+            <Notice tone="success">
               <p className="text-body font-medium text-tone-success-fg">
                 This is your giveaway. Nothing for you to do.
               </p>
@@ -214,7 +207,7 @@ export function GiveawayDetail({
                 {method.hint}. A chat room opens with each entrant as they
                 register so you can arrange collection.
               </p>
-            </Surface>
+            </Notice>
           )
         ) : ticket ? (
           <div className="flex flex-col gap-2">
@@ -228,14 +221,14 @@ export function GiveawayDetail({
             </LinkButton>
           </div>
         ) : joined ? (
-          <Surface shape="card" elevation="flat" className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4">
+          <Notice tone="success">
             <p className="text-body font-medium text-tone-success-fg">
               Registered. Waiting for the draw.
             </p>
             <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
               If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page.
             </p>
-          </Surface>
+          </Notice>
         ) : giveaway.status === "Active" ? (
           <Button size="lg" block isLoading={busy} onPress={join}>
             <Gift className="size-5" />

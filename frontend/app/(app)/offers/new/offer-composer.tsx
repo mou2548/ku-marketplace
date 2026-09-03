@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { TextInput } from "@/components/kit/field";
 import { Overlay } from "@/components/kit/overlay";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import { useToast } from "@/components/kit/toast";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
@@ -205,10 +206,7 @@ export function OfferComposer({
 
   if (sent) {
     return (
-      <Surface
-        shape="card"
-        className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-5"
-      >
+      <Notice tone="success" className="flex flex-col gap-3 p-5">
         <p className="flex items-center gap-2 text-body-lg font-semibold text-tone-success-fg">
           <CheckCircle2 aria-hidden className="size-5 shrink-0" />
           Offer sent
@@ -227,7 +225,7 @@ export function OfferComposer({
             My offers
           </LinkButton>
         </div>
-      </Surface>
+      </Notice>
     );
   }
 

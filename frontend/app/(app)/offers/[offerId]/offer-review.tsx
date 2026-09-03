@@ -15,7 +15,7 @@ import {
 import { Button, LinkButton } from "@/components/kit/button";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { StatusBadge } from "@/components/kit/status-badge";
-import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
@@ -164,10 +164,7 @@ export function OfferReview({
       />
 
       {accepted || offer.status === "Accepted" ? (
-        <Surface
-          shape="card"
-          className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
-        >
+        <Notice tone="success" className="flex flex-col gap-3">
           <p className="flex items-center gap-2 text-body font-semibold text-tone-success-fg">
             <CheckCircle2 aria-hidden className="size-5 shrink-0" />
             Offer accepted
@@ -189,7 +186,7 @@ export function OfferReview({
               Open chat
             </LinkButton>
           ) : null}
-        </Surface>
+        </Notice>
       ) : pending ? (
         isOwner ? (
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

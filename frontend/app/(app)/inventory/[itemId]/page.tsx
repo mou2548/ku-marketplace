@@ -13,6 +13,7 @@ import { LinkButton } from "@/components/kit/button";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { getItem, getMyItems } from "@/lib/api/items";
 import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
@@ -183,11 +184,7 @@ export default async function ItemDetailPage({
               </div>
             </Surface>
           ) : (
-            <Surface
-              shape="card"
-              elevation="flat"
-              className="flex flex-col gap-3 bg-brand-subtle border-l-4 border-l-brand p-4"
-            >
+            <Notice tone="brand" className="flex flex-col gap-3">
               <p className="text-body-sm text-ink-secondary">
                 This item is not listed. Nobody can see it but you, and it can
                 still be put on a trade offer from your inventory.
@@ -196,7 +193,7 @@ export default async function ItemDetailPage({
                 <Tag className="size-4" />
                 List it on the market
               </LinkButton>
-            </Surface>
+            </Notice>
           )}
 
           {item.description ? (
