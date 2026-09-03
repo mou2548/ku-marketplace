@@ -189,7 +189,12 @@ export function OfferReview({
         </Notice>
       ) : pending ? (
         isOwner ? (
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          /* The composer got a sticky action bar and the screen where the
+             decision is actually made did not, so accept and decline sat below
+             a full-height read-only bench — two plate panels and a seam. This
+             is the highest-stakes control in the group; it does not scroll
+             away. */
+          <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex flex-col-reverse gap-2 rounded-card bg-surface p-3 shadow-floating sm:static sm:flex-row sm:justify-end sm:bg-transparent sm:p-0 sm:shadow-none">
             <Button
               variant="secondary"
               onPress={() =>

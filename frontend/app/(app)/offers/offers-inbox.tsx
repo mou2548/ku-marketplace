@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeftRight, Inbox } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, Inbox } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -17,7 +17,7 @@ import {
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { OfferSummary } from "@/components/kit/offer-summary";
 import type { Offer } from "@/lib/api/types";
-import { describeOffer, offerSides } from "@/lib/offers";
+import { offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
 
 /**
@@ -138,11 +138,10 @@ function OfferList({
                   size="sm"
                 />
 
-                {/* And the same thing in words, for anyone who would rather
-                    read it than decode two rows of thumbnails. */}
-                <p className="text-caption leading-[1.6] text-ink-secondary">
-                  {describeOffer(sides)}
-                </p>
+                {/* The prose restated exactly what the two stacks above had
+                    just shown, which is a third block of the same information
+                    on a card the owner called too dense. It stays on the
+                    detail screen, where nothing else competes with it. */}
 
                 {direction === "received" ? (
                   <TrustBadge
@@ -152,6 +151,20 @@ function OfferList({
                     size="sm"
                   />
                 ) : null}
+
+                {/* The card had no action row at all. On a received offer the
+                    decision is the entire point of the row and it was
+                    invisible until the card was opened; register.md §5 wants a
+                    full-width 44px action. The whole card stays a link, so
+                    this reads as the affordance rather than a second target. */}
+                <span className="flex min-h-11 items-center justify-between gap-2 rounded-control bg-surface-sunken px-3 text-body-sm font-medium text-ink-brand">
+                  {direction === "received"
+                    ? offer.status === "Pending"
+                      ? "Accept or decline"
+                      : "See this offer"
+                    : "See your offer"}
+                  <ChevronRight aria-hidden className="size-4 shrink-0" />
+                </span>
               </Surface>
             </Link>
           </li>

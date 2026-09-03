@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Coins, X } from "lucide-react";
 
 import type { InventoryItem } from "./inventory-slot";
 import { EmptySlot, InventoryGrid, InventorySlot } from "./inventory-slot";
@@ -210,6 +210,21 @@ export function TradeBench({
               item={item}
               showName
               onAction={isReadOnly ? undefined : () => remove(item.item_id)}
+              badge={
+                /* Tapping the item removed it, with no X, no confirmation,
+                   and a slot identical to the read-only ones opposite. The
+                   only hint was a 13px line at the bottom of the panel. The
+                   tap still works; it is just no longer the only way to find
+                   out that it does. */
+                isReadOnly ? undefined : (
+                  <span
+                    aria-hidden
+                    className="touch-target grid size-6 place-items-center rounded-pill bg-surface-inverse/80 text-white"
+                  >
+                    <X className="size-3.5" />
+                  </span>
+                )
+              }
             />
           )}
         </InventoryGrid>
@@ -222,9 +237,9 @@ export function TradeBench({
           </div>
         ) : null}
 
-        {!isReadOnly ? (
+        {!isReadOnly && youGive.length > 0 ? (
           <p className="mt-3 text-caption leading-[1.5] text-ink-muted">
-            Tap an item in your inventory to place it here; tap it again to take it back
+            Tap an item to take it back
           </p>
         ) : null}
       </Surface>
@@ -250,9 +265,15 @@ export function TradeSourcePanel({
 }) {
   return (
     <Surface as="section" shape="panel" className={cn("p-4", className)}>
-      <h3 className="mb-3 text-[1.125rem] leading-[1.4] font-semibold">
+      <h3 className="text-[1.125rem] leading-[1.4] font-semibold">
         My inventory
       </h3>
+      {/* This line used to live at the bottom of the "You give" panel, 13px
+          and muted, pointing at a stash that was below the fold. An
+          instruction belongs where the tap starts. */}
+      <p className="mt-1 mb-3 text-caption text-ink-muted">
+        Tap an item to put it on the table
+      </p>
       <InventoryGrid
         aria-label="My inventory"
         items={inventory}

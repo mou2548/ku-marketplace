@@ -263,22 +263,33 @@ export function OfferComposer({
         ) : null}
       </header>
 
-      <TradeBench
-        youGet={wanted}
-        youGive={offered}
-        onYouGiveChange={setOffered}
-        additionalMoney={money}
-        onAdditionalMoneyChange={setMoney}
-        // Composing an offer, you are always the one putting the cash up.
-        moneyDirection="you-pay"
-        counterpartyName={post.seller.name}
-      />
+      {/* The stash comes first on a phone.
+          The bench rendered above it, so at 360px the two plate panels plus
+          the seam were comfortably 600px before the inventory appeared — and
+          the instruction to tap an item pointed at something off-screen. The
+          interaction starts in the stash, so on a narrow screen the stash
+          starts the page. From `lg:` there is room for reading order to go
+          back to bench-then-source. */}
+      <div className="flex flex-col gap-5">
+        <TradeSourcePanel
+          className="order-1 lg:order-2"
+          inventory={stash}
+          offeredIds={offeredIds}
+          onAdd={tapStash}
+        />
 
-      <TradeSourcePanel
-        inventory={stash}
-        offeredIds={offeredIds}
-        onAdd={tapStash}
-      />
+        <TradeBench
+          className="order-2 lg:order-1"
+          youGet={wanted}
+          youGive={offered}
+          onYouGiveChange={setOffered}
+          additionalMoney={money}
+          onAdditionalMoneyChange={setMoney}
+          // Composing an offer, you are always the one putting the cash up.
+          moneyDirection="you-pay"
+          counterpartyName={post.seller.name}
+        />
+      </div>
 
       <Overlay
         isOpen={!!splitTarget}
