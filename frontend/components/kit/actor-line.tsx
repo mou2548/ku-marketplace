@@ -45,7 +45,7 @@ export function ActorLine({
     >
       <p
         className={cn(
-          "flex items-center gap-2 text-[1.0625rem] leading-[1.5]",
+          "flex items-center gap-2 text-body-lg leading-[1.5]",
           isYourTurn ? "font-semibold" : "font-medium",
         )}
       >

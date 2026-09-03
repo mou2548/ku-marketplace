@@ -87,7 +87,7 @@ export function Overlay({
                     {title}
                   </Heading>
                   {description ? (
-                    <p className="text-[0.875rem] leading-[1.65] text-ink-muted">
+                    <p className="text-body-sm text-ink-muted">
                       {description}
                     </p>
                   ) : null}

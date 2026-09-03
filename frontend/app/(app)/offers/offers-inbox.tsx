@@ -120,7 +120,7 @@ function OfferList({
                         ? `Your offer to ${sides.counterparty.name}`
                         : `${sides.counterparty.name} wants to trade`}
                     </p>
-                    <p className="truncate text-[0.8125rem] text-ink-muted">
+                    <p className="truncate text-caption text-ink-muted">
                       {direction === "sent" ? "for their " : "for your "}
                       {offer.post.item.name}
                     </p>
@@ -140,7 +140,7 @@ function OfferList({
 
                 {/* And the same thing in words, for anyone who would rather
                     read it than decode two rows of thumbnails. */}
-                <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                <p className="text-caption leading-[1.6] text-ink-secondary">
                   {describeOffer(sides)}
                 </p>
 

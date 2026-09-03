@@ -98,7 +98,7 @@ export function TradeBench({
               />
               You get
             </h3>
-            <span data-numeric className="text-[0.8125rem] text-ink-muted">
+            <span data-numeric className="text-caption text-ink-muted">
               {youGet.length} {youGet.length === 1 ? "item" : "items"}
             </span>
           </div>
@@ -141,7 +141,7 @@ export function TradeBench({
         </span>
 
         {additionalMoney > 0 ? (
-          <p className="hidden text-center text-[0.8125rem] leading-[1.5] text-ink-secondary lg:block">
+          <p className="hidden text-center text-caption leading-[1.5] text-ink-secondary lg:block">
             <span className="font-semibold text-ink">
               {youPay ? "You add" : `${counterpartyName ?? "They"} add${counterpartyName ? "s" : ""}`}
             </span>{" "}
@@ -165,7 +165,7 @@ export function TradeBench({
           inputMode="numeric"
           placeholder="0"
           icon={<Coins className="size-4" />}
-          suffix={<span className="text-[0.8125rem]">THB</span>}
+          suffix={<span className="text-caption">THB</span>}
           className="flex-1 lg:w-full"
         />
       </div>
@@ -188,7 +188,7 @@ export function TradeBench({
               />
               You give
             </h3>
-            <span data-numeric className="text-[0.8125rem] text-ink-muted">
+            <span data-numeric className="text-caption text-ink-muted">
               {youGive.length} {youGive.length === 1 ? "item" : "items"}
             </span>
           </div>
@@ -223,7 +223,7 @@ export function TradeBench({
         ) : null}
 
         {!isReadOnly ? (
-          <p className="mt-3 text-[0.8125rem] leading-[1.5] text-ink-muted">
+          <p className="mt-3 text-caption leading-[1.5] text-ink-muted">
             Tap an item in your inventory to place it here; tap it again to take it back
           </p>
         ) : null}

@@ -140,18 +140,18 @@ export function QrTicket({
       <p
         data-numeric
         aria-live="polite"
-        className="text-[1.0625rem] leading-[1.4] font-semibold"
+        className="text-body-lg leading-[1.4] font-semibold"
         suppressHydrationWarning
       >
         Valid for {minutes}:{String(seconds).padStart(2, "0")}
       </p>
 
-      <p className="max-w-xs text-center text-[0.8125rem] leading-[1.6] text-ink-muted">
+      <p className="max-w-xs text-center text-caption leading-[1.6] text-ink-muted">
         {caption}
       </p>
 
       {error ? (
-        <p role="alert" className="text-[0.875rem] font-medium text-tone-danger-fg">
+        <p role="alert" className="text-body-sm font-medium text-tone-danger-fg">
           {error}
         </p>
       ) : null}

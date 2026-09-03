@@ -77,14 +77,14 @@ export default async function AdminLayout({
                 <Link
                   key={href}
                   href={href}
-                  className="flex min-h-11 items-center gap-2 rounded-control px-3 text-[0.9375rem] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex min-h-11 items-center gap-2 rounded-control px-3 text-body text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   <Icon aria-hidden className="size-4" />
                   <span className="hidden sm:inline">{label}</span>
                   {count > 0 ? (
                     <span
                       data-numeric
-                      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-[0.6875rem] font-semibold"
+                      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold"
                     >
                       {count}
                     </span>
@@ -95,7 +95,7 @@ export default async function AdminLayout({
 
             <Link
               href="/"
-              className="ml-auto flex min-h-11 shrink-0 items-center gap-2 rounded-control px-3 text-[0.875rem] text-white/70 hover:text-white"
+              className="ml-auto flex min-h-11 shrink-0 items-center gap-2 rounded-control px-3 text-body-sm text-white/70 hover:text-white"
             >
               <ArrowLeft aria-hidden className="size-4" />
               <span className="hidden sm:inline">Back to the marketplace</span>

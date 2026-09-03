@@ -179,7 +179,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
               {activeFilters > 0 ? (
                 <span
                   aria-hidden
-                  className="absolute -top-1.5 -right-2 grid size-4 place-items-center rounded-pill bg-brand text-[0.625rem] font-semibold text-on-brand"
+                  className="absolute -top-1.5 -right-2 grid size-4 place-items-center rounded-pill bg-brand text-meta font-semibold text-on-brand"
                 >
                   {activeFilters}
                 </span>
@@ -233,7 +233,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search by item name or course code"
               placeholder="Search by item name or course code, e.g. 01417111"
-              className="h-12 w-full rounded-pill bg-surface pr-4 pl-11 text-[0.9375rem] shadow-raised"
+              className="h-12 w-full rounded-pill bg-surface pr-4 pl-11 text-body shadow-raised"
             />
           </div>
 
@@ -245,7 +245,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
             />
           ) : (
             <>
-              <p className="mb-3 text-[0.8125rem] text-ink-muted" data-numeric>
+              <p className="mb-3 text-caption text-ink-muted" data-numeric>
                 {filtered.length} results
               </p>
               <MasonryGrid columns={{ base: 2, md: 3, lg: 4, xl: 5 }}>
@@ -295,7 +295,7 @@ function FilterChip({
       aria-pressed={isActive}
       onClick={onToggle}
       className={cn(
-        "flex min-h-9 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-medium",
+        "flex min-h-9 items-center gap-1.5 rounded-pill px-3 text-caption font-medium",
         "transition-colors duration-[--dur-fast]",
         isActive
           ? "bg-brand text-on-brand shadow-raised"

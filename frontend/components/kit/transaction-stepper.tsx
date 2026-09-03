@@ -198,7 +198,7 @@ export function TransactionStepper({
             >
               <span
                 className={cn(
-                  "grid size-7 shrink-0 place-items-center rounded-pill text-[0.75rem] font-semibold",
+                  "grid size-7 shrink-0 place-items-center rounded-pill text-meta font-semibold",
                   "transition-colors duration-[--dur-base]",
                   step.done && cn(TONE_DOT.success, "text-white"),
                   step.current && !step.done && "bg-brand text-on-brand shadow-raised",
@@ -224,7 +224,7 @@ export function TransactionStepper({
             <div className={cn("pb-5", row && "pb-0", responsive && "md:pb-0")}>
               <p
                 className={cn(
-                  "text-[0.875rem] leading-[1.65]",
+                  "text-body-sm",
                   step.current ? "font-semibold text-ink" : "text-ink-secondary",
                   step.done && "text-ink-muted",
                 )}
@@ -235,14 +235,14 @@ export function TransactionStepper({
               {waitingLabel ? (
                 <span
                   className={cn(
-                    "mt-1 inline-flex items-center rounded-pill px-2 py-0.5 text-[0.75rem] font-medium",
+                    "mt-1 inline-flex items-center rounded-pill px-2 py-0.5 text-meta font-medium",
                     waitingOnYou ? TONE_SOLID.warning : TONE_SOLID.info,
                   )}
                 >
                   {waitingLabel}
                 </span>
               ) : (
-                <p className="text-[0.75rem] leading-[1.4] text-ink-muted">
+                <p className="text-meta leading-[1.4] text-ink-muted">
                   {actor}
                 </p>
               )}

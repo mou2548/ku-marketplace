@@ -82,7 +82,7 @@ export function EditableField({
 
   return (
     <div className="flex min-h-14 items-center gap-3 border-b border-line py-3 last:border-0">
-      <span className="w-40 shrink-0 text-[0.8125rem] text-ink-muted">
+      <span className="w-40 shrink-0 text-caption text-ink-muted">
         {label}
       </span>
 
@@ -132,7 +132,7 @@ export function EditableField({
         <>
           <span
             className={cn(
-              "min-w-0 flex-1 truncate text-[0.9375rem]",
+              "min-w-0 flex-1 truncate text-body",
               value ? "font-medium" : "text-ink-muted",
             )}
           >
@@ -142,7 +142,7 @@ export function EditableField({
           {isLocked ? (
             <span
               title={lockedReason}
-              className="flex shrink-0 items-center gap-1.5 text-[0.75rem] text-ink-muted"
+              className="flex shrink-0 items-center gap-1.5 text-meta text-ink-muted"
             >
               <Lock aria-hidden className="size-3.5" />
               <span className="hidden sm:inline">{lockedReason}</span>

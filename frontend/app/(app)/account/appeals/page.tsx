@@ -52,7 +52,7 @@ export default async function MyAppealsPage() {
             <li key={key} className="flex flex-col gap-1">
               <StatusBadge status={state} size="sm" className="w-fit" />
               {state.hint ? (
-                <p className="text-[0.75rem] leading-[1.5] text-ink-muted">
+                <p className="text-meta leading-[1.5] text-ink-muted">
                   {state.hint}
                 </p>
               ) : null}
@@ -60,7 +60,7 @@ export default async function MyAppealsPage() {
           );
         })}
       </ol>
-      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
+      <p className="border-t border-line pt-3 text-meta leading-[1.6] text-ink-muted">
         A different admin from the one who made the original decision reviews
         every appeal.
       </p>
@@ -80,7 +80,7 @@ export default async function MyAppealsPage() {
                   <p className="font-semibold">Report #{a.report_id}</p>
                   <time
                     dateTime={a.created_at}
-                    className="text-[0.8125rem] text-ink-muted"
+                    className="text-caption text-ink-muted"
                   >
                     Submitted{" "}
                     {new Date(a.created_at).toLocaleDateString("en-GB", {
@@ -92,11 +92,11 @@ export default async function MyAppealsPage() {
                 <StatusBadge status={APPEAL_STATUS[a.status]} size="sm" />
               </div>
 
-              <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body-sm text-ink-secondary">
                 {a.reason}
               </p>
 
-              <p className="border-t border-line pt-3 text-[0.8125rem] leading-[1.6] text-ink-muted">
+              <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
                 A different admin from the one who made the original decision
                 reviews this. Original verdict:{" "}
                 {REPORT_STATUS.Violation_Confirmed.label}.

@@ -149,7 +149,7 @@ function ProposeMeetup({
 
   return (
     <Surface shape="card" className="flex flex-col gap-3 p-4">
-      <p className="text-[0.875rem] leading-[1.6] text-ink-secondary">
+      <p className="text-body-sm leading-[1.6] text-ink-secondary">
         Agree a time and place. The other side confirms it, and both of you see
         the same card from then on.
       </p>
@@ -163,14 +163,14 @@ function ProposeMeetup({
         />
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[0.875rem] leading-[1.65] font-medium text-ink-secondary">
+          <span className="text-body-sm font-medium text-ink-secondary">
             Time
           </span>
           <input
             type="time"
             value={time}
             onChange={(e) => onTimeChange(e.target.value)}
-            className={cn(controlBase, "h-12 px-3.5 text-[0.9375rem]")}
+            className={cn(controlBase, "h-12 px-3.5 text-body")}
           />
         </label>
       </div>
@@ -427,7 +427,7 @@ export function RoomScreen({
         return (
           <ActionCard title="Your step - arrange the meetup">
             <div className="flex flex-col gap-3">
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 There is no money in this trade, so the next thing to settle is
                 where and when you swap.
               </p>
@@ -528,7 +528,7 @@ export function RoomScreen({
         return (
           <ActionCard title="Your step - confirm the item arrived">
             <div className="flex flex-col gap-3">
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 Did the parcel arrive and match what was agreed? Confirm to close
                 this deal.
               </p>
@@ -629,7 +629,7 @@ export function RoomScreen({
             size="sm"
           />
           {isGroupRoom ? (
-            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
+            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">
               Giver
             </span>
           ) : null}
@@ -657,7 +657,7 @@ export function RoomScreen({
         <span className="ml-auto flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              "shrink-0 rounded-chip border px-1.5 py-0.5 text-[0.6875rem] font-semibold",
+              "shrink-0 rounded-chip border px-1.5 py-0.5 text-meta font-semibold",
               TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
             )}
           >
@@ -669,12 +669,12 @@ export function RoomScreen({
           {subjectHref ? (
             <Link
               href={subjectHref}
-              className="min-w-0 truncate text-[0.8125rem] text-ink-brand hover:underline"
+              className="min-w-0 truncate text-caption text-ink-brand hover:underline"
             >
               {summary.subject}
             </Link>
           ) : (
-            <span className="min-w-0 truncate text-[0.8125rem] text-ink-muted">
+            <span className="min-w-0 truncate text-caption text-ink-muted">
               {summary.subject}
             </span>
           )}
@@ -696,10 +696,10 @@ export function RoomScreen({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.875rem] font-semibold">
+          <span className="block truncate text-body-sm font-semibold">
             {summary.subject}
           </span>
-          <span className="block truncate text-[0.75rem] text-ink-muted">
+          <span className="block truncate text-meta text-ink-muted">
             {transaction
               ? `${transaction.delivery_method === "Meetup" ? "Meetup" : "Shipping"}${
                   requiresPayment(transaction)
@@ -782,7 +782,7 @@ export function RoomScreen({
             type="button"
             onClick={() => setPinOpen((v) => !v)}
             aria-expanded={pinOpen}
-            className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-[0.8125rem]"
+            className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-caption"
           >
             {transaction.delivery_method === "Meetup" ? (
               <>
@@ -921,7 +921,7 @@ function DealDetails({
         {prompt ? (
           <p
             className={cn(
-              "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
+              "rounded-control border px-3 py-2 text-body-sm font-medium",
               TONE_CHIP[prompt.tone],
             )}
           >
@@ -933,7 +933,7 @@ function DealDetails({
           <DeliveryCard transaction={transaction} viewer={viewer} />
         ) : deadline ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-[0.75rem] text-ink-muted">{deadline.label}</p>
+            <p className="text-meta text-ink-muted">{deadline.label}</p>
             <CountdownPill deadline={deadline} />
           </div>
         ) : null}
@@ -994,7 +994,7 @@ function DealDetails({
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-overline text-ink-muted uppercase">Deal progress</p>
-          <p data-numeric className="text-[0.75rem] text-ink-muted">
+          <p data-numeric className="text-meta text-ink-muted">
             Step {currentStepNumber} of {steps.length}
           </p>
         </div>
@@ -1034,7 +1034,7 @@ function GiveawayDetails({
           size="sm"
           className="w-fit"
         />
-        <p className="flex items-start gap-2 text-[0.8125rem] leading-[1.6] text-ink-muted">
+        <p className="flex items-start gap-2 text-caption leading-[1.6] text-ink-muted">
           <MapPin aria-hidden className="mt-0.5 size-3.5 shrink-0" />
           Collect at {giveaway.pickup_location}
         </p>
@@ -1075,7 +1075,7 @@ function GiveawayDetails({
               isVerified={giveaway.giver.isVerified}
               avatarUrl={giveaway.giver.avatar_url}
             />
-            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
+            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">
               Giver
             </span>
           </span>
@@ -1101,7 +1101,7 @@ function GiveawayDetails({
           {entrants.length > ROSTER_LIMIT ? (
             <Link
               href={`/giveaway/${giveaway.giveaway_id}/manage`}
-              className="text-[0.8125rem] font-medium text-ink-brand hover:underline"
+              className="text-caption font-medium text-ink-brand hover:underline"
             >
               {entrants.length - ROSTER_LIMIT} more
             </Link>

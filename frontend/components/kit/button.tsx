@@ -46,9 +46,9 @@ const button = cva(
           "bg-tone-danger-solid text-white shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
       },
       size: {
-        sm: "h-9 rounded-control px-3 text-[0.875rem]",
-        md: "h-11 rounded-control px-4 text-[0.9375rem]",
-        lg: "h-13 rounded-control px-6 text-[1.0625rem]",
+        sm: "h-9 rounded-control px-3 text-body-sm",
+        md: "h-11 rounded-control px-4 text-body",
+        lg: "h-13 rounded-control px-6 text-body-lg",
         icon: "size-11 rounded-control",
         "icon-sm": "size-9 rounded-control",
       },

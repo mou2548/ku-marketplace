@@ -95,7 +95,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
         </p>
 
         {membership.expires_at ? (
-          <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+          <p className="text-caption leading-[1.6] text-ink-muted">
             Valid until{" "}
             <span data-numeric className="font-medium text-ink-secondary">
               {new Date(membership.expires_at).toLocaleDateString("en-GB", {
@@ -106,7 +106,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
             </span>
           </p>
         ) : (
-          <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+          <p className="text-caption leading-[1.6] text-ink-muted">
             The free tier: 3 live posts, and everything the marketplace does.
           </p>
         )}
@@ -114,7 +114,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
       {membership.pending_review ? (
         <Surface shape="card" elevation="flat" className="bg-tone-warning-bg border-l-4 border-l-tone-warning-solid p-4">
-          <p className="text-[0.9375rem] leading-[1.7] text-tone-warning-fg">
+          <p className="text-body text-tone-warning-fg">
             Your slip is with an admin. Your tier changes as soon as it is
             approved, and you do not need to send it again.
           </p>
@@ -129,7 +129,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           Membership
         </h1>
-        <p className="text-[0.9375rem] leading-[1.7] text-ink-muted">
+        <p className="text-body text-ink-muted">
           {MEMBERSHIP_DURATION_DAYS} days at a time. Transfer, upload the slip,
           and an admin switches your tier.
         </p>
@@ -162,7 +162,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                       {t.tier}
                     </span>
                     {isCurrent ? (
-                      <span className="rounded-pill bg-tone-success-bg px-2 py-0.5 text-[0.6875rem] font-semibold text-tone-success-fg">
+                      <span className="rounded-pill bg-tone-success-bg px-2 py-0.5 text-meta font-semibold text-tone-success-fg">
                         Current
                       </span>
                     ) : null}
@@ -170,7 +170,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
                   <p data-numeric className="text-[1.5rem] leading-[1.2] font-bold">
                     ฿{t.price}
-                    <span className="text-[0.8125rem] font-normal text-ink-muted">
+                    <span className="text-caption font-normal text-ink-muted">
                       {" "}
                       / {MEMBERSHIP_DURATION_DAYS} days
                     </span>
@@ -180,7 +180,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                     {t.adds.map((p) => (
                       <li
                         key={p}
-                        className="flex gap-2 text-[0.8125rem] leading-[1.6] text-ink-secondary"
+                        className="flex gap-2 text-caption leading-[1.6] text-ink-secondary"
                       >
                         <Check
                           aria-hidden
@@ -213,7 +213,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                   <th
                     key={t.tier}
                     scope="col"
-                    className="w-24 p-3 text-center text-[0.875rem] font-semibold"
+                    className="w-24 p-3 text-center text-body-sm font-semibold"
                   >
                     {t.tier}
                   </th>
@@ -225,7 +225,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                 <tr key={perk} className="border-b border-line last:border-0">
                   <th
                     scope="row"
-                    className="p-3 text-[0.875rem] leading-[1.6] font-normal text-ink-secondary"
+                    className="p-3 text-body-sm leading-[1.6] font-normal text-ink-secondary"
                   >
                     {perk}
                   </th>

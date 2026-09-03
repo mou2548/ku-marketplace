@@ -124,7 +124,7 @@ export function AppointmentCard({
           href={`https://maps.google.com/?q=${encodeURIComponent(coordinates)}`}
           target="_blank"
           rel="noreferrer"
-          className="block px-4 pb-2 text-[0.875rem] font-medium text-ink-brand underline"
+          className="block px-4 pb-2 text-body-sm font-medium text-ink-brand underline"
         >
           Open in Google Maps
         </a>

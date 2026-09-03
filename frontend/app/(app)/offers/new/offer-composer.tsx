@@ -209,11 +209,11 @@ export function OfferComposer({
         shape="card"
         className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-5"
       >
-        <p className="flex items-center gap-2 text-[1.0625rem] font-semibold text-tone-success-fg">
+        <p className="flex items-center gap-2 text-body-lg font-semibold text-tone-success-fg">
           <CheckCircle2 aria-hidden className="size-5 shrink-0" />
           Offer sent
         </p>
-        <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+        <p className="text-body-sm text-ink-secondary">
           You offered {post.seller.name}{" "}
           {offered.length > 0
             ? `${offered.length} ${offered.length === 1 ? "item" : "items"}`
@@ -248,7 +248,7 @@ export function OfferComposer({
     <div className="flex flex-col gap-5">
       <Link
         href={`/market/${post.post_id}`}
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to listing
@@ -259,7 +259,7 @@ export function OfferComposer({
           Offer a trade for {post.item.name}
         </h1>
         {post.wanted_item_offer ? (
-          <p className="text-[0.875rem] leading-[1.65] text-ink-muted">
+          <p className="text-body-sm text-ink-muted">
             The owner wants: {post.wanted_item_offer}
           </p>
         ) : null}
@@ -325,7 +325,7 @@ export function OfferComposer({
       >
         {/* Same phrasing as the review screen and the inbox card, so what you
             are about to send reads the way it will read once it is sent. */}
-        <p className="min-w-0 flex-1 text-[0.8125rem] text-ink-muted">
+        <p className="min-w-0 flex-1 text-caption text-ink-muted">
           {offered.length > 0
             ? `You give ${offered.length} ${offered.length === 1 ? "item" : "items"}`
             : "Nothing on the table yet"}

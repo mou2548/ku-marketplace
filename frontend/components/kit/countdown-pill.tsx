@@ -72,7 +72,7 @@ export function CountdownPill({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1",
-        "text-[0.8125rem] leading-[1.5] font-medium",
+        "text-caption leading-[1.5] font-medium",
         TONE_SOLID[tone],
         className,
       )}

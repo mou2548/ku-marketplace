@@ -134,7 +134,7 @@ export function InventorySlot({
           <span
             aria-hidden
             data-numeric
-            className="absolute right-1 bottom-1 rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white"
+            className="absolute right-1 bottom-1 rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-meta font-semibold text-white"
           >
             ×{item.quantity}
           </span>
@@ -157,7 +157,7 @@ export function InventorySlot({
       {showName ? (
         <span
           aria-hidden
-          className="line-clamp-2 px-0.5 text-[0.75rem] leading-[1.4] text-ink-secondary"
+          className="line-clamp-2 px-0.5 text-meta leading-[1.4] text-ink-secondary"
         >
           {item.name}
         </span>

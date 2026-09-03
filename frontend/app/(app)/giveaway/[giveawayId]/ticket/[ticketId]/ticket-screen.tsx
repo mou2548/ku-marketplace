@@ -56,7 +56,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
             <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
               {giveaway.item_name}
             </h1>
-            <p className="text-[0.875rem] text-ink-muted">You were selected</p>
+            <p className="text-body-sm text-ink-muted">You were selected</p>
           </div>
           <StatusBadge status={TICKET_STATUS[ticket.status]} />
         </header>
@@ -66,12 +66,12 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
         </Surface>
 
         <Surface shape="card" className="flex flex-col gap-2.5 p-4">
-          <p className="flex items-center gap-2 text-[0.9375rem]">
+          <p className="flex items-center gap-2 text-body">
             <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
             {giveaway.pickup_location}
           </p>
           {pickupBy ? (
-            <p className="flex items-center gap-2 text-[0.9375rem]">
+            <p className="flex items-center gap-2 text-body">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
               Collect by {pickupBy}
             </p>
@@ -101,7 +101,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
                 </>
               }
             >
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 Forfeiting frees you from collecting {giveaway.item_name}, but
                 the giver will not re-open your place to anyone else.
               </p>
@@ -117,7 +117,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
         elevation="raised"
         className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
       >
-        <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
+        <h2 className="border-b border-line px-4 py-3 text-caption font-semibold tracking-[0.09em] text-ink-muted uppercase">
           Notes from the giver
         </h2>
         <ChatThread

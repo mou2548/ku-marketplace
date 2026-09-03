@@ -62,7 +62,7 @@ export function ListItemForm({ item }: { item: Item }) {
     <div className="flex w-full flex-col gap-5">
       <Link
         href={`/inventory/${item.item_id}`}
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to item
@@ -76,7 +76,7 @@ export function ListItemForm({ item }: { item: Item }) {
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{item.name}</p>
           <p
-            className="text-[0.8125rem] text-[var(--slot-edge)]"
+            className="text-caption text-[var(--slot-edge)]"
             style={
               {
                 "--slot-edge": ITEM_CONDITION[item.condition].fg,
@@ -132,7 +132,7 @@ export function ListItemForm({ item }: { item: Item }) {
           inputMode="numeric"
           isRequired
           icon={<Coins className="size-4" />}
-          suffix={<span className="text-[0.8125rem]">THB</span>}
+          suffix={<span className="text-caption">THB</span>}
           hint={
             postType === "Both"
               ? "This price applies to a direct purchase. Someone offering a trade proposes their own cash difference."

@@ -88,7 +88,7 @@ export function HistoryList({
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
           History
         </h1>
-        <p className="text-[0.875rem] text-ink-muted">
+        <p className="text-body-sm text-ink-muted">
           Every deal you have been part of, including the ones that were
           cancelled or refunded.
         </p>
@@ -140,7 +140,7 @@ export function HistoryList({
             <h2 className="text-[1.125rem] font-semibold">Giveaways</h2>
             <Link
               href="/giveaway"
-              className="text-[0.875rem] font-medium text-ink-brand hover:underline"
+              className="text-body-sm font-medium text-ink-brand hover:underline"
             >
               See all
             </Link>
@@ -170,7 +170,7 @@ export function HistoryList({
                       <p className="truncate font-semibold">
                         {ticket.giveaway.item_name}
                       </p>
-                      <p className="truncate text-[0.8125rem] text-ink-muted">
+                      <p className="truncate text-caption text-ink-muted">
                         from {ticket.giveaway.giver.name} · collect at{" "}
                         {ticket.giveaway.pickup_location}
                       </p>
@@ -212,7 +212,7 @@ function Filters({
             aria-pressed={value === o.id}
             onClick={() => onChange(o.id)}
             className={cn(
-              "min-h-9 rounded-pill px-3 text-[0.8125rem] font-medium",
+              "min-h-9 rounded-pill px-3 text-caption font-medium",
               "transition-colors duration-[--dur-fast]",
               value === o.id
                 ? "bg-brand text-on-brand shadow-raised"
@@ -290,7 +290,7 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
             >
               {tx.post.item.name}
             </Link>
-            <p className="truncate text-[0.8125rem] text-ink-muted">
+            <p className="truncate text-caption text-ink-muted">
               {viewer === "buyer" ? "Bought from" : "Sold to"} {other.name}
             </p>
           </div>
@@ -305,10 +305,10 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-6">
         {facts.map(([label, value]) => (
           <div key={label} className="flex flex-col">
-            <dt className="text-[0.6875rem] tracking-[0.06em] text-ink-muted uppercase">
+            <dt className="text-meta tracking-[0.06em] text-ink-muted uppercase">
               {label}
             </dt>
-            <dd data-numeric className="truncate text-[0.875rem] font-medium">
+            <dd data-numeric className="truncate text-body-sm font-medium">
               {value}
             </dd>
           </div>
@@ -319,14 +319,14 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
         {prompt.actor ? (
           <span
             className={cn(
-              "rounded-pill px-2 py-0.5 text-[0.75rem] font-medium",
+              "rounded-pill px-2 py-0.5 text-meta font-medium",
               TONE_SOLID[prompt.tone],
             )}
           >
             {prompt.label}
           </span>
         ) : (
-          <span className="text-[0.8125rem] text-ink-muted">{prompt.label}</span>
+          <span className="text-caption text-ink-muted">{prompt.label}</span>
         )}
 
         <LinkButton

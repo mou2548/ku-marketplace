@@ -67,7 +67,7 @@ export function Drawer({
               <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <Heading
                   slot="title"
-                  className="text-[1.0625rem] leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
+                  className="text-body-lg leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
                 >
                   {title}
                 </Heading>

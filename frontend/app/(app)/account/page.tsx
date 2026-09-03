@@ -92,18 +92,18 @@ export default async function AccountPage() {
       />
 
       <div className="flex flex-wrap gap-2.5">
-        <span className="flex items-center gap-1.5 rounded-pill bg-tone-success-bg px-3 py-1.5 text-[0.875rem] font-medium text-tone-success-fg">
+        <span className="flex items-center gap-1.5 rounded-pill bg-tone-success-bg px-3 py-1.5 text-body-sm font-medium text-tone-success-fg">
           <ShieldCheck aria-hidden className="size-4" />
           Verified KU student
         </span>
         <span
           data-numeric
-          className="rounded-pill bg-gray-100 px-3 py-1.5 text-[0.875rem] font-medium text-ink-secondary"
+          className="rounded-pill bg-gray-100 px-3 py-1.5 text-body-sm font-medium text-ink-secondary"
         >
           {completed} completed {completed === 1 ? "deal" : "deals"}
         </span>
         {membership.tier !== "Free" ? (
-          <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-3 py-1.5 text-[0.875rem] font-medium text-amber-700">
+          <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-3 py-1.5 text-body-sm font-medium text-amber-700">
             <Crown aria-hidden className="size-4" />
             {membership.tier}
           </span>
@@ -182,7 +182,7 @@ export default async function AccountPage() {
       <form action={logout}>
         <button
           type="submit"
-          className="flex min-h-12 w-full items-center justify-center gap-2 text-[0.9375rem] font-medium text-tone-danger-fg"
+          className="flex min-h-12 w-full items-center justify-center gap-2 text-body font-medium text-tone-danger-fg"
         >
           <LogOut aria-hidden className="size-4" />
           Sign out

@@ -141,12 +141,12 @@ export function ReportForm({
           <h1 className="text-[1.25rem] leading-[1.3] font-semibold">
             You cannot report this deal yet
           </h1>
-          <p className="text-[0.9375rem] leading-[1.75] text-ink-secondary">
+          <p className="text-body text-ink-secondary">
             The other side is still inside the window the flow gives them. If the deadline passes with no progress, the report button appears by itself in the chat.
           </p>
           {deadline ? (
             <div className="flex flex-col gap-1.5">
-              <p className="text-[0.75rem] text-ink-muted">{deadline.label}</p>
+              <p className="text-meta text-ink-muted">{deadline.label}</p>
               <CountdownPill deadline={deadline} />
             </div>
           ) : null}
@@ -188,7 +188,7 @@ export function ReportForm({
     <div className="flex w-full max-w-xl flex-col gap-5">
       <Link
         href={`/history/${transactionId}`}
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to the chat
@@ -196,7 +196,7 @@ export function ReportForm({
 
       <header className="flex flex-col gap-1">
         <h1 className="text-h1">Report a problem</h1>
-        <p className="text-[0.875rem] text-ink-muted">
+        <p className="text-body-sm text-ink-muted">
           {itemName} - with {counterparty}
         </p>
       </header>
@@ -236,7 +236,7 @@ export function ReportForm({
       />
 
       <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-[0.875rem] font-medium text-ink-secondary">
+        <p className="text-body-sm font-medium text-ink-secondary">
           Extra evidence
           <span className="ml-1 font-normal text-ink-muted">optional</span>
         </p>
@@ -244,7 +244,7 @@ export function ReportForm({
           {evidence.map((file, i) => (
             <span
               key={`${file.name}-${i}`}
-              className="rounded-chip bg-surface-sunken px-2 py-1 text-[0.75rem] shadow-sunken"
+              className="rounded-chip bg-surface-sunken px-2 py-1 text-meta shadow-sunken"
             >
               {file.name}
             </span>
@@ -270,7 +270,7 @@ export function ReportForm({
         />
       </Surface>
 
-      <p className="rounded-control bg-tone-warning-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-warning-fg">
+      <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
         A false report counts against your own account. Only submit when you are sure.
       </p>
 

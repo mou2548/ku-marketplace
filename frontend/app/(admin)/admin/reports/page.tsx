@@ -38,7 +38,7 @@ export default async function AdminReportsPage() {
                   <p className="font-semibold">
                     #{r.report_id} · {r.reason_category}
                   </p>
-                  <p className="text-[0.8125rem] text-ink-muted">
+                  <p className="text-caption text-ink-muted">
                     {r.report_type} #{r.target_id}
                   </p>
                 </div>
@@ -52,7 +52,7 @@ export default async function AdminReportsPage() {
                 <div className="flex shrink-0 items-center gap-2">
                   <time
                     dateTime={r.created_at}
-                    className="text-[0.75rem] text-ink-muted"
+                    className="text-meta text-ink-muted"
                   >
                     {new Date(r.created_at).toLocaleDateString("en-GB", {
                       day: "numeric",

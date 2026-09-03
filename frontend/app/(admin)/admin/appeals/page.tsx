@@ -41,7 +41,7 @@ export default async function AdminAppealsPage() {
                   </p>
                   <time
                     dateTime={a.created_at}
-                    className="text-[0.8125rem] text-ink-muted"
+                    className="text-caption text-ink-muted"
                   >
                     {new Date(a.created_at).toLocaleDateString("en-GB", {
                       day: "numeric",
@@ -58,14 +58,14 @@ export default async function AdminAppealsPage() {
                 size="sm"
               />
 
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 {a.reason}
               </p>
 
               {a.status === "Pending" || a.status === "Under_Review" ? (
                 <AppealDecision appealId={a.appeal_id} />
               ) : (
-                <p className="border-t border-line pt-3 text-[0.8125rem] leading-[1.6] text-ink-muted">
+                <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
                   Already decided.{" "}
                   {a.resolution_note ? `Note: ${a.resolution_note}` : ""}
                 </p>

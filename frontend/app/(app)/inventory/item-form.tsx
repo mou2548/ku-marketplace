@@ -181,7 +181,7 @@ export function ItemForm({
 
       <p className="font-semibold">{name.trim() || "Untitled item"}</p>
 
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Category</dt>
           <dd>{category}</dd>
@@ -196,7 +196,7 @@ export function ItemForm({
         </div>
       </dl>
 
-      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
+      <p className="border-t border-line pt-3 text-meta leading-[1.6] text-ink-muted">
         The border colour is the condition. It is how the item reads at a glance
         everywhere it appears.
       </p>
@@ -212,7 +212,7 @@ export function ItemForm({
       {/* Photos first: it is the fastest field to fill and the one that makes
           the rest feel worth doing. */}
       <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-[0.875rem] font-medium text-ink-secondary">
+        <p className="text-body-sm font-medium text-ink-secondary">
           Photos
           <span className="ml-1 font-normal text-ink-muted">
             the first one is the cover

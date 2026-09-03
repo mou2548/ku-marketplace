@@ -101,7 +101,7 @@ export function VerdictForm({
     <div className="flex w-full max-w-2xl flex-col gap-5">
       <Link
         href="/admin/reports"
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to reports
@@ -112,7 +112,7 @@ export function VerdictForm({
           <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
             Report #{report.report_id}
           </h1>
-          <p className="text-[0.875rem] text-ink-muted">
+          <p className="text-body-sm text-ink-muted">
             {report.reason_category} · {report.report_type} #{report.target_id}
           </p>
         </div>
@@ -128,7 +128,7 @@ export function VerdictForm({
           isVerified={report.reporter.isVerified}
         />
         {report.details ? (
-          <p className="border-t border-line pt-3 text-[0.875rem] leading-[1.7] text-ink-secondary">
+          <p className="border-t border-line pt-3 text-body-sm text-ink-secondary">
             {report.details}
           </p>
         ) : null}
@@ -140,7 +140,7 @@ export function VerdictForm({
 
       {alreadyDecided ? (
         <Surface shape="card" elevation="flat" className="bg-tone-info-bg p-4">
-          <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+          <p className="text-body-sm text-ink-secondary">
             This report was already decided (status: {REPORT_STATUS[report.status].label}).
             {report.resolution_note ? ` Note: ${report.resolution_note}` : ""}
           </p>
@@ -190,7 +190,7 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
   if (!evidence) {
     return (
       <Surface shape="card" elevation="flat" className="bg-tone-warning-bg p-4">
-        <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+        <p className="text-body-sm text-ink-secondary">
           Could not load the transaction evidence for this report.
         </p>
       </Surface>
@@ -205,7 +205,7 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
         Transaction evidence
       </p>
 
-      <dl className="grid grid-cols-2 gap-3 text-[0.8125rem]">
+      <dl className="grid grid-cols-2 gap-3 text-caption">
         <div>
           <dt className="text-ink-muted">Item</dt>
           <dd className="font-medium">{transaction.post.item.name}</dd>
@@ -226,7 +226,7 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
         </div>
       </dl>
 
-      <div className="flex flex-col gap-1 border-t border-line pt-3 text-[0.8125rem]">
+      <div className="flex flex-col gap-1 border-t border-line pt-3 text-caption">
         <p className="text-overline text-ink-muted uppercase">Confirmation timestamps</p>
         {[
           ["Buyer paid", transaction.payment_confirmed_by_buyer_at],
@@ -259,7 +259,7 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
         <div className="flex flex-col gap-2 border-t border-line pt-3">
           <p className="text-overline text-ink-muted uppercase">Appointment cards</p>
           {appointmentCards.map((card) => (
-            <div key={card.appointment_id} className="text-[0.8125rem]">
+            <div key={card.appointment_id} className="text-caption">
               <span className="font-medium">{card.date} {card.time}</span> ·{" "}
               {card.location} · proposed by {card.proposer.name} ·{" "}
               <StatusBadge status={APPOINTMENT_STATUS[card.status]} size="sm" />
@@ -274,7 +274,7 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
         </p>
         <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
           {messages.map((m) => (
-            <div key={m.message_id} className="text-[0.8125rem]">
+            <div key={m.message_id} className="text-caption">
               <span className="font-medium">{m.sender?.name ?? `User #${m.sender_id}`}</span>
               {": "}
               {m.images_expired ? (

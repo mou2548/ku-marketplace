@@ -137,7 +137,7 @@ export function NotificationsScreen({
         {counts.unread.all > 0 ? (
           <span
             data-numeric
-            className="rounded-pill bg-brand-subtle px-2.5 py-1 text-[0.8125rem] font-medium text-ink-brand"
+            className="rounded-pill bg-brand-subtle px-2.5 py-1 text-caption font-medium text-ink-brand"
           >
             {counts.unread.all} unread
           </span>
@@ -185,20 +185,20 @@ export function NotificationsScreen({
                     <div className="min-w-0 flex-1">
                       <p
                         className={cn(
-                          "text-[0.9375rem]",
+                          "text-body",
                           n.read ? "font-medium" : "font-semibold",
                         )}
                       >
                         {n.title}
                       </p>
-                      <p className="text-[0.875rem] leading-[1.65] text-ink-muted">
+                      <p className="text-body-sm text-ink-muted">
                         {n.body}
                       </p>
                     </div>
 
                     <time
                       dateTime={n.created_at}
-                      className="shrink-0 text-[0.75rem] text-ink-muted"
+                      className="shrink-0 text-meta text-ink-muted"
                     >
                       {new Date(n.created_at).toLocaleDateString("en-GB", {
                         day: "numeric",
@@ -240,7 +240,7 @@ function FilterRow({
       onClick={onPress}
       aria-pressed={isActive}
       className={cn(
-        "flex min-h-11 items-center gap-2.5 rounded-control px-2.5 text-[0.875rem]",
+        "flex min-h-11 items-center gap-2.5 rounded-control px-2.5 text-body-sm",
         "transition-colors duration-[--dur-fast]",
         isActive
           ? "bg-brand-subtle font-semibold text-ink-brand"
@@ -254,12 +254,12 @@ function FilterRow({
       {unread > 0 ? (
         <span
           data-numeric
-          className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-[0.6875rem] font-semibold text-white"
+          className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold text-white"
         >
           {unread}
         </span>
       ) : null}
-      <span data-numeric className="text-[0.75rem] text-ink-muted">
+      <span data-numeric className="text-meta text-ink-muted">
         {total}
       </span>
       {unread > 0 ? (

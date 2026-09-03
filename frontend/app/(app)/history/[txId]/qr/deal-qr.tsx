@@ -38,7 +38,7 @@ export function DealQr({
         <h1 className="text-[1.25rem] leading-[1.3] font-semibold">
           Let the buyer scan to close the deal
         </h1>
-        <p className="mt-1 text-[0.875rem] text-ink-muted">{itemName}</p>
+        <p className="mt-1 text-body-sm text-ink-muted">{itemName}</p>
       </div>
 
       <QrTicket

@@ -88,7 +88,7 @@ export function GiveawayBrowser({
                         <p className="truncate font-semibold">
                           {t.giveaway.item_name}
                         </p>
-                        <p className="truncate text-[0.8125rem] text-ink-muted">
+                        <p className="truncate text-caption text-ink-muted">
                           Collect at {t.giveaway.pickup_location}
                         </p>
                       </div>
@@ -137,11 +137,11 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
           {/* R7: the method is explained on the card, before registering —
               "random" and "first come" mean very different things to someone
               deciding whether to bother. */}
-          <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+          <p className="text-caption leading-[1.6] text-ink-muted">
             {method.hint}
           </p>
 
-          <p className="flex items-center gap-1.5 text-[0.8125rem] text-ink-muted">
+          <p className="flex items-center gap-1.5 text-caption text-ink-muted">
             <MapPin aria-hidden className="size-3.5 shrink-0" />
             {giveaway.pickup_location}
           </p>
@@ -161,7 +161,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
             {giveaway.registered_count ? (
               <span
                 data-numeric
-                className="flex items-center gap-1 text-[0.75rem] text-ink-muted"
+                className="flex items-center gap-1 text-meta text-ink-muted"
               >
                 <Users aria-hidden className="size-3.5" />
                 {giveaway.registered_count} registered

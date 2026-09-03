@@ -87,7 +87,7 @@ export function PostCard({
           <span
             className={cn(
               "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
-              "rounded-pill px-2.5 py-1 text-[0.75rem] font-semibold",
+              "rounded-pill px-2.5 py-1 text-meta font-semibold",
               TONE_SOLID[POST_TYPE[postType].tone],
             )}
           >
@@ -102,14 +102,14 @@ export function PostCard({
           </h3>
 
           {courseName ? (
-            <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-gray-100 px-2 py-0.5 text-[0.75rem] font-medium text-ink-secondary">
+            <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-gray-100 px-2 py-0.5 text-meta font-medium text-ink-secondary">
               <BookOpen aria-hidden className="size-3" />
               {courseName}
             </span>
           ) : null}
 
           {description ? (
-            <p className="line-clamp-2 text-[0.8125rem] leading-[1.6] font-normal text-ink-muted">
+            <p className="line-clamp-2 text-caption leading-[1.6] font-normal text-ink-muted">
               {description}
             </p>
           ) : null}
@@ -118,7 +118,7 @@ export function PostCard({
               container around one line of secondary text was the second violet
               on a card that only needed one. */}
           {postType !== "SellOnly" && wantedItemOffer ? (
-            <p className="flex items-start gap-1.5 text-[0.75rem] leading-[1.5] text-ink-muted">
+            <p className="flex items-start gap-1.5 text-meta leading-[1.5] text-ink-muted">
               <ArrowLeftRight aria-hidden className="mt-0.5 size-3.5 shrink-0" />
               <span className="line-clamp-2">
                 <span className="font-medium text-ink-secondary">Wants</span>{" "}
@@ -136,13 +136,13 @@ export function PostCard({
                 ฿{price.toLocaleString("en-GB")}
               </span>
             ) : (
-              <span className="text-[0.9375rem] font-semibold text-ink">
+              <span className="text-body font-semibold text-ink">
                 Trade only
               </span>
             )}
             {/* Stated in words. The edge carries the colour, but condition can
                 never be colour alone (CLAUDE.md §6). */}
-            <span className="shrink-0 text-[0.75rem] font-medium text-ink-muted">
+            <span className="shrink-0 text-meta font-medium text-ink-muted">
               {rarity.label}
             </span>
           </div>

@@ -73,7 +73,7 @@ function Count({ value }: { value?: number }) {
   return (
     <span
       data-numeric
-      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-[0.6875rem] font-semibold text-white"
+      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold text-white"
     >
       {value > 99 ? "99+" : value}
     </span>
@@ -134,7 +134,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
           <Link
             href="/"
-            className="shrink-0 text-[1.0625rem] leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
+            className="shrink-0 text-body-lg leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
           >
             KU Marketplace
           </Link>
@@ -156,7 +156,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   aria-current={active ? "page" : undefined}
                   title={label}
                   className={cn(
-                    "relative flex min-h-10 items-center gap-1.5 px-3 text-[0.9375rem] lg:px-4",
+                    "relative flex min-h-10 items-center gap-1.5 px-3 text-body lg:px-4",
                     "transition-colors duration-[--dur-fast]",
                     active
                       ? "font-semibold text-ink"
@@ -276,7 +276,7 @@ function MobileMenu({
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem]",
+                "flex min-h-12 items-center gap-3 rounded-control px-3 text-body",
                 "transition-colors duration-[--dur-fast]",
                 active
                   ? "bg-brand-subtle font-semibold text-ink-brand"
@@ -300,7 +300,7 @@ function MobileMenu({
         <Link
           href="/notifications"
           onClick={onNavigate}
-          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem] text-ink-secondary hover:bg-gray-100"
+          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
           <Bell aria-hidden className="size-5" />
           Notifications
@@ -308,11 +308,11 @@ function MobileMenu({
         <Link
           href="/account"
           onClick={onNavigate}
-          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem] text-ink-secondary hover:bg-gray-100"
+          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
           <span
             aria-hidden
-            className="grid size-6 place-items-center rounded-pill bg-brand-subtle text-[0.6875rem] font-semibold text-ink-brand"
+            className="grid size-6 place-items-center rounded-pill bg-brand-subtle text-meta font-semibold text-ink-brand"
           >
             {user?.name?.slice(0, 2) ?? "?"}
           </span>

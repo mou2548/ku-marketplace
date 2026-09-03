@@ -58,7 +58,7 @@ export function DatePickerField<T extends DateValue>({
       {label ? <Label>{label}</Label> : null}
 
       <Group className="flex h-12 items-center gap-2 rounded-control bg-surface-sunken px-3.5 shadow-sunken">
-        <DateInput className="flex flex-1 items-center gap-0.5 text-[0.9375rem]">
+        <DateInput className="flex flex-1 items-center gap-0.5 text-body">
           {(segment) => (
             <DateSegment
               segment={segment}
@@ -98,7 +98,7 @@ export function DatePickerField<T extends DateValue>({
               >
                 <ChevronLeft aria-hidden className="size-4" />
               </Button>
-              <Heading className="text-[0.9375rem] font-semibold" />
+              <Heading className="text-body font-semibold" />
               <Button
                 slot="next"
                 aria-label="Next month"
@@ -111,7 +111,7 @@ export function DatePickerField<T extends DateValue>({
             <CalendarGrid className="border-collapse">
               <CalendarGridHeader>
                 {(day) => (
-                  <CalendarHeaderCell className="pb-1 text-[0.75rem] font-medium text-ink-muted">
+                  <CalendarHeaderCell className="pb-1 text-meta font-medium text-ink-muted">
                     {day}
                   </CalendarHeaderCell>
                 )}
@@ -122,7 +122,7 @@ export function DatePickerField<T extends DateValue>({
                     date={date}
                     className={cn(
                       "m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
-                      "text-[0.875rem] tabular-nums outline-none",
+                      "text-body-sm tabular-nums outline-none",
                       "data-[hovered]:bg-brand-subtle",
                       "data-[selected]:bg-brand data-[selected]:font-semibold data-[selected]:text-on-brand",
                       "data-[outside-month]:text-ink-disabled",

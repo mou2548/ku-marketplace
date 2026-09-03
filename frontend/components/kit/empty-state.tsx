@@ -43,7 +43,7 @@ export function EmptyState({
         </span>
       ) : null}
       <h3 className="text-[1.125rem] leading-[1.4] font-semibold">{title}</h3>
-      <p className="max-w-sm text-[0.875rem] leading-[1.65] text-ink-muted">
+      <p className="max-w-sm text-body-sm text-ink-muted">
         {description}
       </p>
       {action ? <div className="pt-1">{action}</div> : null}

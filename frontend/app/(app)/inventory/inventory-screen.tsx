@@ -104,7 +104,7 @@ export function InventoryScreen({
           <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
             My stuff
           </h1>
-          <p data-numeric className="text-[0.8125rem] text-ink-muted">
+          <p data-numeric className="text-caption text-ink-muted">
             {items.length} {items.length === 1 ? "item" : "items"}
           </p>
         </div>
@@ -133,7 +133,7 @@ export function InventoryScreen({
       </header>
 
       {selecting ? (
-        <p className="text-[0.8125rem] text-ink-muted">
+        <p className="text-caption text-ink-muted">
           Pick the items you want to handle together, then choose an action.
         </p>
       ) : null}
@@ -197,7 +197,7 @@ export function InventoryScreen({
           shape="card"
           className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] flex items-center gap-3 p-3"
         >
-          <p data-numeric className="flex-1 text-[0.875rem] font-medium">
+          <p data-numeric className="flex-1 text-body-sm font-medium">
             {selectedIds.length} selected
           </p>
           <Button variant="ghost" size="sm" onPress={() => setSelected(new Set())}>

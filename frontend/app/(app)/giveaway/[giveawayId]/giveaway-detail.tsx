@@ -119,7 +119,7 @@ export function GiveawayDetail({
             {giveaway.item_name}
           </h1>
           {giveaway.description ? (
-            <p className="text-[0.9375rem] leading-[1.75] text-ink-secondary">
+            <p className="text-body text-ink-secondary">
               {giveaway.description}
             </p>
           ) : null}
@@ -132,12 +132,12 @@ export function GiveawayDetail({
             faculty={giveaway.giver.faculty}
             year={giveaway.giver.year}
           />
-          <p className="flex items-center gap-2 text-[0.9375rem]">
+          <p className="flex items-center gap-2 text-body">
             <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
             {giveaway.pickup_location}
           </p>
           {pickupBy ? (
-            <p className="flex items-center gap-2 text-[0.9375rem]">
+            <p className="flex items-center gap-2 text-body">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
               Collect by {pickupBy}
             </p>
@@ -145,7 +145,7 @@ export function GiveawayDetail({
           {giveaway.registered_count ? (
             <p
               data-numeric
-              className="flex items-center gap-2 text-[0.9375rem] text-ink-muted"
+              className="flex items-center gap-2 text-body text-ink-muted"
             >
               <Users aria-hidden className="size-4 shrink-0" />
               {giveaway.registered_count} registered
@@ -155,10 +155,10 @@ export function GiveawayDetail({
 
         {/* How you will find out, stated before you commit. */}
         <Surface shape="card" elevation="flat" className="flex flex-col gap-2 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
-          <p className="text-[0.875rem] font-semibold text-tone-info-fg">
+          <p className="text-body-sm font-semibold text-tone-info-fg">
             {method.label}
           </p>
-          <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+          <p className="text-caption leading-[1.6] text-ink-secondary">
             {method.hint}
           </p>
           {drawDeadline ? <CountdownPill deadline={drawDeadline} showLabel /> : null}
@@ -185,7 +185,7 @@ export function GiveawayDetail({
                   <Dices className="size-5" />
                   Run the draw
                 </Button>
-                <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+                <p className="text-caption leading-[1.6] text-ink-secondary">
                   Picks one entrant at random and closes registration. This
                   cannot be undone.
                 </p>
@@ -196,7 +196,7 @@ export function GiveawayDetail({
                 elevation="flat"
                 className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4"
               >
-                <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+                <p className="text-body font-medium text-tone-success-fg">
                   The draw has run. A chat room is open with the winner.
                 </p>
               </Surface>
@@ -207,10 +207,10 @@ export function GiveawayDetail({
               elevation="flat"
               className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4"
             >
-              <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+              <p className="text-body font-medium text-tone-success-fg">
                 This is your giveaway. Nothing for you to do.
               </p>
-              <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+              <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
                 {method.hint}. A chat room opens with each entrant as they
                 register so you can arrange collection.
               </p>
@@ -229,10 +229,10 @@ export function GiveawayDetail({
           </div>
         ) : joined ? (
           <Surface shape="card" elevation="flat" className="bg-tone-success-bg border-l-4 border-l-tone-success-solid p-4">
-            <p className="text-[0.9375rem] font-medium text-tone-success-fg">
+            <p className="text-body font-medium text-tone-success-fg">
               Registered. Waiting for the draw.
             </p>
-            <p className="mt-1 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+            <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
               If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page.
             </p>
           </Surface>
@@ -246,7 +246,7 @@ export function GiveawayDetail({
              from tickets and from chat rooms — but they cannot be entered. */
           <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
             <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
-            <p className="mt-2 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+            <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
               Registration for this giveaway has closed.
             </p>
           </Surface>

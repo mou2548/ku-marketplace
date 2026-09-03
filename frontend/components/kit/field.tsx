@@ -32,7 +32,7 @@ export function Label({
     <AriaLabel
       {...props}
       className={cn(
-        "text-[0.875rem] leading-[1.65] font-medium text-ink-secondary",
+        "text-body-sm font-medium text-ink-secondary",
         className,
       )}
     />
@@ -47,7 +47,7 @@ export function FieldError({
     <AriaFieldError
       {...props}
       className={cn(
-        "text-[0.8125rem] leading-[1.5] font-medium text-tone-danger-fg",
+        "text-caption leading-[1.5] font-medium text-tone-danger-fg",
         className,
       )}
     />
@@ -62,7 +62,7 @@ export function FieldHint({
     <Text
       {...props}
       slot="description"
-      className={cn("text-[0.8125rem] leading-[1.5] text-ink-muted", className)}
+      className={cn("text-caption leading-[1.5] text-ink-muted", className)}
     />
   );
 }
@@ -110,7 +110,7 @@ export function TextInput({
           placeholder={placeholder}
           className={cn(
             controlBase,
-            "h-12 px-3.5 text-[0.9375rem]",
+            "h-12 px-3.5 text-body",
             icon && "pl-11",
             suffix && "pr-11",
             inputClassName,
@@ -152,7 +152,7 @@ export function TextAreaField({
       <AriaTextArea
         rows={rows}
         placeholder={placeholder}
-        className={cn(controlBase, "resize-y px-3.5 py-3 text-[0.9375rem]")}
+        className={cn(controlBase, "resize-y px-3.5 py-3 text-body")}
       />
       {hint ? <FieldHint>{hint}</FieldHint> : null}
       <FieldError>{errorMessage}</FieldError>

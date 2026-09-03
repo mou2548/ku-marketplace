@@ -60,13 +60,13 @@ export default async function DeleteAccountPage() {
           <dl className="flex flex-col gap-3">
             {rows.map(([label, value, note]) => (
               <div key={label} className="flex flex-col gap-0.5">
-                <dt className="flex items-baseline justify-between gap-2 text-[0.875rem] font-medium">
+                <dt className="flex items-baseline justify-between gap-2 text-body-sm font-medium">
                   {label}
                   <span data-numeric className="shrink-0 tabular-nums">
                     {value}
                   </span>
                 </dt>
-                <dd className="text-[0.75rem] leading-[1.5] text-ink-muted">
+                <dd className="text-meta leading-[1.5] text-ink-muted">
                   {note}
                 </dd>
               </div>

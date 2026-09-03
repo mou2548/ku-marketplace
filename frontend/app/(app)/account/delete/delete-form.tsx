@@ -46,7 +46,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
     <>
       <Link
         href="/account"
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to account
@@ -63,7 +63,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
           aria-hidden
           className="mt-0.5 size-5 shrink-0 text-tone-danger-fg"
         />
-        <div className="flex flex-col gap-2 text-[0.875rem] leading-[1.7] text-ink-secondary">
+        <div className="flex flex-col gap-2 text-body-sm text-ink-secondary">
           <p className="font-semibold text-tone-danger-fg">
             This cannot be undone.
           </p>
@@ -83,7 +83,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
       </Surface>
 
       {blocked > 0 ? (
-        <p className="max-w-xl rounded-control bg-tone-warning-bg p-3 text-[0.875rem] leading-[1.7] text-tone-warning-fg">
+        <p className="max-w-xl rounded-control bg-tone-warning-bg p-3 text-body-sm text-tone-warning-fg">
           You have {blocked} deal{blocked === 1 ? "" : "s"} still in progress.
           Finish or cancel {blocked === 1 ? "it" : "them"} before closing the
           account.

@@ -77,7 +77,7 @@ export function SlipUploader({
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">
           Upload your transfer slip
         </h4>
-        <span data-numeric className="text-[1.0625rem] font-semibold">
+        <span data-numeric className="text-body-lg font-semibold">
           ฿{amount.toLocaleString("en-GB")}
         </span>
       </header>
@@ -102,7 +102,7 @@ export function SlipUploader({
             />
           ) : null}
           {preview || slipUrl ? (
-            <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-pill bg-surface-inverse/80 px-2 py-1.5 text-[0.75rem] font-medium text-white">
+            <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-pill bg-surface-inverse/80 px-2 py-1.5 text-meta font-medium text-white">
               <ZoomIn aria-hidden className="size-3.5" />
               View full slip
             </span>
@@ -120,10 +120,10 @@ export function SlipUploader({
           )}
         >
           <ImagePlus aria-hidden className="size-7" />
-          <span className="text-[0.9375rem] font-medium">
+          <span className="text-body font-medium">
             Choose a slip image
           </span>
-          <span className="text-[0.8125rem]">JPG or PNG, up to 8 MB</span>
+          <span className="text-caption">JPG or PNG, up to 8 MB</span>
         </button>
       )}
 
@@ -139,11 +139,11 @@ export function SlipUploader({
       />
 
       {busy ? (
-        <p className="mt-3 text-[0.875rem] text-ink-muted">Uploading</p>
+        <p className="mt-3 text-body-sm text-ink-muted">Uploading</p>
       ) : null}
 
       {uploadedAt ? (
-        <p className="mt-3 text-[0.8125rem] leading-[1.5] text-ink-muted">
+        <p className="mt-3 text-caption leading-[1.5] text-ink-muted">
           Uploaded {" "}
           <time dateTime={uploadedAt}>
             {new Date(uploadedAt).toLocaleString("en-GB", {
@@ -157,7 +157,7 @@ export function SlipUploader({
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-3 text-[0.875rem] font-medium text-tone-danger-fg">
+        <p role="alert" className="mt-3 text-body-sm font-medium text-tone-danger-fg">
           {error}
         </p>
       ) : null}
@@ -224,13 +224,13 @@ export function SlipReviewer({
         </span>
       </button>
 
-      <dl className="mt-3 flex items-baseline justify-between text-[0.875rem]">
+      <dl className="mt-3 flex items-baseline justify-between text-body-sm">
         <dt className="text-ink-muted">Amount due</dt>
-        <dd data-numeric className="text-[1.0625rem] font-semibold">
+        <dd data-numeric className="text-body-lg font-semibold">
           ฿{amount.toLocaleString("en-GB")}
         </dd>
       </dl>
-      <p className="mt-1 text-[0.8125rem] text-ink-muted">
+      <p className="mt-1 text-caption text-ink-muted">
         Buyer uploaded {" "}
         <time dateTime={uploadedAt}>
           {new Date(uploadedAt).toLocaleString("en-GB", {

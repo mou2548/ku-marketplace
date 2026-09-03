@@ -53,7 +53,7 @@ export default async function ListItemPage({
 
       <p className="font-semibold">{item.name}</p>
 
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Category</dt>
           <dd>{item.category}</dd>
@@ -74,7 +74,7 @@ export default async function ListItemPage({
       </dl>
 
       {item.description ? (
-        <p className="border-t border-line pt-3 text-[0.8125rem] leading-[1.6] text-ink-muted">
+        <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
           {item.description}
         </p>
       ) : null}

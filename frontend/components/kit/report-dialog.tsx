@@ -104,7 +104,7 @@ export function ReportDialog({
             <span className="grid size-11 place-items-center rounded-pill bg-tone-success-bg text-tone-success-fg">
               <CircleCheck aria-hidden className="size-5" />
             </span>
-            <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+            <p className="text-body text-ink-secondary">
               Report submitted. An admin will review it and let you know.
             </p>
           </div>

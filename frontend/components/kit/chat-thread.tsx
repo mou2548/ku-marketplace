@@ -151,7 +151,7 @@ export function ChatThread({
               <div key={m.message_id} className="flex flex-col gap-3">
                 {startsNewDay ? (
                   <div className="flex justify-center py-1">
-                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-[0.75rem] font-medium text-ink-muted">
+                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-meta font-medium text-ink-muted">
                       {dayLabel(m.created_at)}
                     </span>
                   </div>
@@ -175,7 +175,7 @@ export function ChatThread({
                   ) : null}
 
                   {m.images_expired ? (
-                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-[0.8125rem] text-ink-muted italic">
+                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">
                       Photos from this message have expired and are no longer shown.
                     </p>
                   ) : m.image_urls?.length ? (
@@ -214,7 +214,7 @@ export function ChatThread({
                   {m.content ? (
                     <p
                       className={cn(
-                        "rounded-card px-3.5 py-2.5 text-[0.9375rem] leading-[1.7]",
+                        "rounded-card px-3.5 py-2.5 text-body",
                         mine
                           ? "rounded-br-chip bg-brand text-on-brand"
                           : "rounded-bl-chip bg-surface text-ink",
@@ -227,7 +227,7 @@ export function ChatThread({
 
                   <time
                     dateTime={m.created_at}
-                    className="px-1 text-[0.75rem] text-ink-muted"
+                    className="px-1 text-meta text-ink-muted"
                   >
                     {new Date(m.created_at).toLocaleTimeString("en-GB", {
                       hour: "2-digit",
@@ -252,7 +252,7 @@ export function ChatThread({
       {action && (actionOpen || isReadOnly) ? action : null}
 
       {isReadOnly ? (
-        <p className="border-t border-line px-4 py-3 text-center text-[0.8125rem] text-ink-muted">
+        <p className="border-t border-line px-4 py-3 text-center text-caption text-ink-muted">
           {readOnlyNotice}
         </p>
       ) : (
@@ -315,7 +315,7 @@ export function ChatThread({
             ref={inputRef}
             aria-label="Message"
             placeholder="Write a message"
-            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-[0.9375rem] shadow-sunken"
+            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-body shadow-sunken"
           />
 
           <Button type="submit" size="icon" pill aria-label="Send">

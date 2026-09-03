@@ -74,7 +74,7 @@ export function DeliveryCard({
       elevation="flat"
       className={cn("flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4", className)}
     >
-      <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-info-fg">
+      <p className="flex items-center gap-2 text-body font-semibold text-tone-info-fg">
         {tracking ? (
           <PackageCheck aria-hidden className="size-4 shrink-0" />
         ) : (
@@ -87,7 +87,7 @@ export function DeliveryCard({
         <div className="flex items-center gap-2">
           <span
             data-numeric
-            className="min-w-0 flex-1 truncate rounded-control bg-surface px-3 py-2 text-[0.875rem] font-medium shadow-sunken"
+            className="min-w-0 flex-1 truncate rounded-control bg-surface px-3 py-2 text-body-sm font-medium shadow-sunken"
           >
             {tracking}
           </span>
@@ -110,14 +110,14 @@ export function DeliveryCard({
           than as a surprise when the report button appears. */}
       {eta ? (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[0.75rem] text-ink-muted">
+          <p className="text-meta text-ink-muted">
             You can report a problem after this
           </p>
           <CountdownPill deadline={shippingDeadline(eta)} />
         </div>
       ) : null}
 
-      <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+      <p className="text-caption leading-[1.6] text-ink-secondary">
         {viewer === "buyer"
           ? "Confirm once it arrives and matches what was agreed. That closes the deal."
           : "The buyer confirms when it arrives. Nothing else is needed from you."}

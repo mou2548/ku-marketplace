@@ -56,7 +56,7 @@ export function PostImage({
           ) : (
             <Package aria-hidden className="size-5 opacity-70" />
           )}
-          <span className="text-[0.75rem] font-medium opacity-80">
+          <span className="text-meta font-medium opacity-80">
             {failed ? "Photo unavailable" : "No photo"}
           </span>
         </span>

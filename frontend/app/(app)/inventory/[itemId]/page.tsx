@@ -82,7 +82,7 @@ export default async function ItemDetailPage({
     <div className="flex flex-col gap-5">
       <Link
         href="/inventory"
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to my stuff
@@ -131,7 +131,7 @@ export default async function ItemDetailPage({
                     "--slot-glow": rarity.glow,
                   } as React.CSSProperties
                 }
-                className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-[0.75rem] font-medium text-[var(--slot-edge)]"
+                className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
               >
                 {rarity.label}
               </span>
@@ -147,7 +147,7 @@ export default async function ItemDetailPage({
           {post ? (
             <Surface shape="card" className="flex flex-col gap-3 p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-[0.875rem] font-semibold">
+                <span className="flex items-center gap-2 text-body-sm font-semibold">
                   <Store aria-hidden className="size-4 text-ink-brand" />
                   On the market
                 </span>
@@ -188,7 +188,7 @@ export default async function ItemDetailPage({
               elevation="flat"
               className="flex flex-col gap-3 bg-brand-subtle border-l-4 border-l-brand p-4"
             >
-              <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body-sm text-ink-secondary">
                 This item is not listed. Nobody can see it but you, and it can
                 still be put on a trade offer from your inventory.
               </p>
@@ -200,7 +200,7 @@ export default async function ItemDetailPage({
           )}
 
           {item.description ? (
-            <p className="text-[0.9375rem] leading-[1.75] whitespace-pre-line text-ink-secondary">
+            <p className="text-body whitespace-pre-line text-ink-secondary">
               {item.description}
             </p>
           ) : null}
@@ -212,15 +212,15 @@ export default async function ItemDetailPage({
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
               {specs.map(([label, value]) => (
                 <div key={label} className="flex flex-col">
-                  <dt className="text-[0.75rem] text-ink-muted">{label}</dt>
-                  <dd className="text-[0.9375rem] font-medium">{value}</dd>
+                  <dt className="text-meta text-ink-muted">{label}</dt>
+                  <dd className="text-body font-medium">{value}</dd>
                 </div>
               ))}
             </dl>
           </Surface>
 
           <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center">
-            <p className="flex flex-1 items-center gap-2 text-[0.8125rem] text-ink-muted">
+            <p className="flex flex-1 items-center gap-2 text-caption text-ink-muted">
               <CalendarDays aria-hidden className="size-4" />
               Added{" "}
               {new Date(item.created_at).toLocaleDateString("en-GB", {
@@ -240,7 +240,7 @@ export default async function ItemDetailPage({
           </div>
 
           {item.status === "Transferred" ? (
-            <p className="flex items-start gap-2 rounded-control bg-tone-success-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-success-fg">
+            <p className="flex items-start gap-2 rounded-control bg-tone-success-bg p-3 text-caption leading-[1.6] text-tone-success-fg">
               <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
               This item has been handed over and is kept for your records only.
             </p>
@@ -277,7 +277,7 @@ export default async function ItemDetailPage({
                         className="pointer-events-none absolute inset-0 rounded-slot ring-1 ring-[var(--slot-edge)] ring-inset"
                       />
                     </Surface>
-                    <span className="mt-1.5 line-clamp-2 block text-[0.75rem] leading-[1.4] text-ink-secondary group-hover:text-ink">
+                    <span className="mt-1.5 line-clamp-2 block text-meta leading-[1.4] text-ink-secondary group-hover:text-ink">
                       {other.name}
                     </span>
                   </Link>

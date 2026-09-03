@@ -64,7 +64,7 @@ export function RoomList({
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search conversations"
             placeholder="Search"
-            className="h-10 w-full rounded-pill bg-surface-sunken pr-4 pl-10 text-[0.875rem] shadow-sunken"
+            className="h-10 w-full rounded-pill bg-surface-sunken pr-4 pl-10 text-body-sm shadow-sunken"
           />
         </div>
 
@@ -124,7 +124,7 @@ function RoomRow({
     >
       <span
         aria-hidden
-        className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-pill bg-brand-subtle text-[0.8125rem] font-semibold text-ink-brand"
+        className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-pill bg-brand-subtle text-caption font-semibold text-ink-brand"
         style={
           room.counterparty.avatar_url
             ? {
@@ -141,13 +141,13 @@ function RoomRow({
 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">
+          <span className="min-w-0 flex-1 truncate text-body font-semibold">
             {room.counterparty.name}
           </span>
           {room.lastMessageAt ? (
             <time
               dateTime={room.lastMessageAt}
-              className="shrink-0 text-[0.75rem] text-ink-muted"
+              className="shrink-0 text-meta text-ink-muted"
             >
               {new Date(room.lastMessageAt).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -169,20 +169,20 @@ function RoomRow({
             />
             <span
               className={cn(
-                "text-[0.75rem] font-semibold",
+                "text-meta font-semibold",
                 TONE_TEXT[ROOM_KIND_TONE[room.kind]],
               )}
             >
               {room.kind}
             </span>
           </span>
-          <span className="min-w-0 truncate text-[0.75rem] text-ink-muted">
+          <span className="min-w-0 truncate text-meta text-ink-muted">
             {room.subject}
           </span>
         </span>
 
         {room.lastMessage ? (
-          <span className="truncate text-[0.8125rem] text-ink-muted">
+          <span className="truncate text-caption text-ink-muted">
             {room.lastMessage}
           </span>
         ) : null}
@@ -190,7 +190,7 @@ function RoomRow({
         {room.needsYou ? (
           <span
             className={cn(
-              "mt-0.5 w-fit rounded-pill px-2 py-0.5 text-[0.75rem] font-medium",
+              "mt-0.5 w-fit rounded-pill px-2 py-0.5 text-meta font-medium",
               TONE_SOLID.warning,
             )}
           >

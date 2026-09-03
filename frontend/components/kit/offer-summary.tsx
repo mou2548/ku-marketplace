@@ -106,7 +106,7 @@ function Stack({
                   sizes="96px"
                 />
               </span>
-              <span className="mt-1 block truncate text-[0.6875rem] text-ink-muted">
+              <span className="mt-1 block truncate text-meta text-ink-muted">
                 {item.name}
               </span>
             </li>
@@ -117,7 +117,7 @@ function Stack({
           <li className="shrink-0">
             <span
               data-numeric
-              className="flex items-center gap-1 rounded-pill bg-tone-trade-bg px-2.5 py-1 text-[0.8125rem] font-semibold whitespace-nowrap text-tone-trade-fg"
+              className="flex items-center gap-1 rounded-pill bg-tone-trade-bg px-2.5 py-1 text-caption font-semibold whitespace-nowrap text-tone-trade-fg"
             >
               <Coins aria-hidden className="size-3.5" />+฿
               {money.toLocaleString("en-GB")}

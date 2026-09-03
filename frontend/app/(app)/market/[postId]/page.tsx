@@ -78,7 +78,7 @@ export default async function PostDetailPage({
     <div className="flex flex-col gap-10">
       <Link
         href="/"
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to market
@@ -130,7 +130,7 @@ export default async function PostDetailPage({
                   "--slot-glow": rarity.glow,
                 } as React.CSSProperties
               }
-              className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-[0.75rem] font-medium text-[var(--slot-edge)]"
+              className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
             >
               {rarity.label}
             </span>
@@ -159,14 +159,14 @@ export default async function PostDetailPage({
             faculty={post.seller.faculty}
             year={post.seller.year}
           />
-          <span className="ml-auto flex items-center gap-1.5 text-[0.75rem] font-medium text-ink-brand">
+          <span className="ml-auto flex items-center gap-1.5 text-meta font-medium text-ink-brand">
             <ShieldCheck aria-hidden className="size-4" />
             KU student
           </span>
         </Surface>
 
         {post.description ? (
-          <p className="max-w-prose text-[0.9375rem] leading-[1.75] whitespace-pre-line text-ink-secondary">
+          <p className="max-w-prose text-body whitespace-pre-line text-ink-secondary">
             {post.description}
           </p>
         ) : null}
@@ -179,10 +179,10 @@ export default async function PostDetailPage({
           >
             <Package aria-hidden className="mt-0.5 size-5 shrink-0 text-tone-trade-fg" />
             <div>
-              <p className="text-[0.8125rem] font-semibold text-tone-trade-fg">
+              <p className="text-caption font-semibold text-tone-trade-fg">
                 The owner is looking for
               </p>
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 {post.wanted_item_offer}
               </p>
             </div>
@@ -196,8 +196,8 @@ export default async function PostDetailPage({
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
             {specs.map(([label, value]) => (
               <div key={label} className="flex flex-col">
-                <dt className="text-[0.75rem] text-ink-muted">{label}</dt>
-                <dd className="text-[0.9375rem] font-medium">{value}</dd>
+                <dt className="text-meta text-ink-muted">{label}</dt>
+                <dd className="text-body font-medium">{value}</dd>
               </div>
             ))}
           </dl>

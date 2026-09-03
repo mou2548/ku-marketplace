@@ -60,8 +60,8 @@ export function StatusBadge({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-pill font-medium whitespace-nowrap",
         size === "sm"
-          ? "h-6 px-2 text-[0.75rem]"
-          : "h-7 px-2.5 text-[0.8125rem]",
+          ? "h-6 px-2 text-meta"
+          : "h-7 px-2.5 text-caption",
         iconOnly && (size === "sm" ? "w-6 justify-center px-0" : "w-7 justify-center px-0"),
         paint === "wash" && cn("border", TONE_CHIP[tone]),
         paint === "solid" && TONE_SOLID[tone],

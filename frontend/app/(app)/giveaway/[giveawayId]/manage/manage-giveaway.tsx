@@ -98,7 +98,7 @@ export function ManageGiveaway({
     <div className="flex w-full flex-col gap-5">
       <Link
         href={`/giveaway/${giveaway.giveaway_id}`}
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to giveaway
@@ -115,7 +115,7 @@ export function ManageGiveaway({
       </header>
 
       <Surface shape="card" elevation="flat" className="bg-tone-trade-bg border-l-4 border-l-tone-trade-solid p-4">
-        <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+        <p className="text-body text-ink-secondary">
           You chose to pick recipients yourself. Select them below once
           registration closes, and a chat room opens for each one.
         </p>
@@ -126,7 +126,7 @@ export function ManageGiveaway({
           <h2 className="text-[1.125rem] leading-[1.4] font-semibold">
             Entrants
           </h2>
-          <span data-numeric className="text-[0.8125rem] text-ink-muted">
+          <span data-numeric className="text-caption text-ink-muted">
             {entrants.length} registered
           </span>
         </div>
@@ -167,7 +167,7 @@ export function ManageGiveaway({
                       ascending), so a rank stands in for a clock time. */}
                   <span
                     data-numeric
-                    className="shrink-0 text-[0.75rem] text-ink-muted"
+                    className="shrink-0 text-meta text-ink-muted"
                   >
                     #{index + 1}
                   </span>

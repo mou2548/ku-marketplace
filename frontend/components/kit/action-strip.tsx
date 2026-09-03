@@ -41,12 +41,12 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
       >
         <span
           data-numeric
-          className="grid size-6 shrink-0 place-items-center rounded-pill bg-white text-[0.75rem] font-bold text-brand-strong"
+          className="grid size-6 shrink-0 place-items-center rounded-pill bg-white text-meta font-bold text-brand-strong"
         >
           {entries.length}
         </span>
 
-        <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">
+        <span className="min-w-0 flex-1 truncate text-body font-medium">
           {entries.length === 1
             ? entries[0].prompt.label
             : `${entries.length} things need you`}
@@ -78,10 +78,10 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
                 className="grid grid-cols-[1fr_auto] items-center gap-3 bg-brand-band px-4 py-3 transition-colors hover:bg-brand-strong sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[0.9375rem] font-medium">
+                  <span className="block truncate text-body font-medium">
                     {entry.title}
                   </span>
-                  <span className="block truncate text-[0.8125rem] text-white/70">
+                  <span className="block truncate text-caption text-white/70">
                     with {entry.counterparty}
                     {entry.amount ? ` · ฿${entry.amount.toLocaleString("en-GB")}` : ""}
                   </span>
@@ -98,7 +98,7 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
 
                 <span
                   className={cn(
-                    "justify-self-end rounded-pill px-2.5 py-1 text-[0.8125rem] font-medium whitespace-nowrap",
+                    "justify-self-end rounded-pill px-2.5 py-1 text-caption font-medium whitespace-nowrap",
                     TONE_SOLID[entry.prompt.tone],
                   )}
                 >

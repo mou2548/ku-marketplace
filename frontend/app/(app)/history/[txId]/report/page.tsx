@@ -78,7 +78,7 @@ export default async function ReportPage({
         className="w-fit"
       />
 
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Deal</dt>
           <dd data-numeric>#{tx.transaction_id}</dd>
@@ -98,7 +98,7 @@ export default async function ReportPage({
       </dl>
 
       <div className="border-t border-line pt-3">
-        <p className="mb-2 text-[0.75rem] text-ink-muted">
+        <p className="mb-2 text-meta text-ink-muted">
           You are reporting
         </p>
         <TrustBadge

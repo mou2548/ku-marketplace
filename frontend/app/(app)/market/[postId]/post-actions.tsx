@@ -135,7 +135,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
               </Radio>
             </RadioGroupField>
 
-            <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-warning-fg">
+            <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
               Money moves directly between you, outside the platform. The app keeps the slip and the timestamps as evidence for both sides. Do not transfer before confirming here.
             </p>
           </Overlay>

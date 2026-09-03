@@ -105,7 +105,7 @@ export function OfferReview({
     <div className="flex flex-col gap-5">
       <Link
         href="/offers"
-        className="flex w-fit items-center gap-1.5 text-[0.875rem] font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to offers
@@ -122,7 +122,7 @@ export function OfferReview({
           {/* The post is the thing being argued over and had no route out of
               this screen. The inbox card is one big link, so the second
               destination belongs here. */}
-          <p className="text-[0.875rem] text-ink-muted">
+          <p className="text-body-sm text-ink-muted">
             {isOwner ? "for your " : "for their "}
             <Link
               href={`/market/${offer.post_id}`}
@@ -145,7 +145,7 @@ export function OfferReview({
       {/* The deal in one sentence, above the bench rather than below it. This
           is the plain-language answer to "who gives what"; it has no business
           sitting under two item grids where it needs scrolling to reach. */}
-      <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+      <p className="text-body text-ink-secondary">
         {describeOffer(sides)}
       </p>
 
@@ -168,11 +168,11 @@ export function OfferReview({
           shape="card"
           className="flex flex-col gap-3 border-l-4 border-l-tone-success-solid bg-tone-success-bg p-4"
         >
-          <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-success-fg">
+          <p className="flex items-center gap-2 text-body font-semibold text-tone-success-fg">
             <CheckCircle2 aria-hidden className="size-5 shrink-0" />
             Offer accepted
           </p>
-          <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+          <p className="text-body-sm text-ink-secondary">
             You are trading with {sides.counterparty.name} for{" "}
             {offer.post.item.name}, handed over in person. Every other offer on
             this post is declined and a chat room is open.
@@ -229,13 +229,13 @@ export function OfferReview({
                 }
               >
                 {offer.additional_money > 0 ? (
-                  <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-warning-fg">
+                  <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
                     This offer adds cash: ฿
                     {offer.additional_money.toLocaleString("en-GB")} —
                     a slip upload and slip check are added before the QR
                   </p>
                 ) : (
-                  <p className="mt-4 rounded-control bg-tone-trade-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-trade-fg">
+                  <p className="mt-4 rounded-control bg-tone-trade-bg p-3 text-caption leading-[1.6] text-tone-trade-fg">
                     Pure trade with no money. No slip needed. It ends with a
                     QR scan.
                   </p>

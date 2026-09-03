@@ -71,7 +71,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               TONE_CHIP[t.tone],
             )}
           >
-            <p className="flex-1 text-[0.875rem] leading-[1.65] font-medium">
+            <p className="flex-1 text-body-sm font-medium">
               {t.message}
             </p>
             <Button

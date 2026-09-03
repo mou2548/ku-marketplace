@@ -57,7 +57,7 @@ export function AuthPanel() {
               <br />
               students
             </h1>
-            <p className="max-w-xl text-[1.0625rem] leading-[1.75] text-white/80">
+            <p className="max-w-xl text-body-lg text-white/80">
               The safest place to buy, sell, and trade inside the university.
               Every account is verified through the Nontri system, and everyone
               gets a personal item vault.
@@ -113,7 +113,7 @@ function ModeTab({
       onClick={onPress}
       aria-pressed={isActive}
       className={cn(
-        "flex h-12 flex-1 items-center justify-center rounded-pill text-[1.0625rem]",
+        "flex h-12 flex-1 items-center justify-center rounded-pill text-body-lg",
         "transition-colors duration-[--dur-fast]",
         isActive
           ? "bg-surface font-semibold text-ink shadow-raised"
@@ -138,7 +138,7 @@ function LoginForm() {
         isRequired
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
+        inputClassName="h-14 text-body-lg"
       />
 
       <TextInput
@@ -149,11 +149,11 @@ function LoginForm() {
         isRequired
         placeholder="········"
         icon={<Lock className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
+        inputClassName="h-14 text-body-lg"
       />
 
       {state?.error ? (
-        <p role="alert" className="text-center text-[0.875rem] text-tone-danger-fg">
+        <p role="alert" className="text-center text-body-sm text-tone-danger-fg">
           {state.error}
         </p>
       ) : null}
@@ -165,7 +165,7 @@ function LoginForm() {
 
       <Link
         href="/forgot"
-        className="text-center text-[0.875rem] text-ink-muted hover:text-ink"
+        className="text-center text-body-sm text-ink-muted hover:text-ink"
       >
         Forgot your password?
       </Link>
@@ -211,7 +211,7 @@ function RegisterForm() {
         isRequired
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
+        inputClassName="h-14 text-body-lg"
         errorMessage={
           email !== "" && !emailOk
             ? `Only @${ALLOWED_EMAIL_DOMAINS.join(" and @")} addresses can register`
@@ -230,7 +230,7 @@ function RegisterForm() {
           isRequired
           placeholder="········"
           icon={<Lock className="size-5" />}
-          inputClassName="h-14 text-[1.0625rem]"
+          inputClassName="h-14 text-body-lg"
         />
         <ul className="flex flex-col gap-1">
           <PasswordRule
@@ -243,7 +243,7 @@ function RegisterForm() {
       </div>
 
       {state?.error ? (
-        <p role="alert" className="text-center text-[0.875rem] text-tone-danger-fg">
+        <p role="alert" className="text-center text-body-sm text-tone-danger-fg">
           {state.error}
         </p>
       ) : null}
@@ -260,7 +260,7 @@ function RegisterForm() {
         <ArrowRight className="size-5" />
       </Button>
 
-      <p className="text-center text-[0.875rem] leading-[1.65] text-ink-muted">
+      <p className="text-center text-body-sm text-ink-muted">
         We will email you a 6-digit code, valid for {OTP_TTL_MINUTES} minutes.
       </p>
 
@@ -273,7 +273,7 @@ function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-2 text-[0.75rem]",
+        "flex items-center gap-2 text-meta",
         ok ? "text-ink-brand" : "text-ink-muted",
       )}
     >
@@ -289,7 +289,7 @@ function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
 
 function Terms() {
   return (
-    <p className="text-center text-[0.875rem] text-ink-muted">
+    <p className="text-center text-body-sm text-ink-muted">
       By continuing, you agree to the{" "}
       {/* TODO: link to a real terms page once the legal copy exists. */}
       <span className="font-medium text-ink-brand">KU Marketplace Terms</span>.
