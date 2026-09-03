@@ -76,8 +76,8 @@ export function SelectField<T extends object>({
         className={cn(
           "w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
           "max-h-64",
-          "data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95",
-          "data-[exiting]:animate-out data-[exiting]:fade-out",
+          "data-[entering]:anim-pop-in",
+          "data-[exiting]:anim-fade-out",
         )}
       >
         <ListBox items={items} className="outline-none">

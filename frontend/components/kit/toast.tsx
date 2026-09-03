@@ -67,7 +67,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={cn(
               "pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-card border px-4 py-3",
               "shadow-floating",
-              "animate-in slide-in-from-bottom-2 fade-in",
+              "anim-rise-in [--ku-rise:0.5rem]",
               TONE_CHIP[t.tone],
             )}
           >

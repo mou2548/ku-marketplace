@@ -60,8 +60,8 @@ export function Overlay({
       className={cn(
         "fixed inset-0 z-[100] bg-[--bg-overlay] backdrop-blur-[2px]",
         "flex items-end justify-center sm:items-center",
-        "data-[entering]:animate-in data-[entering]:fade-in",
-        "data-[exiting]:animate-out data-[exiting]:fade-out",
+        "data-[entering]:anim-fade-in",
+        "data-[exiting]:anim-fade-out",
       )}
     >
       <Modal
@@ -71,7 +71,7 @@ export function Overlay({
           asDialog && "sm:max-h-[85dvh] sm:rounded-panel",
           !asSheet && "rounded-panel",
           SIZE[size],
-          "data-[entering]:animate-in data-[entering]:slide-in-from-bottom-4 sm:data-[entering]:zoom-in-95 sm:data-[entering]:slide-in-from-bottom-0",
+          "data-[entering]:anim-rise-in sm:data-[entering]:anim-pop-in",
           className,
         )}
       >

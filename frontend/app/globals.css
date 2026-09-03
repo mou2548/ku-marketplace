@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 /* Light theme only for now. Every token below is semantic, so a `.dark` block
    can be added later without touching a single component. */
@@ -637,6 +636,62 @@
 /* =========================================================================
    11. REDUCED MOTION
    ========================================================================= */
+
+/* =========================================================================
+   ENTER / EXIT ANIMATIONS
+
+   These replace `tw-animate-css`, which CLAUDE.md §2 lists as removed and
+   never to return. It was still imported and its utilities were live at five
+   components. The set below is only what those five actually used, named for
+   what it does rather than for the distance it travels, and it costs one
+   dependency less in every route bundle.
+
+   Durations come from the motion scale above, so a change there moves these
+   too. The reduced-motion block at the end of this file already collapses
+   every `animation-duration`, so nothing here needs its own guard.
+   ========================================================================= */
+
+@keyframes ku-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ku-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes ku-pop-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ku-rise-in {
+  from { opacity: 0; transform: translateY(var(--ku-rise, 1rem)); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ku-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+@keyframes ku-slide-out-left {
+  from { transform: none; }
+  to { transform: translateX(-100%); }
+}
+@keyframes ku-slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@keyframes ku-slide-out-right {
+  from { transform: none; }
+  to { transform: translateX(100%); }
+}
+
+@utility anim-fade-in { animation: ku-fade-in var(--dur-base) ease-out; }
+@utility anim-fade-out { animation: ku-fade-out var(--dur-fast) ease-in; }
+@utility anim-pop-in { animation: ku-pop-in var(--dur-base) ease-out; }
+@utility anim-rise-in { animation: ku-rise-in var(--dur-base) ease-out; }
+@utility anim-slide-in-left { animation: ku-slide-in-left var(--dur-base) ease-out; }
+@utility anim-slide-out-left { animation: ku-slide-out-left var(--dur-fast) ease-in; }
+@utility anim-slide-in-right { animation: ku-slide-in-right var(--dur-base) ease-out; }
+@utility anim-slide-out-right { animation: ku-slide-out-right var(--dur-fast) ease-in; }
 
 @media (prefers-reduced-motion: reduce) {
   *,
