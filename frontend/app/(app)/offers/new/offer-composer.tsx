@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowLeftRight, CheckCircle2, Package } from "lucide-react";
 
@@ -10,7 +10,9 @@ import { TextInput } from "@/components/kit/field";
 import { Overlay } from "@/components/kit/overlay";
 import { Surface } from "@/components/kit/surface";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
+import { useToast } from "@/components/kit/toast";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
+import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import type { Item, Post } from "@/lib/api/types";
 
 /**
@@ -32,6 +34,7 @@ export function OfferComposer({
   post: Post;
   inventory: Item[];
 }) {
+  const toast = useToast();
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -50,9 +53,6 @@ export function OfferComposer({
   const [splitTarget, setSplitTarget] = useState<InventoryItem | null>(null);
   const [splitQty, setSplitQty] = useState("1");
   const [splitBusy, setSplitBusy] = useState(false);
-  // Synthetic ids for split-off items, guaranteed not to collide with a real
-  // (positive) item_id from the API.
-  const nextSplitId = useRef(-1);
 
   const stash: InventoryItem[] = useMemo(
     () =>
@@ -112,37 +112,74 @@ export function OfferComposer({
 
     if (n === splitTarget.quantity) {
       // The whole stack — nothing to split, offer the item as-is.
-      await new Promise((r) => setTimeout(r, 200));
       addToOffer(splitTarget);
-    } else {
-      // PATCH /items/{splitTarget.item_id} → { quantity: splitTarget.quantity - n }
-      // POST /items → { ...copy of splitTarget, quantity: n }
-      await new Promise((r) => setTimeout(r, 400));
-      const original = items.find((i) => i.item_id === splitTarget.item_id);
-      if (original) {
-        const splitItem: Item = {
-          ...original,
-          item_id: nextSplitId.current--,
-          quantity: n,
-        };
-        setItems((list) => [
-          ...list.map((i) =>
-            i.item_id === original.item_id
-              ? { ...i, quantity: i.quantity - n }
-              : i,
-          ),
-          splitItem,
-        ]);
-        addToOffer({
-          item_id: splitItem.item_id,
-          name: splitItem.name,
-          quantity: n,
-          condition: splitItem.condition,
-          category: splitItem.category,
-          image_url: splitItem.images[0]?.image_url ?? null,
-        });
-      }
+      setSplitBusy(false);
+      setSplitTarget(null);
+      return;
     }
+
+    const original = items.find((i) => i.item_id === splitTarget.item_id);
+    if (!original) {
+      setSplitBusy(false);
+      setSplitTarget(null);
+      return;
+    }
+
+    // The split is two real writes, and the order matters: shrink the original
+    // first, so a failure on the second call leaves the stash short rather
+    // than double-counted. An offer carries whole items only (`item_ids` and
+    // nothing else), so the carved-out row has to exist server-side before it
+    // can be offered — a locally invented id would be rejected.
+    try {
+      await saveItemEdits(original.item_id, { quantity: original.quantity - n });
+    } catch (err) {
+      setSplitBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not split this item");
+      return;
+    }
+
+    let splitItem: Item;
+    try {
+      splitItem = await saveNewItem({
+        name: original.name,
+        category: original.category,
+        condition: original.condition,
+        quantity: n,
+        description: original.description ?? undefined,
+        course_name: original.course_name ?? undefined,
+        brand_model: original.brand_model ?? undefined,
+        warranty_expiry: original.warranty_expiry ?? undefined,
+        size: original.size ?? undefined,
+        images: original.images.map((img, i) => ({
+          image_url: img.image_url,
+          is_primary: i === 0,
+          display_order: i,
+        })),
+      });
+    } catch (err) {
+      // Put the units back rather than leaving them lost between two rows.
+      await saveItemEdits(original.item_id, { quantity: original.quantity }).catch(
+        () => undefined,
+      );
+      setSplitBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not split this item");
+      return;
+    }
+
+    setItems((list) => [
+      ...list.map((i) =>
+        i.item_id === original.item_id ? { ...i, quantity: i.quantity - n } : i,
+      ),
+      splitItem,
+    ]);
+    addToOffer({
+      item_id: splitItem.item_id,
+      name: splitItem.name,
+      quantity: splitItem.quantity,
+      condition: splitItem.condition,
+      category: splitItem.category,
+      image_url: splitItem.images[0]?.image_url ?? null,
+    });
 
     setSplitBusy(false);
     setSplitTarget(null);
