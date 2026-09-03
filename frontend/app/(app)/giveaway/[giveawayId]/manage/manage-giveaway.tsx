@@ -52,7 +52,7 @@ export function ManageGiveaway({
     ? {
         kind: "giveaway-pickup" as const,
         expiresAt: Date.parse(giveaway.registered_deadline),
-        label: "Registration closes",
+        labelKey: "deadline.registration-closes.label",
         onExpiry: "forfeit" as const,
       }
     : undefined;

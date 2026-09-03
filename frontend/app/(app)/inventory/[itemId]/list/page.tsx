@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { PostImage } from "@/components/kit/post-image";
@@ -21,6 +22,7 @@ export default async function ListItemPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
+  const t = await getTranslations("status");
   const { itemId } = await params;
   const items = await getMyItems();
   const item = items.find((i) => i.item_id === Number(itemId));
@@ -62,7 +64,7 @@ export default async function ListItemPage({
           <dt className="text-ink-muted">Condition</dt>
           {/* tokens.md §5 bans rarity as free-floating coloured text: it is
               a rim on a slot or a chip, never a tinted word in a spec list. */}
-          <dd>{rarity.label}</dd>
+          <dd>{t(rarity.labelKey)}</dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Quantity</dt>

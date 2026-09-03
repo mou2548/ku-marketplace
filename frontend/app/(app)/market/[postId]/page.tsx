@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,6 +31,7 @@ export default async function PostDetailPage({
 }: {
   params: Promise<{ postId: string }>;
 }) {
+  const t = await getTranslations("status");
   const { postId } = await params;
   const post = await getPost(Number(postId)).catch(() => undefined);
   if (!post) notFound();
@@ -41,7 +43,7 @@ export default async function PostDetailPage({
 
   const specs: Array<[string, string]> = [
     ["Category", post.item.category],
-    ["Condition", rarity.label],
+    ["Condition", t(rarity.labelKey)],
     ["Remaining", `${post.quantity_remaining} left`],
   ];
   if (post.item.course_name) specs.push(["Course code", post.item.course_name]);
@@ -133,7 +135,7 @@ export default async function PostDetailPage({
               }
               className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
             >
-              {rarity.label}
+              {t(rarity.labelKey)}
             </span>
           </div>
 

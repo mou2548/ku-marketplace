@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Scale } from "lucide-react";
 
@@ -22,6 +23,7 @@ const APPEAL_FLOW: AppealStatus[] = ["Pending", "Under_Review", "Approved", "Rej
  * state are a first-class screen rather than an email thread.
  */
 export default async function MyAppealsPage() {
+  const t = await getTranslations("status");
   if (!(await getAccessToken())) redirect("/login");
   const appeals = await getMyAppeals();
 
@@ -48,12 +50,15 @@ export default async function MyAppealsPage() {
       <ol className="flex flex-col gap-3">
         {APPEAL_FLOW.map((key) => {
           const state = APPEAL_STATUS[key];
+          const stateText = {
+            hint: state.hintKey ? t(state.hintKey) : undefined,
+          };
           return (
             <li key={key} className="flex flex-col gap-1">
               <StatusBadge status={state} size="sm" className="w-fit" />
-              {state.hint ? (
+              {stateText.hint ? (
                 <p className="text-meta leading-[1.5] text-ink-muted">
-                  {state.hint}
+                  {stateText.hint}
                 </p>
               ) : null}
             </li>
@@ -99,7 +104,7 @@ export default async function MyAppealsPage() {
               <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
                 A different admin from the one who made the original decision
                 reviews this. Original verdict:{" "}
-                {REPORT_STATUS.Violation_Confirmed.label}.
+                {t(REPORT_STATUS.Violation_Confirmed.labelKey)}.
               </p>
             </Surface>
           </li>

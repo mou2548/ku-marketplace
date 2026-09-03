@@ -5,6 +5,7 @@ import {
   type Party,
   type TransactionLike,
 } from "@/lib/status";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { cn } from "@/lib/utils";
 
 import { TONE_CHIP } from "./tone";
@@ -32,6 +33,7 @@ export function ActorLine({
   action,
   className,
 }: ActorLineProps) {
+  const st = useStatusText();
   const prompt = resolveTransactionActor(transaction, viewer);
   const isYourTurn = prompt.actor === viewer;
 
@@ -52,7 +54,7 @@ export function ActorLine({
         {isYourTurn ? (
           <ArrowRight aria-hidden className="size-5 shrink-0" />
         ) : null}
-        {prompt.label}
+        {st.key(prompt.labelKey)}
       </p>
       {isYourTurn && action ? (
         <div className="shrink-0">{action}</div>

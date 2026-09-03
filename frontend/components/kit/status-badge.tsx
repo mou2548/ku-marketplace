@@ -1,3 +1,4 @@
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { StatusPresentation } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +68,8 @@ export function StatusBadge({
   iconOnly = false,
   className,
 }: StatusBadgeProps) {
-  const { tone, label, icon, hint } = status;
+  const { tone, icon } = status;
+  const { label, hint } = useStatusText().of(status);
   const paint = resolveVariant(variant, tone);
 
   return (

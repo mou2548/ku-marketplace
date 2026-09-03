@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -34,6 +35,7 @@ export default async function ItemDetailPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
+  const t = await getTranslations("status");
   if (!(await getAccessToken())) {
     redirect("/login");
   }
@@ -62,7 +64,7 @@ export default async function ItemDetailPage({
 
   const specs: Array<[string, string]> = [
     ["Category", item.category],
-    ["Condition", rarity.label],
+    ["Condition", t(rarity.labelKey)],
     ["Quantity", String(item.quantity)],
   ];
   if (item.course_name) specs.push(["Course code", item.course_name]);
@@ -134,7 +136,7 @@ export default async function ItemDetailPage({
                 }
                 className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
               >
-                {rarity.label}
+                {t(rarity.labelKey)}
               </span>
             </div>
 

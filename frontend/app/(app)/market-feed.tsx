@@ -10,6 +10,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostCard } from "@/components/kit/post-card";
 import { Surface } from "@/components/kit/surface";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { ItemCategory, Post } from "@/lib/api/types";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ const CONDITIONS: ItemCondition[] = [
 ];
 
 export function MarketFeed({ posts }: { posts: Post[] }) {
+  const st = useStatusText();
   const [segment, setSegment] = useState<Segment>("all");
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<Set<ItemCategory>>(new Set());
@@ -143,7 +145,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
               isActive={conditions.has(c)}
               onToggle={() => toggle(conditions, c, setConditions)}
             >
-              {ITEM_CONDITION[c].label}
+              {st.of(ITEM_CONDITION[c]).label}
             </FilterChip>
           ))}
         </div>

@@ -5,6 +5,7 @@ import { AlarmClock, TimerOff } from "lucide-react";
 
 import type { Deadline, Tone } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { cn } from "@/lib/utils";
 
 import { TONE_CHIP, TONE_SOLID } from "./tone";
@@ -57,6 +58,7 @@ export function CountdownPill({
   className,
   onExpire,
 }: CountdownPillProps) {
+  const st = useStatusText();
   const now = useNow(1000);
   const known = now !== UNKNOWN_TIME;
 
@@ -92,7 +94,7 @@ export function CountdownPill({
         // Was text-white/70, which measured 3.25:1 to 4.24:1 depending on the
         // tone underneath — every one of them under 4.5:1 at 13px. The label
         // steps back by weight now, not by opacity.
-        <span className="font-normal">{deadline.label}</span>
+        <span className="font-normal">{st.key(deadline.labelKey)}</span>
       ) : null}
       <time
         dateTime={new Date(deadline.expiresAt).toISOString()}

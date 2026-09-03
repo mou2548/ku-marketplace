@@ -57,6 +57,7 @@ import {
   sendChatMessage,
   uploadChatImage,
 } from "@/lib/actions/chat";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
 import { ApiError } from "@/lib/api/client";
 import type {
@@ -238,6 +239,7 @@ export function RoomScreen({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const st = useStatusText();
   const [tracking, setTracking] = useState("");
   const [place, setPlace] = useState("");
   const [when, setWhen] = useState<DateValue | null>(null);
@@ -751,7 +753,7 @@ export function RoomScreen({
             )}
           >
             {prompt
-              ? prompt.label
+              ? st.key(prompt.labelKey)
               : giveaway
                 ? `Collect at ${giveaway.pickup_location}`
                 : null}
@@ -938,6 +940,7 @@ function DealDetails({
   busy: boolean;
   onCancel: (reason: string) => void;
 }) {
+  const st = useStatusText();
   // The reason was collected by an input bound to nothing and thrown away. A
   // rejected cancellation flips dispute_status to under_review immediately, so
   // this text is the only context the admin who picks it up will have.
@@ -967,7 +970,7 @@ function DealDetails({
               TONE_CHIP[prompt.tone],
             )}
           >
-            {prompt.label}
+            {st.key(prompt.labelKey)}
           </p>
         ) : null}
 
@@ -975,7 +978,7 @@ function DealDetails({
           <DeliveryCard transaction={transaction} viewer={viewer} />
         ) : deadline ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-meta text-ink-muted">{deadline.label}</p>
+            <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
             <CountdownPill deadline={deadline} />
           </div>
         ) : null}

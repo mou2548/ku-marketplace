@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
 import { ITEM_CONDITION, POST_TYPE, type ItemCondition, type PostType } from "@/lib/status";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
@@ -51,6 +52,7 @@ export function PostCard({
   seller,
   className,
 }: PostCardProps) {
+  const st = useStatusText();
   const rarity = ITEM_CONDITION[condition];
   const showsPrice = postType !== "TradeOnly";
 
@@ -96,7 +98,7 @@ export function PostCard({
               )}
             >
               <StatusIcon name={POST_TYPE[postType].icon} className="size-3.5" />
-              {POST_TYPE[postType].label}
+              {st.of(POST_TYPE[postType]).label}
             </span>
           ) : null}
         </div>
@@ -148,7 +150,7 @@ export function PostCard({
             {/* Stated in words. The edge carries the colour, but condition can
                 never be colour alone (CLAUDE.md §6). */}
             <span className="shrink-0 text-meta font-medium text-ink-muted">
-              {rarity.label}
+              {st.of(rarity).label}
             </span>
           </div>
 

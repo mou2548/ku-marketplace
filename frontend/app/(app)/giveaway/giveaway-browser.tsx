@@ -16,6 +16,7 @@ import {
   Tabs,
 } from "@/components/kit/tabs";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
 
@@ -106,6 +107,7 @@ export function GiveawayBrowser({
 }
 
 function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
+  const st = useStatusText();
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
   const image = giveaway.images[0]?.image_url;
 
@@ -138,7 +140,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
               "random" and "first come" mean very different things to someone
               deciding whether to bother. */}
           <p className="text-caption leading-[1.6] text-ink-muted">
-            {method.hint}
+            {st.of(method).hint}
           </p>
 
           <p className="flex items-center gap-1.5 text-caption text-ink-muted">
@@ -152,7 +154,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
                 deadline={{
                   kind: "giveaway-pickup",
                   expiresAt: Date.parse(giveaway.registered_deadline),
-                  label: "Registration closes",
+                  labelKey: "deadline.registration-closes.label",
                   onExpiry: "forfeit",
                 }}
                 expiredLabel="Registration closed"

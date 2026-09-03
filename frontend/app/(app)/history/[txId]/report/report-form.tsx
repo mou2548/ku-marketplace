@@ -11,6 +11,7 @@ import { CountdownPill } from "@/components/kit/countdown-pill";
 import { TextAreaField } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { uploadChatImage } from "@/lib/actions/chat";
 import { createReport } from "@/lib/actions/reports";
 import type { ApiError } from "@/lib/api/client";
@@ -117,6 +118,7 @@ export function ReportForm({
   allowed: boolean;
   deadline?: Deadline;
 }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -146,7 +148,7 @@ export function ReportForm({
           </p>
           {deadline ? (
             <div className="flex flex-col gap-1.5">
-              <p className="text-meta text-ink-muted">{deadline.label}</p>
+              <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
               <CountdownPill deadline={deadline} />
             </div>
           ) : null}

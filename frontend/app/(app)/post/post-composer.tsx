@@ -25,6 +25,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { createGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { Item } from "@/lib/api/types";
@@ -80,6 +81,7 @@ export function PostComposer({
   listedItemIds: number[];
   initialKind?: ListingKind;
 }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const tz = getLocalTimeZone();
@@ -365,13 +367,13 @@ export function PostComposer({
             <Radio value="SellOnly" description="Cash only, no trades">
               <span className="flex items-center gap-2">
                 <Store aria-hidden className="size-4" />
-                {POST_TYPE.SellOnly.label}
+                {st.of(POST_TYPE.SellOnly).label}
               </span>
             </Radio>
             <Radio value="TradeOnly" description="Trades only, not for sale">
               <span className="flex items-center gap-2">
                 <ArrowLeftRight aria-hidden className="size-4" />
-                {POST_TYPE.TradeOnly.label}
+                {st.of(POST_TYPE.TradeOnly).label}
               </span>
             </Radio>
             <Radio
@@ -380,7 +382,7 @@ export function PostComposer({
             >
               <span className="flex items-center gap-2">
                 <Sparkles aria-hidden className="size-4" />
-                {POST_TYPE.Both.label}
+                {st.of(POST_TYPE.Both).label}
               </span>
             </Radio>
             <Radio
@@ -415,20 +417,20 @@ export function PostComposer({
                 variant="card"
                 hint="This is shown on the post before anyone registers"
               >
-                <Radio value="Random" description={ALLOCATION_METHOD.Random.hint}>
-                  {ALLOCATION_METHOD.Random.label}
+                <Radio value="Random" description={st.of(ALLOCATION_METHOD.Random).hint}>
+                  {st.of(ALLOCATION_METHOD.Random).label}
                 </Radio>
                 <Radio
                   value="FirstCome"
-                  description={ALLOCATION_METHOD.FirstCome.hint}
+                  description={st.of(ALLOCATION_METHOD.FirstCome).hint}
                 >
-                  {ALLOCATION_METHOD.FirstCome.label}
+                  {st.of(ALLOCATION_METHOD.FirstCome).label}
                 </Radio>
                 <Radio
                   value="Manual"
                   description="You come back and pick recipients yourself. The other two are handled for you."
                 >
-                  {ALLOCATION_METHOD.Manual.label}
+                  {st.of(ALLOCATION_METHOD.Manual).label}
                 </Radio>
               </RadioGroupField>
 
@@ -518,6 +520,7 @@ function ItemPick({
   isPicked: boolean;
   onToggle: () => void;
 }) {
+  const st = useStatusText();
   const rarity = ITEM_CONDITION[item.condition];
   const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
 
@@ -568,7 +571,7 @@ function ItemPick({
               style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
               className="text-[var(--slot-edge)]"
             >
-              {rarity.label}
+              {st.of(rarity).label}
             </span>
           </span>
         </span>

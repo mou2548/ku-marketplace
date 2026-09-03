@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getMyOffers } from "@/lib/api/offers";
 import { getMyAppeals } from "@/lib/api/appeals";
@@ -38,6 +39,11 @@ const nid = (bucket: keyof typeof OFFSET | string, id: number) =>
 const baht = (n: number) => `฿${n.toLocaleString("en-GB")}`;
 
 export async function getNotifications(): Promise<Notification[]> {
+  /* Server-side counterpart of useStatusText: this file assembles notification
+     titles out of the same status vocabulary the screens render, so it has to
+     translate them too, or a Thai reader gets Thai everywhere except their
+     notification list. */
+  const tr = await getTranslations("status");
   const viewerId = await getCurrentUserId();
   if (!viewerId) return [];
 
@@ -85,8 +91,10 @@ export async function getNotifications(): Promise<Notification[]> {
     out.push({
       notification_id: nid("deal", t.transaction_id),
       kind: "deal",
-      title: `${pres?.label ?? t.status}: ${t.post?.item?.name ?? "your deal"}`,
-      body: [other, pres?.hint].filter(Boolean).join(" — "),
+      title: `${pres ? tr(pres.labelKey) : t.status}: ${t.post?.item?.name ?? "your deal"}`,
+      body: [other, pres?.hintKey ? tr(pres.hintKey) : undefined]
+        .filter(Boolean)
+        .join(" — "),
       href: `/history/${t.transaction_id}`,
       created_at: t.created_at,
       read: t.status === "Completed" || t.status === "Cancelled",
@@ -98,7 +106,7 @@ export async function getNotifications(): Promise<Notification[]> {
     out.push({
       notification_id: nid("mod-report", r.report_id),
       kind: "moderation",
-      title: `Report #${r.report_id}: ${pres?.label ?? r.status}`,
+      title: `Report #${r.report_id}: ${pres ? tr(pres.labelKey) : r.status}`,
       body:
         r.resolution_note ??
         `Your report about ${r.report_type.toLowerCase()} #${r.target_id}.`,
@@ -114,7 +122,7 @@ export async function getNotifications(): Promise<Notification[]> {
     out.push({
       notification_id: nid("mod-appeal", a.appeal_id),
       kind: "moderation",
-      title: `Appeal on report #${a.report_id}: ${pres?.label ?? a.status}`,
+      title: `Appeal on report #${a.report_id}: ${pres ? tr(pres.labelKey) : a.status}`,
       body: a.resolution_note ?? "Your appeal is being handled.",
       href: "/account/appeals",
       created_at: a.handled_at ?? a.created_at,

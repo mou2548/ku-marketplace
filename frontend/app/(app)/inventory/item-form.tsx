@@ -22,6 +22,7 @@ import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { ItemPayload } from "@/lib/api/items";
@@ -75,6 +76,7 @@ export function ItemForm({
   mode: "create" | "edit";
   item?: Item;
 }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -188,7 +190,7 @@ export function ItemForm({
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Condition</dt>
-          <dd>{ITEM_CONDITION[condition].label}</dd>
+          <dd>{st.of(ITEM_CONDITION[condition]).label}</dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Quantity</dt>
@@ -362,7 +364,7 @@ export function ItemForm({
       >
         {CONDITION_ORDER.map((value) => (
           <Radio key={value} value={value} description={CONDITION_HINT[value]}>
-            {ITEM_CONDITION[value].label}
+            {st.of(ITEM_CONDITION[value]).label}
           </Radio>
         ))}
       </RadioGroupField>

@@ -10,6 +10,7 @@ import {
   type GridListProps,
 } from "react-aria-components";
 
+import { useStatusText } from "@/lib/i18n/status-text";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
@@ -82,12 +83,13 @@ export function InventorySlot({
   ...props
 }: InventorySlotProps) {
   const rarity = ITEM_CONDITION[item.condition];
+  const rarityLabel = useStatusText().of(rarity).label;
 
   return (
     <GridListItem
       {...props}
       isDisabled={isPlaced || props.isDisabled}
-      textValue={`${item.name}, condition ${rarity.label}, quantity ${item.quantity}`}
+      textValue={`${item.name}, condition ${rarityLabel}, quantity ${item.quantity}`}
       style={
         {
           "--slot-edge": rarity.edge,

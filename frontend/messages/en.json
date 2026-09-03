@@ -1,5 +1,300 @@
 {
   "common": {
     "skipToMain": "Skip to main content"
+  },
+  "status": {
+    "transaction": {
+      "Pending": {
+        "label": "Awaiting payment",
+        "hint": "The buyer has not uploaded a transfer slip yet"
+      },
+      "Processing": {
+        "label": "In progress",
+        "hint": "Payment confirmed, waiting on handover"
+      },
+      "Completed": {
+        "label": "Completed",
+        "hint": "The item changed hands successfully"
+      },
+      "Cancelled": {
+        "label": "Cancelled"
+      },
+      "Pending Refund": {
+        "label": "Awaiting refund",
+        "hint": "Waiting on the seller to transfer the money back"
+      },
+      "Refunded": {
+        "label": "Refunded"
+      }
+    },
+    "offer": {
+      "Pending": {
+        "label": "Awaiting response"
+      },
+      "Accepted": {
+        "label": "Accepted"
+      },
+      "Rejected": {
+        "label": "Declined"
+      },
+      "Cancelled": {
+        "label": "Offer withdrawn"
+      },
+      "Withdrawn": {
+        "label": "Offer withdrawn"
+      }
+    },
+    "condition": {
+      "New": {
+        "label": "New"
+      },
+      "Very Good": {
+        "label": "Very good"
+      },
+      "Good": {
+        "label": "Good"
+      },
+      "Acceptable": {
+        "label": "Acceptable"
+      },
+      "Poor": {
+        "label": "Worn"
+      }
+    },
+    "ticket": {
+      "Registered": {
+        "label": "Registered",
+        "hint": "Waiting for the draw"
+      },
+      "Waiting": {
+        "label": "Ready to collect",
+        "hint": "Show your QR to the giver within the pickup window"
+      },
+      "Received": {
+        "label": "Collected"
+      },
+      "Not_Selected": {
+        "label": "Not selected"
+      },
+      "Expired": {
+        "label": "Pickup window closed"
+      }
+    },
+    "entrant": {
+      "Registered": {
+        "label": "Registered",
+        "hint": "In the draw, not chosen yet"
+      },
+      "Selected": {
+        "label": "Chosen",
+        "hint": "A place is theirs"
+      },
+      "Not_Selected": {
+        "label": "Not selected"
+      }
+    },
+    "allocation": {
+      "FirstCome": {
+        "label": "First come, first served",
+        "hint": "Places are given in the order people register"
+      },
+      "Random": {
+        "label": "Random draw",
+        "hint": "Drawn at random when registration closes. Registering early makes no difference."
+      },
+      "Manual": {
+        "label": "Giver picks",
+        "hint": "The giver chooses recipients from the list of people who registered"
+      }
+    },
+    "appointment": {
+      "Pending": {
+        "label": "Awaiting confirmation",
+        "hint": "The other side has not answered this meetup yet"
+      },
+      "Confirmed": {
+        "label": "Meetup confirmed"
+      },
+      "Rejected": {
+        "label": "Meetup declined",
+        "hint": "Propose another time"
+      }
+    },
+    "giveaway": {
+      "Active": {
+        "label": "Open for entries"
+      },
+      "Closed": {
+        "label": "Entries closed",
+        "hint": "Recipients have been chosen; collection is still open"
+      },
+      "Completed": {
+        "label": "Finished"
+      }
+    },
+    "user": {
+      "Suspended": {
+        "label": "Suspended",
+        "hint": "Access returns automatically when the suspension expires"
+      },
+      "Banned": {
+        "label": "Banned",
+        "hint": "The email is locked and cannot register again"
+      },
+      "Active": {
+        "label": "Active"
+      },
+      "Deleted": {
+        "label": "Closed"
+      }
+    },
+    "sanction": {
+      "Warning": {
+        "label": "Warning",
+        "hint": "Recorded on the account; access is unaffected"
+      },
+      "Suspend": {
+        "label": "Suspension",
+        "hint": "Access is blocked until the expiry date, then restored"
+      },
+      "Ban": {
+        "label": "Permanent ban",
+        "hint": "History is kept and the email is locked against re-registration"
+      }
+    },
+    "subscription": {
+      "Expired": {
+        "label": "Expired",
+        "hint": "Renew to get the tier benefits back"
+      },
+      "Active": {
+        "label": "Active"
+      },
+      "Cancelled": {
+        "label": "Cancelled"
+      }
+    },
+    "subscriptionPayment": {
+      "Pending": {
+        "label": "Slip under review",
+        "hint": "An admin is checking your transfer"
+      },
+      "Reject": {
+        "label": "Slip rejected",
+        "hint": "The amount did not match; send a new slip"
+      },
+      "Verified": {
+        "label": "Payment verified"
+      }
+    },
+    "report": {
+      "Under_Investigation": {
+        "label": "Under investigation"
+      },
+      "Violation_Confirmed": {
+        "label": "Violation confirmed"
+      },
+      "Pending": {
+        "label": "Awaiting review"
+      },
+      "Report_Dismissed": {
+        "label": "Dismissed"
+      }
+    },
+    "appeal": {
+      "Pending": {
+        "label": "Appeal submitted"
+      },
+      "Under_Review": {
+        "label": "Appeal under review"
+      },
+      "Approved": {
+        "label": "Appeal upheld"
+      },
+      "Rejected": {
+        "label": "Appeal rejected"
+      }
+    },
+    "item": {
+      "Unlisted": {
+        "label": "Unlisted"
+      },
+      "Listed": {
+        "label": "Listed"
+      },
+      "Transferred": {
+        "label": "Handed over"
+      }
+    },
+    "postType": {
+      "SellOnly": {
+        "label": "For sale"
+      },
+      "TradeOnly": {
+        "label": "For trade"
+      },
+      "Both": {
+        "label": "Sale or trade"
+      }
+    },
+    "prompt": {
+      "propose-appointment": {
+        "you": "Your turn: propose a meetup",
+        "them": "Waiting on the proposer to arrange a meetup"
+      },
+      "upload-slip": {
+        "you": "Your turn: transfer the money and upload the slip",
+        "them": "Waiting on the buyer to pay and upload a slip"
+      },
+      "review-slip": {
+        "you": "Your turn: check the slip and confirm payment",
+        "them": "Waiting on the seller to check the slip"
+      },
+      "enter-tracking": {
+        "you": "Your turn: enter the tracking number",
+        "them": "Waiting on the seller to enter a tracking number"
+      },
+      "confirm-delivery": {
+        "you": "Your turn: confirm once the parcel arrives",
+        "them": "Waiting on the buyer to confirm delivery"
+      },
+      "scan-qr": {
+        "you": "Your turn: scan the seller QR when you collect",
+        "them": "Waiting on the meetup and QR scan"
+      },
+      "refund-slip": {
+        "you": "Your turn: transfer the refund and upload the slip",
+        "them": "Waiting on the seller to transfer the money back"
+      },
+      "completed": {
+        "you": "This deal is complete",
+        "them": "This deal is complete"
+      },
+      "cancelled": {
+        "you": "This deal was cancelled",
+        "them": "This deal was cancelled"
+      },
+      "refunded": {
+        "you": "The refund is complete",
+        "them": "The refund is complete"
+      }
+    },
+    "deadline": {
+      "seller-confirm-payment": {
+        "label": "The seller must confirm payment within 24 hours"
+      },
+      "seller-ship": {
+        "label": "Parcel due"
+      },
+      "cancel-response": {
+        "label": "The other party must respond to the cancellation within 72 hours"
+      },
+      "registration-closes": {
+        "label": "Registration closes"
+      },
+      "draw": {
+        "label": "Draw"
+      }
+    }
   }
 }

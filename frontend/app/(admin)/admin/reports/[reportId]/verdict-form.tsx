@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { adminResolveReport, adminRestoreReport } from "@/lib/actions/reports";
 import type { ApiError } from "@/lib/api/client";
 import type { AdminTransactionEvidence, Sanction } from "@/lib/api/reports";
@@ -67,6 +68,7 @@ export function VerdictForm({
   report: Report;
   evidence?: AdminTransactionEvidence;
 }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const [verdict, setVerdict] = useState<VerdictId>("warn");
@@ -141,7 +143,7 @@ export function VerdictForm({
       {alreadyDecided ? (
         <Surface shape="card" elevation="flat" className="bg-tone-info-bg p-4">
           <p className="text-body-sm text-ink-secondary">
-            This report was already decided (status: {REPORT_STATUS[report.status].label}).
+            This report was already decided (status: {st.of(REPORT_STATUS[report.status]).label}).
             {report.resolution_note ? ` Note: ${report.resolution_note}` : ""}
           </p>
         </Surface>

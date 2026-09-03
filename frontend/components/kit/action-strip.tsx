@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { InboxEntry } from "@/lib/inbox";
 
 import { CountdownPill } from "./countdown-pill";
@@ -20,6 +21,7 @@ import { CountdownPill } from "./countdown-pill";
  * there is nothing waiting.
  */
 export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
+  const st = useStatusText();
   const [open, setOpen] = useState(false);
 
   if (entries.length === 0) return null;
@@ -46,7 +48,7 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
 
         <span className="min-w-0 flex-1 truncate text-body font-medium">
           {entries.length === 1
-            ? entries[0].prompt.label
+            ? st.key(entries[0].prompt.labelKey)
             : `${entries.length} things need you`}
           {/* Was text-white/70 on --green-700: 3.78:1. Steps back by weight now. */}
           <span className="hidden font-normal sm:inline">
@@ -100,7 +102,7 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
                     could not be read against green anyway. White on the band
                     is 5.88:1 and says the same thing. */}
                 <span className="justify-self-end rounded-pill bg-white/15 px-2.5 py-1 text-caption font-medium whitespace-nowrap text-white">
-                  {entry.prompt.label}
+                  {st.key(entry.prompt.labelKey)}
                 </span>
               </Link>
             </li>

@@ -11,6 +11,7 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { publishListing } from "@/lib/actions/posts";
 import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
@@ -23,6 +24,7 @@ import { ITEM_CONDITION, POST_TYPE, type PostType } from "@/lib/status";
  * trade-only post is a question with no right answer.
  */
 export function ListItemForm({ item }: { item: Item }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
 
@@ -78,7 +80,7 @@ export function ListItemForm({ item }: { item: Item }) {
           {/* Same ban as list/page.tsx: rarity is a rim or a chip, never a
               tinted line of text. */}
           <p className="text-caption text-ink-muted">
-            {ITEM_CONDITION[item.condition].label} · {item.quantity} in stock
+            {st.of(ITEM_CONDITION[item.condition]).label} · {item.quantity} in stock
           </p>
         </div>
         <Button
@@ -99,13 +101,13 @@ export function ListItemForm({ item }: { item: Item }) {
         <Radio value="SellOnly" description="Cash only, no trades">
           <span className="flex items-center gap-2">
             <Store aria-hidden className="size-4" />
-            {POST_TYPE.SellOnly.label}
+            {st.of(POST_TYPE.SellOnly).label}
           </span>
         </Radio>
         <Radio value="TradeOnly" description="Trades only, not for sale">
           <span className="flex items-center gap-2">
             <ArrowLeftRight aria-hidden className="size-4" />
-            {POST_TYPE.TradeOnly.label}
+            {st.of(POST_TYPE.TradeOnly).label}
           </span>
         </Radio>
         <Radio
@@ -114,7 +116,7 @@ export function ListItemForm({ item }: { item: Item }) {
         >
           <span className="flex items-center gap-2">
             <Sparkles aria-hidden className="size-4" />
-            {POST_TYPE.Both.label}
+            {st.of(POST_TYPE.Both).label}
           </span>
         </Radio>
       </RadioGroupField>

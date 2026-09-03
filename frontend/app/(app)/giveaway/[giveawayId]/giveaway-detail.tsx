@@ -12,6 +12,7 @@ import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
@@ -34,6 +35,7 @@ export function GiveawayDetail({
   ticket?: GiveawayTicket;
   isGiver: boolean;
 }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const [joined, setJoined] = useState(!!ticket);
@@ -49,7 +51,7 @@ export function GiveawayDetail({
     ? {
         kind: "giveaway-pickup" as const,
         expiresAt: Date.parse(giveaway.registered_deadline),
-        label: "Draw",
+        labelKey: "deadline.draw.label",
         onExpiry: "forfeit" as const,
       }
     : undefined;
@@ -157,10 +159,10 @@ export function GiveawayDetail({
         {/* How you will find out, stated before you commit. */}
         <Notice tone="info" className="flex flex-col gap-2">
           <p className="text-body-sm font-semibold text-tone-info-fg">
-            {method.label}
+            {st.of(method).label}
           </p>
           <p className="text-caption leading-[1.6] text-ink-secondary">
-            {method.hint}
+            {st.of(method).hint}
           </p>
           {drawDeadline ? <CountdownPill deadline={drawDeadline} showLabel /> : null}
         </Notice>
@@ -204,7 +206,7 @@ export function GiveawayDetail({
                 This is your giveaway. Nothing for you to do.
               </p>
               <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
-                {method.hint}. A chat room opens with each entrant as they
+                {st.of(method).hint}. A chat room opens with each entrant as they
                 register so you can arrange collection.
               </p>
             </Notice>

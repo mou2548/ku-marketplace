@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
 import { deadlineFor } from "@/lib/inbox";
 import {
@@ -66,6 +67,7 @@ export function HistoryList({
   tickets: GiveawayTicket[];
   viewerId: number;
 }) {
+  const st = useStatusText();
   const [lens, setLens] = useState<Lens>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
 
@@ -105,7 +107,7 @@ export function HistoryList({
           label="Status"
           options={STATUSES.map((s) => ({
             id: s,
-            label: s === "all" ? "All" : TRANSACTION_STATUS[s].label,
+            label: s === "all" ? "All" : st.of(TRANSACTION_STATUS[s]).label,
           }))}
           value={status}
           onChange={(v) => setStatus(v as StatusFilter)}
@@ -255,6 +257,7 @@ const ACTION_CTA: Record<PromptAction | "none", string> = {
 };
 
 function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
+  const st = useStatusText();
   const viewer = tx.buyer_id === viewerId ? "buyer" : "seller";
   const prompt = resolveTransactionActor(tx, viewer);
   const isViewersTurn = prompt.actor === viewer;
@@ -357,7 +360,7 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
             isViewersTurn ? "font-semibold text-ink" : "text-ink-muted",
           )}
         >
-          {prompt.label}
+          {st.key(prompt.labelKey)}
         </span>
 
         {/* ActorPrompt carries `action` — "upload-slip", "scan-qr" — and this
