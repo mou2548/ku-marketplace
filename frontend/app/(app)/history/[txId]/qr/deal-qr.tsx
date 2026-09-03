@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { QrTicket } from "@/components/kit/qr-ticket";
+import { createHandoverToken } from "@/lib/actions/transactions";
 
 export function DealQr({
   transactionId,
@@ -13,9 +14,11 @@ export function DealQr({
   transactionId: number;
   itemName: string;
 }) {
-  // POST /transactions/{id}/qr/generate
+  // The token was fabricated client-side — `ku-tx-{id}-{Date.now()}` — so the
+  // buyer's scanner had nothing to verify it against and the handover, which
+  // PRODUCT.md calls the moment the product exists for, closed no deal.
   const generate = useCallback(
-    async () => `ku-tx-${transactionId}-${Date.now()}`,
+    () => createHandoverToken(transactionId),
     [transactionId],
   );
 
