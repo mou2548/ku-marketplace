@@ -212,10 +212,17 @@ function Filters({
             aria-pressed={value === o.id}
             onClick={() => onChange(o.id)}
             className={cn(
-              "min-h-9 rounded-pill px-3 text-caption font-medium",
+              // 44px, not 36px: ten of these wrap across the top of the
+              // screen and it is the densest control cluster in the product.
+              "min-h-11 rounded-pill px-3.5 text-caption font-medium",
               "transition-colors duration-[--dur-fast]",
+              // --brand is green-600 at 4.04:1 against white, which CLAUDE.md
+              // §4 calls an absolute rule with one exemption: labels at 16px
+              // weight 600. A 13px weight-500 chip is not that exemption.
+              // --bg-brand-band is green-700, 5.88:1, and is already the token
+              // for solid brand chrome carrying a white label.
               value === o.id
-                ? "bg-brand text-on-brand shadow-raised"
+                ? "bg-brand-band text-on-brand-strong shadow-raised"
                 : "bg-surface-sunken text-ink-secondary shadow-sunken hover:bg-gray-200",
             )}
           >

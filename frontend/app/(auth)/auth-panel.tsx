@@ -46,7 +46,9 @@ export function AuthPanel() {
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/40" />
+          {/* 0.40 left white/80 body copy at 2.85:1 over a light region of the
+              photo. Deepening the scrim fixes every layer above it at once. */}
+          <div className="absolute inset-0 bg-black/55" />
           <div className="relative flex flex-col gap-6">
             <h1 className="text-[2.375rem] leading-[1.15] font-bold tracking-[-0.02em] lg:text-[3rem]">
               <span className="text-brand">
@@ -57,7 +59,7 @@ export function AuthPanel() {
               <br />
               students
             </h1>
-            <p className="max-w-xl text-body-lg text-white/80">
+            <p className="max-w-xl text-body-lg text-white">
               The safest place to buy, sell, and trade inside the university.
               Every account is verified through the Nontri system, and everyone
               gets a personal item vault.

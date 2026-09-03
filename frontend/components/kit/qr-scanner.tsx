@@ -133,7 +133,7 @@ export function QrScanner({
         ) : null}
 
         {status !== "running" ? (
-          <span className="absolute inset-0 grid place-items-center bg-black/60 text-white/80">
+          <span className="absolute inset-0 grid place-items-center bg-black/70 text-white">
             {status === "denied" ? (
               <CameraOff aria-hidden className="size-8" />
             ) : (
@@ -143,7 +143,7 @@ export function QrScanner({
         ) : null}
       </div>
 
-      <p className="max-w-xs text-center text-body-sm text-white/70">
+      <p className="max-w-xs text-center text-body-sm text-white">
         {status === "denied"
           ? "The camera is unavailable. Type the code from the QR instead."
           : status === "unsupported"
@@ -164,7 +164,7 @@ export function QrScanner({
             onChange={(e) => setManual(e.target.value)}
             placeholder="Type the code from the QR"
             aria-label="Type the code from the QR"
-            className="h-12 flex-1 rounded-control bg-white/10 px-3.5 text-body text-white placeholder:text-white/40"
+            className="h-12 flex-1 rounded-control bg-white/10 px-3.5 text-body text-white placeholder:text-white/70"
           />
           <Button type="submit" isDisabled={!manual.trim()}>
             Confirm

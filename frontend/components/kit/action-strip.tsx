@@ -50,7 +50,8 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
           {entries.length === 1
             ? entries[0].prompt.label
             : `${entries.length} things need you`}
-          <span className="hidden text-white/70 sm:inline">
+          {/* Was text-white/70 on --green-700: 3.78:1. Steps back by weight now. */}
+          <span className="hidden font-normal sm:inline">
             {" "}
             · {entries[0].title}
           </span>
@@ -81,7 +82,7 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
                   <span className="block truncate text-body font-medium">
                     {entry.title}
                   </span>
-                  <span className="block truncate text-caption text-white/70">
+                  <span className="block truncate text-caption font-normal">
                     with {entry.counterparty}
                     {entry.amount ? ` · ฿${entry.amount.toLocaleString("en-GB")}` : ""}
                   </span>

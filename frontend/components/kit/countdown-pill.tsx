@@ -7,7 +7,7 @@ import type { Deadline, Tone } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
-import { TONE_SOLID } from "./tone";
+import { TONE_CHIP, TONE_SOLID } from "./tone";
 
 /**
  * Research risk R2. Flow 1 runs four clocks — 24h to confirm a slip, 8h
@@ -73,7 +73,13 @@ export function CountdownPill({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1",
         "text-caption leading-[1.5] font-medium",
-        TONE_SOLID[tone],
+        // Solid only once `toneFor` has escalated to danger — under an hour,
+        // or past due. Everything above that is a chip: a countdown that is
+        // still days away has no business being the loudest thing on screen
+        // (register.md §2 budgets one saturated fill per screen), and this
+        // pill sits next to a StatusBadge and a turn pill on every history
+        // row.
+        tone === "danger" ? TONE_SOLID[tone] : cn("border", TONE_CHIP[tone]),
         className,
       )}
     >
@@ -83,7 +89,10 @@ export function CountdownPill({
         <AlarmClock aria-hidden className="size-4" />
       )}
       {showLabel ? (
-        <span className="text-white/70">{deadline.label}</span>
+        // Was text-white/70, which measured 3.25:1 to 4.24:1 depending on the
+        // tone underneath — every one of them under 4.5:1 at 13px. The label
+        // steps back by weight now, not by opacity.
+        <span className="font-normal">{deadline.label}</span>
       ) : null}
       <time
         dateTime={new Date(deadline.expiresAt).toISOString()}

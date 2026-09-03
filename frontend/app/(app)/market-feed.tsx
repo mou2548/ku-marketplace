@@ -295,10 +295,12 @@ function FilterChip({
       aria-pressed={isActive}
       onClick={onToggle}
       className={cn(
-        "flex min-h-9 items-center gap-1.5 rounded-pill px-3 text-caption font-medium",
+        // Same two fixes as history-list.tsx's filter chip: 44px, and
+        // green-700 rather than green-600 under a 13px label.
+        "flex min-h-11 items-center gap-1.5 rounded-pill px-3.5 text-caption font-medium",
         "transition-colors duration-[--dur-fast]",
         isActive
-          ? "bg-brand text-on-brand shadow-raised"
+          ? "bg-brand-band text-on-brand-strong shadow-raised"
           : "bg-surface-sunken text-ink-secondary shadow-sunken hover:bg-gray-200",
       )}
     >
