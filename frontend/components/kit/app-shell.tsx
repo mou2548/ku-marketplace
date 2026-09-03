@@ -50,17 +50,24 @@ interface NavEntry {
   label: string;
   icon: typeof Store;
   badge?: keyof NavBadges;
+  /**
+   * On the phone tab bar. Five at most — past that the targets get too narrow
+   * to hit and the bar stops reading as a set of places. Giveaway is the one
+   * that stays in the drawer: it is the secondary job in PRODUCT.md, and the
+   * drawer still lists everything.
+   */
+  onTabBar?: true;
 }
 
 const NAV: NavEntry[] = [
-  { href: "/", label: "Market", icon: Store },
-  { href: "/offers", label: "Offers", icon: Handshake, badge: "offers" },
+  { href: "/", label: "Market", icon: Store, onTabBar: true },
+  { href: "/offers", label: "Offers", icon: Handshake, badge: "offers", onTabBar: true },
   // The route keeps its name; the label does not. The screen has been a record
   // of past deals since chat moved out of it, and "Deals" next to "Offers" —
   // with the same icon — read as two doors into the same room.
-  { href: "/history", label: "History", icon: History, badge: "deals" },
-  { href: "/chat", label: "Chat", icon: MessagesSquare },
-  { href: "/inventory", label: "Inventory", icon: Package },
+  { href: "/history", label: "History", icon: History, badge: "deals", onTabBar: true },
+  { href: "/chat", label: "Chat", icon: MessagesSquare, onTabBar: true },
+  { href: "/inventory", label: "Inventory", icon: Package, onTabBar: true },
   { href: "/giveaway", label: "Giveaway", icon: Gift },
 ];
 
@@ -106,6 +113,10 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
    * on the bottom edge. Every other route keeps the padded, growing column.
    */
   const isChat = pathname === "/chat" || pathname.startsWith("/chat/");
+  /* A room owns the bottom edge — its composer sits there. The chat list is a
+     list like any other and keeps the bar. */
+  const isChatRoom = pathname.startsWith("/chat/");
+  const showTabBar = !isChatRoom;
 
   return (
     <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>
@@ -238,10 +249,50 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           isChat
             ? "min-h-0 overflow-hidden"
             : "px-4 py-5 pb-12 lg:px-8 lg:py-7",
+          /* Clear the fixed bar, plus the home indicator under it. */
+          showTabBar && !isChat && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12",
         )}
       >
         {children}
       </main>
+
+      {/* CLAUDE.md §5 specifies a bottom tab bar on mobile and the app did not
+          have one: below 768px the only navigation was a hamburger, so every
+          move between the five places a deal lives cost two taps and a
+          disclosure. The drawer stays for everything else. */}
+      {showTabBar ? (
+        <nav
+          aria-label="Main"
+          className="fixed inset-x-0 bottom-0 z-[50] border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        >
+          <ul className="flex items-stretch">
+            {NAV.filter((entry) => entry.onTabBar).map(
+              ({ href, label, icon: Icon, badge }) => {
+                const active = isActive(pathname, href);
+                return (
+                  <li key={href} className="flex-1">
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1",
+                        "transition-colors duration-[--dur-fast]",
+                        active ? "text-ink-brand" : "text-ink-muted",
+                      )}
+                    >
+                      <span className="relative">
+                        <Icon aria-hidden className="size-5" />
+                        <Count value={badge ? badges[badge] : undefined} />
+                      </span>
+                      <span className="text-meta leading-none">{label}</span>
+                    </Link>
+                  </li>
+                );
+              },
+            )}
+          </ul>
+        </nav>
+      ) : null}
     </div>
   );
 }
