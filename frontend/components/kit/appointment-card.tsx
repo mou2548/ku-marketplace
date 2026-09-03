@@ -131,14 +131,19 @@ export function AppointmentCard({
       ) : null}
 
       {status === "Pending" && awaitingViewer ? (
-        <div className="flex gap-2 p-4 pt-3">
+        /* Two w-full buttons in a row gave each 144px inside a 296px card at
+           360px, and "Suggest another time" plus its icon needs about 200px.
+           button.tsx sets whitespace-nowrap so it could not wrap, and the
+           Surface is overflow-hidden so the label was cut off rather than
+           scrolled. Stacked below sm:, and the label is shorter. */
+        <div className="flex flex-col-reverse gap-2 p-4 pt-3 sm:flex-row">
+          <Button variant="secondary" block onPress={onDecline}>
+            <X className="size-4" />
+            Another time
+          </Button>
           <Button variant="primary" block onPress={onAccept}>
             <Check className="size-4" />
             Accept
-          </Button>
-          <Button variant="secondary" block onPress={onDecline}>
-            <X className="size-4" />
-            Suggest another time
           </Button>
         </div>
       ) : null}

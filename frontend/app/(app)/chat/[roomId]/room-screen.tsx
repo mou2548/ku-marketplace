@@ -29,6 +29,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
+import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
@@ -36,6 +37,7 @@ import {
   askToCancel,
   confirmItemArrived,
   confirmSlip,
+  createHandoverToken,
   saveTracking,
   submitPaymentSlip,
   submitRefundSlip,
@@ -72,7 +74,6 @@ import {
   ALLOCATION_METHOD,
   canReport,
   ENTRANT_STATUS,
-  requiresPayment,
   resolveTransactionActor,
   TRANSACTION_STATUS,
   type ActorPrompt,
@@ -244,8 +245,14 @@ export function RoomScreen({
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const appointmentPinRef = useRef<HTMLDivElement>(null);
-  /** The deal strip's disclosure — everything the desktop rail used to hold. */
-  const [detailOpen, setDetailOpen] = useState(false);
+  /**
+   * The deal strip's disclosure — everything the desktop rail used to hold.
+   *
+   * Open when the next move is the viewer's. A closed accordion is a
+   * reasonable default for a deal you are waiting on; it is the wrong one for
+   * a deal that is waiting on you.
+   */
+  const [detailToggled, setDetailToggled] = useState<boolean | null>(null);
 
   // Real messages refresh on a poll (no realtime transport exists) — for
   // either a transaction room or a giveaway group room. Appointments are a
@@ -283,6 +290,9 @@ export function RoomScreen({
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
   const isYourTurn = prompt?.actor === viewer;
+  /* Null means nobody has touched it, so the deal decides: open when the next
+     move is yours. Once opened or closed by hand, that choice sticks. */
+  const detailOpen = detailToggled ?? isYourTurn;
   const reportable = canReport(deadline ? [deadline] : []);
 
   // Flow 3: only the giver may type in a giveaway room.
@@ -587,20 +597,44 @@ export function RoomScreen({
     }
   }
 
+  /**
+   * The QR opens here, not on its own route.
+   *
+   * The owner's second complaint about these screens was that the appointment,
+   * the QR and the slip live in different places — and they did: a collapsed
+   * pin, a bottom bar, and two separate pages. The slip and the appointment
+   * were already on this screen. This was the one that navigated away from the
+   * deal in order to complete it.
+   *
+   * The buyer's scanner stays a route: it owns a camera stream, and a sheet is
+   * the wrong container for that.
+   */
   const sellerQr =
     transaction &&
     transaction.delivery_method === "Meetup" &&
     transaction.status === "Processing" &&
     viewer === "seller" ? (
       <ActionCard title="Let the buyer scan">
-        <LinkButton
-          block
-          size="lg"
-          href={`/history/${transaction.transaction_id}/qr`}
-        >
-          <QrCode className="size-5" />
-          Open QR
-        </LinkButton>
+        <OverlayTrigger>
+          <Button block size="lg">
+            <QrCode className="size-5" />
+            Show the QR
+          </Button>
+          <Overlay
+            title="Let the buyer scan to close the deal"
+            description="Hand the item over first. Scanning closes the deal immediately and cannot be undone."
+            size="sm"
+          >
+            <div className="flex justify-center py-2">
+              <QrTicket
+                onGenerate={() =>
+                  createHandoverToken(transaction.transaction_id)
+                }
+                ariaLabel={`QR code for handing over ${transaction.post.item.name}`}
+              />
+            </div>
+          </Overlay>
+        </OverlayTrigger>
       </ActionCard>
     ) : null;
 
@@ -613,7 +647,7 @@ export function RoomScreen({
         <Link
           href="/chat"
           aria-label="Back to conversations"
-          className="grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
+          className="touch-target grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
         >
           <ArrowLeft aria-hidden className="size-5" />
         </Link>
@@ -687,7 +721,7 @@ export function RoomScreen({
     <div className="shrink-0 border-b border-line">
       <button
         type="button"
-        onClick={() => setDetailOpen((v) => !v)}
+        onClick={() => setDetailToggled(!detailOpen)}
         aria-expanded={detailOpen}
         className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
       >
@@ -699,26 +733,34 @@ export function RoomScreen({
           <span className="block truncate text-body-sm font-semibold">
             {summary.subject}
           </span>
-          <span className="block truncate text-meta text-ink-muted">
-            {transaction
-              ? `${transaction.delivery_method === "Meetup" ? "Meetup" : "Shipping"}${
-                  requiresPayment(transaction)
-                    ? ` · ฿${transaction.final_amount.toLocaleString("en-GB")}`
-                    : " · trade, no money"
-                }`
+          {/* PRODUCT.md principle 1: "whose turn is it — always answer,
+              always first." resolveTransactionActor already produces exactly
+              that sentence, in second person, and it was rendered inside
+              DealDetails inside this accordion — which starts closed. What
+              was visible instead was the delivery method and the amount:
+              two facts the viewer already knows.
+
+              The owner named not knowing whose turn it is twice, once as a
+              fear and once as the worst thing about these screens. It is the
+              most-supported finding in the project and the answer was one
+              disclosure away. */}
+          <span
+            className={cn(
+              "block truncate text-caption",
+              isYourTurn ? "font-semibold text-ink" : "text-ink-muted",
+            )}
+          >
+            {prompt
+              ? prompt.label
               : giveaway
                 ? `Collect at ${giveaway.pickup_location}`
                 : null}
           </span>
         </span>
 
-        {transaction ? (
-          <StatusBadge
-            status={TRANSACTION_STATUS[transaction.status]}
-            size="sm"
-            iconOnly
-          />
-        ) : null}
+        {/* Was iconOnly, so the deal's state reached the collapsed strip as a
+            wordless coloured dot. The sentence above says it in words now, so
+            the badge is redundant here and stays in DealDetails. */}
 
         <ChevronDown
           aria-hidden

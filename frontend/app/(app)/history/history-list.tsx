@@ -10,13 +10,13 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { TONE_SOLID } from "@/components/kit/tone";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
 import { deadlineFor } from "@/lib/inbox";
 import {
   resolveTransactionActor,
   TICKET_STATUS,
   TRANSACTION_STATUS,
+  type PromptAction,
   type TransactionStatus,
 } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -239,20 +239,44 @@ function Filters({
  * how much, where it got to, and whose move it is. The previous version showed
  * a name and a status pill, which is not a history — it is a teaser.
  */
+/**
+ * What the button says when it is the viewer's move. Keyed by the same
+ * `PromptAction` the deal screen switches on, so the two cannot drift.
+ */
+const ACTION_CTA: Record<PromptAction | "none", string> = {
+  "propose-appointment": "Arrange the meetup",
+  "upload-slip": "Upload your slip",
+  "review-slip": "Check the slip",
+  "enter-tracking": "Add the tracking number",
+  "confirm-delivery": "Confirm it arrived",
+  "scan-qr": "Scan at handover",
+  "refund-slip": "Upload the refund slip",
+  none: "Open the deal",
+};
+
 function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
   const viewer = tx.buyer_id === viewerId ? "buyer" : "seller";
   const prompt = resolveTransactionActor(tx, viewer);
+  const isViewersTurn = prompt.actor === viewer;
   const deadline = deadlineFor(tx);
   const other = viewer === "buyer" ? tx.seller : tx.buyer;
   const isTrade = tx.offer_id != null;
 
+  /**
+   * Two facts, not six.
+   *
+   * The row used to build Deal number, Type, Handover, Amount, Started and
+   * sometimes Tracking, and render them as a two-column grid at 360px under
+   * 11px uppercase labels — three rows of micro-type between the photograph
+   * and the action, on a screen the owner called too dense. Amount and date
+   * are what someone scanning their history is looking for. The deal number
+   * and the tracking number are lookups, and they are on the deal itself.
+   * "Handover" only ever said "Meetup": PRODUCT.md makes a trade meetup-only.
+   */
   const facts: Array<[string, string]> = [
-    ["Deal", `#${tx.transaction_id}`],
-    ["Type", isTrade ? "Trade" : "Sale"],
-    ["Handover", tx.delivery_method],
     [
-      "Amount",
-      tx.final_amount > 0 ? `฿${tx.final_amount.toLocaleString("en-GB")}` : "None",
+      isTrade ? "Trade" : "Sale",
+      tx.final_amount > 0 ? `฿${tx.final_amount.toLocaleString("en-GB")}` : "No money",
     ],
     [
       "Started",
@@ -263,7 +287,6 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
       }),
     ],
   ];
-  if (tx.tracking_number) facts.push(["Tracking", tx.tracking_number]);
 
   return (
     <Surface shape="card" className="flex flex-col gap-3 p-4">
@@ -323,26 +346,30 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
       </dl>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-        {prompt.actor ? (
-          <span
-            className={cn(
-              "rounded-pill px-2 py-0.5 text-meta font-medium",
-              TONE_SOLID[prompt.tone],
-            )}
-          >
-            {prompt.label}
-          </span>
-        ) : (
-          <span className="text-caption text-ink-muted">{prompt.label}</span>
-        )}
+        {/* The turn used to be a solid pill at 12px with no whitespace-nowrap,
+            so "Your turn: transfer the money and upload the slip" wrapped to
+            three lines inside a fully rounded shape, below the register's
+            floor for text a reader acts on. It is a sentence; it is set as
+            one, and the weight carries whose turn it is. */}
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-body-sm",
+            isViewersTurn ? "font-semibold text-ink" : "text-ink-muted",
+          )}
+        >
+          {prompt.label}
+        </span>
 
+        {/* ActorPrompt carries `action` — "upload-slip", "scan-qr" — and this
+            row threw it away. The code knew the viewer had to upload a slip
+            and offered them a chat. */}
         <LinkButton
-          variant="secondary"
-          size="sm"
+          variant={isViewersTurn ? "primary" : "secondary"}
+          size="md"
           href={`/history/${tx.transaction_id}`}
         >
           <MessagesSquare className="size-4" />
-          Go to chat
+          {isViewersTurn ? ACTION_CTA[prompt.action ?? "none"] : "Go to chat"}
         </LinkButton>
       </div>
     </Surface>

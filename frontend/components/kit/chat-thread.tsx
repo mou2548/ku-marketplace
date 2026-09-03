@@ -350,9 +350,11 @@ export function ActionCard({
       className={cn("border-t border-line bg-brand-subtle/30", className)}
       aria-label={title}
     >
-      <h4 className="px-4 pt-3 text-overline text-ink-brand uppercase">
-        {title}
-      </h4>
+      {/* This is the single most important sentence on the deal screen — the
+          thing the viewer has to do next — and it was set at the smallest size
+          in the scale, in caps, with 0.09em tracking. Overline is for a label
+          above a group, not for an instruction. */}
+      <h4 className="px-4 pt-3 text-body font-semibold text-ink">{title}</h4>
       <div className="px-4 pt-2 pb-3">{children}</div>
     </section>
   );
