@@ -7,8 +7,6 @@ import { useStatusText } from "@/lib/i18n/status-text";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
-import { StatusIcon } from "./icon";
-import { TONE_SOLID } from "./tone";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -70,25 +68,23 @@ export function PostCard({
             aspectRatio={aspectRatio}
             className="transition-transform duration-[--dur-slow] ease-[--ease-out] group-hover/pin:scale-[1.025]"
           />
-          {postType !== "SellOnly" ? (
-            <span
-              className={cn(
-                "pointer-events-none absolute top-2.5 left-2.5 flex items-center gap-1.5",
-                "rounded-pill px-2.5 py-1.5 text-meta font-semibold shadow-raised",
-                TONE_SOLID[POST_TYPE[postType].tone],
-              )}
-            >
-              <StatusIcon name={POST_TYPE[postType].icon} className="size-3.5" />
-              {st.of(POST_TYPE[postType]).label}
-            </span>
-          ) : null}
         </div>
 
         <div className="flex flex-col gap-1.5 px-1 pt-2.5 pb-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 min-w-0 text-[0.9375rem] leading-[1.45] font-semibold text-ink">
-              {name}
-            </h3>
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={cn(
+                "inline-flex min-w-0 items-center rounded-chip border px-1.5 py-0.5 text-[0.6875rem] leading-4 font-semibold",
+                postType === "SellOnly" &&
+                  "border-transparent bg-brand-subtle text-ink-brand",
+                postType === "TradeOnly" &&
+                  "border-line-default bg-surface-sunken text-ink-secondary",
+                postType === "Both" &&
+                  "border-brand bg-surface text-ink-brand",
+              )}
+            >
+              <span className="truncate">{st.of(POST_TYPE[postType]).label}</span>
+            </span>
             {showsPrice ? (
               <span
                 data-numeric
@@ -98,6 +94,10 @@ export function PostCard({
               </span>
             ) : null}
           </div>
+
+          <h3 className="line-clamp-2 text-[0.9375rem] leading-[1.45] font-semibold text-ink">
+            {name}
+          </h3>
 
           {courseName ? (
             <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-surface-sunken px-2 py-0.5 text-meta font-medium text-ink-secondary">
@@ -123,12 +123,6 @@ export function PostCard({
                 {wantedItemOffer}
               </span>
             </p>
-          ) : null}
-
-          {!showsPrice ? (
-            <div className="pt-0.5">
-              <span className="text-body font-semibold text-ink">{t("card.tradeOnly")}</span>
-            </div>
           ) : null}
 
           <div className="mt-0.5 flex items-center justify-between gap-2">
