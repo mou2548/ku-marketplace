@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -49,7 +50,8 @@ export interface NavBadges {
 
 interface NavEntry {
   href: string;
-  label: string;
+  /** Message key under `nav.` — the labels are rendered in two languages. */
+  labelKey: string;
   icon: typeof Store;
   badge?: keyof NavBadges;
   /**
@@ -62,15 +64,15 @@ interface NavEntry {
 }
 
 const NAV: NavEntry[] = [
-  { href: "/", label: "Market", icon: Store, onTabBar: true },
-  { href: "/offers", label: "Offers", icon: Handshake, badge: "offers", onTabBar: true },
+  { href: "/", labelKey: "nav.market", icon: Store, onTabBar: true },
+  { href: "/offers", labelKey: "nav.offers", icon: Handshake, badge: "offers", onTabBar: true },
   // The route keeps its name; the label does not. The screen has been a record
   // of past deals since chat moved out of it, and "Deals" next to "Offers" —
   // with the same icon — read as two doors into the same room.
-  { href: "/history", label: "History", icon: History, badge: "deals", onTabBar: true },
-  { href: "/chat", label: "Chat", icon: MessagesSquare, onTabBar: true },
-  { href: "/inventory", label: "Inventory", icon: Package, onTabBar: true },
-  { href: "/giveaway", label: "Giveaway", icon: Gift },
+  { href: "/history", labelKey: "nav.history", icon: History, badge: "deals", onTabBar: true },
+  { href: "/chat", labelKey: "nav.chat", icon: MessagesSquare, onTabBar: true },
+  { href: "/inventory", labelKey: "nav.inventory", icon: Package, onTabBar: true },
+  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -96,6 +98,7 @@ export interface AppShellProps {
 }
 
 export function AppShell({ children, badges = {}, user }: AppShellProps) {
+  const t = useTranslations();
   const pathname = usePathname() ?? "";
   /**
    * The drawer has to be told to close.
@@ -129,7 +132,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               variant="ghost"
               size="icon-sm"
               pill
-              aria-label="Open menu"
+              aria-label={t("nav.openMenu")}
               className="text-ink-brand hover:bg-brand-subtle md:hidden"
             >
               <Menu className="size-5" />
@@ -157,17 +160,17 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               browser window that is not maximised on a 1280 laptop had no nav
               at all. Measured on the built page, not guessed. */}
           <nav
-            aria-label="Main"
+            aria-label={t("nav.main")}
             className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex"
           >
-            {NAV.map(({ href, label, icon: Icon, badge }) => {
+            {NAV.map(({ href, labelKey, icon: Icon, badge }) => {
               const active = isActive(pathname, href);
               return (
                 <Link
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  title={label}
+                  title={t(labelKey)}
                   className={cn(
                     "relative flex min-h-10 items-center gap-1.5 px-3 text-body lg:px-4",
                     "transition-colors duration-[--dur-fast]",
@@ -179,7 +182,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   {/* Between 768 and 1024 there is room for icons but not
                       words, which beats hiding the navigation entirely. */}
                   <Icon aria-hidden className="size-5 lg:hidden" />
-                  <span className="hidden lg:inline">{label}</span>
+                  <span className="hidden lg:inline">{t(labelKey)}</span>
                   <Count value={badge ? badges[badge] : undefined} />
                   {/* Underline, not a pill — matches the reference layout: a
                       short brand-coloured bar under the active label only,
@@ -218,7 +221,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
             <Link
               href="/notifications"
-              aria-label="Notifications"
+              aria-label={t("nav.notifications")}
               className="touch-target grid size-9 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
             >
               <Bell className="size-5" />
@@ -226,7 +229,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
             <Link
               href="/account"
-              aria-label="Account"
+              aria-label={t("nav.account")}
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
               className={cn(
                 "touch-target grid size-9 place-items-center rounded-pill transition-colors",
@@ -266,12 +269,12 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           disclosure. The drawer stays for everything else. */}
       {showTabBar ? (
         <nav
-          aria-label="Main"
+          aria-label={t("nav.main")}
           className="fixed inset-x-0 bottom-0 z-[50] border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           <ul className="flex items-stretch">
             {NAV.filter((entry) => entry.onTabBar).map(
-              ({ href, label, icon: Icon, badge }) => {
+              ({ href, labelKey, icon: Icon, badge }) => {
                 const active = isActive(pathname, href);
                 return (
                   <li key={href} className="flex-1">
@@ -288,7 +291,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                         <Icon aria-hidden className="size-5" />
                         <Count value={badge ? badges[badge] : undefined} />
                       </span>
-                      <span className="text-meta leading-none">{label}</span>
+                      <span className="text-meta leading-none">{t(labelKey)}</span>
                     </Link>
                   </li>
                 );
@@ -312,6 +315,7 @@ function MobileMenu({
   user?: { name: string };
   onNavigate: () => void;
 }) {
+  const t = useTranslations();
   return (
     <div className="flex h-full flex-col gap-3">
       {/* The header switch is hidden below sm:, so the drawer carries it on a
@@ -319,12 +323,10 @@ function MobileMenu({
       <LocaleSwitch className="w-fit sm:hidden" />
 
       <LinkButton href="/post" block size="lg" onClick={onNavigate}>
-        <Plus className="size-5" />
-        Post an item
-      </LinkButton>
+        <Plus className="size-5" />{t("nav.postAnItem")}</LinkButton>
 
-      <nav aria-label="Main" className="flex flex-col gap-0.5">
-        {NAV.map(({ href, label, icon: Icon, badge }) => {
+      <nav aria-label={t("nav.main")} className="flex flex-col gap-0.5">
+        {NAV.map(({ href, labelKey, icon: Icon, badge }) => {
           const active = isActive(pathname, href);
           const count = badge ? badges[badge] : undefined;
 
@@ -343,12 +345,12 @@ function MobileMenu({
               )}
             >
               <Icon aria-hidden className="size-5 shrink-0" />
-              {label}
+              {t(labelKey)}
               <span className="ml-auto">
                 <Count value={count} />
               </span>
               {count ? (
-                <span className="sr-only">{count} items need your attention</span>
+                <span className="sr-only">{t("nav.needsYou", { count })}</span>
               ) : null}
             </Link>
           );
@@ -361,9 +363,7 @@ function MobileMenu({
           onClick={onNavigate}
           className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
-          <Bell aria-hidden className="size-5" />
-          Notifications
-        </Link>
+          <Bell aria-hidden className="size-5" />{t("nav.notifications")}</Link>
         <Link
           href="/account"
           onClick={onNavigate}

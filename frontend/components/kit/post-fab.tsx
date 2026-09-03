@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
@@ -10,10 +11,11 @@ import { Plus } from "lucide-react";
  * button already sits in the navbar.
  */
 export function PostFab() {
+  const t = useTranslations();
   return (
     <Link
       href="/post"
-      aria-label="Post an item"
+      aria-label={t("nav.postAnItem")}
       className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[50] grid size-14 md:bottom-[max(1rem,env(safe-area-inset-bottom))] place-items-center rounded-pill bg-brand text-on-brand shadow-floating transition-transform duration-[--dur-fast] ease-[--ease-spring] active:scale-95 lg:hidden"
     >
       <Plus className="size-6" strokeWidth={2.5} />

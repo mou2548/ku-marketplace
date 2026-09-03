@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal, Store } from "lucide-react";
 
@@ -47,6 +48,7 @@ const CONDITIONS: ItemCondition[] = [
 ];
 
 export function MarketFeed({ posts }: { posts: Post[] }) {
+  const t = useTranslations();
   const st = useStatusText();
   const [segment, setSegment] = useState<Segment>("all");
   const [query, setQuery] = useState("");
@@ -102,7 +104,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
       onSelectionChange={(k) => setSegment(k as Segment)}
       className="min-w-0 flex-1"
     >
-      <TabList aria-label="Post type" variant="segment">
+      <TabList aria-label={t("feed.postType")} variant="segment">
         {SEGMENTS.map((s) => (
           <SegmentTab key={s.id} id={s.id}>
             {s.label}
@@ -118,9 +120,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   const filterControls = (
     <div className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-overline text-ink-muted uppercase">
-          Category
-        </legend>
+        <legend className="mb-1 text-overline text-ink-muted uppercase">{t("feed.category")}</legend>
         <div className="flex flex-wrap gap-1.5">
           {availableCategories.map((cat) => (
             <FilterChip
@@ -135,9 +135,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-overline text-ink-muted uppercase">
-          Condition
-        </legend>
+        <legend className="mb-1 text-overline text-ink-muted uppercase">{t("feed.condition")}</legend>
         <div className="flex flex-wrap gap-1.5">
           {CONDITIONS.map((c) => (
             <FilterChip
@@ -159,9 +157,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
             setCategories(new Set());
             setConditions(new Set());
           }}
-        >
-          Clear filters
-        </Button>
+        >{t("feed.clearFilters")}</Button>
       ) : null}
     </div>
   );
@@ -174,7 +170,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
         {segmentTabs}
 
         <OverlayTrigger>
-          <Button variant="secondary" size="icon" aria-label="Filters">
+          <Button variant="secondary" size="icon" aria-label={t("feed.filters")}>
             <span className="relative">
               <SlidersHorizontal className="size-5" />
               {activeFilters > 0 ? (
@@ -187,7 +183,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
               ) : null}
             </span>
           </Button>
-          <Overlay title="Filters" variant="sheet">
+          <Overlay title={t("feed.filters")} variant="sheet">
             {filterControls}
           </Overlay>
         </OverlayTrigger>
@@ -232,8 +228,8 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search by item name or course code"
-              placeholder="Search by item name or course code, e.g. 01417111"
+              aria-label={t("feed.searchLabel")}
+              placeholder={t("feed.searchPlaceholder")}
               className="h-12 w-full rounded-pill bg-surface pr-4 pl-11 text-body shadow-raised"
             />
           </div>
@@ -241,8 +237,8 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
           {filtered.length === 0 ? (
             <EmptyState
               icon={<Store className="size-6" />}
-              title="Nothing matches that search"
-              description="Try removing a filter, or search by course code instead of the book title. People name their posts differently."
+              title={t("feed.emptyTitle")}
+              description={t("feed.emptyBody")}
             />
           ) : (
             <>

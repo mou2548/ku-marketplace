@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { BadgeCheck } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ export function TrustBadge({
   size = "md",
   className,
 }: TrustBadgeProps) {
+  const t = useTranslations();
   const initials = name.trim().slice(0, 2);
   const meta = [faculty, year ? `Year ${year}` : null].filter(Boolean).join(" · ");
   const stacked = size === "lg";
@@ -93,7 +95,7 @@ export function TrustBadge({
                   stacked && "size-5",
                 )}
               />
-              <span className="sr-only">Verified with a KU email address</span>
+              <span className="sr-only">{t("card.verified")}</span>
             </>
           ) : null}
         </span>

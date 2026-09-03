@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
@@ -54,6 +55,7 @@ export function PostCard({
 }: PostCardProps) {
   const st = useStatusText();
   const rarity = ITEM_CONDITION[condition];
+  const t = useTranslations();
   const showsPrice = postType !== "TradeOnly";
 
   return (
@@ -128,7 +130,7 @@ export function PostCard({
             <p className="flex items-start gap-1.5 text-meta leading-[1.5] text-ink-muted">
               <ArrowLeftRight aria-hidden className="mt-0.5 size-3.5 shrink-0" />
               <span className="line-clamp-2">
-                <span className="font-medium text-ink-secondary">Wants</span>{" "}
+                <span className="font-medium text-ink-secondary">{t("card.wants")}</span>{" "}
                 {wantedItemOffer}
               </span>
             </p>
@@ -143,9 +145,7 @@ export function PostCard({
                 ฿{price.toLocaleString("en-GB")}
               </span>
             ) : (
-              <span className="text-body font-semibold text-ink">
-                Trade only
-              </span>
+              <span className="text-body font-semibold text-ink">{t("card.tradeOnly")}</span>
             )}
             {/* Stated in words. The edge carries the colour, but condition can
                 never be colour alone (CLAUDE.md §6). */}

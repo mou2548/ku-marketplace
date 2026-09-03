@@ -296,5 +296,38 @@
         "label": "Draw"
       }
     }
+  },
+  "nav": {
+    "brand": "KU Marketplace",
+    "post": "Post",
+    "postAnItem": "Post an item",
+    "notifications": "Notifications",
+    "account": "Account",
+    "openMenu": "Open menu",
+    "main": "Main",
+    "market": "Market",
+    "offers": "Offers",
+    "history": "History",
+    "chat": "Chat",
+    "inventory": "Inventory",
+    "giveaway": "Giveaway",
+    "needsYou": "{count} items need your attention"
+  },
+  "feed": {
+    "category": "Category",
+    "condition": "Condition",
+    "clearFilters": "Clear filters",
+    "showing": "Showing",
+    "postType": "Post type",
+    "filters": "Filters",
+    "searchLabel": "Search by item name or course code",
+    "searchPlaceholder": "Search by item name or course code, e.g. 01417111",
+    "emptyTitle": "Nothing matches that search",
+    "emptyBody": "Try removing a filter, or search by course code instead of the book title. People name their posts differently."
+  },
+  "card": {
+    "wants": "Wants",
+    "tradeOnly": "Trade only",
+    "verified": "Verified with a KU email address"
   }
 }
