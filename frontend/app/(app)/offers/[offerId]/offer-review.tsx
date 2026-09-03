@@ -19,6 +19,12 @@ import { Surface } from "@/components/kit/surface";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import {
+  acceptOfferAction,
+  rejectOfferAction,
+  withdrawOfferAction,
+} from "@/lib/actions/posts";
+import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
@@ -47,6 +53,9 @@ export function OfferReview({
   // swap (activity diagram: trade flow). Acceptance resolves in place; the
   // panel names this counterparty and item so the right deal is seen closing.
   const [accepted, setAccepted] = useState(false);
+  const [transactionId, setTransactionId] = useState<number | null>(
+    offer.transaction_id ?? null,
+  );
 
   // Both sides come from one derivation, shared with the inbox, so the piles
   // cannot land in one arrangement on the list and the opposite one here.
@@ -56,9 +65,19 @@ export function OfferReview({
 
   // Decline and withdraw send the viewer back to the inbox; only acceptance
   // opens a room, so only it needs an in-place confirmation.
-  async function respond(message: string) {
+  async function respond(
+    call: () => Promise<unknown>,
+    message: string,
+    failure: string,
+  ) {
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      await call();
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : failure);
+      return;
+    }
     setBusy(false);
     toast.show(message);
     router.push("/offers");
@@ -66,8 +85,19 @@ export function OfferReview({
 
   async function accept() {
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
+    let result;
+    try {
+      result = await acceptOfferAction(offer.post_id, offer.offer_id);
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not accept this offer");
+      return;
+    }
     setBusy(false);
+    // The offer this screen was rendered with predates the acceptance, so its
+    // `transaction_id` is still null — without this the panel below has no
+    // room to link to, which is the only thing left to do here.
+    setTransactionId(wireIdToNumber(result.transaction_id));
     setAccepted(true);
   }
 
@@ -147,12 +177,12 @@ export function OfferReview({
             {offer.post.item.name}, handed over in person. Every other offer on
             this post is declined and a chat room is open.
           </p>
-          {offer.transaction_id ? (
+          {transactionId ? (
             // The accepted offer's transaction; /history/:id redirects to its
             // chat room.
             <LinkButton
               variant="secondary"
-              href={`/history/${offer.transaction_id}`}
+              href={`/history/${transactionId}`}
               className="w-fit"
             >
               <MessageCircle className="size-4" />
@@ -165,7 +195,13 @@ export function OfferReview({
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="secondary"
-              onPress={() => respond("Offer declined")}
+              onPress={() =>
+                respond(
+                  () => rejectOfferAction(offer.post_id, offer.offer_id),
+                  "Offer declined",
+                  "Could not decline this offer",
+                )
+              }
               isDisabled={busy}
             >
               <X className="size-4" />
@@ -212,7 +248,13 @@ export function OfferReview({
             <Button
               variant="secondary"
               isLoading={busy}
-              onPress={() => respond("Offer withdrawn")}
+              onPress={() =>
+                respond(
+                  () => withdrawOfferAction(offer.post_id, offer.offer_id),
+                  "Offer withdrawn",
+                  "Could not withdraw this offer",
+                )
+              }
             >
               <Undo2 className="size-4" />
               Withdraw offer

@@ -86,11 +86,13 @@ function numericId(label: string): number {
 }
 
 /**
- * The mutating endpoints answer with the wire label (`"post_001"`), while
- * `/market/[postId]` and `getPost` both take the number. Anything routing off
- * a mutation's response has to convert, or the link resolves to `NaN`.
+ * The mutating endpoints answer with a wire label (`"post_001"`, `"tx_001"`)
+ * while the routes and getters they lead to take the number — `/market/[postId]`
+ * and `/history/[txId]` both parse it. Anything routing off a mutation's
+ * response has to convert, or the link resolves to `NaN`. A response that is
+ * already bare digits passes through unchanged.
  */
-export function postIdToNumber(label: string): number {
+export function wireIdToNumber(label: string): number {
   return numericId(label);
 }
 

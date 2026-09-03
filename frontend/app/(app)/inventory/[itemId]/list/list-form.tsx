@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { publishListing } from "@/lib/actions/posts";
-import { postIdToNumber, type PostSummary } from "@/lib/api/posts";
+import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
 import { ITEM_CONDITION, POST_TYPE, type PostType } from "@/lib/status";
 
@@ -55,7 +55,7 @@ export function ListItemForm({ item }: { item: Item }) {
     }
     setBusy(false);
     toast.show("Listed. It is live in the market now.");
-    router.push(`/market/${postIdToNumber(post.post_id)}`);
+    router.push(`/market/${wireIdToNumber(post.post_id)}`);
   }
 
   return (
