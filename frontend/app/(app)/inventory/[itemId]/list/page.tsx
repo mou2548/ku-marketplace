@@ -60,12 +60,9 @@ export default async function ListItemPage({
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Condition</dt>
-          <dd
-            style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
-            className="text-[var(--slot-edge)]"
-          >
-            {rarity.label}
-          </dd>
+          {/* tokens.md §5 bans rarity as free-floating coloured text: it is
+              a rim on a slot or a chip, never a tinted word in a spec list. */}
+          <dd>{rarity.label}</dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">Quantity</dt>

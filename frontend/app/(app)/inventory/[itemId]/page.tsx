@@ -164,22 +164,26 @@ export default async function ItemDetailPage({
                 </p>
               ) : null}
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              {/* Two equal-weight buttons made the screen ask which one
+                  mattered. register.md §4 allows two actions on a card, not
+                  two of the same weight: editing is the action, viewing the
+                  public page is a reference. */}
+              <div className="flex flex-col gap-2">
                 <LinkButton
-                  variant="secondary"
-                  size="sm"
-                  block
-                  href={`/market/${post.post_id}`}
-                >
-                  View the public listing
-                </LinkButton>
-                <LinkButton
-                  size="sm"
+                  size="md"
                   block
                   href={`/inventory/${item.item_id}/list`}
                 >
                   <Tag className="size-4" />
                   Edit listing
+                </LinkButton>
+                <LinkButton
+                  variant="ghost"
+                  size="md"
+                  block
+                  href={`/market/${post.post_id}`}
+                >
+                  View the public listing
                 </LinkButton>
               </div>
             </Surface>
@@ -189,7 +193,12 @@ export default async function ItemDetailPage({
                 This item is not listed. Nobody can see it but you, and it can
                 still be put on a trade offer from your inventory.
               </p>
-              <LinkButton size="sm" href={`/inventory/${item.item_id}/list`}>
+              {/* register.md §5: the primary action is at least a fifth of
+                  the item image's height, and never under 44px. The photo is
+                  4:3 at full width, so 246px at 360px — this was a 36px
+                  shrink-to-content button, which is the owner's "the item is
+                  large and the button is small" in one place. */}
+              <LinkButton size="lg" block href={`/inventory/${item.item_id}/list`}>
                 <Tag className="size-4" />
                 List it on the market
               </LinkButton>

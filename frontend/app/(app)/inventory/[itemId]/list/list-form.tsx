@@ -75,14 +75,9 @@ export function ListItemForm({ item }: { item: Item }) {
       <Surface shape="card" className="flex items-center gap-3 p-4">
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{item.name}</p>
-          <p
-            className="text-caption text-[var(--slot-edge)]"
-            style={
-              {
-                "--slot-edge": ITEM_CONDITION[item.condition].fg,
-              } as React.CSSProperties
-            }
-          >
+          {/* Same ban as list/page.tsx: rarity is a rim or a chip, never a
+              tinted line of text. */}
+          <p className="text-caption text-ink-muted">
             {ITEM_CONDITION[item.condition].label} · {item.quantity} in stock
           </p>
         </div>

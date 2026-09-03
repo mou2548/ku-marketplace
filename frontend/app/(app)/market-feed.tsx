@@ -142,7 +142,6 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
               key={c}
               isActive={conditions.has(c)}
               onToggle={() => toggle(conditions, c, setConditions)}
-              dotColor={ITEM_CONDITION[c].edge}
             >
               {ITEM_CONDITION[c].label}
             </FilterChip>
@@ -278,15 +277,19 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   );
 }
 
+/**
+ * The dot used to carry the condition ramp. CLAUDE.md §3.9 confines rarity
+ * colour to inventory and trade, and the feed is neither — a filter row is
+ * chrome, and it was spending the screen's one saturated element on a legend.
+ * The label already names the condition.
+ */
 function FilterChip({
   isActive,
   onToggle,
-  dotColor,
   children,
 }: {
   isActive: boolean;
   onToggle: () => void;
-  dotColor?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -304,18 +307,6 @@ function FilterChip({
           : "bg-surface-sunken text-ink-secondary shadow-sunken hover:bg-gray-200",
       )}
     >
-      {dotColor ? (
-        <span
-          aria-hidden
-          // The dot is the condition ramp, so it comes in as a property and a
-          // class reads it. Active inverts to the chip's own text colour.
-          style={{ "--slot-edge": dotColor } as React.CSSProperties}
-          className={cn(
-            "size-2 rounded-pill",
-            isActive ? "bg-current" : "bg-[var(--slot-edge)]",
-          )}
-        />
-      ) : null}
       {children}
     </button>
   );

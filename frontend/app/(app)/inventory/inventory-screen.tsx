@@ -7,7 +7,7 @@ import { CheckSquare, Package, Plus, Store, X } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
-import { EmptySlot, InventoryGrid, InventorySlot } from "@/components/kit/inventory-slot";
+import { AddItemSlot, EmptySlot, InventoryGrid, InventorySlot } from "@/components/kit/inventory-slot";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -68,10 +68,16 @@ export function InventoryScreen({
   );
 
   /**
-   * Pad the stash out to three rows at the widest breakpoint, so the panel is
-   * a container with room in it rather than a strip that hugs its contents.
+   * Complete the current row, and stop.
+   *
+   * This was a flat 18, which is three rows at the widest breakpoint and more
+   * than five at 360px: a student with two items met sixteen dashed
+   * placeholders — over five screens' worth of nothing — with the real item
+   * count lost at the top. The widest grid is six columns, so at most five
+   * cells are ever needed to square off the row, and one of them is the add
+   * tile rather than padding.
    */
-  const emptyWells = Math.max(0, 18 - slots.length);
+  const trailing = (6 - ((slots.length + 1) % 6)) % 6;
 
   const selectedIds =
     selected === "all" ? items.map((i) => i.item_id) : [...selected].map(Number);
@@ -166,9 +172,16 @@ export function InventoryScreen({
                 id={slot.item_id}
                 item={slot}
                 badge={
+                  /* A slot is about 93px wide at 360px. The labelled badge
+                     measured roughly 86px of that and was clamped to 81px by
+                     the slot's own max-width, so it truncated its own word
+                     while covering most of the photograph — register.md §2:
+                     a card does not compete with its own image. The label
+                     survives for assistive tech. */
                   <StatusBadge
                     status={ITEM_STATUS[statusOf(item)]}
                     size="sm"
+                    iconOnly
                   />
                 }
               />
@@ -180,16 +193,12 @@ export function InventoryScreen({
             panel collapsed to a single strip of thumbnails and the screen read
             as a short list rather than a container you are filling. Count
             matches InventoryGrid's own breakpoints so the rows stay whole. */}
-        {emptyWells > 0 ? (
-          <div
-            aria-hidden
-            className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6"
-          >
-            {Array.from({ length: emptyWells }, (_, i) => (
-              <EmptySlot key={i} label="Empty slot" />
-            ))}
-          </div>
-        ) : null}
+        <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6">
+          <AddItemSlot />
+          {Array.from({ length: trailing }, (_, i) => (
+            <EmptySlot key={i} label="Empty slot" />
+          ))}
+        </div>
       </Surface>
 
       {selecting && selectedIds.length > 0 ? (

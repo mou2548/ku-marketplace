@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import {
   GridList,
@@ -173,6 +174,16 @@ export function InventorySlot({
 }
 
 /** An empty well on the trade bench — a placeholder for a not-yet-placed item. */
+/**
+ * A well with nothing in it.
+ *
+ * The plus glyph used to be on every one of these while the whole element was
+ * `aria-hidden` with no handler — so the most repeated affordance on the
+ * inventory screen did nothing, and the real "Add an item" button was a 36px
+ * control in the header. That is a precise answer to "I do not know where to
+ * press next", so the glyph now belongs to `AddItemSlot` alone and a plain
+ * well is visibly not pressable.
+ */
 export function EmptySlot({
   label = "Empty slot",
   className,
@@ -184,14 +195,30 @@ export function EmptySlot({
     <div
       aria-hidden
       className={cn(
-        "grid aspect-square place-items-center rounded-slot",
-        "border-2 border-dashed border-line-default bg-surface-sunken/60",
-        "transition-colors duration-[--dur-fast]",
+        "aspect-square rounded-slot",
+        "border-2 border-dashed border-line-subtle bg-surface-sunken/40",
         className,
       )}
       title={label}
+    />
+  );
+}
+
+/** The first well in the stash: the real way to add something. */
+export function AddItemSlot({ className }: { className?: string }) {
+  return (
+    <Link
+      href="/inventory/new"
+      className={cn(
+        "group/add flex aspect-square flex-col items-center justify-center gap-1 rounded-slot",
+        "border-2 border-dashed border-line-default bg-surface-sunken/60 text-ink-muted",
+        "transition-colors duration-[--dur-fast]",
+        "hover:border-brand hover:bg-brand-subtle hover:text-ink-brand",
+        className,
+      )}
     >
-      <Plus className="size-4 text-ink-disabled" />
-    </div>
+      <Plus aria-hidden className="size-5" />
+      <span className="px-1 text-center text-meta leading-tight">Add an item</span>
+    </Link>
   );
 }
