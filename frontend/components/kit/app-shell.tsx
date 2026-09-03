@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 import { Button, LinkButton } from "./button";
 import { LocaleSwitch } from "@/components/patterns/locale-switch";
+import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
 
@@ -125,8 +127,8 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
   return (
     <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>
-      <header className="sticky top-0 z-[50] w-full bg-surface text-ink-brand shadow-raised">
-        <div className="flex h-16 w-full items-center gap-6 px-4 lg:px-8">
+      <header className="sticky top-0 z-[50] w-full border-b border-line bg-surface text-ink-brand">
+        <div className="flex h-[4.25rem] w-full items-center gap-3 px-3 sm:px-4 lg:gap-5 lg:px-8">
           <DrawerTrigger isOpen={menuOpen} onOpenChange={setMenuOpen}>
             <Button
               variant="ghost"
@@ -150,9 +152,22 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
           <Link
             href="/"
-            className="shrink-0 text-body-lg leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
+            aria-label={t("nav.brand")}
+            className="group flex shrink-0 items-center gap-2.5 rounded-control outline-none"
           >
-            KU Marketplace
+            <span className="grid size-10 place-items-center overflow-hidden rounded-control bg-white shadow-flat">
+              <Image
+                src="/images/ku-logo.png"
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-auto object-contain"
+                priority
+              />
+            </span>
+            <span className="hidden text-body-lg leading-[1.2] font-bold tracking-[-0.018em] text-ink sm:block">
+              KU <span className="text-ink-brand">Marketplace</span>
+            </span>
           </Link>
 
           {/* Centred and spread, rather than crammed against the wordmark.
@@ -172,11 +187,11 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   aria-current={active ? "page" : undefined}
                   title={t(labelKey)}
                   className={cn(
-                    "relative flex min-h-10 items-center gap-1.5 px-3 text-body lg:px-4",
-                    "transition-colors duration-[--dur-fast]",
+                    "relative flex min-h-10 items-center gap-1.5 rounded-pill px-3 text-body-sm lg:px-4",
+                    "transition-[color,background-color] duration-[--dur-fast]",
                     active
-                      ? "font-semibold text-ink"
-                      : "text-ink-secondary hover:text-ink-brand",
+                      ? "bg-brand-subtle font-semibold text-ink-brand"
+                      : "text-ink-secondary hover:bg-surface-sunken hover:text-ink",
                   )}
                 >
                   {/* Between 768 and 1024 there is room for icons but not
@@ -184,15 +199,6 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                   <Icon aria-hidden className="size-5 lg:hidden" />
                   <span className="hidden lg:inline">{t(labelKey)}</span>
                   <Count value={badge ? badges[badge] : undefined} />
-                  {/* Underline, not a pill — matches the reference layout: a
-                      short brand-coloured bar under the active label only,
-                      no filled background on the tab itself. */}
-                  {active ? (
-                    <span
-                      aria-hidden
-                      className="absolute inset-x-3 -bottom-[3px] h-[2px] rounded-pill bg-brand lg:inset-x-4"
-                    />
-                  ) : null}
                 </Link>
               );
             })}
@@ -219,10 +225,12 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
 
             <LocaleSwitch className="hidden sm:flex" />
 
+            <ThemeSwitch />
+
             <Link
               href="/notifications"
               aria-label={t("nav.notifications")}
-              className="touch-target grid size-9 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
+              className="touch-target grid size-10 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
             >
               <Bell className="size-5" />
             </Link>
@@ -232,7 +240,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               aria-label={t("nav.account")}
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
               className={cn(
-                "touch-target grid size-9 place-items-center rounded-pill transition-colors",
+                "touch-target grid size-10 place-items-center rounded-pill transition-colors",
                 isActive(pathname, "/account")
                   ? "bg-brand text-on-brand"
                   : "bg-brand-subtle text-ink-brand hover:bg-green-200",
@@ -255,7 +263,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           "w-full flex-1",
           isChat
             ? "min-h-0 overflow-hidden"
-            : "px-4 py-5 pb-12 lg:px-8 lg:py-7",
+            : "px-3 py-4 pb-12 sm:px-4 lg:px-8 lg:py-6",
           /* Clear the fixed bar, plus the home indicator under it. */
           showTabBar && !isChat && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12",
         )}
@@ -270,7 +278,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
       {showTabBar ? (
         <nav
           aria-label={t("nav.main")}
-          className="fixed inset-x-0 bottom-0 z-[50] border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+          className="fixed inset-x-0 bottom-0 z-[50] border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(18_43_29_/_0.06)] md:hidden"
         >
           <ul className="flex items-stretch">
             {NAV.filter((entry) => entry.onTabBar).map(
@@ -284,10 +292,15 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                       className={cn(
                         "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1",
                         "transition-colors duration-[--dur-fast]",
-                        active ? "text-ink-brand" : "text-ink-muted",
+                        active ? "font-semibold text-ink-brand" : "text-ink-muted",
                       )}
                     >
-                      <span className="relative">
+                      <span
+                        className={cn(
+                          "relative rounded-pill px-3 py-1 transition-colors",
+                          active && "bg-brand-subtle",
+                        )}
+                      >
                         <Icon aria-hidden className="size-5" />
                         <Count value={badge ? badges[badge] : undefined} />
                       </span>

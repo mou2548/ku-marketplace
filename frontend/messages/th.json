@@ -303,6 +303,8 @@
     "postAnItem": "ลงประกาศขายของ",
     "notifications": "การแจ้งเตือน",
     "account": "บัญชี",
+    "useDarkTheme": "ใช้ธีมมืด",
+    "useLightTheme": "ใช้ธีมสว่าง",
     "openMenu": "เปิดเมนู",
     "main": "เมนูหลัก",
     "market": "ตลาด",
@@ -314,6 +316,12 @@
     "needsYou": "มี {count} รายการที่รอคุณอยู่"
   },
   "feed": {
+    "title": "หาของที่ใช่ในมหาวิทยาลัย",
+    "subtitle": "ซื้อ แลก และรับของแจกจากนิสิต KU ที่ยืนยันตัวตนแล้ว",
+    "resultCount": "{count} ประกาศ",
+    "all": "ทั้งหมด",
+    "sale": "ขาย",
+    "trade": "แลก",
     "category": "หมวดหมู่",
     "condition": "สภาพ",
     "clearFilters": "ล้างตัวกรอง",

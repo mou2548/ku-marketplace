@@ -382,7 +382,7 @@
 
   --ease-out: cubic-bezier(0.22, 0.8, 0.24, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.42, 0.58, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* =========================================================================
@@ -397,6 +397,109 @@
   --z-header: 50;
   --z-dialog: 100;
   --z-toast: 120;
+}
+
+/* Dark is a first-class palette, not an inverted afterthought. The green hue
+   remains stable while surfaces move through a deep, green-tinted neutral
+   scale. Status washes are deliberately quiet so photos still lead the feed. */
+[data-theme="dark"] {
+  --green-50: #142018;
+  --green-100: #1b3022;
+  --green-200: #25452f;
+  --green-300: #356043;
+  --green-400: #6bca96;
+  --green-500: #52c684;
+  --green-600: #3ab572;
+  --green-700: #8bdcad;
+  --green-800: #b9edcf;
+  --green-900: #d9f4e4;
+  --green-950: #f1f7f3;
+
+  --gray-50: #18211b;
+  --gray-100: #202b24;
+  --gray-200: #2a382f;
+  --gray-300: #3b4c41;
+  --gray-400: #637269;
+  --gray-500: #829188;
+  --gray-600: #9cac9f;
+  --gray-700: #bac7bf;
+  --gray-800: #d6dfd9;
+  --gray-900: #e8efea;
+  --gray-950: #f4f8f5;
+
+  --bg-page: #101713;
+  --bg-surface: #172019;
+  --bg-surface-raised: #1b271f;
+  --bg-surface-sunken: #0c120e;
+  --bg-surface-inverse: #f1f7f3;
+  --bg-brand-strong: #19432c;
+  --bg-brand-band: #257248;
+  --on-brand-strong: #ffffff;
+  --bg-overlay: rgb(2 8 4 / 0.72);
+
+  --border-subtle: #29372e;
+  --border-default: #35473c;
+  --border-strong: #4e6557;
+  --border-brand: #6bca96;
+
+  --text-primary: #f1f7f3;
+  --text-secondary: #c7d3cb;
+  --text-muted: #9cac9f;
+  --text-disabled: #637269;
+  --text-brand: #8bdcad;
+  --text-inverse: #122b1d;
+
+  --brand: #3ab572;
+  --brand-hover: #52c684;
+  --brand-active: #6bca96;
+  --brand-subtle: #203c2b;
+  --brand-subtle-hover: #294b36;
+  --on-brand: #07150d;
+  --ring: #6bca96;
+  --ring-offset: var(--bg-page);
+
+  --tone-neutral-bg: #28322c;
+  --tone-neutral-border: #637269;
+  --tone-neutral-fg: #d8e1db;
+  --tone-neutral-solid: #637269;
+  --tone-info-bg: #1b3442;
+  --tone-info-border: #6f8fa3;
+  --tone-info-fg: #c9e7f5;
+  --tone-info-solid: #3d6076;
+  --tone-success-bg: #193c28;
+  --tone-success-border: #52c684;
+  --tone-success-fg: #b9edcf;
+  --tone-success-solid: #257248;
+  --tone-warning-bg: #3d2d10;
+  --tone-warning-border: #bd7b00;
+  --tone-warning-fg: #f9d898;
+  --tone-warning-solid: #966200;
+  --tone-danger-bg: #3c1d24;
+  --tone-danger-border: #b3455a;
+  --tone-danger-fg: #f3c1ca;
+  --tone-danger-solid: #96273b;
+  --tone-trade-bg: #15323a;
+  --tone-trade-border: #4fa3bd;
+  --tone-trade-fg: #bfe7f1;
+  --tone-trade-solid: #2c7a93;
+
+  --shadow-flat:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(255 255 255 / 0.055);
+  --shadow-raised:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    0 1px 2px rgb(0 0 0 / 0.24),
+    0 4px 12px rgb(0 0 0 / 0.16),
+    0 0 0 1px rgb(255 255 255 / 0.045);
+  --shadow-floating:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 4px 10px rgb(0 0 0 / 0.24),
+    0 14px 30px rgb(0 0 0 / 0.22),
+    0 0 0 1px rgb(255 255 255 / 0.05);
+  --shadow-overlay: 0 18px 56px rgb(0 0 0 / 0.48);
+  --shadow-sunken:
+    inset 0 2px 5px rgb(0 0 0 / 0.3),
+    inset 0 0 0 1px rgb(255 255 255 / 0.04);
 }
 
 /* =========================================================================
@@ -595,6 +698,9 @@
     line-height: var(--text-body--line-height);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition:
+      background-color var(--dur-base) var(--ease-out),
+      color var(--dur-base) var(--ease-out);
   }
 
   /* Prices, quantities, countdowns and tracking numbers must not jitter as
@@ -618,6 +724,11 @@
   ::selection {
     background-color: var(--green-200);
     color: var(--green-950);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
   }
 }
 
@@ -643,13 +754,19 @@
   background-size: 40px 40px;
 }
 
+[data-theme="dark"] .texture-grid {
+  background-image:
+    linear-gradient(to right, rgb(139 220 173 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(139 220 173 / 0.055) 1px, transparent 1px);
+}
+
 /* The game panel: a lit plate rather than a flat rectangle. */
 .plate {
   position: relative;
   background-image: linear-gradient(
     180deg,
     var(--bg-surface) 0%,
-    var(--gray-50) 100%
+    var(--bg-surface-sunken) 100%
   );
   box-shadow: var(--shadow-raised);
 }

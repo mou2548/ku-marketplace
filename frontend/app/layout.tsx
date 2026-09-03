@@ -33,7 +33,19 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={`${prompt.variable} h-full antialiased`}>
+    <html
+      lang={locale}
+      data-theme="light"
+      suppressHydrationWarning
+      className={`${prompt.variable} h-full antialiased`}
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("ku-theme");var d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="min-h-full">
         <a
           href="#main"

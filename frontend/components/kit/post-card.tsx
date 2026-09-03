@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
 import { StatusIcon } from "./icon";
-import { Surface } from "./surface";
 import { TONE_SOLID } from "./tone";
 import { TrustBadge } from "./trust-badge";
 
@@ -59,43 +58,23 @@ export function PostCard({
   const showsPrice = postType !== "TradeOnly";
 
   return (
-    <Surface
-      as="article"
-      shape="card"
-      interactive
-      // The rarity rim is gone. It made condition one colour event per card
-      // instead of five, which was the right answer to the question being
-      // asked then — but CLAUDE.md §3.9 now confines rarity colour to
-      // inventory and trade, and a feed is neither. Condition is still on the
-      // card, in words, at the foot.
-      className={cn("overflow-hidden", className)}
-    >
-      {/* The global :focus-visible rule paints --shadow-focus, a box-shadow,
-          and the Surface above carries overflow-hidden, so the ring was
-          clipped away on the one card in the product that is entirely a link.
-          An inset ring is drawn inside the element and survives the clip. */}
+    <article className={cn("group/pin break-inside-avoid", className)}>
       <Link
         href={`/market/${postId}`}
-        className="block rounded-card outline-none focus-visible:[box-shadow:inset_0_0_0_2px_var(--ring)]"
+        className="block rounded-card outline-none"
       >
-        <div className="relative">
-          <PostImage src={imageUrl} alt={name} aspectRatio={aspectRatio} />
-          {/* Only when the post accepts a trade.
-              CLAUDE.md §4 gives trade its own hue precisely so a trade post
-              separates from a sale post at a glance, so this badge keeps its
-              fill. But a "Sell" badge on every card labels the default: a feed
-              is mostly sale posts, so it painted a saturated block over every
-              photograph and told the reader nothing. Sale is what a
-              marketplace card means unless it says otherwise.
-
-              No `shadow-raised`: its inset white top-highlight is meant for a
-              flat card surface, and traced around this pill's full rounded
-              edge as a visible white rim, worst over a photo. */}
+        <div className="relative overflow-hidden rounded-[1rem] bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/pin:-translate-y-0.5 group-hover/pin:shadow-floating group-focus-visible/pin:shadow-floating">
+          <PostImage
+            src={imageUrl}
+            alt={name}
+            aspectRatio={aspectRatio}
+            className="transition-transform duration-[--dur-slow] ease-[--ease-out] group-hover/pin:scale-[1.025]"
+          />
           {postType !== "SellOnly" ? (
             <span
               className={cn(
-                "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
-                "rounded-pill px-2.5 py-1 text-meta font-semibold",
+                "pointer-events-none absolute top-2.5 left-2.5 flex items-center gap-1.5",
+                "rounded-pill px-2.5 py-1.5 text-meta font-semibold shadow-raised",
                 TONE_SOLID[POST_TYPE[postType].tone],
               )}
             >
@@ -105,13 +84,23 @@ export function PostCard({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2 p-4">
-          <h3 className="line-clamp-2 text-[1rem] leading-[1.45] font-semibold text-ink">
-            {name}
-          </h3>
+        <div className="flex flex-col gap-1.5 px-1 pt-2.5 pb-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2 min-w-0 text-[0.9375rem] leading-[1.45] font-semibold text-ink">
+              {name}
+            </h3>
+            {showsPrice ? (
+              <span
+                data-numeric
+                className="shrink-0 text-[1rem] leading-[1.4] font-bold text-ink-brand"
+              >
+                ฿{price.toLocaleString("en-GB")}
+              </span>
+            ) : null}
+          </div>
 
           {courseName ? (
-            <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-gray-100 px-2 py-0.5 text-meta font-medium text-ink-secondary">
+            <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-surface-sunken px-2 py-0.5 text-meta font-medium text-ink-secondary">
               <BookOpen aria-hidden className="size-3" />
               {courseName}
             </span>
@@ -136,32 +125,26 @@ export function PostCard({
             </p>
           ) : null}
 
-          <div className="flex items-baseline justify-between gap-2 pt-1">
-            {showsPrice ? (
-              <span
-                data-numeric
-                className="text-[1.25rem] leading-[1.3] font-bold text-ink"
-              >
-                ฿{price.toLocaleString("en-GB")}
-              </span>
-            ) : (
+          {!showsPrice ? (
+            <div className="pt-0.5">
               <span className="text-body font-semibold text-ink">{t("card.tradeOnly")}</span>
-            )}
-            {/* Stated in words. The edge carries the colour, but condition can
-                never be colour alone (CLAUDE.md §6). */}
+            </div>
+          ) : null}
+
+          <div className="mt-0.5 flex items-center justify-between gap-2">
+            <TrustBadge
+              name={seller.name}
+              isVerified={seller.isVerified}
+              faculty={seller.faculty}
+              size="sm"
+              className="min-w-0"
+            />
             <span className="shrink-0 text-meta font-medium text-ink-muted">
               {st.of(rarity).label}
             </span>
           </div>
-
-          <TrustBadge
-            name={seller.name}
-            isVerified={seller.isVerified}
-            faculty={seller.faculty}
-            size="sm"
-          />
         </div>
       </Link>
-    </Surface>
+    </article>
   );
 }

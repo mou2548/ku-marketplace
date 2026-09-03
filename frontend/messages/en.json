@@ -303,6 +303,8 @@
     "postAnItem": "Post an item",
     "notifications": "Notifications",
     "account": "Account",
+    "useDarkTheme": "Use dark theme",
+    "useLightTheme": "Use light theme",
     "openMenu": "Open menu",
     "main": "Main",
     "market": "Market",
@@ -314,6 +316,12 @@
     "needsYou": "{count} items need your attention"
   },
   "feed": {
+    "title": "Find it on campus",
+    "subtitle": "Secondhand finds, trades, and giveaways from verified KU students.",
+    "resultCount": "{count, plural, =0 {No listings} =1 {1 listing} other {# listings}}",
+    "all": "All",
+    "sale": "For sale",
+    "trade": "For trade",
     "category": "Category",
     "condition": "Condition",
     "clearFilters": "Clear filters",
