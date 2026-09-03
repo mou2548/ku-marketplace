@@ -11,6 +11,8 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { publishListing } from "@/lib/actions/posts";
+import { postIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
 import { ITEM_CONDITION, POST_TYPE, type PostType } from "@/lib/status";
 
@@ -36,11 +38,24 @@ export function ListItemForm({ item }: { item: Item }) {
 
   async function publish() {
     setBusy(true);
-    // POST /posts → { item_id, post_type, price, quantity_total }
-    await new Promise((r) => setTimeout(r, 400));
+    let post: PostSummary;
+    try {
+      post = await publishListing({
+        item_id: item.item_id,
+        post_type: postType,
+        // A trade-only post still needs a number the API will accept; the
+        // asking price is meaningless there and the field is hidden for it.
+        price: wantsPrice ? Number(price) : 0,
+        quantity_total: item.quantity,
+      });
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not list this item");
+      return;
+    }
     setBusy(false);
     toast.show("Listed. It is live in the market now.");
-    router.push("/market");
+    router.push(`/market/${postIdToNumber(post.post_id)}`);
   }
 
   return (

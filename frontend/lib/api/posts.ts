@@ -86,6 +86,15 @@ function numericId(label: string): number {
 }
 
 /**
+ * The mutating endpoints answer with the wire label (`"post_001"`), while
+ * `/market/[postId]` and `getPost` both take the number. Anything routing off
+ * a mutation's response has to convert, or the link resolves to `NaN`.
+ */
+export function postIdToNumber(label: string): number {
+  return numericId(label);
+}
+
+/**
  * Adapt the wire post to `lib/api/types.ts`'s rich `Post` — numeric ids, a
  * nested `Item` and a `UserSummary` seller — the shape the feed and detail
  * screens already consume. A post whose payload lacks the nested `item`

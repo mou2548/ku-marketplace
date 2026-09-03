@@ -346,3 +346,30 @@ What's still adapted around rather than built:
   button's own overall `allowed` gate, which is `false` for a stuck Meetup
   deal today for the same underlying reason — a pre-existing gap, not
   introduced here).
+
+## Trade terms and the listing description are not stored
+
+Recorded 2026-09-03 while wiring `list-form.tsx` to `POST /posts`
+(UX-REVISION-PLAN.md step 2.0.1).
+
+`CreatePostPayload` is `{ item_id, post_type, price, quantity_total }`. The
+list form also collects **"What do you want in trade"** and **"Listing
+description"** (`list-form.tsx:129-146`), and the endpoint has nowhere to put
+either. Both were being discarded silently by the placeholder that preceded
+this wiring, so nothing regressed — but nothing is saved either.
+
+What the UI does: the two fields stay on screen and are sent nowhere. They are
+not removed, because the brief asked for the sell/trade choice to be explicit
+and "what do you want in trade" is the question a trade-only post exists to
+ask. A post whose trade terms vanish is a worse answer than one that never
+asked, so this needs an owner decision rather than a quiet deletion:
+
+- add the columns to the backend (outside this scope, `CLAUDE.md` 0), or
+- fold both into `Item.description` at publish time, which mixes an item fact
+  with a listing fact and will read wrong on the next listing of the same
+  item, or
+- remove the fields and let the seller say it in chat.
+
+Also noted: a trade-only post has no meaningful asking price, and `price` is
+required. The wiring sends `0` for `TradeOnly`. If the API treats `0` as a
+real price, a trade-only listing may render as "free" somewhere.
