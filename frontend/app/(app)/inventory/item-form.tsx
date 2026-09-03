@@ -367,7 +367,7 @@ export function ItemForm({
         rows={5}
       />
 
-      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex gap-2 lg:static">
+      <div className="sticky action-bar-bottom z-[20] flex gap-2 lg:static">
         <Button
           variant="secondary"
           block

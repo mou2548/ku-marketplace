@@ -671,6 +671,18 @@
    a control already larger than 44px is unaffected.
    ========================================================================= */
 
+/* Sticky action bars have to clear the phone tab bar (56px plus the home
+   indicator), which app-shell.tsx renders below 768px. Eight screens park a
+   primary action at the bottom edge; without this they sit under it. */
+.action-bar-bottom {
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 48rem) {
+  .action-bar-bottom {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
 @media (pointer: coarse) {
   .touch-target {
     min-height: 2.75rem;

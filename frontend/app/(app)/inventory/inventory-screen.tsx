@@ -204,7 +204,7 @@ export function InventoryScreen({
       {selecting && selectedIds.length > 0 ? (
         <Surface
           shape="card"
-          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] flex items-center gap-3 p-3"
+          className="sticky action-bar-bottom z-[20] flex items-center gap-3 p-3"
         >
           <p data-numeric className="flex-1 text-body-sm font-medium">
             {selectedIds.length} selected

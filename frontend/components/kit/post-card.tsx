@@ -59,19 +59,12 @@ export function PostCard({
       as="article"
       shape="card"
       interactive
-      // Condition owns the card edge, the way it owns the inventory slot — one
-      // colour event per card instead of five. Set as custom properties so the
-      // ring is a class reading a variable, never a colour passed to `style`.
-      style={
-        {
-          "--slot-edge": rarity.edge,
-          "--slot-glow": rarity.glow,
-        } as React.CSSProperties
-      }
-      className={cn(
-        "overflow-hidden [box-shadow:var(--shadow-raised),var(--shadow-rarity)]",
-        className,
-      )}
+      // The rarity rim is gone. It made condition one colour event per card
+      // instead of five, which was the right answer to the question being
+      // asked then — but CLAUDE.md §3.9 now confines rarity colour to
+      // inventory and trade, and a feed is neither. Condition is still on the
+      // card, in words, at the foot.
+      className={cn("overflow-hidden", className)}
     >
       {/* The global :focus-visible rule paints --shadow-focus, a box-shadow,
           and the Surface above carries overflow-hidden, so the ring was
@@ -83,24 +76,29 @@ export function PostCard({
       >
         <div className="relative">
           <PostImage src={imageUrl} alt={name} aspectRatio={aspectRatio} />
-          {/* Filled, with white text — `TONE_SOLID`, the same treatment
-              `warning` and `danger` chips already use. Used to be a local
-              `amber-700`/`green-700` ternary that bypassed the tone system
-              entirely and, worse, picked the same hue `warning` chips use for
-              a pure trade — see the trade tone comment in globals.css.
+          {/* Only when the post accepts a trade.
+              CLAUDE.md §4 gives trade its own hue precisely so a trade post
+              separates from a sale post at a glance, so this badge keeps its
+              fill. But a "Sell" badge on every card labels the default: a feed
+              is mostly sale posts, so it painted a saturated block over every
+              photograph and told the reader nothing. Sale is what a
+              marketplace card means unless it says otherwise.
+
               No `shadow-raised`: its inset white top-highlight is meant for a
               flat card surface, and traced around this pill's full rounded
               edge as a visible white rim, worst over a photo. */}
-          <span
-            className={cn(
-              "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
-              "rounded-pill px-2.5 py-1 text-meta font-semibold",
-              TONE_SOLID[POST_TYPE[postType].tone],
-            )}
-          >
-            <StatusIcon name={POST_TYPE[postType].icon} className="size-3.5" />
-            {POST_TYPE[postType].label}
-          </span>
+          {postType !== "SellOnly" ? (
+            <span
+              className={cn(
+                "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
+                "rounded-pill px-2.5 py-1 text-meta font-semibold",
+                TONE_SOLID[POST_TYPE[postType].tone],
+              )}
+            >
+              <StatusIcon name={POST_TYPE[postType].icon} className="size-3.5" />
+              {POST_TYPE[postType].label}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-2 p-4">

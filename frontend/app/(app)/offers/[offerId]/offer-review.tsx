@@ -194,7 +194,7 @@ export function OfferReview({
              a full-height read-only bench — two plate panels and a seam. This
              is the highest-stakes control in the group; it does not scroll
              away. */
-          <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex flex-col-reverse gap-2 rounded-card bg-surface p-3 shadow-floating sm:static sm:flex-row sm:justify-end sm:bg-transparent sm:p-0 sm:shadow-none">
+          <div className="sticky action-bar-bottom z-[20] flex flex-col-reverse gap-2 rounded-card bg-surface p-3 shadow-floating sm:static sm:flex-row sm:justify-end sm:bg-transparent sm:p-0 sm:shadow-none">
             <Button
               variant="secondary"
               onPress={() =>

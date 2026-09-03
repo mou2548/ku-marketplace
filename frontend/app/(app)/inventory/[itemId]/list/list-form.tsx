@@ -155,7 +155,7 @@ export function ListItemForm({ item }: { item: Item }) {
         placeholder="Meetup conditions, times that suit you, or anything else worth saying"
       />
 
-      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex gap-2 lg:static">
+      <div className="sticky action-bar-bottom z-[20] flex gap-2 lg:static">
         <Button variant="secondary" block onPress={() => router.back()}>
           Cancel
         </Button>

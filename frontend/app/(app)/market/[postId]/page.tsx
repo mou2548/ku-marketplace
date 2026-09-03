@@ -22,7 +22,7 @@ import { PostActions } from "./post-actions";
  * phone, which is where a marketplace loses its conversions.
  *
  * A `Both` post shows *both* affordances side by side rather than hiding the
- * trade behind a menu: research P3 says a trader who cannot see the swap路 will
+ * trade behind a menu: research P3 says a trader who cannot see the swap will
  * assume the post is sale-only and leave.
  */
 export default async function PostDetailPage({

@@ -276,7 +276,7 @@ export function PostComposer({
   const publishBar = (
     <Surface
       shape="card"
-      className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 p-3"
+      className="sticky action-bar-bottom z-[20] mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 p-3"
     >
       <p className="min-w-0 flex-1 text-body-sm">
         {picked.size === 0 ? (

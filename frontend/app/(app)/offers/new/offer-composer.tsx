@@ -330,7 +330,7 @@ export function OfferComposer({
       {/* Sticky on mobile: the submit must not be below a scrolling stash. */}
       <Surface
         shape="card"
-        className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex items-center gap-3 p-3 lg:static"
+        className="sticky action-bar-bottom z-[20] flex items-center gap-3 p-3 lg:static"
       >
         {/* Same phrasing as the review screen and the inbox card, so what you
             are about to send reads the way it will read once it is sent. */}
