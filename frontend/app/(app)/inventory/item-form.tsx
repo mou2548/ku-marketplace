@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -76,6 +77,7 @@ export function ItemForm({
   mode: "create" | "edit";
   item?: Item;
 }) {
+  const t = useTranslations();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
@@ -168,7 +170,7 @@ export function ItemForm({
    */
   const preview = (
     <Surface shape="card" className="flex flex-col gap-3 p-5">
-      <p className="text-overline text-ink-muted uppercase">In your stash</p>
+      <p className="text-overline text-ink-muted uppercase">{t("inventory.inYourStash")}</p>
 
       <span
         style={
@@ -185,15 +187,15 @@ export function ItemForm({
 
       <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Category</dt>
+          <dt className="text-ink-muted">{t("inventory.category")}</dt>
           <dd>{category}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Condition</dt>
+          <dt className="text-ink-muted">{t("inventory.condition")}</dt>
           <dd>{st.of(ITEM_CONDITION[condition]).label}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Quantity</dt>
+          <dt className="text-ink-muted">{t("inventory.quantity")}</dt>
           <dd data-numeric>{quantity || "1"}</dd>
         </div>
       </dl>
@@ -214,9 +216,7 @@ export function ItemForm({
       {/* Photos first: it is the fastest field to fill and the one that makes
           the rest feel worth doing. */}
       <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-body-sm font-medium text-ink-secondary">
-          Photos
-          <span className="ml-1 font-normal text-ink-muted">
+        <p className="text-body-sm font-medium text-ink-secondary">{t("inventory.photos")}<span className="ml-1 font-normal text-ink-muted">
             the first one is the cover
           </span>
         </p>
@@ -259,7 +259,7 @@ export function ItemForm({
             className="grid aspect-square place-items-center rounded-slot border-2 border-dashed border-line-default bg-surface-sunken text-ink-muted transition-colors hover:border-brand hover:text-ink-brand"
           >
             <ImagePlus aria-hidden className="size-5" />
-            <span className="sr-only">Add photos</span>
+            <span className="sr-only">{t("inventory.addPhotos")}</span>
           </button>
         </div>
 
@@ -285,16 +285,16 @@ export function ItemForm({
 
       <TextInput
         className="max-w-2xl"
-        label="Item name"
+        label={t("inventory.itemName")}
         value={name}
         onChange={setName}
         isRequired
-        placeholder="e.g. Calculus textbook, volume 1"
+        placeholder={t("inventory.itemNamePlaceholder")}
       />
 
       <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <SelectField
-          label="Category"
+          label={t("inventory.category")}
           selectedKey={category}
           onSelectionChange={(k) => setCategory(k as ItemCategory)}
         >
@@ -306,7 +306,7 @@ export function ItemForm({
         </SelectField>
 
         <TextInput
-          label="Quantity"
+          label={t("inventory.quantity")}
           value={quantity}
           onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
           inputMode="numeric"
@@ -316,39 +316,39 @@ export function ItemForm({
       {needsCourse ? (
         <TextInput
           className="max-w-2xl"
-          label="Course code"
+          label={t("inventory.courseCode")}
           value={courseName}
           onChange={setCourseName}
           placeholder="e.g. 01417111"
-          hint="Most people search by course code. Adding it makes this far easier to find."
+          hint={t("inventory.courseHint")}
         />
       ) : null}
 
       {needsBrand ? (
         <TextInput
-          label="Brand and model"
+          label={t("inventory.brandModel")}
           value={brandModel}
           onChange={setBrandModel}
-          placeholder="e.g. Keychron K2"
+          placeholder={t("inventory.brandPlaceholder")}
         />
       ) : null}
 
       {needsWarranty ? (
         <DatePickerField
-          label="Warranty expires"
+          label={t("inventory.warranty")}
           value={warranty}
           onChange={setWarranty}
-          hint="Leave empty if it is out of warranty or never had one"
+          hint={t("inventory.warrantyHint")}
         />
       ) : null}
 
       {needsSize ? (
         <TextInput
-          label="Size"
+          label={t("inventory.size")}
           value={size}
           onChange={setSize}
-          placeholder="e.g. M, 42, or 15 inch"
-          hint="Whatever the label says. This is the question every buyer asks first."
+          placeholder={t("inventory.sizePlaceholder")}
+          hint={t("inventory.sizeHint")}
         />
       ) : null}
 
@@ -356,11 +356,11 @@ export function ItemForm({
           form came to offer four grades while the market filtered on five —
           "Very Good" was missing, and it is the grade the seed uses most. */}
       <RadioGroupField
-        label="Condition"
+        label={t("inventory.condition")}
         value={condition}
         onChange={(v) => setCondition(v as ItemCondition)}
         variant="card"
-        hint="Condition shows as the border colour of the item, in your inventory and in the market. Be honest and the meetup goes smoothly."
+        hint={t("inventory.conditionHint")}
       >
         {CONDITION_ORDER.map((value) => (
           <Radio key={value} value={value} description={CONDITION_HINT[value]}>
@@ -371,10 +371,10 @@ export function ItemForm({
 
       <TextAreaField
         className="max-w-2xl"
-        label="Details"
+        label={t("inventory.details")}
         value={description}
         onChange={setDescription}
-        placeholder="Say honestly how long you have had it, what is wrong with it, and anything the next owner should know"
+        placeholder={t("inventory.descHint")}
         rows={5}
       />
 
@@ -384,9 +384,7 @@ export function ItemForm({
           block
           onPress={() => router.back()}
           isDisabled={busy}
-        >
-          Cancel
-        </Button>
+        >{t("inventory.cancel")}</Button>
         <Button block size="lg" isDisabled={!canSave} isLoading={busy} onPress={save}>
           <Save className="size-5" />
           {mode === "create" ? "Add to inventory" : "Save"}

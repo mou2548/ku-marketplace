@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ArrowDownLeft, ArrowUpRight, Coins, X } from "lucide-react";
 
 import type { InventoryItem } from "./inventory-slot";
@@ -69,6 +70,7 @@ export function TradeBench({
   isReadOnly = false,
   className,
 }: TradeBenchProps) {
+  const t = useTranslations();
   const remove = (id: number) =>
     onYouGiveChange(youGive.filter((i) => i.item_id !== id));
 
@@ -87,7 +89,7 @@ export function TradeBench({
         fill="plate"
         noise
         className="flex-1 p-4"
-        aria-label="What you receive"
+        aria-label={t("offer.whatYouReceive")}
       >
         <header className="mb-3 border-b-2 border-tone-success-border pb-2.5">
           <div className="flex items-baseline justify-between gap-2">
@@ -95,9 +97,7 @@ export function TradeBench({
               <ArrowDownLeft
                 aria-hidden
                 className="size-[1.125rem] shrink-0 text-tone-success-fg"
-              />
-              You get
-            </h3>
+              />{t("offer.youGet")}</h3>
             <span data-numeric className="text-caption text-ink-muted">
               {youGet.length} {youGet.length === 1 ? "item" : "items"}
             </span>
@@ -108,7 +108,7 @@ export function TradeBench({
         </header>
 
         <InventoryGrid
-          aria-label="Items coming to you"
+          aria-label={t("offer.itemsComing")}
           items={youGet}
           selectionMode="none"
           className="grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"
@@ -165,7 +165,7 @@ export function TradeBench({
           inputMode="numeric"
           placeholder="0"
           icon={<Coins className="size-4" />}
-          suffix={<span className="text-caption">THB</span>}
+          suffix={<span className="text-caption">{t("listing.thb")}</span>}
           className="flex-1 lg:w-full"
         />
       </div>
@@ -177,7 +177,7 @@ export function TradeBench({
         fill="plate"
         noise
         className="flex-1 p-4"
-        aria-label="Your side of the trade"
+        aria-label={t("offer.yourSide")}
       >
         <header className="mb-3 border-b-2 border-tone-neutral-border pb-2.5">
           <div className="flex items-baseline justify-between gap-2">
@@ -185,9 +185,7 @@ export function TradeBench({
               <ArrowUpRight
                 aria-hidden
                 className="size-[1.125rem] shrink-0 text-ink-muted"
-              />
-              You give
-            </h3>
+              />{t("offer.youGive")}</h3>
             <span data-numeric className="text-caption text-ink-muted">
               {youGive.length} {youGive.length === 1 ? "item" : "items"}
             </span>
@@ -198,7 +196,7 @@ export function TradeBench({
         </header>
 
         <InventoryGrid
-          aria-label="Items on the trade table"
+          aria-label={t("offer.onTable")}
           items={youGive}
           selectionMode="none"
           renderEmptyState={() => null}
@@ -232,15 +230,13 @@ export function TradeBench({
         {emptyWells > 0 ? (
           <div className="mt-2 grid grid-cols-4 gap-2">
             {Array.from({ length: emptyWells }, (_, i) => (
-              <EmptySlot key={i} label="Empty slot" />
+              <EmptySlot key={i} label={t("inventory.emptySlot")} />
             ))}
           </div>
         ) : null}
 
         {!isReadOnly && youGive.length > 0 ? (
-          <p className="mt-3 text-caption leading-[1.5] text-ink-muted">
-            Tap an item to take it back
-          </p>
+          <p className="mt-3 text-caption leading-[1.5] text-ink-muted">{t("offer.tapToRemove")}</p>
         ) : null}
       </Surface>
     </div>
@@ -263,19 +259,16 @@ export function TradeSourcePanel({
   onAdd: (item: InventoryItem) => void;
   className?: string;
 }) {
+  const t = useTranslations();
   return (
     <Surface as="section" shape="panel" className={cn("p-4", className)}>
-      <h3 className="text-[1.125rem] leading-[1.4] font-semibold">
-        My inventory
-      </h3>
+      <h3 className="text-[1.125rem] leading-[1.4] font-semibold">{t("offer.myInventory")}</h3>
       {/* This line used to live at the bottom of the "You give" panel, 13px
           and muted, pointing at a stash that was below the fold. An
           instruction belongs where the tap starts. */}
-      <p className="mt-1 mb-3 text-caption text-ink-muted">
-        Tap an item to put it on the table
-      </p>
+      <p className="mt-1 mb-3 text-caption text-ink-muted">{t("offer.tapToPlace")}</p>
       <InventoryGrid
-        aria-label="My inventory"
+        aria-label={t("offer.myInventory")}
         items={inventory}
         selectionMode="none"
       >

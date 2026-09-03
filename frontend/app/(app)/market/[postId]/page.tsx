@@ -31,7 +31,8 @@ export default async function PostDetailPage({
 }: {
   params: Promise<{ postId: string }>;
 }) {
-  const t = await getTranslations("status");
+  const tStatus = await getTranslations("status");
+  const t = await getTranslations();
   const { postId } = await params;
   const post = await getPost(Number(postId)).catch(() => undefined);
   if (!post) notFound();
@@ -43,7 +44,7 @@ export default async function PostDetailPage({
 
   const specs: Array<[string, string]> = [
     ["Category", post.item.category],
-    ["Condition", t(rarity.labelKey)],
+    ["Condition", tStatus(rarity.labelKey)],
     ["Remaining", `${post.quantity_remaining} left`],
   ];
   if (post.item.course_name) specs.push(["Course code", post.item.course_name]);
@@ -83,9 +84,7 @@ export default async function PostDetailPage({
         href="/"
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to market
-      </Link>
+        <ArrowLeft aria-hidden className="size-4" />{t("market.backToMarket")}</Link>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
       {/* The image is bounded, the page is not. Capping the whole page just
@@ -135,7 +134,7 @@ export default async function PostDetailPage({
               }
               className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
             >
-              {t(rarity.labelKey)}
+              {tStatus(rarity.labelKey)}
             </span>
           </div>
 
@@ -148,9 +147,7 @@ export default async function PostDetailPage({
               ฿{post.price.toLocaleString("en-GB")}
             </p>
           ) : (
-            <p className="text-[1.125rem] font-semibold text-tone-trade-fg">
-              Trade only
-            </p>
+            <p className="text-[1.125rem] font-semibold text-tone-trade-fg">{t("card.tradeOnly")}</p>
           )}
         </div>
 
@@ -163,9 +160,7 @@ export default async function PostDetailPage({
             year={post.seller.year}
           />
           <span className="ml-auto flex items-center gap-1.5 text-meta font-medium text-ink-brand">
-            <ShieldCheck aria-hidden className="size-4" />
-            KU student
-          </span>
+            <ShieldCheck aria-hidden className="size-4" />{t("market.kuStudent")}</span>
         </Surface>
 
         {post.description ? (
@@ -178,9 +173,7 @@ export default async function PostDetailPage({
           <Notice tone="trade" className="flex gap-3">
             <Package aria-hidden className="mt-0.5 size-5 shrink-0 text-tone-trade-fg" />
             <div>
-              <p className="text-caption font-semibold text-tone-trade-fg">
-                The owner is looking for
-              </p>
+              <p className="text-caption font-semibold text-tone-trade-fg">{t("market.ownerLooking")}</p>
               <p className="text-body text-ink-secondary">
                 {post.wanted_item_offer}
               </p>
@@ -191,7 +184,7 @@ export default async function PostDetailPage({
         {/* The specs were a bare text grid floating on the page; at any width
             over about 900px they read as a table dump rather than a spec. */}
         <Surface as="section" shape="panel" fill="plate" noise className="p-4">
-          <h2 className="mb-3 text-overline text-ink-muted uppercase">Details</h2>
+          <h2 className="mb-3 text-overline text-ink-muted uppercase">{t("inventory.details")}</h2>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
             {specs.map(([label, value]) => (
               <div key={label} className="flex flex-col">

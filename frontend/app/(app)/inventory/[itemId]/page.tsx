@@ -35,7 +35,8 @@ export default async function ItemDetailPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
-  const t = await getTranslations("status");
+  const tStatus = await getTranslations("status");
+  const t = await getTranslations();
   if (!(await getAccessToken())) {
     redirect("/login");
   }
@@ -64,7 +65,7 @@ export default async function ItemDetailPage({
 
   const specs: Array<[string, string]> = [
     ["Category", item.category],
-    ["Condition", t(rarity.labelKey)],
+    ["Condition", tStatus(rarity.labelKey)],
     ["Quantity", String(item.quantity)],
   ];
   if (item.course_name) specs.push(["Course code", item.course_name]);
@@ -87,9 +88,7 @@ export default async function ItemDetailPage({
         href="/inventory"
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to my stuff
-      </Link>
+        <ArrowLeft aria-hidden className="size-4" />{t("inventory.backToStuff")}</Link>
 
       {/* The photo is bounded, the page is not — capping the page only moves
           the empty half to the right. */}
@@ -136,7 +135,7 @@ export default async function ItemDetailPage({
                 }
                 className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
               >
-                {t(rarity.labelKey)}
+                {tStatus(rarity.labelKey)}
               </span>
             </div>
 
@@ -151,9 +150,7 @@ export default async function ItemDetailPage({
             <Surface shape="card" className="flex flex-col gap-3 p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-body-sm font-semibold">
-                  <Store aria-hidden className="size-4 text-ink-brand" />
-                  On the market
-                </span>
+                  <Store aria-hidden className="size-4 text-ink-brand" />{t("inventory.onTheMarket")}</span>
                 <StatusBadge
                   status={POST_TYPE[post.post_type]}
                   size="sm"
@@ -176,17 +173,13 @@ export default async function ItemDetailPage({
                   block
                   href={`/inventory/${item.item_id}/list`}
                 >
-                  <Tag className="size-4" />
-                  Edit listing
-                </LinkButton>
+                  <Tag className="size-4" />{t("inventory.editListing")}</LinkButton>
                 <LinkButton
                   variant="ghost"
                   size="md"
                   block
                   href={`/market/${post.post_id}`}
-                >
-                  View the public listing
-                </LinkButton>
+                >{t("inventory.viewPublic")}</LinkButton>
               </div>
             </Surface>
           ) : (
@@ -201,9 +194,7 @@ export default async function ItemDetailPage({
                   shrink-to-content button, which is the owner's "the item is
                   large and the button is small" in one place. */}
               <LinkButton size="lg" block href={`/inventory/${item.item_id}/list`}>
-                <Tag className="size-4" />
-                List it on the market
-              </LinkButton>
+                <Tag className="size-4" />{t("inventory.listIt")}</LinkButton>
             </Notice>
           )}
 
@@ -214,9 +205,7 @@ export default async function ItemDetailPage({
           ) : null}
 
           <Surface as="section" shape="panel" fill="plate" noise className="p-4">
-            <h2 className="mb-3 text-overline text-ink-muted uppercase">
-              Details
-            </h2>
+            <h2 className="mb-3 text-overline text-ink-muted uppercase">{t("inventory.details")}</h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
               {specs.map(([label, value]) => (
                 <div key={label} className="flex flex-col">
@@ -242,23 +231,19 @@ export default async function ItemDetailPage({
               size="sm"
               href={`/inventory/${item.item_id}/edit`}
             >
-              <Pencil className="size-4" />
-              Edit details
-            </LinkButton>
+              <Pencil className="size-4" />{t("inventory.editDetails")}</LinkButton>
           </div>
 
           {item.status === "Transferred" ? (
             <p className="flex items-start gap-2 rounded-control bg-tone-success-bg p-3 text-caption leading-[1.6] text-tone-success-fg">
-              <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
-              This item has been handed over and is kept for your records only.
-            </p>
+              <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" />{t("inventory.handedOver")}</p>
           ) : null}
         </div>
       </div>
 
       {rest.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-h2">The rest of your stuff</h2>
+          <h2 className="text-h2">{t("inventory.theRest")}</h2>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
             {rest.map((other) => {
               const cond = ITEM_CONDITION[other.condition];

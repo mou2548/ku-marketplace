@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { ArrowLeftRight, Coins } from "lucide-react";
 
 import type { Item } from "@/lib/api/types";
@@ -45,13 +46,14 @@ export function OfferSummary({
   size?: "sm" | "md";
   className?: string;
 }) {
+  const t = useTranslations();
   const thumb = size === "sm" ? "w-16" : "w-24";
 
   return (
     <div className={cn("flex flex-wrap items-start gap-3", className)}>
       <Stack
         items={youGet}
-        label="You get"
+        label={t("offer.youGet")}
         thumb={thumb}
         money={moneyDirection === "you-receive" ? money : 0}
       />
@@ -65,7 +67,7 @@ export function OfferSummary({
 
       <Stack
         items={youGive}
-        label="You give"
+        label={t("offer.youGive")}
         thumb={thumb}
         money={moneyDirection === "you-pay" ? money : 0}
       />

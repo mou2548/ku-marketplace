@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
@@ -208,6 +209,7 @@ export function EmptySlot({
 
 /** The first well in the stash: the real way to add something. */
 export function AddItemSlot({ className }: { className?: string }) {
+  const t = useTranslations();
   return (
     <Link
       href="/inventory/new"
@@ -220,7 +222,7 @@ export function AddItemSlot({ className }: { className?: string }) {
       )}
     >
       <Plus aria-hidden className="size-5" />
-      <span className="px-1 text-center text-meta leading-tight">Add an item</span>
+      <span className="px-1 text-center text-meta leading-tight">{t("inventory.addItem")}</span>
     </Link>
   );
 }

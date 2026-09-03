@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowLeftRight, CheckCircle2, Package } from "lucide-react";
@@ -36,6 +37,7 @@ export function OfferComposer({
   post: Post;
   inventory: Item[];
 }) {
+  const t = useTranslations();
   const toast = useToast();
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);
@@ -208,9 +210,7 @@ export function OfferComposer({
     return (
       <Notice tone="success" className="flex flex-col gap-3 p-5">
         <p className="flex items-center gap-2 text-body-lg font-semibold text-tone-success-fg">
-          <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-          Offer sent
-        </p>
+          <CheckCircle2 aria-hidden className="size-5 shrink-0" />{t("offer.sent")}</p>
         <p className="text-body-sm text-ink-secondary">
           You offered {post.seller.name}{" "}
           {offered.length > 0
@@ -220,10 +220,8 @@ export function OfferComposer({
           {post.item.name}. They will see it and can accept or decline.
         </p>
         <div className="flex flex-wrap gap-2">
-          <LinkButton href="/market">Keep browsing</LinkButton>
-          <LinkButton variant="secondary" href="/offers">
-            My offers
-          </LinkButton>
+          <LinkButton href="/market">{t("offer.keepBrowsing")}</LinkButton>
+          <LinkButton variant="secondary" href="/offers">{t("offer.myOffers")}</LinkButton>
         </div>
       </Notice>
     );
@@ -233,10 +231,10 @@ export function OfferComposer({
     return (
       <EmptyState
         icon={<Package className="size-6" />}
-        title="Your inventory is empty"
-        description="You need items in your inventory before you can offer a trade. Add some, then come back to this post."
+        title={t("inventory.emptyTitle")}
+        description={t("offer.emptyStashBody")}
         action={
-          <LinkButton href="/inventory/new">Add an item</LinkButton>
+          <LinkButton href="/inventory/new">{t("inventory.addItem")}</LinkButton>
         }
       />
     );
@@ -248,9 +246,7 @@ export function OfferComposer({
         href={`/market/${post.post_id}`}
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to listing
-      </Link>
+        <ArrowLeft aria-hidden className="size-4" />{t("offer.backToListing")}</Link>
 
       <header className="flex flex-col gap-1">
         <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
@@ -309,17 +305,13 @@ export function OfferComposer({
               variant="ghost"
               onPress={() => setSplitTarget(null)}
               isDisabled={splitBusy}
-            >
-              Cancel
-            </Button>
-            <Button isLoading={splitBusy} onPress={confirmSplit}>
-              Add to offer
-            </Button>
+            >{t("inventory.cancel")}</Button>
+            <Button isLoading={splitBusy} onPress={confirmSplit}>{t("offer.addToOffer")}</Button>
           </>
         }
       >
         <TextInput
-          label="Quantity to offer"
+          label={t("offer.quantityToOffer")}
           value={splitQty}
           onChange={(v) => setSplitQty(v.replace(/\D/g, ""))}
           inputMode="numeric"
@@ -341,9 +333,7 @@ export function OfferComposer({
           {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""}
         </p>
         <Button size="lg" isDisabled={!canSubmit} isLoading={busy} onPress={submit}>
-          <ArrowLeftRight className="size-5" />
-          Send offer
-        </Button>
+          <ArrowLeftRight className="size-5" />{t("offer.send")}</Button>
       </Surface>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Selection } from "react-aria-components";
@@ -39,6 +40,7 @@ export function InventoryScreen({
   items: Item[];
   listedItemIds: number[];
 }) {
+  const t = useTranslations();
   const router = useRouter();
   const toast = useToast();
   const [selecting, setSelecting] = useState(false);
@@ -91,13 +93,11 @@ export function InventoryScreen({
     return (
       <EmptyState
         icon={<Package className="size-6" />}
-        title="Your inventory is empty"
-        description="Put what you own in here first. Later you decide whether to sell it, open it to trades, or just keep it."
+        title={t("inventory.emptyTitle")}
+        description={t("inventory.emptyBody")}
         action={
           <LinkButton href="/inventory/new">
-            <Plus className="size-4" />
-            Add your first item
-          </LinkButton>
+            <Plus className="size-4" />{t("inventory.addFirst")}</LinkButton>
         }
       />
     );
@@ -107,9 +107,7 @@ export function InventoryScreen({
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-            My stuff
-          </h1>
+          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">{t("inventory.myStuff")}</h1>
           <p data-numeric className="text-caption text-ink-muted">
             {items.length} {items.length === 1 ? "item" : "items"}
           </p>
@@ -118,30 +116,22 @@ export function InventoryScreen({
         <div className="flex items-center gap-2">
           {selecting ? (
             <Button variant="secondary" size="sm" onPress={exitSelecting}>
-              <X className="size-4" />
-              Cancel
-            </Button>
+              <X className="size-4" />{t("inventory.cancel")}</Button>
           ) : (
             <Button
               variant="secondary"
               size="sm"
               onPress={() => setSelecting(true)}
             >
-              <CheckSquare className="size-4" />
-              Select
-            </Button>
+              <CheckSquare className="size-4" />{t("inventory.select")}</Button>
           )}
           <LinkButton size="sm" href="/inventory/new">
-            <Plus className="size-4" />
-            Add an item
-          </LinkButton>
+            <Plus className="size-4" />{t("inventory.addItem")}</LinkButton>
         </div>
       </header>
 
       {selecting ? (
-        <p className="text-caption text-ink-muted">
-          Pick the items you want to handle together, then choose an action.
-        </p>
+        <p className="text-caption text-ink-muted">{t("inventory.selectHint")}</p>
       ) : null}
 
       {/* The stash is the one surface that has to read as a game panel
@@ -152,11 +142,11 @@ export function InventoryScreen({
         shape="panel"
         fill="plate"
         noise
-        aria-label="Inventory"
+        aria-label={t("inventory.title")}
         className="p-4"
       >
         <InventoryGrid
-          aria-label="Items in my inventory"
+          aria-label={t("inventory.itemsIn")}
           items={slots}
           selectionMode={selecting ? "multiple" : "none"}
           selectedKeys={selected}
@@ -196,7 +186,7 @@ export function InventoryScreen({
         <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6">
           <AddItemSlot />
           {Array.from({ length: trailing }, (_, i) => (
-            <EmptySlot key={i} label="Empty slot" />
+            <EmptySlot key={i} label={t("inventory.emptySlot")} />
           ))}
         </div>
       </Surface>
@@ -209,9 +199,7 @@ export function InventoryScreen({
           <p data-numeric className="flex-1 text-body-sm font-medium">
             {selectedIds.length} selected
           </p>
-          <Button variant="ghost" size="sm" onPress={() => setSelected(new Set())}>
-            Clear
-          </Button>
+          <Button variant="ghost" size="sm" onPress={() => setSelected(new Set())}>{t("inventory.clear")}</Button>
           <Button
             size="sm"
             onPress={() => {
@@ -222,9 +210,7 @@ export function InventoryScreen({
               }
             }}
           >
-            <Store className="size-4" />
-            List
-          </Button>
+            <Store className="size-4" />{t("inventory.list")}</Button>
         </Surface>
       ) : null}
     </div>

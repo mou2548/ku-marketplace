@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,7 @@ import { ITEM_CONDITION, POST_TYPE, type PostType } from "@/lib/status";
  * trade-only post is a question with no right answer.
  */
 export function ListItemForm({ item }: { item: Item }) {
+  const t = useTranslations();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
@@ -66,13 +68,9 @@ export function ListItemForm({ item }: { item: Item }) {
         href={`/inventory/${item.item_id}`}
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to item
-      </Link>
+        <ArrowLeft aria-hidden className="size-4" />{t("inventory.backToItem")}</Link>
 
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        List an item
-      </h1>
+      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">{t("inventory.listAnItem")}</h1>
 
       <Surface shape="card" className="flex items-center gap-3 p-4">
         <div className="min-w-0 flex-1">
@@ -87,24 +85,22 @@ export function ListItemForm({ item }: { item: Item }) {
           variant="ghost"
           size="sm"
           onPress={() => router.push(`/inventory/${item.item_id}/edit`)}
-        >
-          Edit item
-        </Button>
+        >{t("inventory.editItem")}</Button>
       </Surface>
 
       <RadioGroupField
-        label="What kind of listing is this"
+        label={t("listing.kind")}
         value={postType}
         onChange={(v) => setPostType(v as PostType)}
         variant="card"
       >
-        <Radio value="SellOnly" description="Cash only, no trades">
+        <Radio value="SellOnly" description={t("listing.sellOnly")}>
           <span className="flex items-center gap-2">
             <Store aria-hidden className="size-4" />
             {st.of(POST_TYPE.SellOnly).label}
           </span>
         </Radio>
-        <Radio value="TradeOnly" description="Trades only, not for sale">
+        <Radio value="TradeOnly" description={t("listing.tradeOnly")}>
           <span className="flex items-center gap-2">
             <ArrowLeftRight aria-hidden className="size-4" />
             {st.of(POST_TYPE.TradeOnly).label}
@@ -112,7 +108,7 @@ export function ListItemForm({ item }: { item: Item }) {
         </Radio>
         <Radio
           value="Both"
-          description="Buy it or trade for it. One post accepts both."
+          description={t("listing.both")}
         >
           <span className="flex items-center gap-2">
             <Sparkles aria-hidden className="size-4" />
@@ -123,13 +119,13 @@ export function ListItemForm({ item }: { item: Item }) {
 
       {wantsPrice ? (
         <TextInput
-          label="Price"
+          label={t("listing.price")}
           value={price}
           onChange={(v) => setPrice(v.replace(/\D/g, ""))}
           inputMode="numeric"
           isRequired
           icon={<Coins className="size-4" />}
-          suffix={<span className="text-caption">THB</span>}
+          suffix={<span className="text-caption">{t("listing.thb")}</span>}
           hint={
             postType === "Both"
               ? "This price applies to a direct purchase. Someone offering a trade proposes their own cash difference."
@@ -140,27 +136,25 @@ export function ListItemForm({ item }: { item: Item }) {
 
       {wantsTradeTerms ? (
         <TextAreaField
-          label="What do you want in trade"
+          label={t("listing.wantInTrade")}
           value={wanted}
           onChange={setWanted}
           rows={3}
-          placeholder="e.g. Chemistry 1 textbook, or Calculus 2 notes"
-          hint="Being specific filters out a lot of offers that miss the mark"
+          placeholder={t("listing.wantPlaceholder")}
+          hint={t("listing.wantHint")}
         />
       ) : null}
 
       <TextAreaField
-        label="Listing description"
+        label={t("listing.description")}
         value={description}
         onChange={setDescription}
         rows={4}
-        placeholder="Meetup conditions, times that suit you, or anything else worth saying"
+        placeholder={t("listing.descPlaceholder")}
       />
 
       <div className="sticky action-bar-bottom z-[20] flex gap-2 lg:static">
-        <Button variant="secondary" block onPress={() => router.back()}>
-          Cancel
-        </Button>
+        <Button variant="secondary" block onPress={() => router.back()}>{t("inventory.cancel")}</Button>
         <Button
           block
           size="lg"
@@ -168,9 +162,7 @@ export function ListItemForm({ item }: { item: Item }) {
           isLoading={busy}
           onPress={publish}
         >
-          <StatusBadge status={POST_TYPE[postType]} size="sm" iconOnly />
-          Publish listing
-        </Button>
+          <StatusBadge status={POST_TYPE[postType]} size="sm" iconOnly />{t("inventory.publish")}</Button>
       </div>
     </div>
   );

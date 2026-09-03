@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,7 @@ export function OfferReview({
   offer: Offer;
   viewerId: number;
 }) {
+  const t = useTranslations();
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -107,9 +109,7 @@ export function OfferReview({
         href="/offers"
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to offers
-      </Link>
+        <ArrowLeft aria-hidden className="size-4" />{t("offer.backToOffers")}</Link>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -166,9 +166,7 @@ export function OfferReview({
       {accepted || offer.status === "Accepted" ? (
         <Notice tone="success" className="flex flex-col gap-3">
           <p className="flex items-center gap-2 text-body font-semibold text-tone-success-fg">
-            <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-            Offer accepted
-          </p>
+            <CheckCircle2 aria-hidden className="size-5 shrink-0" />{t("offer.accepted")}</p>
           <p className="text-body-sm text-ink-secondary">
             You are trading with {sides.counterparty.name} for{" "}
             {offer.post.item.name}, handed over in person. Every other offer on
@@ -182,9 +180,7 @@ export function OfferReview({
               href={`/history/${transactionId}`}
               className="w-fit"
             >
-              <MessageCircle className="size-4" />
-              Open chat
-            </LinkButton>
+              <MessageCircle className="size-4" />{t("offer.openChat")}</LinkButton>
           ) : null}
         </Notice>
       ) : pending ? (
@@ -206,27 +202,19 @@ export function OfferReview({
               }
               isDisabled={busy}
             >
-              <X className="size-4" />
-              Decline
-            </Button>
+              <X className="size-4" />{t("offer.decline")}</Button>
 
             <OverlayTrigger>
               <Button>
-                <Check className="size-4" />
-                Accept offer
-              </Button>
+                <Check className="size-4" />{t("offer.acceptOffer")}</Button>
 
               <Overlay
-                title="Confirm the trade"
-                description="A trade is always handed over in person. Accepting declines every other offer on this post and opens a chat room."
+                title={t("offer.confirmTrade")}
+                description={t("offer.confirmTradeBody")}
                 footer={
                   <>
-                    <Button variant="ghost" slot="close">
-                      Not yet
-                    </Button>
-                    <Button isLoading={busy} slot="close" onPress={accept}>
-                      Confirm acceptance
-                    </Button>
+                    <Button variant="ghost" slot="close">{t("offer.notYet")}</Button>
+                    <Button isLoading={busy} slot="close" onPress={accept}>{t("offer.confirmAcceptance")}</Button>
                   </>
                 }
               >
@@ -258,9 +246,7 @@ export function OfferReview({
                 )
               }
             >
-              <Undo2 className="size-4" />
-              Withdraw offer
-            </Button>
+              <Undo2 className="size-4" />{t("offer.withdraw")}</Button>
           </div>
         )
       ) : null}

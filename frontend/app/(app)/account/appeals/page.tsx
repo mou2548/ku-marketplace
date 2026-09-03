@@ -23,7 +23,7 @@ const APPEAL_FLOW: AppealStatus[] = ["Pending", "Under_Review", "Approved", "Rej
  * state are a first-class screen rather than an email thread.
  */
 export default async function MyAppealsPage() {
-  const t = await getTranslations("status");
+  const tStatus = await getTranslations("status");
   if (!(await getAccessToken())) redirect("/login");
   const appeals = await getMyAppeals();
 
@@ -51,7 +51,7 @@ export default async function MyAppealsPage() {
         {APPEAL_FLOW.map((key) => {
           const state = APPEAL_STATUS[key];
           const stateText = {
-            hint: state.hintKey ? t(state.hintKey) : undefined,
+            hint: state.hintKey ? tStatus(state.hintKey) : undefined,
           };
           return (
             <li key={key} className="flex flex-col gap-1">
@@ -104,7 +104,7 @@ export default async function MyAppealsPage() {
               <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
                 A different admin from the one who made the original decision
                 reviews this. Original verdict:{" "}
-                {t(REPORT_STATUS.Violation_Confirmed.labelKey)}.
+                {tStatus(REPORT_STATUS.Violation_Confirmed.labelKey)}.
               </p>
             </Surface>
           </li>

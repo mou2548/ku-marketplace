@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, Flag, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
@@ -44,6 +45,7 @@ const POST_REPORT_REASONS = [
  * fold on a phone.
  */
 export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
+  const t = useTranslations();
   const router = useRouter();
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
@@ -60,9 +62,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           block
           className="lg:w-auto"
           href={`/inventory/${post.item_id}/list`}
-        >
-          Edit listing
-        </LinkButton>
+        >{t("inventory.editListing")}</LinkButton>
       </div>
     );
   }
@@ -90,48 +90,38 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
       {canBuy ? (
         <OverlayTrigger>
           <Button block size="lg" className="lg:w-auto">
-            <ShoppingBag className="size-5" />
-            Buy now
-          </Button>
+            <ShoppingBag className="size-5" />{t("market.buyNow")}</Button>
 
           <Overlay
-            title="Choose how you will get it"
-            description="This cannot be changed later. The steps after this differ depending on what you pick."
+            title={t("market.chooseDelivery")}
+            description={t("market.chooseDeliveryBody")}
             footer={
               <>
-                <Button variant="ghost" slot="close">
-                  Cancel
-                </Button>
+                <Button variant="ghost" slot="close">{t("inventory.cancel")}</Button>
                 <Button onPress={buy} isLoading={busy}>
-                  <Handshake className="size-4" />
-                  Confirm purchase
-                </Button>
+                  <Handshake className="size-4" />{t("market.confirmPurchase")}</Button>
               </>
             }
           >
             <RadioGroupField
-              aria-label="Delivery method"
+              aria-label={t("market.deliveryMethod")}
               value={method}
               onChange={(v) => setMethod(v as DeliveryMethod)}
               variant="card"
             >
               <Radio
                 value="Meetup"
-                description="Meet on campus, inspect before paying, finish by scanning the seller QR"
+                description={t("market.meetupBody")}
               >
                 <span className="flex items-center gap-2">
-                  <MapPin aria-hidden className="size-4" />
-                  Meetup
-                </span>
+                  <MapPin aria-hidden className="size-4" />{t("market.meetup")}</span>
               </Radio>
               <Radio
                 value="Shipping"
-                description="Pay first, upload a slip, the seller confirms and posts it with a tracking number"
+                description={t("market.shippingBody")}
               >
                 <span className="flex items-center gap-2">
-                  <Truck aria-hidden className="size-4" />
-                  Shipping
-                </span>
+                  <Truck aria-hidden className="size-4" />{t("market.shipping")}</span>
               </Radio>
             </RadioGroupField>
 
@@ -150,9 +140,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           className="lg:w-auto"
           href={`/offers/new?post=${post.post_id}`}
         >
-          <ArrowLeftRight className="size-5" />
-          Offer a trade
-        </LinkButton>
+          <ArrowLeftRight className="size-5" />{t("market.offerTrade")}</LinkButton>
       ) : null}
 
       <ReportDialog
@@ -160,7 +148,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
         targetId={post.post_id}
         reasons={POST_REPORT_REASONS}
         trigger={
-          <Button variant="ghost" size="lg" aria-label="Report this post">
+          <Button variant="ghost" size="lg" aria-label={t("market.reportPost")}>
             <Flag className="size-5" />
           </Button>
         }

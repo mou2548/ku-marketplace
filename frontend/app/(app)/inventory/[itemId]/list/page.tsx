@@ -22,7 +22,8 @@ export default async function ListItemPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
-  const t = await getTranslations("status");
+  const tStatus = await getTranslations("status");
+  const t = await getTranslations();
   const { itemId } = await params;
   const items = await getMyItems();
   const item = items.find((i) => i.item_id === Number(itemId));
@@ -36,9 +37,7 @@ export default async function ListItemPage({
    */
   const preview = (
     <Surface shape="card" className="flex w-full max-w-md flex-col gap-3 p-5 mx-auto">
-      <p className="text-overline text-ink-muted uppercase">
-        What you are listing
-      </p>
+      <p className="text-overline text-ink-muted uppercase">{t("inventory.whatListing")}</p>
 
       <span
         className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
@@ -57,17 +56,17 @@ export default async function ListItemPage({
 
       <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Category</dt>
+          <dt className="text-ink-muted">{t("inventory.category")}</dt>
           <dd>{item.category}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Condition</dt>
+          <dt className="text-ink-muted">{t("inventory.condition")}</dt>
           {/* tokens.md §5 bans rarity as free-floating coloured text: it is
               a rim on a slot or a chip, never a tinted word in a spec list. */}
-          <dd>{t(rarity.labelKey)}</dd>
+          <dd>{tStatus(rarity.labelKey)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Quantity</dt>
+          <dt className="text-ink-muted">{t("inventory.quantity")}</dt>
           <dd data-numeric>{item.quantity}</dd>
         </div>
       </dl>

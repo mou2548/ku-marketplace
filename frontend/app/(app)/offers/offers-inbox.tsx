@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ArrowLeftRight, ChevronRight, Inbox } from "lucide-react";
 
@@ -31,12 +32,13 @@ export function OffersInbox({
   offers: Offer[];
   viewerId: number;
 }) {
+  const t = useTranslations();
   const sent = offers.filter((o) => o.proposer_id === viewerId);
   const received = offers.filter((o) => o.post.seller.user_id === viewerId);
 
   return (
     <Tabs defaultSelectedKey="received">
-      <TabList aria-label="Offers" variant="underline">
+      <TabList aria-label={t("offer.title")} variant="underline">
         <UnderlineTab id="received" className="group">
           Offers to me
           {received.length > 0 ? <TabCount>{received.length}</TabCount> : null}
@@ -83,6 +85,7 @@ function OfferList({
   emptyTitle: string;
   emptyDescription: string;
 }) {
+  const t = useTranslations();
   if (offers.length === 0) {
     return (
       <EmptyState
@@ -92,9 +95,7 @@ function OfferList({
         action={
           direction === "sent" ? (
             <LinkButton href="/market">
-              <ArrowLeftRight className="size-4" />
-              Find items open to trade
-            </LinkButton>
+              <ArrowLeftRight className="size-4" />{t("offer.findTradeable")}</LinkButton>
           ) : undefined
         }
       />
