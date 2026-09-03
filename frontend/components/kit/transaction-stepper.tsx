@@ -9,7 +9,7 @@ import {
 } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
-import { TONE_DOT, TONE_SOLID } from "./tone";
+import { TONE_CHIP, TONE_DOT } from "./tone";
 
 /**
  * Research risk R3: flow 1 has four terminal paths — Shipping, Meetup, trade
@@ -232,11 +232,18 @@ export function TransactionStepper({
                 {step.label}
               </p>
 
+              {/* Your own turn is not a warning. Amber says something has gone
+                  wrong; the message here is "you are up", which is the brand's
+                  job. And a solid fill on a step inside a stepper spends the
+                  screen's one saturated element on a label (register.md §2) —
+                  the action card below already carries the weight. */}
               {waitingLabel ? (
                 <span
                   className={cn(
-                    "mt-1 inline-flex items-center rounded-pill px-2 py-0.5 text-meta font-medium",
-                    waitingOnYou ? TONE_SOLID.warning : TONE_SOLID.info,
+                    "mt-1 inline-flex items-center rounded-pill border px-2 py-0.5 text-meta font-medium",
+                    waitingOnYou
+                      ? "border-brand-subtle-hover bg-brand-subtle text-ink-brand"
+                      : TONE_CHIP.neutral,
                   )}
                 >
                   {waitingLabel}

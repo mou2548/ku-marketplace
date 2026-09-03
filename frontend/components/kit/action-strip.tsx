@@ -5,10 +5,8 @@ import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import type { InboxEntry } from "@/lib/inbox";
-import { cn } from "@/lib/utils";
 
 import { CountdownPill } from "./countdown-pill";
-import { TONE_SOLID } from "./tone";
 
 /**
  * Revised 2026-08-07. The first build made "what is waiting on you" the whole
@@ -97,12 +95,11 @@ export function ActionStrip({ entries }: { entries: InboxEntry[] }) {
                   ) : null}
                 </span>
 
-                <span
-                  className={cn(
-                    "justify-self-end rounded-pill px-2.5 py-1 text-caption font-medium whitespace-nowrap",
-                    TONE_SOLID[entry.prompt.tone],
-                  )}
-                >
+                {/* The strip is already a solid brand band, so a TONE_SOLID
+                    pill on it was a fill on a fill — and the tone underneath
+                    could not be read against green anyway. White on the band
+                    is 5.88:1 and says the same thing. */}
+                <span className="justify-self-end rounded-pill bg-white/15 px-2.5 py-1 text-caption font-medium whitespace-nowrap text-white">
                   {entry.prompt.label}
                 </span>
               </Link>

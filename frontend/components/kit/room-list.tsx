@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./empty-state";
 import { SegmentTab, TabList, Tabs } from "./tabs";
-import { TONE_DOT, TONE_SOLID, TONE_TEXT } from "./tone";
+import { TONE_DOT, TONE_TEXT } from "./tone";
 
 /**
  * One inbox for every conversation.
@@ -187,13 +187,11 @@ function RoomRow({
           </span>
         ) : null}
 
+        {/* One of these per room that needs you, down a scannable list —
+            solid amber turned the list into a column of alarms. Brand, and a
+            chip: "you are up" is not a warning. */}
         {room.needsYou ? (
-          <span
-            className={cn(
-              "mt-0.5 w-fit rounded-pill px-2 py-0.5 text-meta font-medium",
-              TONE_SOLID.warning,
-            )}
-          >
+          <span className="mt-0.5 w-fit rounded-pill border border-brand-subtle-hover bg-brand-subtle px-2 py-0.5 text-meta font-medium text-ink-brand">
             Your turn
           </span>
         ) : null}
