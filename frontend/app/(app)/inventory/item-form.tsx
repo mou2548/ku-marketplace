@@ -225,7 +225,16 @@ export function ItemForm({
               key={p.key}
               className="relative aspect-square overflow-hidden rounded-slot bg-surface-sunken shadow-sunken"
             >
-              <Image src={p.previewUrl} alt="" fill className="object-cover" />
+              {/* `fill` with no `sizes` makes next/image emit sizes="100vw",
+                  so a thumbnail in a four-column grid downloads a full-width
+                  image on every device. */}
+              <Image
+                src={p.previewUrl}
+                alt=""
+                fill
+                sizes="(min-width: 768px) 25vw, 33vw"
+                className="object-cover"
+              />
               <button
                 type="button"
                 aria-label={`Remove photo ${i + 1}`}

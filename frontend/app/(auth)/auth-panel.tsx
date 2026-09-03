@@ -39,10 +39,13 @@ export function AuthPanel() {
     <div className="flex min-h-dvh w-full flex-col bg-gradient-to-b from-white to-page">
       <div className="flex w-full flex-1 flex-col md:flex-row">
         <div className="relative hidden basis-1/2 flex-col justify-center p-16 text-white md:flex">
+          {/* Half the viewport from md: up, and hidden below it — without
+              `sizes`, next/image assumes 100vw and ships a full-width file. */}
           <Image
             src="/images/auth-hero.png"
             alt=""
             fill
+            sizes="(min-width: 768px) 50vw, 0px"
             className="object-cover"
             priority
           />

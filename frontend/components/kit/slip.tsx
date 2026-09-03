@@ -98,6 +98,7 @@ export function SlipUploader({
               src={preview ?? slipUrl!}
               alt="Uploaded slip"
               fill
+              sizes="(min-width: 640px) 24rem, 100vw"
               className="object-contain"
             />
           ) : null}

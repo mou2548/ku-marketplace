@@ -246,12 +246,17 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
       {transaction.slip_image_url ? (
         <div className="border-t border-line pt-3">
           <p className="mb-2 text-overline text-ink-muted uppercase">Payment slip</p>
-          {/* eslint-disable-next-line @next/next/no-img-element -- admin-only evidence view, arbitrary host */}
-          <img
-            src={transaction.slip_image_url}
-            alt="Payment slip"
-            className="max-h-64 rounded-control object-contain"
-          />
+          {/* The box is reserved before the image lands. Without it the
+              panel jumped as the slip loaded, which ui-ux-pro-max rates High
+              severity and CLAUDE.md §7 budgets at CLS <= 0.05. */}
+          <div className="h-64 w-full overflow-hidden rounded-control bg-surface-sunken">
+            {/* eslint-disable-next-line @next/next/no-img-element -- admin-only evidence view, arbitrary host */}
+            <img
+              src={transaction.slip_image_url}
+              alt="Payment slip"
+              className="size-full object-contain"
+            />
+          </div>
         </div>
       ) : null}
 
