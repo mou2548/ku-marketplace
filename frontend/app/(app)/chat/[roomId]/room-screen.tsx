@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
@@ -243,6 +243,7 @@ export function RoomScreen({
   const [time, setTime] = useState("12:00");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const appointmentPinRef = useRef<HTMLDivElement>(null);
   /** The deal strip's disclosure — everything the desktop rail used to hold. */
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -418,6 +419,33 @@ export function RoomScreen({
     if (!transaction || !isYourTurn) return null;
 
     switch (prompt?.action) {
+      case "propose-appointment":
+        // `lib/status.ts` emits this for a cash-free trade, and this switch
+        // used to fall through to `default: return null`. The prompt said
+        // "Your turn: propose a meetup" and the screen offered nothing —
+        // the form for it lives in the appointment pin, which starts closed.
+        return (
+          <ActionCard title="Your step - arrange the meetup">
+            <div className="flex flex-col gap-3">
+              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+                There is no money in this trade, so the next thing to settle is
+                where and when you swap.
+              </p>
+              <Button
+                block
+                onPress={() => {
+                  setPinOpen(true);
+                  appointmentPinRef.current?.scrollIntoView({
+                    block: "nearest",
+                  });
+                }}
+              >
+                <CalendarClock className="size-4" />
+                Propose a time and place
+              </Button>
+            </div>
+          </ActionCard>
+        );
       case "upload-slip":
         return (
           <ActionCard title="Your step - pay and upload the slip">
@@ -548,8 +576,14 @@ export function RoomScreen({
             />
           </ActionCard>
         );
-      default:
+      case undefined:
         return null;
+      default: {
+        // Exhaustive: adding a PromptAction without a case here is a compile
+        // error, not a screen that renders nothing on someone's turn.
+        const unhandled: never = prompt!.action;
+        return unhandled;
+      }
     }
   }
 
@@ -736,6 +770,7 @@ export function RoomScreen({
           was showing information that does not exist. */}
       {transaction && viewer ? (
         <div
+          ref={appointmentPinRef}
           className={cn(
             "border-b border-line",
             transaction.delivery_method === "Meetup"

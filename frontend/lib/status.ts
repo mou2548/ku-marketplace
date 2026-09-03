@@ -532,8 +532,14 @@ export interface ActorPrompt {
    * (or on the tri-state "is it my turn" this implies); this field does not
    * do that gating itself, so a caller can also use it to know what step is
    * pending on the *other* side.
+   *
+   * A union, not a string: it was typed `string`, and the deal screen's
+   * switch handled six of the seven values and returned null for the
+   * seventh, so a cash-free trade was told "Your turn: propose a meetup" and
+   * shown no control. A consumer that exhausts this now fails to compile
+   * when a value is added.
    */
-  action?: string;
+  action?: PromptAction;
   tone: Tone;
 }
 
@@ -542,6 +548,15 @@ export interface ActorPrompt {
  * second trade branch. Everything downstream of this is different, so it is
  * resolved once, here.
  */
+export type PromptAction =
+  | "propose-appointment"
+  | "upload-slip"
+  | "review-slip"
+  | "enter-tracking"
+  | "confirm-delivery"
+  | "scan-qr"
+  | "refund-slip";
+
 export function requiresPayment(tx: TransactionLike): boolean {
   if (tx.offer_id == null) return true; // a straight purchase always pays
   return (tx.additional_money ?? 0) > 0;
@@ -556,7 +571,7 @@ export function resolveTransactionActor(
     second: string,
     third: string,
     tone: Tone,
-    action?: string,
+    action?: PromptAction,
   ): ActorPrompt => ({
     actor,
     label: actor === viewer ? second : third,
