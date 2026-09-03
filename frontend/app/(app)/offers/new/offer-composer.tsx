@@ -13,6 +13,7 @@ import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import { useToast } from "@/components/kit/toast";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
 import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
+import { sendOffer } from "@/lib/actions/posts";
 import type { Item, Post } from "@/lib/api/types";
 
 /**
@@ -38,8 +39,9 @@ export function OfferComposer({
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);
   const [busy, setBusy] = useState(false);
-  // The sent offer cannot land in the fixture-backed inbox, so confirming in
-  // place beats navigating to /offers where it would appear to have vanished.
+  // Confirming in place rather than navigating: the offer now really is in
+  // the inbox, but the sender's next question is "what did I just send?", and
+  // /offers answers a different one.
   const [sent, setSent] = useState(false);
 
   // Local, editable copy of the stash. An offer can only carry a whole item
@@ -187,8 +189,16 @@ export function OfferComposer({
 
   async function submit() {
     setBusy(true);
-    // POST /posts/{id}/offers → { item_ids, additional_money }
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      await sendOffer(post.post_id, {
+        item_ids: offered.map((i) => i.item_id),
+        additional_money: money > 0 ? money : undefined,
+      });
+    } catch (err) {
+      setBusy(false);
+      toast.show(err instanceof Error ? err.message : "Could not send this offer");
+      return;
+    }
     setBusy(false);
     setSent(true);
   }

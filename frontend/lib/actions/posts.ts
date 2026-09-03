@@ -11,6 +11,7 @@ import {
   type CreatePostPayload,
   type OfferStatusChangeResult,
   type OfferSummary,
+  type PostId,
   type PostSummary,
 } from "@/lib/api/posts";
 import { getAccessToken, getCurrentUserId } from "@/lib/api/session";
@@ -56,7 +57,7 @@ export async function publishListing(
  * no business naming who is proposing.
  */
 export async function sendOffer(
-  postId: string,
+  postId: PostId,
   payload: Omit<CreateOfferPayload, "proposer_id">,
 ): Promise<OfferSummary> {
   const proposerId = await requireUserId();
@@ -65,8 +66,8 @@ export async function sendOffer(
 
 /** `POST /posts/:post_id/offers/:offer_id/accept` — seller accepts. */
 export async function acceptOfferAction(
-  postId: string,
-  offerId: string,
+  postId: PostId,
+  offerId: PostId,
 ): Promise<AcceptOfferResult> {
   await requireSession();
   // Meetup-only: a trade has no shipping branch (see PRODUCT.md).
@@ -75,8 +76,8 @@ export async function acceptOfferAction(
 
 /** `POST /posts/:post_id/offers/:offer_id/reject` — seller declines. */
 export async function rejectOfferAction(
-  postId: string,
-  offerId: string,
+  postId: PostId,
+  offerId: PostId,
 ): Promise<OfferStatusChangeResult> {
   await requireSession();
   return rejectOffer(postId, offerId);
@@ -84,8 +85,8 @@ export async function rejectOfferAction(
 
 /** `POST /posts/:post_id/offers/:offer_id/withdraw` — proposer takes it back. */
 export async function withdrawOfferAction(
-  postId: string,
-  offerId: string,
+  postId: PostId,
+  offerId: PostId,
 ): Promise<OfferStatusChangeResult> {
   await requireSession();
   return withdrawOffer(postId, offerId);
