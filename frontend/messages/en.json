@@ -509,6 +509,9 @@
   },
   "offer": {
     "title": "Offers",
+    "tradeDesk": "Trade desk",
+    "inboxHint": "Compare both sides of every trade and see which offers need your decision.",
+    "offersToMe": "Offers to me",
     "findTradeable": "Find items open to trade",
     "backToOffers": "Back to offers",
     "backToListing": "Back to listing",

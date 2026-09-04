@@ -37,38 +37,50 @@ export function OffersInbox({
   const received = offers.filter((o) => o.post.seller.user_id === viewerId);
 
   return (
-    <Tabs defaultSelectedKey="received">
-      <TabList aria-label={t("offer.title")} variant="underline">
-        <UnderlineTab id="received" className="group">
-          Offers to me
-          {received.length > 0 ? <TabCount>{received.length}</TabCount> : null}
-        </UnderlineTab>
-        <UnderlineTab id="sent" className="group">
-          My offers
-          {sent.length > 0 ? <TabCount>{sent.length}</TabCount> : null}
-        </UnderlineTab>
-      </TabList>
+    <div className="flex flex-col gap-5">
+      <header>
+        <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+          {t("offer.tradeDesk")}
+        </p>
+        <h1 className="mt-1 text-h1">{t("offer.title")}</h1>
+        <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+          {t("offer.inboxHint")}
+        </p>
+      </header>
 
-      <TabPanel id="received">
-        <OfferList
-          offers={received}
-          viewerId={viewerId}
-          direction="received"
-          emptyTitle="No one has offered you a trade yet"
-          emptyDescription="When someone offers a trade on one of your posts, it lands here with their whole stack visible"
-        />
-      </TabPanel>
+      <Tabs defaultSelectedKey="received">
+        <TabList aria-label={t("offer.title")} variant="underline">
+          <UnderlineTab id="received" className="group">
+            {t("offer.offersToMe")}
+            {received.length > 0 ? <TabCount>{received.length}</TabCount> : null}
+          </UnderlineTab>
+          <UnderlineTab id="sent" className="group">
+            {t("offer.myOffers")}
+            {sent.length > 0 ? <TabCount>{sent.length}</TabCount> : null}
+          </UnderlineTab>
+        </TabList>
 
-      <TabPanel id="sent">
-        <OfferList
-          offers={sent}
-          viewerId={viewerId}
-          direction="sent"
-          emptyTitle="You have not made any offers yet"
-          emptyDescription="Find a post that accepts trades, then put items from your inventory on the table"
-        />
-      </TabPanel>
-    </Tabs>
+        <TabPanel id="received">
+          <OfferList
+            offers={received}
+            viewerId={viewerId}
+            direction="received"
+            emptyTitle="No one has offered you a trade yet"
+            emptyDescription="When someone offers a trade on one of your posts, it lands here with their whole stack visible"
+          />
+        </TabPanel>
+
+        <TabPanel id="sent">
+          <OfferList
+            offers={sent}
+            viewerId={viewerId}
+            direction="sent"
+            emptyTitle="You have not made any offers yet"
+            emptyDescription="Find a post that accepts trades, then put items from your inventory on the table"
+          />
+        </TabPanel>
+      </Tabs>
+    </div>
   );
 }
 
@@ -103,14 +115,14 @@ function OfferList({
   }
 
   return (
-    <ul className="flex flex-col gap-2 pt-4">
+    <ul className="grid gap-3 pt-4 xl:grid-cols-2">
       {offers.map((offer) => {
         const sides = offerSides(offer, viewerId);
 
         return (
           <li key={offer.offer_id}>
             <Link href={`/offers/${offer.offer_id}`}>
-              <Surface as="div" shape="card" interactive className="flex flex-col gap-3 p-4">
+              <Surface as="div" shape="card" interactive className="flex h-full flex-col gap-4 p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-2">
                   {/* Who and about what. The old version led with the post's
                       item name, which on a received offer is your own thing —
@@ -158,7 +170,7 @@ function OfferList({
                     invisible until the card was opened; register.md §5 wants a
                     full-width 44px action. The whole card stays a link, so
                     this reads as the affordance rather than a second target. */}
-                <span className="flex min-h-11 items-center justify-between gap-2 rounded-control bg-surface-sunken px-3 text-body-sm font-medium text-ink-brand">
+                <span className="mt-auto flex min-h-11 items-center justify-between gap-2 rounded-control bg-brand-subtle px-3 text-body-sm font-medium text-ink-brand">
                   {direction === "received"
                     ? offer.status === "Pending"
                       ? "Accept or decline"
