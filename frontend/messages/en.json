@@ -412,6 +412,23 @@
     "openDeal": "Open the deal",
     "goToChat": "Go to chat"
   },
+  "giveaway": {
+    "communityShelf": "Community shelf",
+    "title": "Giveaways",
+    "subtitle": "Useful things from the KU community, passed on for free. Check how each recipient is chosen before entering.",
+    "create": "Give something away",
+    "open": "Open",
+    "myEntries": "My entries",
+    "emptyOpenTitle": "No open giveaways right now",
+    "emptyOpenBody": "New drops appear here with the selection method and registration deadline shown upfront.",
+    "emptyMineTitle": "You have not entered any giveaways",
+    "emptyMineBody": "Enter a giveaway, then wait for the result. If selected, you will receive a QR ticket and access to the giver’s notes.",
+    "collectAt": "Collect at {location}",
+    "registered": "{count, plural, one {# registered} other {# registered}}",
+    "methodFirstCome": "First come",
+    "methodRandom": "Random draw",
+    "methodManual": "Giver picks"
+  },
   "chat": {
     "photosExpired": "Photos from this message have expired and are no longer shown.",
     "viewFullSize": "View photo full size",
