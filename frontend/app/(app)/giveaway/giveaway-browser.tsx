@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Gift, MapPin, Plus, Users } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import {
@@ -57,7 +57,7 @@ export function GiveawayBrowser({
               description="Open giveaways appear here, each showing how recipients are chosen and when registration closes"
             />
           ) : (
-            <ul className="grid gap-3 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid gap-3 pt-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {open.map((g) => (
                 <li key={g.giveaway_id}>
                   <GiveawayCard giveaway={g} />
@@ -114,20 +114,13 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
   return (
     <Link href={`/giveaway/${giveaway.giveaway_id}`}>
       <Surface as="article" shape="card" interactive className="overflow-hidden">
-        <div className="relative aspect-[4/3] w-full bg-surface-sunken">
-          {image ? (
-            <Image
-              src={image}
-              alt={giveaway.item_name}
-              fill
-              sizes="(max-width: 640px) 100vw, 33vw"
-              className="object-cover"
-            />
-          ) : (
-            <span className="absolute inset-0 grid place-items-center text-ink-disabled">
-              <Gift aria-hidden className="size-8" />
-            </span>
-          )}
+        <div className="relative overflow-hidden bg-surface-sunken">
+          <PostImage
+            src={image}
+            alt={giveaway.item_name}
+            aspectRatio={4 / 3}
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
+          />
           <span className="absolute top-2 left-2">
             <StatusBadge status={method} size="sm" />
           </span>

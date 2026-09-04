@@ -35,7 +35,10 @@ export function PostImage({
   priority?: boolean;
   className?: string;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const failed = !!src && failedSrc === src;
+  const loaded = !!src && loadedSrc === src;
   const showPlate = !src || failed;
 
   return (
@@ -61,15 +64,27 @@ export function PostImage({
           </span>
         </span>
       ) : (
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          priority={priority}
-          sizes={sizes}
-          className="object-cover"
-          onError={() => setFailed(true)}
-        />
+        <>
+          {!loaded ? (
+            <span
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted"
+            >
+              <Package className="size-5 text-ink-brand opacity-75" />
+              <span className="text-meta font-medium opacity-80">Loading photo</span>
+            </span>
+          ) : null}
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            priority={priority}
+            sizes={sizes}
+            className="object-cover"
+            onLoad={() => setLoadedSrc(src)}
+            onError={() => setFailedSrc(src)}
+          />
+        </>
       )}
     </div>
   );

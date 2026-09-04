@@ -90,7 +90,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
         <p className="flex items-center gap-2 text-[1.125rem] font-semibold">
           {membership.tier !== "Free" ? (
-            <Crown aria-hidden className="size-5 text-amber-700" />
+            <Crown aria-hidden className="size-5 text-[var(--membership-fg)]" />
           ) : null}
           {membership.tier}
         </p>
@@ -159,7 +159,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 font-semibold">
-                      <Crown aria-hidden className="size-4 text-amber-700" />
+                      <Crown aria-hidden className="size-4 text-[var(--membership-fg)]" />
                       {t.tier}
                     </span>
                     {isCurrent ? (

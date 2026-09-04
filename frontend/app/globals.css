@@ -126,6 +126,7 @@
   --brand-active: var(--green-800);
   --brand-subtle: var(--green-100);
   --brand-subtle-hover: var(--green-200);
+  --auth-accent: #2ed573;
   --on-brand: #ffffff;                /* 4.04 on --brand: large/bold labels
                                          and button text at >=16px 600 only */
 
@@ -139,6 +140,8 @@
   --listing-both-fg: var(--violet-700);
   --listing-giveaway-bg: #fff5d6;
   --listing-giveaway-fg: #806000;
+  --membership-bg: #fff5d6;
+  --membership-fg: #806000;
 
   /* --- Focus --- */
   --ring: var(--green-600);
@@ -461,6 +464,8 @@
   --listing-both-fg: #b9b7ff;
   --listing-giveaway-bg: #4c3b08;
   --listing-giveaway-fg: #f4d66c;
+  --membership-bg: #4c3b08;
+  --membership-fg: #f4d66c;
 
   --tone-neutral-bg: #28322c;
   --tone-neutral-border: #637269;

@@ -219,7 +219,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                 "touch-target grid size-10 place-items-center rounded-pill transition-colors",
                 isActive(pathname, "/account")
                   ? "bg-brand text-on-brand"
-                  : "bg-brand-subtle text-ink-brand hover:bg-green-200",
+                  : "bg-brand-subtle text-ink-brand hover:bg-[var(--brand-subtle-hover)]",
               )}
             >
               <User aria-hidden className="size-4" />

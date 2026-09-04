@@ -1,10 +1,10 @@
 import { getTranslations } from "next-intl/server";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpen, Package, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Package, ShieldCheck } from "lucide-react";
 
 import { PostCard } from "@/components/kit/post-card";
+import { PostImage } from "@/components/kit/post-image";
 import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
@@ -98,20 +98,14 @@ export default async function PostDetailPage({
           // photo the tallest thing on the page by a wide margin.
           className="relative aspect-[4/5] w-full overflow-hidden lg:aspect-[4/3]"
         >
-          {image ? (
-            <Image
-              src={image}
-              alt={post.item.name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-          ) : (
-            <span className="absolute inset-0 grid place-items-center bg-surface-sunken text-ink-disabled">
-              <BookOpen aria-hidden className="size-10" />
-            </span>
-          )}
+          <PostImage
+            src={image}
+            alt={post.item.name}
+            aspectRatio={4 / 3}
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="h-full"
+          />
           <span
             aria-hidden
             style={{ "--slot-edge": rarity.edge } as React.CSSProperties}

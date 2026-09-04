@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
 import { Clock, Dices, Gift, MapPin, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
@@ -98,20 +98,14 @@ export function GiveawayDetail({
     <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
       <div className="lg:w-1/2">
         <Surface shape="card" className="relative aspect-[4/3] overflow-hidden">
-          {image ? (
-            <Image
-              src={image}
-              alt={giveaway.item_name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-          ) : (
-            <span className="absolute inset-0 grid place-items-center bg-surface-sunken text-ink-disabled">
-              <Gift aria-hidden className="size-10" />
-            </span>
-          )}
+          <PostImage
+            src={image}
+            alt={giveaway.item_name}
+            aspectRatio={4 / 3}
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="h-full"
+          />
         </Surface>
       </div>
 

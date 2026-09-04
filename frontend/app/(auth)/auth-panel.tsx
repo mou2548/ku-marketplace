@@ -49,16 +49,14 @@ export function AuthPanel() {
             className="object-cover"
             priority
           />
-          {/* 0.40 left white/80 body copy at 2.85:1 over a light region of the
-              photo. Deepening the scrim fixes every layer above it at once. */}
+          {/* The image is supporting context, so the copy sits on a stable
+              dark scrim rather than inheriting contrast from the photograph. */}
           <div className="absolute inset-0 bg-black/55" />
           <div className="relative flex flex-col gap-6">
             <h1 className="text-[2.375rem] leading-[1.15] font-bold tracking-[-0.02em] lg:text-[3rem]">
-              <span className="text-brand">
-                A marketplace and item vault
-                <br />
-                for Kasetsart
-              </span>
+              A marketplace and item vault
+              <br />
+              for <span className="text-[var(--auth-accent)]">Kasetsart</span>
               <br />
               students
             </h1>

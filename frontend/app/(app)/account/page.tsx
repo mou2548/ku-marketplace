@@ -103,7 +103,7 @@ export default async function AccountPage() {
           {completed} completed {completed === 1 ? "deal" : "deals"}
         </span>
         {membership.tier !== "Free" ? (
-          <span className="flex items-center gap-1.5 rounded-pill bg-amber-100 px-3 py-1.5 text-body-sm font-medium text-amber-700">
+          <span className="flex items-center gap-1.5 rounded-pill bg-[var(--membership-bg)] px-3 py-1.5 text-body-sm font-medium text-[var(--membership-fg)]">
             <Crown aria-hidden className="size-4" />
             {membership.tier}
           </span>

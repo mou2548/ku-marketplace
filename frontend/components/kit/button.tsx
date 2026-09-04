@@ -41,7 +41,7 @@ const button = cva(
         secondary:
           "bg-surface text-ink shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
         subtle:
-          "bg-brand-subtle text-ink-brand hover:bg-green-200 data-[pressed]:bg-green-300",
+          "bg-brand-subtle text-ink-brand hover:bg-[var(--brand-subtle-hover)] data-[pressed]:bg-[var(--brand-subtle-hover)]",
         ghost:
           "text-ink-secondary hover:bg-gray-100 hover:text-ink data-[pressed]:bg-gray-200",
         danger:

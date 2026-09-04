@@ -33,7 +33,7 @@ export function EmptyState({
       elevation="flat"
       fill="none"
       className={cn(
-        "texture-grid flex flex-col items-center gap-3 px-6 py-12 text-center",
+        "texture-grid mx-auto flex w-full max-w-2xl flex-col items-center gap-3 px-6 py-12 text-center",
         className,
       )}
     >
