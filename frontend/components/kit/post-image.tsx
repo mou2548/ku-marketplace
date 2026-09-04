@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
  * to load, at which point `next/image` falls back to showing alt text on a
  * blank box, which reads as a broken page rather than a design.
  *
- * So there are two states here and neither is a hole:
+ * So there are three states here and none is a hole:
+ *   - loading: a quiet image-shaped ghost, without status copy that flashes
  *   - no photo at all: a short branded plate, so the card just gets shorter
  *   - photo that failed: the same plate plus an icon saying so
  *
@@ -68,10 +69,12 @@ export function PostImage({
           {!loaded ? (
             <span
               aria-hidden
-              className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted"
+              className="absolute inset-0 animate-pulse overflow-hidden bg-surface-sunken"
             >
-              <Package className="size-5 text-ink-brand opacity-75" />
-              <span className="text-meta font-medium opacity-80">Loading photo</span>
+              <span className="absolute inset-x-[12%] bottom-[12%] h-[24%] rounded-control bg-line-subtle/70" />
+              <span className="absolute right-[16%] top-[16%] size-[14%] rounded-pill bg-line-default/70" />
+              <span className="absolute -bottom-[8%] -left-[8%] size-[58%] rotate-45 rounded-control bg-line-default/45" />
+              <span className="absolute -bottom-[18%] right-[2%] size-[54%] rotate-45 rounded-control bg-line-subtle/80" />
             </span>
           ) : null}
           <Image
