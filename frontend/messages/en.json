@@ -455,6 +455,22 @@
     "today": "Today",
     "yesterday": "Yesterday"
   },
+  "account": {
+    "settings": "Account settings",
+    "title": "Account",
+    "yourProfile": "Your profile",
+    "profile": "Profile",
+    "verified": "Verified KU student",
+    "completedDeals": "{count, plural, one {# completed deal} other {# completed deals}}",
+    "editProfile": "Edit profile",
+    "membership": "Membership",
+    "appeals": "My appeals",
+    "close": "Close account",
+    "signOut": "Sign out"
+  },
+  "membership": {
+    "moreFromMarketplace": "More from the marketplace"
+  },
   "chat": {
     "photosExpired": "Photos from this message have expired and are no longer shown.",
     "viewFullSize": "View photo full size",

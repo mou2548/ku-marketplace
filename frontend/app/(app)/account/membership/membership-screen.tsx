@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown } from "lucide-react";
@@ -70,6 +71,8 @@ function perksOf(tier: MembershipTier): string[] {
 const ALL_PERKS = TIERS.flatMap((t) => t.adds);
 
 export function MembershipScreen({ membership }: { membership: Membership }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const toast = useToast();
   const [selected, setSelected] = useState<MembershipTier>("Gold");
@@ -83,7 +86,9 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
    */
   const rail = (
     <>
-      <Surface shape="card" className="flex flex-col gap-3 p-4">
+      <Surface shape="panel" className="overflow-hidden p-0">
+        <div aria-hidden className="h-1 bg-tone-warning-solid" />
+        <div className="flex flex-col gap-3 p-5">
         <p className="text-overline text-ink-muted uppercase">
           Your membership
         </p>
@@ -99,11 +104,14 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           <p className="text-caption leading-[1.6] text-ink-muted">
             Valid until{" "}
             <span data-numeric className="font-medium text-ink-secondary">
-              {new Date(membership.expires_at).toLocaleDateString("en-GB", {
+              {new Date(membership.expires_at).toLocaleDateString(
+                locale === "th" ? "th-TH" : "en-GB",
+                {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
-              })}
+                },
+              )}
             </span>
           </p>
         ) : (
@@ -111,6 +119,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
             The free tier: 3 live posts, and everything the marketplace does.
           </p>
         )}
+        </div>
       </Surface>
 
       {membership.pending_review ? (
@@ -126,10 +135,11 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
   return (
     <TwoColumn rail={rail} railSide="left" railFirst>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Membership
-        </h1>
+      <header>
+        <p className="text-overline font-semibold text-tone-warning-fg uppercase">
+          {t("membership.moreFromMarketplace")}
+        </p>
+        <h1 className="mt-1 text-h1">{t("account.membership")}</h1>
         <p className="text-body text-ink-muted">
           {MEMBERSHIP_DURATION_DAYS} days at a time. Transfer, upload the slip,
           and an admin switches your tier.
@@ -153,8 +163,9 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                   shape="card"
                   elevation={isSelected ? "floating" : "raised"}
                   className={cn(
-                    "flex h-full flex-col gap-3 p-4",
-                    isSelected && "ring-2 ring-brand",
+                    "flex h-full flex-col gap-3 overflow-hidden p-4",
+                    isSelected &&
+                      "bg-[var(--membership-bg)] ring-2 ring-[var(--membership-fg)]",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">

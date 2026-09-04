@@ -455,6 +455,22 @@
     "today": "วันนี้",
     "yesterday": "เมื่อวาน"
   },
+  "account": {
+    "settings": "การตั้งค่าบัญชี",
+    "title": "บัญชี",
+    "yourProfile": "โปรไฟล์ของคุณ",
+    "profile": "โปรไฟล์",
+    "verified": "นิสิต มก. ที่ยืนยันแล้ว",
+    "completedDeals": "จบดีลแล้ว {count} รายการ",
+    "editProfile": "แก้ไขโปรไฟล์",
+    "membership": "สมาชิก",
+    "appeals": "คำอุทธรณ์ของฉัน",
+    "close": "ปิดบัญชี",
+    "signOut": "ออกจากระบบ"
+  },
+  "membership": {
+    "moreFromMarketplace": "สิทธิพิเศษจากตลาด"
+  },
   "chat": {
     "photosExpired": "รูปในข้อความนี้หมดอายุแล้ว ไม่แสดงอีกต่อไป",
     "viewFullSize": "ดูรูปขนาดเต็ม",
