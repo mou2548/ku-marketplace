@@ -61,8 +61,7 @@ export function EditProfileForm({ profile }: { profile: User }) {
           `${firstNameTh} ${lastNameTh}`.trim() ||
           `${profile.first_name_en} ${profile.last_name_en}`
         }
-        faculty="Engineering"
-        year={3}
+        isVerified
       />
       <p className="text-caption leading-[1.6] text-ink-muted">
         This is the name and badge shown on your posts, your offers, and every
