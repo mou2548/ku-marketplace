@@ -1,11 +1,12 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Handshake, MessagesSquare, Store } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
+import { SelectField, SelectOption } from "@/components/kit/choice";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
@@ -43,11 +44,7 @@ import { cn } from "@/lib/utils";
 type Lens = "all" | "buying" | "selling";
 type StatusFilter = "all" | TransactionStatus;
 
-const LENSES: Array<{ id: Lens; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "buying", label: "Buying" },
-  { id: "selling", label: "Selling" },
-];
+const LENSES: Lens[] = ["all", "buying", "selling"];
 
 const STATUSES: StatusFilter[] = [
   "all",
@@ -73,6 +70,12 @@ export function HistoryList({
   const [lens, setLens] = useState<Lens>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
 
+  const statusOptions = STATUSES.map((item) => ({
+    id: item,
+    label:
+      item === "all" ? t("history.all") : st.of(TRANSACTION_STATUS[item]).label,
+  }));
+
   const rows = useMemo(() => {
     return transactions
       .filter((tx) => {
@@ -88,30 +91,52 @@ export function HistoryList({
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">{t("history.title")}</h1>
-        <p className="text-body-sm text-ink-muted">
-          Every deal you have been part of, including the ones that were
-          cancelled or refunded.
+      <header>
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("history.purchaseRecord")}
+        </p>
+        <h1 className="mt-1 text-h1">{t("history.title")}</h1>
+        <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+          {t("history.intro")}
         </p>
       </header>
 
-      <div className="flex flex-wrap gap-4">
-        <Filters
-          label={t("history.side")}
-          options={LENSES.map((l) => ({ id: l.id, label: l.label }))}
-          value={lens}
-          onChange={(v) => setLens(v as Lens)}
-        />
-        <Filters
-          label={t("history.status")}
-          options={STATUSES.map((s) => ({
-            id: s,
-            label: s === "all" ? "All" : st.of(TRANSACTION_STATUS[s]).label,
-          }))}
-          value={status}
-          onChange={(v) => setStatus(v as StatusFilter)}
-        />
+      <div className="flex flex-col gap-4 border-b border-line sm:flex-row sm:items-end sm:justify-between">
+        <fieldset>
+          <legend className="sr-only">{t("history.side")}</legend>
+          <div className="flex gap-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {LENSES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={lens === item}
+                onClick={() => setLens(item)}
+                className={cn(
+                  "min-h-11 shrink-0 border-b-2 px-0.5 text-body transition-colors duration-[--dur-fast]",
+                  lens === item
+                    ? "border-brand font-semibold text-ink"
+                    : "border-transparent text-ink-muted hover:text-ink",
+                )}
+              >
+                {t(`history.${item}`)}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <SelectField
+          aria-label={t("history.status")}
+          selectedKey={status}
+          onSelectionChange={(key) => setStatus(key as StatusFilter)}
+          items={statusOptions}
+          className="w-full pb-3 sm:w-56"
+        >
+          {(option) => (
+            <SelectOption id={option.id} textValue={option.label}>
+              {option.label}
+            </SelectOption>
+          )}
+        </SelectField>
       </div>
 
       {rows.length === 0 ? (
@@ -169,8 +194,10 @@ export function HistoryList({
                         {ticket.giveaway.item_name}
                       </p>
                       <p className="truncate text-caption text-ink-muted">
-                        from {ticket.giveaway.giver.name} · collect at{" "}
-                        {ticket.giveaway.pickup_location}
+                        {t("history.giveawayMeta", {
+                          name: ticket.giveaway.giver.name,
+                          location: ticket.giveaway.pickup_location,
+                        })}
                       </p>
                     </div>
                     <StatusBadge status={TICKET_STATUS[ticket.status]} size="sm" />
@@ -186,52 +213,6 @@ export function HistoryList({
   );
 }
 
-function Filters({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: Array<{ id: string; label: string }>;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <fieldset className="flex flex-col gap-1.5">
-      <legend className="text-overline text-ink-muted uppercase">
-        {label}
-      </legend>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            aria-pressed={value === o.id}
-            onClick={() => onChange(o.id)}
-            className={cn(
-              // 44px, not 36px: ten of these wrap across the top of the
-              // screen and it is the densest control cluster in the product.
-              "min-h-11 rounded-pill px-3.5 text-caption font-medium",
-              "transition-colors duration-[--dur-fast]",
-              // --brand is green-600 at 4.04:1 against white, which CLAUDE.md
-              // §4 calls an absolute rule with one exemption: labels at 16px
-              // weight 600. A 13px weight-500 chip is not that exemption.
-              // --bg-brand-band is green-700, 5.88:1, and is already the token
-              // for solid brand chrome carrying a white label.
-              value === o.id
-                ? "bg-brand-band text-on-brand-strong shadow-raised"
-                : "bg-surface-sunken text-ink-secondary shadow-sunken hover:bg-gray-200",
-            )}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
 /**
  * One row carries the whole record: what, with whom, how it was handed over,
  * how much, where it got to, and whose move it is. The previous version showed
@@ -242,17 +223,19 @@ function Filters({
  * `PromptAction` the deal screen switches on, so the two cannot drift.
  */
 const ACTION_CTA: Record<PromptAction | "none", string> = {
-  "propose-appointment": "Arrange the meetup",
-  "upload-slip": "Upload your slip",
-  "review-slip": "Check the slip",
-  "enter-tracking": "Add the tracking number",
-  "confirm-delivery": "Confirm it arrived",
-  "scan-qr": "Scan at handover",
-  "refund-slip": "Upload the refund slip",
-  none: "Open the deal",
+  "propose-appointment": "arrangeMeetup",
+  "upload-slip": "uploadSlip",
+  "review-slip": "reviewSlip",
+  "enter-tracking": "enterTracking",
+  "confirm-delivery": "confirmDelivery",
+  "scan-qr": "scanHandover",
+  "refund-slip": "refundSlip",
+  none: "openDeal",
 };
 
 function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const st = useStatusText();
   const viewer = tx.buyer_id === viewerId ? "buyer" : "seller";
   const prompt = resolveTransactionActor(tx, viewer);
@@ -261,35 +244,32 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
   const other = viewer === "buyer" ? tx.seller : tx.buyer;
   const isTrade = tx.offer_id != null;
 
-  /**
-   * Two facts, not six.
-   *
-   * The row used to build Deal number, Type, Handover, Amount, Started and
-   * sometimes Tracking, and render them as a two-column grid at 360px under
-   * 11px uppercase labels — three rows of micro-type between the photograph
-   * and the action, on a screen the owner called too dense. Amount and date
-   * are what someone scanning their history is looking for. The deal number
-   * and the tracking number are lookups, and they are on the deal itself.
-   * "Handover" only ever said "Meetup": PRODUCT.md makes a trade meetup-only.
-   */
-  const facts: Array<[string, string]> = [
-    [
-      isTrade ? "Trade" : "Sale",
-      tx.final_amount > 0 ? `฿${tx.final_amount.toLocaleString("en-GB")}` : "No money",
-    ],
-    [
-      "Started",
-      new Date(tx.created_at).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-    ],
-  ];
+  const date = new Date(tx.created_at).toLocaleDateString(
+    locale === "th" ? "th-TH" : "en-GB",
+    { day: "numeric", month: "short", year: "numeric" },
+  );
+  const amount =
+    tx.final_amount > 0
+      ? `฿${tx.final_amount.toLocaleString("en-GB")}`
+      : t("history.noMoney");
 
   return (
-    <Surface shape="card" className="flex flex-col gap-3 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <Surface shape="card" className="overflow-hidden p-0">
+      <div
+        aria-hidden
+        className={cn("h-1", isTrade ? "bg-tone-trade-solid" : "bg-brand")}
+      />
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-overline font-semibold text-ink-muted uppercase">
+            {isTrade ? t("history.trade") : t("history.sale")} · {date}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {deadline ? <CountdownPill deadline={deadline} /> : null}
+            <StatusBadge status={TRANSACTION_STATUS[tx.status]} size="sm" />
+          </div>
+        </div>
+
         {/* A row of pure type is unreadable at a glance in a product where
             every record has a photograph attached to it. */}
         <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -320,31 +300,22 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
               {tx.post.item.name}
             </Link>
             <p className="truncate text-caption text-ink-muted">
-              {viewer === "buyer" ? "Bought from" : "Sold to"} {other.name}
+              {viewer === "buyer"
+                ? t("history.boughtFrom", { name: other.name })
+                : t("history.soldTo", { name: other.name })}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {deadline ? <CountdownPill deadline={deadline} /> : null}
-          <StatusBadge status={TRANSACTION_STATUS[tx.status]} size="sm" />
-        </div>
-      </div>
-
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-6">
-        {facts.map(([label, value]) => (
-          <div key={label} className="flex flex-col">
-            <dt className="text-meta tracking-[0.06em] text-ink-muted uppercase">
-              {label}
-            </dt>
-            <dd data-numeric className="truncate text-body-sm font-medium">
-              {value}
-            </dd>
+        <div className="flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-4 sm:justify-start">
+            <span className="text-caption text-ink-muted">
+              {t("history.total")}
+            </span>
+            <span data-numeric className="text-body-lg font-semibold text-ink">
+              {amount}
+            </span>
           </div>
-        ))}
-      </dl>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
         {/* The turn used to be a solid pill at 12px with no whitespace-nowrap,
             so "Your turn: transfer the money and upload the slip" wrapped to
             three lines inside a fully rounded shape, below the register's
@@ -352,7 +323,7 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
             one, and the weight carries whose turn it is. */}
         <span
           className={cn(
-            "min-w-0 flex-1 text-body-sm",
+            "min-w-0 flex-1 text-body-sm sm:text-right",
             isViewersTurn ? "font-semibold text-ink" : "text-ink-muted",
           )}
         >
@@ -368,8 +339,11 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
           href={`/history/${tx.transaction_id}`}
         >
           <MessagesSquare className="size-4" />
-          {isViewersTurn ? ACTION_CTA[prompt.action ?? "none"] : "Go to chat"}
+          {isViewersTurn
+            ? t(`history.${ACTION_CTA[prompt.action ?? "none"]}`)
+            : t("history.goToChat")}
         </LinkButton>
+        </div>
       </div>
     </Surface>
   );
