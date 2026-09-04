@@ -53,7 +53,7 @@ export default async function AdminLayout({
         <header className="sticky top-0 z-[50] border-b border-line bg-surface-inverse text-white">
           <div className="flex h-16 w-full items-center gap-5 px-4 lg:px-8">
             <span className="flex shrink-0 items-center gap-2 font-semibold tracking-[-0.012em]">
-              <ShieldCheck aria-hidden className="size-5 text-tone-success-fg" />
+              <ShieldCheck aria-hidden className="size-5 text-white" />
               Admin workspace
             </span>
 
