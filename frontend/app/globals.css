@@ -22,18 +22,18 @@
   --green-900: #19432c;  /* 11.16 */
   --green-950: #122b1d;  /* 15.04 — ink */
 
-  /* --- Neutral: green-tinted. Pure grays are banned. --- */
-  --gray-50: #f6f8f7;
-  --gray-100: #ebedec;
-  --gray-200: #d8dcda;
-  --gray-300: #bdc4c0;
-  --gray-400: #94a09a;   /*  2.70 — decorative / disabled glyphs only */
-  --gray-500: #708077;   /*  4.17 — large text and icons */
-  --gray-600: #58655e;   /*  6.12 — muted body text. AA. */
-  --gray-700: #46504b;   /*  8.34 */
-  --gray-800: #38403c;   /* 10.71 */
-  --gray-900: #2b312e;   /* 13.33 */
-  --gray-950: #1d201e;   /* 16.40 */
+  /* --- Neutral: blue-charcoal, adapted from the Chinese flat palette. --- */
+  --gray-50: #f8f9fb;
+  --gray-100: #f1f2f6;  /* Anti-Flash White */
+  --gray-200: #dfe4ea;  /* City Lights */
+  --gray-300: #ced6e0;  /* Twinkle Blue */
+  --gray-400: #a4b0be;  /* Peace — decorative / disabled only */
+  --gray-500: #747d8c;  /* Bay Wharf — large text and icons only */
+  --gray-600: #57606f;  /* AA body copy */
+  --gray-700: #46505d;
+  --gray-800: #3a414c;
+  --gray-900: #2f3542;  /* Prestige Blue — primary light-theme ink */
+  --gray-950: #222630;
 
   /* --- Amber: waiting, deadline approaching --- */
   --amber-50: #fbf8f1;
@@ -72,23 +72,16 @@
   --slate-600: #3d6076;  /*  6.70 */
   --slate-700: #2f4c5f;  /*  9.05 — text. AA. */
 
-  /* --- Teal: trade only. Replaces clay 2026-08-14 (same reasoning as
-     clay's own introduction, same day: trade needs a hue nothing else on
-     the tone system touches). The feed card already filled "For trade" with
-     amber (see post-card.tsx's old comment) which reads as a warning next
-     to Pending/Awaiting-payment chips that use the same hue. Teal carries
-     the same "filled, white text" treatment without borrowing warning's
-     colour. */
-  --teal-100: #e1f1f5;
-  --teal-400: #4fa3bd;  /*  2.87 — border only */
-  --teal-700: #2c7a93;  /*  4.87 — text and solid fill. AA. */
+  /* --- Marketplace categories: colour explains the transaction type. --- */
+  --blue-100: #e8f3ff;
+  --blue-400: #70a1ff;
+  --blue-600: #1767ad;
+  --blue-700: #145a97;
 
-  /* Blue and gold were retired for lack of a consumer; violet is banned
-     outright (see the trade tone comment below). Slate and teal are the two
-     exceptions since — info colliding with success, and trade colliding with
-     warning, were both real confusions on screen, not a preference. The
-     palette is seven hues now: two greens, slate, two ambers, teal, one
-     rose. Do not add an eighth without the same kind of evidence. */
+  --violet-100: #ececff;
+  --violet-400: #7d7cff;
+  --violet-500: #5352ed;
+  --violet-700: #3f3bb0;
 }
 
 /* =========================================================================
@@ -105,13 +98,13 @@
   --bg-page: #ffffff;
   --bg-surface: #ffffff;
   --bg-surface-raised: #ffffff;
-  --bg-surface-sunken: var(--gray-50);
-  --bg-surface-inverse: var(--green-950);
+  --bg-surface-sunken: var(--gray-100);
+  --bg-surface-inverse: var(--gray-900);
   /* Solid brand chrome: the header, hero bands, section headers. */
   --bg-brand-strong: var(--green-800);
   --bg-brand-band: var(--green-700);
   --on-brand-strong: #ffffff;
-  --bg-overlay: rgb(18 43 29 / 0.48);
+  --bg-overlay: rgb(47 53 66 / 0.52);
 
   /* --- Borders --- */
   --border-subtle: var(--gray-200);
@@ -120,10 +113,10 @@
   --border-brand: var(--green-600);
 
   /* --- Text. Every value below is AA or better on --bg-surface. --- */
-  --text-primary: var(--green-950);   /* 15.04 */
-  --text-secondary: var(--gray-700);  /*  8.34 */
-  --text-muted: var(--gray-600);      /*  6.12 */
-  --text-disabled: var(--gray-400);   /*  2.70 — non-informational only */
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-muted: var(--gray-600);
+  --text-disabled: var(--gray-400);   /* non-informational only */
   --text-brand: var(--green-700);     /*  5.88 */
   --text-inverse: #ffffff;
 
@@ -135,6 +128,17 @@
   --brand-subtle-hover: var(--green-200);
   --on-brand: #ffffff;                /* 4.04 on --brand: large/bold labels
                                          and button text at >=16px 600 only */
+
+  /* Listing type is not a severity. These tokens exist so the feed can use
+     colour for quick scanning without borrowing warning or error colours. */
+  --listing-sale-bg: #e8f7ee;
+  --listing-sale-fg: #1b6b3f;
+  --listing-trade-bg: var(--blue-100);
+  --listing-trade-fg: var(--blue-600);
+  --listing-both-bg: var(--violet-100);
+  --listing-both-fg: var(--violet-700);
+  --listing-giveaway-bg: #fff5d6;
+  --listing-giveaway-fg: #806000;
 
   /* --- Focus --- */
   --ring: var(--green-600);
@@ -192,18 +196,10 @@
   --tone-danger-fg: var(--rose-600);
   --tone-danger-solid: var(--rose-500);
 
-  /* Trade is a category, not a severity — that principle stands. What changed
-     2026-08-14: trade used to share `neutral`'s gray, which made "For trade"
-     and "Unlisted" the same colour with nothing but an icon between them, and
-     the feed card worked around it with a local hardcoded amber fill that
-     then collided with `warning`. Teal is trade's own hue now: distinct from
-     neutral, distinct from warning, filled with white text wherever `warning`
-     and `danger` already are (`TONE_SOLID`, not `TONE_CHIP`) — see
-     post-card.tsx. */
-  --tone-trade-bg: var(--teal-100);
-  --tone-trade-border: var(--teal-400);
-  --tone-trade-fg: var(--teal-700);
-  --tone-trade-solid: var(--teal-700);
+  --tone-trade-bg: var(--blue-100);
+  --tone-trade-border: var(--blue-400);
+  --tone-trade-fg: var(--blue-600);
+  --tone-trade-solid: var(--blue-700);
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.
@@ -339,29 +335,29 @@
 :root {
   --shadow-flat:
     inset 0 1px 0 rgb(255 255 255 / 0.7),
-    0 0 0 1px rgb(18 43 29 / 0.045);
+    0 0 0 1px rgb(47 53 66 / 0.045);
 
   --shadow-raised:
     inset 0 1px 0 rgb(255 255 255 / 0.75),
-    0 1px 2px rgb(18 43 29 / 0.05),
-    0 2px 6px rgb(18 43 29 / 0.045),
-    0 0 0 1px rgb(18 43 29 / 0.04);
+    0 1px 2px rgb(47 53 66 / 0.05),
+    0 2px 6px rgb(47 53 66 / 0.045),
+    0 0 0 1px rgb(47 53 66 / 0.04);
 
   --shadow-floating:
     inset 0 1px 0 rgb(255 255 255 / 0.8),
-    0 2px 4px rgb(18 43 29 / 0.05),
-    0 8px 18px rgb(18 43 29 / 0.07),
-    0 0 0 1px rgb(18 43 29 / 0.04);
+    0 2px 4px rgb(47 53 66 / 0.05),
+    0 8px 18px rgb(47 53 66 / 0.07),
+    0 0 0 1px rgb(47 53 66 / 0.04);
 
   --shadow-overlay:
-    0 4px 8px rgb(18 43 29 / 0.06),
-    0 16px 32px rgb(18 43 29 / 0.12),
-    0 32px 64px rgb(18 43 29 / 0.10);
+    0 4px 8px rgb(47 53 66 / 0.06),
+    0 16px 32px rgb(47 53 66 / 0.12),
+    0 32px 64px rgb(47 53 66 / 0.10);
 
   /* Sunken: inventory slots, drop targets, the trade bench well. */
   --shadow-sunken:
-    inset 0 2px 4px rgb(18 43 29 / 0.10),
-    inset 0 0 0 1px rgb(18 43 29 / 0.06);
+    inset 0 2px 4px rgb(47 53 66 / 0.10),
+    inset 0 0 0 1px rgb(47 53 66 / 0.06);
 
   /* Rarity glow, applied on top of --shadow-sunken for a filled slot. */
   --shadow-rarity: 0 0 0 1.5px var(--slot-edge, transparent),
@@ -414,48 +410,57 @@
   --green-900: #d9f4e4;
   --green-950: #f1f7f3;
 
-  --gray-50: #181818;
-  --gray-100: #202020;
-  --gray-200: #2b2b2b;
-  --gray-300: #3d3d3d;
-  --gray-400: #686868;
-  --gray-500: #898989;
-  --gray-600: #a8a8a8;
-  --gray-700: #c8c8c8;
-  --gray-800: #dfdfdf;
-  --gray-900: #eeeeee;
-  --gray-950: #f8f8f8;
+  --gray-50: #1a1e23;
+  --gray-100: #252a32;
+  --gray-200: #2f3542;
+  --gray-300: #46505d;
+  --gray-400: #747d8c;
+  --gray-500: #a4b0be;
+  --gray-600: #b8c1cd;
+  --gray-700: #d5dae2;
+  --gray-800: #dfe4ea;
+  --gray-900: #f1f2f6;
+  --gray-950: #f8f9fb;
 
-  --bg-page: #080808;
-  --bg-surface: #121212;
-  --bg-surface-raised: #191919;
-  --bg-surface-sunken: #202020;
-  --bg-surface-inverse: #f1f7f3;
+  --bg-page: #14171b;
+  --bg-surface: #1d2127;
+  --bg-surface-raised: #2f3542;
+  --bg-surface-sunken: #252a32;
+  --bg-surface-inverse: #f1f2f6;
   --bg-brand-strong: #19432c;
   --bg-brand-band: #257248;
   --on-brand-strong: #ffffff;
-  --bg-overlay: rgb(2 8 4 / 0.72);
+  --bg-overlay: rgb(7 9 12 / 0.76);
 
-  --border-subtle: #292929;
-  --border-default: #3a3a3a;
-  --border-strong: #595959;
-  --border-brand: #6bca96;
+  --border-subtle: #2f3542;
+  --border-default: #46505d;
+  --border-strong: #747d8c;
+  --border-brand: #52c684;
 
-  --text-primary: #f1f7f3;
-  --text-secondary: #d0d0d0;
-  --text-muted: #a7a7a7;
-  --text-disabled: #686868;
-  --text-brand: #8bdcad;
-  --text-inverse: #122b1d;
+  --text-primary: #f1f2f6;
+  --text-secondary: #d5dae2;
+  --text-muted: #a4b0be;
+  --text-disabled: #747d8c;
+  --text-brand: #88e3ac;
+  --text-inverse: #2f3542;
 
-  --brand: #3ab572;
-  --brand-hover: #52c684;
-  --brand-active: #6bca96;
-  --brand-subtle: #203c2b;
-  --brand-subtle-hover: #294b36;
-  --on-brand: #07150d;
-  --ring: #6bca96;
+  --brand: #2ed573;
+  --brand-hover: #4ae086;
+  --brand-active: #74e9a0;
+  --brand-subtle: #17452b;
+  --brand-subtle-hover: #205c3a;
+  --on-brand: #102519;
+  --ring: #2ed573;
   --ring-offset: var(--bg-page);
+
+  --listing-sale-bg: #17452b;
+  --listing-sale-fg: #88e3ac;
+  --listing-trade-bg: #173a5e;
+  --listing-trade-fg: #86c5ff;
+  --listing-both-bg: #2d2a67;
+  --listing-both-fg: #b9b7ff;
+  --listing-giveaway-bg: #4c3b08;
+  --listing-giveaway-fg: #f4d66c;
 
   --tone-neutral-bg: #28322c;
   --tone-neutral-border: #637269;
@@ -477,10 +482,10 @@
   --tone-danger-border: #b3455a;
   --tone-danger-fg: #f3c1ca;
   --tone-danger-solid: #96273b;
-  --tone-trade-bg: #15323a;
-  --tone-trade-border: #4fa3bd;
-  --tone-trade-fg: #bfe7f1;
-  --tone-trade-solid: #2c7a93;
+  --tone-trade-bg: #173a5e;
+  --tone-trade-border: #70a1ff;
+  --tone-trade-fg: #86c5ff;
+  --tone-trade-solid: #1767ad;
 
   --shadow-flat:
     inset 0 1px 0 rgb(255 255 255 / 0.04),

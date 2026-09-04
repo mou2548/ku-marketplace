@@ -1,4 +1,3 @@
-import { PostFab } from "@/components/kit/post-fab";
 import { listPosts } from "@/lib/api/posts";
 
 import { MarketFeed } from "./market-feed";
@@ -30,7 +29,6 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col gap-5">
       <MarketFeed posts={posts} />
-      <PostFab />
     </div>
   );
 }

@@ -74,13 +74,13 @@ export function PostCard({
           <div className="flex items-center justify-between gap-2">
             <span
               className={cn(
-                "inline-flex min-w-0 items-center rounded-chip border px-1.5 py-0.5 text-[0.6875rem] leading-4 font-semibold",
+                "inline-flex min-w-0 items-center rounded-chip px-2 py-0.5 text-[0.6875rem] leading-4 font-semibold",
                 postType === "SellOnly" &&
-                  "border-transparent bg-brand-subtle text-ink-brand",
+                  "bg-[var(--listing-sale-bg)] text-[var(--listing-sale-fg)]",
                 postType === "TradeOnly" &&
-                  "border-line-default bg-surface-sunken text-ink-secondary",
+                  "bg-[var(--listing-trade-bg)] text-[var(--listing-trade-fg)]",
                 postType === "Both" &&
-                  "border-brand bg-surface text-ink-brand",
+                  "bg-[var(--listing-both-bg)] text-[var(--listing-both-fg)]",
               )}
             >
               <span className="truncate">{st.of(POST_TYPE[postType]).label}</span>
