@@ -3,35 +3,26 @@
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Selection } from "react-aria-components";
-import { CheckSquare, Package, Plus, Store, X } from "lucide-react";
+import { GridListItem, type Selection } from "react-aria-components";
+import { Check, CheckSquare, Package, Plus, Store, X } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
-import { InventoryGrid, InventorySlot } from "@/components/kit/inventory-slot";
+import { InventoryGrid } from "@/components/kit/inventory-slot";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { Item } from "@/lib/api/types";
-import { ITEM_STATUS, type ItemStatus } from "@/lib/status";
+import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
 
 /**
- * The slot grid, same as the trade bench: a student who has placed an item on
- * the bench already knows how this screen works, and the rarity border means
- * the same thing in both places.
- *
- * Three behaviours came out of reviewing the built screen:
- *
- *  - **Tapping an item opens it.** Selection used to be the default click
- *    behaviour, so the obvious gesture did the unobvious thing and there was no
- *    way to see an item in full at all.
- *  - **Bulk is behind a button.** Selecting many is the rarer job — persona
- *    P2's end-of-semester clear-out — so it is a mode you enter deliberately.
- *  - **The corner badge is a word.** An icon-only badge in the corner said
- *    nothing to anyone who had not learned it yet; "Listed" and "Unlisted"
- *    are the two states this screen exists to distinguish, so they are spelled
- *    out.
+ * A product catalogue for things the student owns. Inventory behaviour stays
+ * familiar — tap to open, enter a separate bulk-select mode — but the visual
+ * language now matches the market: real photo first, readable status, then
+ * product facts. The condition strip is the restrained piece of GAME DNA.
  */
 export function InventoryScreen({
   items,
@@ -41,11 +32,13 @@ export function InventoryScreen({
   listedItemIds: number[];
 }) {
   const t = useTranslations();
+  const statusText = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Selection>(new Set());
   const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
+  const listedCount = items.filter((item) => listed.has(item.item_id)).length;
 
   /**
    * Two states, and only two. `Transferred` is filtered out upstream in
@@ -92,28 +85,39 @@ export function InventoryScreen({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">{t("inventory.myStuff")}</h1>
-          <p data-numeric className="text-caption text-ink-muted">
-            {items.length} {items.length === 1 ? "item" : "items"}
-          </p>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <div>
+            <h1 className="text-h1">{t("inventory.myStuff")}</h1>
+            <p data-numeric className="mt-1 text-body-sm text-ink-muted">
+              {items.length} {items.length === 1 ? "item" : "items"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-meta">
+            <span className="rounded-pill bg-brand-subtle px-2.5 py-1 font-medium text-ink-brand">
+              {listedCount} {t("inventory.onTheMarket")}
+            </span>
+            <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-secondary">
+              {items.length - listedCount} {t("inventory.notListed")}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto">
           {selecting ? (
-            <Button variant="secondary" size="sm" onPress={exitSelecting}>
+            <Button block variant="secondary" size="sm" onPress={exitSelecting}>
               <X className="size-4" />{t("inventory.cancel")}</Button>
           ) : (
             <Button
+              block
               variant="secondary"
               size="sm"
               onPress={() => setSelecting(true)}
             >
               <CheckSquare className="size-4" />{t("inventory.select")}</Button>
           )}
-          <LinkButton size="sm" href="/inventory/new">
+          <LinkButton block size="sm" href="/inventory/new">
             <Plus className="size-4" />{t("inventory.addItem")}</LinkButton>
         </div>
       </header>
@@ -122,18 +126,9 @@ export function InventoryScreen({
         <p className="text-caption text-ink-muted">{t("inventory.selectHint")}</p>
       ) : null}
 
-      {/* A quiet catalogue shelf. The condition rim keeps the inventory DNA,
-          while names and real photos carry the same product-first hierarchy
-          as the market feed and the approved ecommerce reference. */}
-      <Surface
-        as="section"
-        shape="panel"
-        fill="sunken"
-        elevation="none"
-        aria-label={t("inventory.title")}
-        className="p-3 sm:p-4"
-      >
+      <section aria-label={t("inventory.title")}>
         <InventoryGrid
+          className="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5"
           aria-label={t("inventory.itemsIn")}
           items={slots}
           selectionMode={selecting ? "multiple" : "none"}
@@ -145,29 +140,61 @@ export function InventoryScreen({
         >
           {(slot: InventoryItem) => {
             const item = items.find((i) => i.item_id === slot.item_id)!;
+            const itemStatus = statusOf(item);
+            const rarity = ITEM_CONDITION[item.condition];
             return (
-              <InventorySlot
+              <GridListItem
                 id={slot.item_id}
-                item={slot}
-                showName
-                badge={
-                  /* A slot is about 93px wide at 360px. The labelled badge
-                     measured roughly 86px of that and was clamped to 81px by
-                     the slot's own max-width, so it truncated its own word
-                     while covering most of the photograph — register.md §2:
-                     a card does not compete with its own image. The label
-                     survives for assistive tech. */
-                  <StatusBadge
-                    status={ITEM_STATUS[statusOf(item)]}
-                    size="sm"
-                    iconOnly
-                  />
-                }
-              />
+                textValue={`${item.name}, ${statusText.of(ITEM_STATUS[itemStatus]).label}`}
+                style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
+                className="group min-w-0 cursor-pointer overflow-hidden rounded-card bg-surface shadow-raised outline-none transition-[transform,box-shadow] duration-[--dur-fast] hover:-translate-y-0.5 hover:shadow-floating focus-visible:ring-2 focus-visible:ring-brand data-[pressed]:translate-y-px data-[selected]:ring-2 data-[selected]:ring-brand"
+              >
+                {({ isSelected }) => (
+                  <>
+                    <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
+                      <PostImage
+                        src={slot.image_url}
+                        alt={item.name}
+                        aspectRatio={4 / 3}
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                        className="h-full"
+                      />
+                      <StatusBadge
+                        status={ITEM_STATUS[itemStatus]}
+                        size="sm"
+                        className="absolute top-2 left-2 shadow-raised"
+                      />
+                      {isSelected ? (
+                        <span className="absolute top-2 right-2 grid size-7 place-items-center rounded-pill bg-brand text-on-brand shadow-raised">
+                          <Check aria-hidden className="size-4" />
+                          <span className="sr-only">Selected</span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex min-w-0 flex-col gap-2 p-3">
+                      <p className="line-clamp-2 min-h-[2.9em] text-body-sm leading-[1.45] font-semibold group-hover:text-ink-brand">
+                        {item.name}
+                      </p>
+                      <div className="flex items-center justify-between gap-2 text-meta text-ink-muted">
+                        <span className="truncate">{item.category}</span>
+                        <span data-numeric className="shrink-0">×{item.quantity}</span>
+                      </div>
+                      <span
+                        className="w-fit rounded-pill bg-[var(--slot-glow)] px-2 py-0.5 text-meta font-medium text-[var(--slot-edge)]"
+                        style={{ "--slot-glow": rarity.glow } as React.CSSProperties}
+                      >
+                        {statusText.of(rarity).label}
+                      </span>
+                    </div>
+                    <span aria-hidden className="block h-1 bg-[var(--slot-edge)]" />
+                  </>
+                )}
+              </GridListItem>
             );
           }}
         </InventoryGrid>
-      </Surface>
+      </section>
 
       {selecting && selectedIds.length > 0 ? (
         <Surface
