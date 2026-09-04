@@ -440,6 +440,21 @@
     "ticketHint": "Open this QR when you meet the giver. It refreshes automatically for a safer handover.",
     "giverNotes": "Notes from the giver"
   },
+  "notifications": {
+    "activity": "Activity log",
+    "title": "Notifications",
+    "subtitle": "Updates from your deals, offers, giveaways and account.",
+    "unread": "{count} unread",
+    "everything": "Everything",
+    "deal": "Deals",
+    "offer": "Offers",
+    "giveaway": "Giveaways",
+    "moderation": "Moderation",
+    "emptyTitle": "Nothing of that kind yet",
+    "emptyBody": "Updates appear here as activity happens.",
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
   "chat": {
     "photosExpired": "Photos from this message have expired and are no longer shown.",
     "viewFullSize": "View photo full size",
