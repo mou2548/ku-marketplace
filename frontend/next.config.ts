@@ -19,11 +19,12 @@ const nextConfig: NextConfig = {
   output: "standalone",
   images: {
     remotePatterns: [
-      // The init.sql seed stores every photo on this placeholder host — it
-      // does not resolve to a real image, so pictures sourced from seed rows
-      // render broken, but the page no longer 500s (next/image throws on an
-      // unlisted hostname).
+      // Legacy local volumes can still contain the original object-storage
+      // URLs, while the current init.sql uses deterministic Picsum seeds.
       { protocol: "https", hostname: "r2.ku-market.com" },
+      { protocol: "https", hostname: "picsum.photos" },
+      // Seeded payment slips and chat attachments use this host.
+      { protocol: "https", hostname: "placehold.co" },
       // Real uploads land here: POST /uploads/image -> Cloudinary
       // (item photos, giveaway photos, chat images).
       { protocol: "https", hostname: "res.cloudinary.com" },
