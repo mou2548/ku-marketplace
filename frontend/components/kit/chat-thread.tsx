@@ -131,7 +131,7 @@ export function ChatThread({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-page/60 px-4 py-4">
         {/* `mt-auto` pins a short conversation to the bottom, against the
             composer, the way every messenger does. Without it a room with
             three messages hangs from the top of a tall column with the gap

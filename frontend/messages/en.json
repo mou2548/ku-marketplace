@@ -430,7 +430,12 @@
     "inThisRoom": "In this room",
     "giver": "Giver",
     "chooseRecipients": "Choose recipients",
-    "openGiveaway": "Open the giveaway"
+    "openGiveaway": "Open the giveaway",
+    "inbox": "Messages",
+    "noMatches": "No matches",
+    "noConversations": "No conversations yet",
+    "noNamedPerson": "Nobody named “{query}” is in this list.",
+    "emptyBody": "A room opens automatically when you buy something, an offer is accepted, or you win a giveaway."
   },
   "appointment": {
     "meetup": "Meetup",

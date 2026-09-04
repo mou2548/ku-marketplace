@@ -430,7 +430,12 @@
     "inThisRoom": "คนในห้องนี้",
     "giver": "ผู้ให้",
     "chooseRecipients": "เลือกผู้รับ",
-    "openGiveaway": "เปิดหน้าแจกของ"
+    "openGiveaway": "เปิดหน้าแจกของ",
+    "inbox": "ข้อความ",
+    "noMatches": "ไม่พบรายการที่ค้นหา",
+    "noConversations": "ยังไม่มีบทสนทนา",
+    "noNamedPerson": "ไม่พบคนชื่อ “{query}” ในรายการนี้",
+    "emptyBody": "ห้องแชตจะเปิดอัตโนมัติเมื่อคุณซื้อของ มีคนตอบรับข้อเสนอ หรือคุณได้รับของแจก"
   },
   "appointment": {
     "meetup": "นัดเจอ",

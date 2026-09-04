@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { RoomList } from "@/components/kit/room-list";
 import { EmptyState } from "@/components/kit/empty-state";
 import { MessagesSquare } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
 import { getAccessToken } from "@/lib/api/session";
@@ -30,6 +31,7 @@ export const metadata = { title: "Chat - KU Marketplace" };
  * `/chat/[roomId]` — it needs to know who is actually asking.
  */
 export default async function ChatInboxPage() {
+  const t = await getTranslations();
   if (!(await getAccessToken())) redirect("/login");
   const viewer = await getMe().catch(() => undefined);
   if (!viewer) redirect("/login");
@@ -43,8 +45,8 @@ export default async function ChatInboxPage() {
     return (
       <EmptyState
         icon={<MessagesSquare className="size-6" />}
-        title="No conversations yet"
-        description="A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+        title={t("chat.noConversations")}
+        description={t("chat.emptyBody")}
       />
     );
   }
@@ -55,7 +57,7 @@ export default async function ChatInboxPage() {
         <RoomList
           rooms={rooms}
           activeRoomId={first?.summary.room_id}
-          heading="Chat"
+          heading={t("nav.chat")}
         />
       </div>
 

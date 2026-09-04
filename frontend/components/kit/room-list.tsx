@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 import { MessagesSquare, Search } from "lucide-react";
@@ -10,8 +10,13 @@ import { ROOM_KIND_TONE } from "@/lib/rooms";
 import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./empty-state";
-import { SegmentTab, TabList, Tabs } from "./tabs";
-import { TONE_DOT, TONE_TEXT } from "./tone";
+import { TabList, Tabs, UnderlineTab } from "./tabs";
+import {
+  TONE_CHIP,
+  TONE_DOT,
+  TONE_RAIL_LEFT,
+  TONE_TEXT,
+} from "./tone";
 
 /**
  * One inbox for every conversation.
@@ -51,9 +56,14 @@ export function RoomList({
       {/* The column's own header. It stays put while the list scrolls under
           it — a list whose filters scroll away is a list you cannot refilter
           without going back to the top. */}
-      <div className="shrink-0 border-b border-line px-3 py-3">
+      <div className="shrink-0 border-b border-line px-4 pt-4">
         {heading ? (
-          <h1 className="mb-3 px-1 text-h1">{heading}</h1>
+          <div className="mb-4">
+            <p className="text-overline font-semibold text-ink-brand uppercase">
+              {t("chat.inbox")}
+            </p>
+            <h1 className="mt-1 text-h1">{heading}</h1>
+          </div>
         ) : null}
 
         <div className="relative mb-3">
@@ -74,11 +84,11 @@ export function RoomList({
           selectedKey={filter}
           onSelectionChange={(k) => setFilter(k as "all" | RoomKind)}
         >
-          <TabList aria-label={t("chat.conversationType")} variant="segment">
-            <SegmentTab id="all">{t("history.all")}</SegmentTab>
-            <SegmentTab id="Sale">{t("chat.sale")}</SegmentTab>
-            <SegmentTab id="Trade">{t("chat.trade")}</SegmentTab>
-            <SegmentTab id="Giveaway">{t("chat.giveaway")}</SegmentTab>
+          <TabList aria-label={t("chat.conversationType")} variant="underline">
+            <UnderlineTab id="all">{t("history.all")}</UnderlineTab>
+            <UnderlineTab id="Sale">{t("chat.sale")}</UnderlineTab>
+            <UnderlineTab id="Trade">{t("chat.trade")}</UnderlineTab>
+            <UnderlineTab id="Giveaway">{t("chat.giveaway")}</UnderlineTab>
           </TabList>
         </Tabs>
       </div>
@@ -87,11 +97,11 @@ export function RoomList({
         <div className="p-3">
           <EmptyState
             icon={<MessagesSquare className="size-6" />}
-            title={q ? "No matches" : "No conversations here"}
+            title={q ? t("chat.noMatches") : t("chat.noConversations")}
             description={
               q
-                ? `Nobody named "${query.trim()}" is in this list.`
-                : "A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+                ? t("chat.noNamedPerson", { query: query.trim() })
+                : t("chat.emptyBody")
             }
           />
         </div>
@@ -116,18 +126,25 @@ function RoomRow({
   isActive: boolean;
 }) {
   const t = useTranslations();
+  const locale = useLocale();
+  const tone = ROOM_KIND_TONE[room.kind];
   return (
     <Link
       href={room.href}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex items-start gap-3 rounded-card p-3 transition-colors duration-[--dur-fast]",
-        isActive ? "bg-brand-subtle" : "hover:bg-gray-100",
+        "flex items-start gap-3 rounded-card border-l-2 border-transparent p-3 transition-colors duration-[--dur-fast]",
+        isActive
+          ? cn("bg-surface-sunken", TONE_RAIL_LEFT[tone])
+          : "hover:bg-gray-100",
       )}
     >
       <span
         aria-hidden
-        className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-pill bg-brand-subtle text-caption font-semibold text-ink-brand"
+        className={cn(
+          "grid size-11 shrink-0 place-items-center overflow-hidden rounded-pill border text-caption font-semibold",
+          TONE_CHIP[tone],
+        )}
         style={
           room.counterparty.avatar_url
             ? {
@@ -152,10 +169,13 @@ function RoomRow({
               dateTime={room.lastMessageAt}
               className="shrink-0 text-meta text-ink-muted"
             >
-              {new Date(room.lastMessageAt).toLocaleDateString("en-GB", {
+              {new Date(room.lastMessageAt).toLocaleDateString(
+                locale === "th" ? "th-TH" : "en-GB",
+                {
                 day: "numeric",
                 month: "short",
-              })}
+                },
+              )}
             </time>
           ) : null}
         </span>
@@ -173,10 +193,10 @@ function RoomRow({
             <span
               className={cn(
                 "text-meta font-semibold",
-                TONE_TEXT[ROOM_KIND_TONE[room.kind]],
+                TONE_TEXT[tone],
               )}
             >
-              {room.kind}
+              {t(`chat.${room.kind.toLowerCase()}`)}
             </span>
           </span>
           <span className="min-w-0 truncate text-meta text-ink-muted">
@@ -194,7 +214,9 @@ function RoomRow({
             solid amber turned the list into a column of alarms. Brand, and a
             chip: "you are up" is not a warning. */}
         {room.needsYou ? (
-          <span className="mt-0.5 w-fit rounded-pill border border-brand-subtle-hover bg-brand-subtle px-2 py-0.5 text-meta font-medium text-ink-brand">{t("chat.yourTurn")}</span>
+          <span className="mt-0.5 w-fit rounded-pill border border-brand-subtle-hover bg-brand-subtle px-2 py-0.5 text-meta font-medium text-ink-brand">
+            {t("chat.yourTurn")}
+          </span>
         ) : null}
       </span>
     </Link>
