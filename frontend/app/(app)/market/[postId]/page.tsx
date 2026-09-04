@@ -1,30 +1,25 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Package, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Box, Package, ShieldCheck, Sparkles } from "lucide-react";
 
 import { PostCard } from "@/components/kit/post-card";
-import { PostImage } from "@/components/kit/post-image";
 import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { Surface } from "@/components/kit/surface";
+import { ProductGallery } from "@/components/market/product-gallery";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { getPost, listPosts } from "@/lib/api/posts";
 import { getCurrentUserId } from "@/lib/api/session";
 import type { Post } from "@/lib/api/types";
-
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { PostActions } from "./post-actions";
 
 /**
- * E2 detail / E3 entry. Two columns on desktop, a full-bleed gallery with a
- * sticky action bar on mobile — the action must never be below the fold on a
- * phone, which is where a marketplace loses its conversions.
- *
- * A `Both` post shows *both* affordances side by side rather than hiding the
- * trade behind a menu: research P3 says a trader who cannot see the swap will
- * assume the post is sale-only and leave.
+ * Product-led detail page. The composition follows the approved commerce
+ * reference (gallery / information / deal card) while keeping every fact
+ * truthful: no invented ratings, delivery promises, or platform escrow.
  */
 export default async function PostDetailPage({
   params,
@@ -40,21 +35,22 @@ export default async function PostDetailPage({
   const viewerId = await getCurrentUserId();
   const rarity = ITEM_CONDITION[post.item.condition];
   const isMine = post.seller.user_id === viewerId;
-  const image = post.item.images[0]?.image_url;
 
   const specs: Array<[string, string]> = [
-    ["Category", post.item.category],
-    ["Condition", tStatus(rarity.labelKey)],
-    ["Remaining", `${post.quantity_remaining} left`],
+    [t("inventory.category"), post.item.category],
+    [t("inventory.condition"), tStatus(rarity.labelKey)],
+    [t("market.available"), String(post.quantity_remaining)],
   ];
-  if (post.item.course_name) specs.push(["Course code", post.item.course_name]);
-  if (post.item.brand_model) specs.push(["Model", post.item.brand_model]);
-  if (post.item.size) specs.push(["Size", post.item.size]);
-  // Remaining warranty is a reason to buy and the inventory screen already
-  // showed it; the buyer is the one it actually matters to.
+  if (post.item.course_name) {
+    specs.push([t("market.courseCode"), post.item.course_name]);
+  }
+  if (post.item.brand_model) {
+    specs.push([t("market.model"), post.item.brand_model]);
+  }
+  if (post.item.size) specs.push([t("market.size"), post.item.size]);
   if (post.item.warranty_expiry) {
     specs.push([
-      "Warranty until",
+      t("market.warrantyUntil"),
       new Date(post.item.warranty_expiry).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
@@ -63,167 +59,205 @@ export default async function PostDetailPage({
     ]);
   }
 
-  // Two grids under the fold, both derived from the posts list because the API
-  // defines no related-posts route (docs/design/api-gaps.md).
   const all = await listPosts();
-  const others = all.filter((p) => p.post_id !== post.post_id);
+  const others = all.filter((candidate) => candidate.post_id !== post.post_id);
   const fromSeller = others
-    .filter((p) => p.seller.user_id === post.seller.user_id)
+    .filter((candidate) => candidate.seller.user_id === post.seller.user_id)
     .slice(0, 4);
   const similar = others
     .filter(
-      (p) =>
-        p.item.category === post.item.category &&
-        p.seller.user_id !== post.seller.user_id,
+      (candidate) =>
+        candidate.item.category === post.item.category &&
+        candidate.seller.user_id !== post.seller.user_id,
     )
     .slice(0, 4);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8 pb-6 lg:gap-12">
       <Link
         href="/"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
       >
-        <ArrowLeft aria-hidden className="size-4" />{t("market.backToMarket")}</Link>
+        <ArrowLeft aria-hidden className="size-4" />
+        {t("market.backToMarket")}
+      </Link>
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-      {/* The image is bounded, the page is not. Capping the whole page just
-          moves the empty half from the middle to the right; capping the photo
-          is what stops it inflating into a 670px slab that sets the page
-          height. Everything else takes the width it is given. */}
-      <div className="lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
-        <Surface
-          shape="card"
-          // Portrait is a phone shape. On a wide screen the same 4:5 made the
-          // photo the tallest thing on the page by a wide margin.
-          className="relative aspect-[4/5] w-full overflow-hidden lg:aspect-[4/3]"
-        >
-          <PostImage
-            src={image}
-            alt={post.item.name}
-            aspectRatio={4 / 3}
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="h-full"
-          />
-          <span
-            aria-hidden
-            style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
-            className="absolute inset-0 rounded-card ring-2 ring-[var(--slot-edge)] ring-inset"
-          />
-        </Surface>
-      </div>
+      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
+        <ProductGallery images={post.item.images} name={post.item.name} />
 
-      {/* Details */}
-      <div className="flex min-w-0 flex-1 flex-col gap-5">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <ListingTypeBadge type={post.post_type} />
-            <span
-              style={
-                {
-                  "--slot-edge": rarity.fg,
-                  "--slot-glow": rarity.glow,
-                } as React.CSSProperties
-              }
-              className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
-            >
-              {tStatus(rarity.labelKey)}
-            </span>
-          </div>
-
-          <h1 className="text-display">
-            {post.item.name}
-          </h1>
-
-          {post.post_type !== "TradeOnly" ? (
-            <p data-numeric className="text-[1.875rem] leading-[1.2] font-bold text-ink-brand">
-              ฿{post.price.toLocaleString("en-GB")}
+        <div className="flex min-w-0 flex-col gap-6 lg:pt-2">
+          <header className="flex flex-col gap-3">
+            <p className="text-overline font-semibold text-ink-brand uppercase">
+              {post.item.category}
             </p>
-          ) : (
-            <p className="text-[1.125rem] font-semibold text-tone-trade-fg">{t("card.tradeOnly")}</p>
-          )}
-        </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <ListingTypeBadge type={post.post_type} />
+              <span
+                style={
+                  {
+                    "--slot-edge": rarity.fg,
+                    "--slot-glow": rarity.glow,
+                  } as React.CSSProperties
+                }
+                className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+              >
+                {tStatus(rarity.labelKey)}
+              </span>
+            </div>
+            <h1 className="text-display text-balance">{post.item.name}</h1>
 
-        {/* Trust first — money moves off-platform, so identity is the product. */}
-        <Surface shape="card" className="flex items-center gap-3 p-4">
-          <TrustBadge
-            name={post.seller.name}
-            isVerified={post.seller.isVerified}
-            faculty={post.seller.faculty}
-            year={post.seller.year}
-          />
-          <span className="ml-auto flex items-center gap-1.5 text-meta font-medium text-ink-brand">
-            <ShieldCheck aria-hidden className="size-4" />{t("market.kuStudent")}</span>
-        </Surface>
+            <div className="xl:hidden">
+              <ProductPrice post={post} tradeOnlyLabel={t("card.tradeOnly")} />
+            </div>
 
-        {post.description ? (
-          <p className="max-w-prose text-body whitespace-pre-line text-ink-secondary">
-            {post.description}
-          </p>
-        ) : null}
+            <div className="mt-1 xl:hidden">
+              <PostActions post={post} isMine={isMine} />
+            </div>
+          </header>
 
-        {post.post_type !== "SellOnly" && post.wanted_item_offer ? (
-          <Notice tone="trade" className="flex gap-3">
-            <Package aria-hidden className="mt-0.5 size-5 shrink-0 text-tone-trade-fg" />
+          {post.description ? (
             <div>
-              <p className="text-caption font-semibold text-tone-trade-fg">{t("market.ownerLooking")}</p>
-              <p className="text-body text-ink-secondary">
-                {post.wanted_item_offer}
+              <h2 className="mb-2 text-h3">{t("market.aboutItem")}</h2>
+              <p className="max-w-prose text-body whitespace-pre-line text-ink-secondary">
+                {post.description}
               </p>
             </div>
-          </Notice>
-        ) : null}
+          ) : null}
 
-        {/* The specs were a bare text grid floating on the page; at any width
-            over about 900px they read as a table dump rather than a spec. */}
-        <Surface as="section" shape="panel" fill="plate" noise className="p-4">
-          <h2 className="mb-3 text-overline text-ink-muted uppercase">{t("inventory.details")}</h2>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-3 2xl:grid-cols-4">
-            {specs.map(([label, value]) => (
-              <div key={label} className="flex flex-col">
-                <dt className="text-meta text-ink-muted">{label}</dt>
-                <dd className="text-body font-medium">{value}</dd>
+          {post.post_type !== "SellOnly" && post.wanted_item_offer ? (
+            <Notice tone="trade" className="flex gap-3">
+              <Package
+                aria-hidden
+                className="mt-0.5 size-5 shrink-0 text-tone-trade-fg"
+              />
+              <div>
+                <p className="text-caption font-semibold text-tone-trade-fg">
+                  {t("market.ownerLooking")}
+                </p>
+                <p className="text-body text-ink-secondary">
+                  {post.wanted_item_offer}
+                </p>
               </div>
-            ))}
-          </dl>
-        </Surface>
+            </Notice>
+          ) : null}
 
-        <PostActions post={post} isMine={isMine} />
-      </div>
-      </div>
+          <section>
+            <h2 className="mb-3 text-h3">{t("market.productInfo")}</h2>
+            <dl className="divide-y divide-line rounded-card bg-surface px-4 shadow-raised">
+              {specs.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="grid grid-cols-[minmax(7rem,.8fr)_minmax(0,1fr)] gap-4 py-3"
+                >
+                  <dt className="text-body-sm text-ink-muted">{label}</dt>
+                  <dd className="text-body-sm font-medium text-ink-primary">
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        </div>
+
+        <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
+          <Surface shape="panel" className="overflow-hidden">
+            <div className="hidden border-b border-line p-5 xl:block">
+              <ProductPrice post={post} tradeOnlyLabel={t("card.tradeOnly")} />
+            </div>
+
+            <div className="flex flex-col gap-4 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-body-sm text-ink-secondary">
+                  <Box aria-hidden className="size-4 text-ink-brand" />
+                  {t("market.available")}
+                </span>
+                <span data-numeric className="text-body-sm font-semibold">
+                  {post.quantity_remaining}
+                </span>
+              </div>
+
+              <div className="h-px bg-line" />
+
+              <div>
+                <p className="mb-3 text-overline text-ink-muted uppercase">
+                  {t("market.seller")}
+                </p>
+                <TrustBadge
+                  name={post.seller.name}
+                  isVerified={post.seller.isVerified}
+                  faculty={post.seller.faculty}
+                  year={post.seller.year}
+                />
+                <p className="mt-3 flex items-center gap-1.5 text-meta font-medium text-ink-brand">
+                  <ShieldCheck aria-hidden className="size-4" />
+                  {t("market.kuStudent")}
+                </p>
+              </div>
+
+              <div className="hidden xl:block">
+                <PostActions post={post} isMine={isMine} />
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
+              <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("market.safeDealHint")}</span>
+            </div>
+          </Surface>
+        </aside>
+      </section>
 
       {fromSeller.length > 0 ? (
         <RelatedPosts
-          title={`More from ${post.seller.name}`}
+          title={t("market.moreFromSeller", { seller: post.seller.name })}
           posts={fromSeller}
         />
       ) : null}
 
       {similar.length > 0 ? (
-        <RelatedPosts title={`Other ${post.item.category}`} posts={similar} />
+        <RelatedPosts
+          title={t("market.similarListings", { category: post.item.category })}
+          posts={similar}
+        />
       ) : null}
     </div>
   );
 }
 
-/** A row of other listings, so the page has a bottom instead of a dead field. */
+function ProductPrice({
+  post,
+  tradeOnlyLabel,
+}: {
+  post: Post;
+  tradeOnlyLabel: string;
+}) {
+  return post.post_type !== "TradeOnly" ? (
+    <p data-numeric className="text-[2rem] leading-tight font-bold text-ink-brand">
+      ฿{post.price.toLocaleString("en-GB")}
+    </p>
+  ) : (
+    <p className="text-h2 text-tone-trade-fg">{tradeOnlyLabel}</p>
+  );
+}
+
 function RelatedPosts({ title, posts }: { title: string; posts: Post[] }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <h2 className="text-h2">{title}</h2>
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
-        {posts.map((p) => (
-          <li key={p.post_id}>
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+        {posts.map((post) => (
+          <li key={post.post_id}>
             <PostCard
-              postId={p.post_id}
-              name={p.item.name}
-              price={p.price}
-              postType={p.post_type}
-              condition={p.item.condition}
-              imageUrl={p.item.images.find((i) => i.is_primary)?.image_url}
-              courseName={p.item.course_name}
-              seller={p.seller}
+              postId={post.post_id}
+              name={post.item.name}
+              price={post.price}
+              postType={post.post_type}
+              condition={post.item.condition}
+              imageUrl={
+                post.item.images.find((image) => image.is_primary)?.image_url
+              }
+              courseName={post.item.course_name}
+              seller={post.seller}
             />
           </li>
         ))}
