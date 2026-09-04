@@ -9,7 +9,6 @@ import { ArrowLeft, ArrowLeftRight, Coins, Sparkles, Store } from "lucide-react"
 import { Button } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { TextAreaField, TextInput } from "@/components/kit/field";
-import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/i18n/status-text";
@@ -162,7 +161,7 @@ export function ListItemForm({ item }: { item: Item }) {
           isLoading={busy}
           onPress={publish}
         >
-          <StatusBadge status={POST_TYPE[postType]} size="sm" iconOnly />{t("inventory.publish")}</Button>
+          <Store aria-hidden className="size-4" />{t("inventory.publish")}</Button>
       </div>
     </div>
   );

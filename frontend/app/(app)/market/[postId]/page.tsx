@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpen, Package, ShieldCheck } from "lucide-react";
 
 import { PostCard } from "@/components/kit/post-card";
-import { StatusBadge } from "@/components/kit/status-badge";
+import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
@@ -13,7 +13,7 @@ import { getPost, listPosts } from "@/lib/api/posts";
 import { getCurrentUserId } from "@/lib/api/session";
 import type { Post } from "@/lib/api/types";
 
-import { ITEM_CONDITION, POST_TYPE } from "@/lib/status";
+import { ITEM_CONDITION } from "@/lib/status";
 
 import { PostActions } from "./post-actions";
 
@@ -124,7 +124,7 @@ export default async function PostDetailPage({
       <div className="flex min-w-0 flex-1 flex-col gap-5">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={POST_TYPE[post.post_type]} size="sm" />
+            <ListingTypeBadge type={post.post_type} />
             <span
               style={
                 {
@@ -143,7 +143,7 @@ export default async function PostDetailPage({
           </h1>
 
           {post.post_type !== "TradeOnly" ? (
-            <p data-numeric className="text-[1.875rem] leading-[1.2] font-bold">
+            <p data-numeric className="text-[1.875rem] leading-[1.2] font-bold text-ink-brand">
               ฿{post.price.toLocaleString("en-GB")}
             </p>
           ) : (

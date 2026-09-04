@@ -2,11 +2,12 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
-import { ITEM_CONDITION, POST_TYPE, type ItemCondition, type PostType } from "@/lib/status";
+import { ITEM_CONDITION, type ItemCondition, type PostType } from "@/lib/status";
 import { useStatusText } from "@/lib/i18n/status-text";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
+import { ListingTypeBadge } from "./listing-type-badge";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -72,19 +73,7 @@ export function PostCard({
 
         <div className="flex flex-col gap-1.5 px-1 pt-2.5 pb-1">
           <div className="flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "inline-flex min-w-0 items-center rounded-chip px-2 py-0.5 text-[0.6875rem] leading-4 font-semibold",
-                postType === "SellOnly" &&
-                  "bg-[var(--listing-sale-bg)] text-[var(--listing-sale-fg)]",
-                postType === "TradeOnly" &&
-                  "bg-[var(--listing-trade-bg)] text-[var(--listing-trade-fg)]",
-                postType === "Both" &&
-                  "bg-[var(--listing-both-bg)] text-[var(--listing-both-fg)]",
-              )}
-            >
-              <span className="truncate">{st.of(POST_TYPE[postType]).label}</span>
-            </span>
+            <ListingTypeBadge type={postType} className="min-w-0 truncate" />
             {showsPrice ? (
               <span
                 data-numeric

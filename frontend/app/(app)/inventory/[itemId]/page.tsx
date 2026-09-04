@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
+import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -18,7 +19,7 @@ import { Notice } from "@/components/patterns/notice";
 import { getItem, getMyItems } from "@/lib/api/items";
 import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
-import { ITEM_CONDITION, ITEM_STATUS, POST_TYPE } from "@/lib/status";
+import { ITEM_CONDITION, ITEM_STATUS } from "@/lib/status";
 
 /**
  * An item in full.
@@ -151,14 +152,11 @@ export default async function ItemDetailPage({
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-body-sm font-semibold">
                   <Store aria-hidden className="size-4 text-ink-brand" />{t("inventory.onTheMarket")}</span>
-                <StatusBadge
-                  status={POST_TYPE[post.post_type]}
-                  size="sm"
-                />
+                <ListingTypeBadge type={post.post_type} />
               </div>
 
               {post.post_type !== "TradeOnly" ? (
-                <p data-numeric className="text-[1.5rem] leading-[1.2] font-bold">
+                <p data-numeric className="text-[1.5rem] leading-[1.2] font-bold text-ink-brand">
                   ฿{post.price.toLocaleString("en-GB")}
                 </p>
               ) : null}

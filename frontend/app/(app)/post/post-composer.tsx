@@ -32,6 +32,7 @@ import type { Item } from "@/lib/api/types";
 import {
   ALLOCATION_METHOD,
   ITEM_CONDITION,
+  ITEM_STATUS,
   POST_TYPE,
   type AllocationMethod,
   type PostType,
@@ -186,7 +187,7 @@ export function PostComposer({
 
   if (items.length === 0) {
     return (
-      <div className="flex w-full max-w-2xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <Surface
           shape="card"
           elevation="flat"
@@ -262,7 +263,7 @@ export function PostComposer({
               <li key={item.item_id} className="flex items-center gap-2">
                 <span className="truncate">{item.name}</span>
                 <StatusBadge
-                  status={POST_TYPE.SellOnly}
+                  status={ITEM_STATUS.Listed}
                   size="sm"
                   iconOnly
                   className="shrink-0"

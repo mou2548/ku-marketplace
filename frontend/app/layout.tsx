@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Prompt } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "@/lib/i18n/locale";
@@ -30,22 +31,16 @@ export default async function RootLayout({
   /* `lang` is real, not decorative: it drives Thai line breaking and hyphenation
      and tells a screen reader which voice to use. It was hardcoded to "en"
      while the product already rendered Thai. */
-  const locale = await getLocale();
+  const [locale, cookieStore] = await Promise.all([getLocale(), cookies()]);
+  const theme = cookieStore.get("ku-theme")?.value === "dark" ? "dark" : "light";
 
   return (
     <html
       lang={locale}
-      data-theme="light"
+      data-theme={theme}
       suppressHydrationWarning
       className={`${prompt.variable} h-full antialiased`}
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("ku-theme");var d=t==="dark"?"dark":"light";document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(e){}})()`,
-          }}
-        />
-      </head>
       <body className="min-h-full">
         <a
           href="#main"
