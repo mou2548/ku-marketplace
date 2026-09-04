@@ -134,10 +134,10 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
 
       {canTrade ? (
         <LinkButton
-          variant={canBuy ? "secondary" : "primary"}
+          variant={canBuy ? "secondary" : "trade"}
           size="lg"
           block
-          className="lg:w-auto"
+          className={canBuy ? "text-tone-trade-fg lg:w-auto" : "lg:w-auto"}
           href={`/offers/new?post=${post.post_id}`}
         >
           <ArrowLeftRight className="size-5" />{t("market.offerTrade")}</LinkButton>

@@ -33,19 +33,21 @@ const button = cva(
     variants: {
       variant: {
         primary:
-          "bg-brand text-on-brand shadow-raised hover:bg-brand-hover data-[pressed]:bg-brand-active",
+          "bg-brand [color:var(--on-brand)] shadow-raised hover:bg-brand-hover data-[pressed]:bg-brand-active",
         // No border: `shadow-raised` already ends in a hairline ring, and
         // stacking one on top made a secondary button pixel-identical to a
         // Surface card — which is what made a wide one stop reading as a
         // button at all. Same reason surface.tsx dropped its border.
         secondary:
-          "bg-surface text-ink shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
+          "bg-surface [color:var(--text-primary)] shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
         subtle:
-          "bg-brand-subtle text-ink-brand hover:bg-[var(--brand-subtle-hover)] data-[pressed]:bg-[var(--brand-subtle-hover)]",
+          "bg-brand-subtle [color:var(--text-brand)] hover:bg-[var(--brand-subtle-hover)] data-[pressed]:bg-[var(--brand-subtle-hover)]",
         ghost:
-          "text-ink-secondary hover:bg-gray-100 hover:text-ink data-[pressed]:bg-gray-200",
+          "[color:var(--text-secondary)] hover:bg-gray-100 hover:[color:var(--text-primary)] data-[pressed]:bg-gray-200",
         danger:
-          "bg-tone-danger-solid text-white shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
+          "bg-tone-danger-solid [color:var(--on-brand-strong)] shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
+        trade:
+          "bg-tone-trade-solid [color:var(--on-brand-strong)] shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
       },
       size: {
         sm: "h-9 rounded-control px-3 text-body-sm",

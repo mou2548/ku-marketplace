@@ -80,7 +80,10 @@ export function PostImage({
             fill
             priority={priority}
             sizes={sizes}
-            className="object-cover"
+            className={cn(
+              "object-cover transition-opacity duration-[--dur-fast]",
+              loaded ? "opacity-100" : "opacity-0",
+            )}
             onLoad={() => setLoadedSrc(src)}
             onError={() => setFailedSrc(src)}
           />
