@@ -19,10 +19,21 @@ export default async function AdminReportsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        Reports
-      </h1>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+      <header className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-overline font-semibold text-tone-danger-fg uppercase">
+            Moderation queue
+          </p>
+          <h1 className="mt-1 text-h1">Reports</h1>
+          <p className="mt-1 text-body-sm text-ink-muted">
+            Oldest cases appear first so nothing is left behind.
+          </p>
+        </div>
+        <span data-numeric className="text-caption text-ink-muted">
+          {reports.length} total
+        </span>
+      </header>
 
       <ul className="flex flex-col gap-2">
         {reports.map((r) => (
@@ -32,15 +43,15 @@ export default async function AdminReportsPage() {
                 as="div"
                 shape="card"
                 interactive
-                className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:gap-4"
+                className="flex flex-col gap-3 border-l-2 border-l-tone-danger-solid p-4 sm:flex-row sm:items-center sm:gap-4"
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">
                     #{r.report_id} · {r.reason_category}
                   </p>
-                  <p className="text-caption text-ink-muted">
+                  <span className="mt-1 inline-flex rounded-chip bg-surface-sunken px-2 py-0.5 text-meta font-medium text-ink-secondary">
                     {r.report_type} #{r.target_id}
-                  </p>
+                  </span>
                 </div>
 
                 <TrustBadge

@@ -11,6 +11,7 @@ import { TextAreaField } from "@/components/kit/field";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/i18n/status-text";
 import { adminResolveReport, adminRestoreReport } from "@/lib/actions/reports";
@@ -99,8 +100,47 @@ export function VerdictForm({
     }
   }
 
+  const caseRail = (
+    <Surface shape="panel" className="overflow-hidden p-0">
+      <div aria-hidden className="h-1 bg-tone-danger-solid" />
+      <div className="flex flex-col gap-4 p-5">
+        <div>
+          <p className="text-overline text-ink-muted uppercase">Case</p>
+          <p data-numeric className="mt-1 text-h2">#{report.report_id}</p>
+        </div>
+        <StatusBadge status={REPORT_STATUS[report.status]} className="w-fit" />
+        <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">Target</dt>
+            <dd className="font-medium">
+              {report.report_type} #{report.target_id}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">Reason</dt>
+            <dd className="text-right font-medium">{report.reason_category}</dd>
+          </div>
+        </dl>
+        <div className="border-t border-line pt-3">
+          <p className="mb-2 text-overline text-ink-muted uppercase">
+            Reported by
+          </p>
+          <TrustBadge
+            name={report.reporter.name}
+            isVerified={report.reporter.isVerified}
+          />
+        </div>
+        {report.details ? (
+          <p className="border-t border-line pt-3 text-body-sm text-ink-secondary">
+            {report.details}
+          </p>
+        ) : null}
+      </div>
+    </Surface>
+  );
+
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-5">
+    <TwoColumn rail={caseRail} railFirst className="mx-auto w-full max-w-6xl">
       <Link
         href="/admin/reports"
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
@@ -111,7 +151,10 @@ export function VerdictForm({
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+          <p className="text-overline font-semibold text-tone-danger-fg uppercase">
+            Evidence and decision
+          </p>
+          <h1 className="mt-1 text-h1">
             Report #{report.report_id}
           </h1>
           <p className="text-body-sm text-ink-muted">
@@ -120,21 +163,6 @@ export function VerdictForm({
         </div>
         <StatusBadge status={REPORT_STATUS[report.status]} />
       </header>
-
-      <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-overline text-ink-muted uppercase">
-          Reported by
-        </p>
-        <TrustBadge
-          name={report.reporter.name}
-          isVerified={report.reporter.isVerified}
-        />
-        {report.details ? (
-          <p className="border-t border-line pt-3 text-body-sm text-ink-secondary">
-            {report.details}
-          </p>
-        ) : null}
-      </Surface>
 
       {report.report_type === "Transaction" ? (
         <TransactionEvidence evidence={evidence} />
@@ -170,7 +198,7 @@ export function VerdictForm({
             }
           />
 
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="sticky action-bar-bottom z-[20] -mx-3 flex flex-col-reverse gap-2 border-t border-line bg-surface/95 px-3 py-3 backdrop-blur sm:static sm:mx-0 sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
             <Button variant="ghost" onPress={() => router.back()}>
               Back
             </Button>
@@ -181,7 +209,7 @@ export function VerdictForm({
           </div>
         </>
       )}
-    </div>
+    </TwoColumn>
   );
 }
 
