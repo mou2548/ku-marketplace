@@ -169,23 +169,40 @@ export function ItemForm({
    * thing worth seeing while filling this form in.
    */
   const preview = (
-    <Surface shape="card" className="flex flex-col gap-3 p-5">
-      <p className="text-overline text-ink-muted uppercase">{t("inventory.inYourStash")}</p>
+    <Surface shape="panel" className="flex flex-col overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
+        <PostImage
+          src={photos[0]?.previewUrl}
+          alt={name.trim() || "Untitled item"}
+          aspectRatio={4 / 3}
+          sizes="320px"
+          className="h-full"
+        />
+        <span
+          aria-hidden
+          style={{ "--slot-edge": ITEM_CONDITION[condition].edge } as React.CSSProperties}
+          className="absolute inset-x-0 bottom-0 h-1 bg-[var(--slot-edge)]"
+        />
+      </div>
 
-      <span
-        style={
-          {
-            "--slot-edge": ITEM_CONDITION[condition].edge,
-          } as React.CSSProperties
-        }
-        className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
-      >
-        <PostImage src={photos[0]?.previewUrl} alt="" aspectRatio={1} sizes="320px" />
-      </span>
+      <div className="flex flex-col gap-3 p-5">
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("inventory.inYourStash")}
+        </p>
+        <p className="text-h3">{name.trim() || "Untitled item"}</p>
+        <span
+          style={
+            {
+              "--slot-edge": ITEM_CONDITION[condition].fg,
+              "--slot-glow": ITEM_CONDITION[condition].glow,
+            } as React.CSSProperties
+          }
+          className="w-fit rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+        >
+          {st.of(ITEM_CONDITION[condition]).label}
+        </span>
 
-      <p className="font-semibold">{name.trim() || "Untitled item"}</p>
-
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
+        <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">{t("inventory.category")}</dt>
           <dd>{category}</dd>
@@ -198,20 +215,21 @@ export function ItemForm({
           <dt className="text-ink-muted">{t("inventory.quantity")}</dt>
           <dd data-numeric>{quantity || "1"}</dd>
         </div>
-      </dl>
-
-      <p className="border-t border-line pt-3 text-meta leading-[1.6] text-ink-muted">
-        The border colour is the condition. It is how the item reads at a glance
-        everywhere it appears.
-      </p>
+        </dl>
+      </div>
     </Surface>
   );
 
   return (
     <TwoColumn rail={preview}>
-      <h1 className="text-h1">
-        {mode === "create" ? "Add an item" : "Edit details"}
-      </h1>
+      <header>
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("inventory.myStuff")}
+        </p>
+        <h1 className="mt-1 text-h1">
+          {mode === "create" ? t("inventory.addItem") : t("inventory.editDetails")}
+        </h1>
+      </header>
 
       {/* Photos first: it is the fastest field to fill and the one that makes
           the rest feel worth doing. */}
@@ -283,14 +301,16 @@ export function ItemForm({
         />
       </Surface>
 
-      <TextInput
-        className="max-w-2xl"
-        label={t("inventory.itemName")}
-        value={name}
-        onChange={setName}
-        isRequired
-        placeholder={t("inventory.itemNamePlaceholder")}
-      />
+      <Surface shape="panel" className="flex flex-col gap-5 p-4 sm:p-5">
+        <h2 className="text-h3">{t("market.productInfo")}</h2>
+        <TextInput
+          className="max-w-2xl"
+          label={t("inventory.itemName")}
+          value={name}
+          onChange={setName}
+          isRequired
+          placeholder={t("inventory.itemNamePlaceholder")}
+        />
 
       <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <SelectField
@@ -342,15 +362,16 @@ export function ItemForm({
         />
       ) : null}
 
-      {needsSize ? (
-        <TextInput
-          label={t("inventory.size")}
-          value={size}
-          onChange={setSize}
-          placeholder={t("inventory.sizePlaceholder")}
-          hint={t("inventory.sizeHint")}
-        />
-      ) : null}
+        {needsSize ? (
+          <TextInput
+            label={t("inventory.size")}
+            value={size}
+            onChange={setSize}
+            placeholder={t("inventory.sizePlaceholder")}
+            hint={t("inventory.sizeHint")}
+          />
+        ) : null}
+      </Surface>
 
       {/* Rendered from the map rather than hand-written, which is how this
           form came to offer four grades while the market filtered on five —
