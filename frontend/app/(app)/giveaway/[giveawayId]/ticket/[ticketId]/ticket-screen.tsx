@@ -1,12 +1,14 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, Gift, MapPin } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { ChatThread } from "@/components/kit/chat-thread";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { PostImage } from "@/components/kit/post-image";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -18,6 +20,7 @@ import type { GiveawayTicket } from "@/lib/api/types";
 import { TICKET_STATUS } from "@/lib/status";
 
 export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
+  const t = useTranslations();
   const { giveaway } = ticket;
   const router = useRouter();
   const toast = useToast();
@@ -49,20 +52,43 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
     : null;
 
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="flex flex-1 flex-col gap-4">
-        <header className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+        <header className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+          <span className="block overflow-hidden rounded-card shadow-flat">
+            <PostImage
+              src={giveaway.images[0]?.image_url}
+              alt=""
+              aspectRatio={1}
+              sizes="112px"
+              className="h-full"
+            />
+          </span>
+          <div className="flex min-w-0 flex-col justify-center gap-2">
+            <p className="text-overline font-semibold text-tone-warning-fg uppercase">
+              {t("giveaway.collectionTicket")}
+            </p>
+            <h1 className="text-h1 text-balance">
               {giveaway.item_name}
             </h1>
-            <p className="text-body-sm text-ink-muted">You were selected</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={TICKET_STATUS[ticket.status]} />
+              <span className="text-body-sm text-ink-muted">
+                {t("giveaway.selected")}
+              </span>
+            </div>
           </div>
-          <StatusBadge status={TICKET_STATUS[ticket.status]} />
         </header>
 
-        <Surface shape="panel" fill="plate" noise className="p-5">
-          <QrTicket onGenerate={generate} />
+        <Surface shape="panel" className="overflow-hidden p-0">
+          <div aria-hidden className="h-1 bg-tone-warning-solid" />
+          <div className="p-5">
+            <QrTicket onGenerate={generate} />
+          </div>
+          <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-caption text-tone-warning-fg">
+            <Gift aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{t("giveaway.ticketHint")}</span>
+          </div>
         </Surface>
 
         <Surface shape="card" className="flex flex-col gap-2.5 p-4">
@@ -73,7 +99,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           {pickupBy ? (
             <p className="flex items-center gap-2 text-body">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              Collect by {pickupBy}
+              {t("giveaway.collectBy", { date: pickupBy })}
             </p>
           ) : null}
           <TrustBadge
@@ -115,10 +141,10 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
       <Surface
         shape="card"
         elevation="raised"
-        className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
+        className="flex min-h-[20rem] flex-col overflow-hidden lg:sticky lg:top-24"
       >
-        <h2 className="border-b border-line px-4 py-3 text-caption font-semibold tracking-[0.09em] text-ink-muted uppercase">
-          Notes from the giver
+        <h2 className="border-b border-line px-4 py-3 text-body font-semibold text-ink">
+          {t("giveaway.giverNotes")}
         </h2>
         <ChatThread
           viewerId={ticket.receiver_id}

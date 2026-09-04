@@ -4,15 +4,21 @@ import { useMemo, useState } from "react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { PostImage } from "@/components/kit/post-image";
-import type { ItemImage } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
+
+interface GalleryImage {
+  image_id: number;
+  image_url: string;
+  display_order: number;
+  is_primary?: boolean;
+}
 
 /** A compact commerce gallery with an accessible thumbnail selector. */
 export function ProductGallery({
   images,
   name,
 }: {
-  images: ItemImage[];
+  images: GalleryImage[];
   name: string;
 }) {
   const ordered = useMemo(

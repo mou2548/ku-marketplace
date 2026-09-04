@@ -1,17 +1,19 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Clock, Dices, Gift, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Clock, Dices, Gift, MapPin, Sparkles, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
-import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { ProductGallery } from "@/components/market/product-gallery";
 import { useStatusText } from "@/lib/i18n/status-text";
 import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
@@ -35,6 +37,8 @@ export function GiveawayDetail({
   ticket?: GiveawayTicket;
   isGiver: boolean;
 }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
@@ -43,7 +47,6 @@ export function GiveawayDetail({
   const [drawing, setDrawing] = useState(false);
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
-  const image = giveaway.images[0]?.image_url;
 
   // The backend has one deadline field, not a separate signup window and
   // pickup window (docs/design/api-gaps.md §8) — it stands in for both here.
@@ -57,10 +60,10 @@ export function GiveawayDetail({
     : undefined;
 
   const pickupBy = giveaway.registered_deadline
-    ? new Date(giveaway.registered_deadline).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-      })
+    ? new Date(giveaway.registered_deadline).toLocaleDateString(
+        locale === "th" ? "th-TH" : "en-GB",
+        { day: "numeric", month: "short" },
+      )
     : null;
 
   async function join() {
@@ -95,64 +98,39 @@ export function GiveawayDetail({
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-      <div className="lg:w-1/2">
-        <Surface shape="card" className="relative aspect-[4/3] overflow-hidden">
-          <PostImage
-            src={image}
-            alt={giveaway.item_name}
-            aspectRatio={4 / 3}
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="h-full"
-          />
-        </Surface>
-      </div>
+    <div className="flex flex-col gap-7 pb-6">
+      <Link
+        href="/giveaway"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        {t("giveaway.back")}
+      </Link>
 
-      <div className="flex flex-col gap-5 lg:w-1/2">
-        <div className="flex flex-col gap-2">
+      <section className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
+        <ProductGallery images={giveaway.images} name={giveaway.item_name} />
+
+        <div className="flex min-w-0 flex-col gap-6 lg:pt-2">
+          <header className="flex flex-col gap-3">
+            <p className="text-overline font-semibold text-tone-warning-fg uppercase">
+              {t("giveaway.freeFromCommunity")}
+            </p>
           <StatusBadge status={method} size="sm" className="w-fit" />
-          <h1 className="text-display">
-            {giveaway.item_name}
-          </h1>
-          {giveaway.description ? (
-            <p className="text-body text-ink-secondary">
-              {giveaway.description}
-            </p>
-          ) : null}
-        </div>
+            <h1 className="text-display text-balance">{giveaway.item_name}</h1>
+          </header>
 
-        <Surface shape="card" className="flex flex-col gap-3 p-4">
-          <TrustBadge
-            name={giveaway.giver.name}
-            isVerified={giveaway.giver.isVerified}
-            faculty={giveaway.giver.faculty}
-            year={giveaway.giver.year}
-          />
-          <p className="flex items-center gap-2 text-body">
-            <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
-            {giveaway.pickup_location}
-          </p>
-          {pickupBy ? (
-            <p className="flex items-center gap-2 text-body">
-              <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              Collect by {pickupBy}
-            </p>
+          {giveaway.description ? (
+            <div>
+              <h2 className="mb-2 text-h3">{t("giveaway.about")}</h2>
+              <p className="max-w-prose text-body whitespace-pre-line text-ink-secondary">
+                {giveaway.description}
+              </p>
+            </div>
           ) : null}
-          {giveaway.registered_count ? (
-            <p
-              data-numeric
-              className="flex items-center gap-2 text-body text-ink-muted"
-            >
-              <Users aria-hidden className="size-4 shrink-0" />
-              {giveaway.registered_count} registered
-            </p>
-          ) : null}
-        </Surface>
 
         {/* How you will find out, stated before you commit. */}
-        <Notice tone="info" className="flex flex-col gap-2">
-          <p className="text-body-sm font-semibold text-tone-info-fg">
+          <Notice tone={method.tone} className="flex flex-col gap-2">
+            <p className="text-body-sm font-semibold">
             {st.of(method).label}
           </p>
           <p className="text-caption leading-[1.6] text-ink-secondary">
@@ -160,6 +138,47 @@ export function GiveawayDetail({
           </p>
           {drawDeadline ? <CountdownPill deadline={drawDeadline} showLabel /> : null}
         </Notice>
+        </div>
+
+        <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
+          <Surface shape="panel" className="overflow-hidden">
+            <div aria-hidden className="h-1 bg-tone-warning-solid" />
+            <div className="flex flex-col gap-4 p-5">
+              <div>
+                <p className="mb-3 text-overline text-ink-muted uppercase">
+                  {t("giveaway.giver")}
+                </p>
+                <TrustBadge
+                  name={giveaway.giver.name}
+                  isVerified={giveaway.giver.isVerified}
+                  faculty={giveaway.giver.faculty}
+                  year={giveaway.giver.year}
+                  avatarUrl={giveaway.giver.avatar_url}
+                />
+              </div>
+
+              <div className="h-px bg-line" />
+
+              <p className="flex items-start gap-2 text-body-sm text-ink-secondary">
+                <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-tone-warning-fg" />
+                {giveaway.pickup_location}
+              </p>
+              {pickupBy ? (
+                <p className="flex items-center gap-2 text-body-sm text-ink-secondary">
+                  <Clock aria-hidden className="size-4 shrink-0 text-tone-warning-fg" />
+                  {t("giveaway.collectBy", { date: pickupBy })}
+                </p>
+              ) : null}
+              {giveaway.registered_count ? (
+                <p data-numeric className="flex items-center gap-2 text-body-sm text-ink-muted">
+                  <Users aria-hidden className="size-4 shrink-0" />
+                  {t("giveaway.registered", {
+                    count: giveaway.registered_count,
+                  })}
+                </p>
+              ) : null}
+
+              <div className="h-px bg-line" />
 
         {isGiver ? (
           /* Only a Manual giveaway has anything for its giver to do. FirstCome
@@ -240,7 +259,14 @@ export function GiveawayDetail({
             </p>
           </Surface>
         )}
-      </div>
+            </div>
+            <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-meta text-tone-warning-fg">
+              <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("giveaway.freeNote")}</span>
+            </div>
+          </Surface>
+        </aside>
+      </section>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { QrScanner } from "@/components/kit/qr-scanner";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
@@ -22,6 +24,7 @@ import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
 import { decodeTicketQr } from "@/lib/giveaway-qr";
 import { ALLOCATION_METHOD } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 /**
  * Manual giveaways only — the route 404s for the other two methods, because
@@ -41,6 +44,7 @@ export function ManageGiveaway({
   giveaway: GiveawayPost;
   entrants: RecipientRow[];
 }) {
+  const t = useTranslations();
   const router = useRouter();
   const toast = useToast();
   const [picked, setPicked] = useState<Set<number>>(new Set());
@@ -105,17 +109,29 @@ export function ManageGiveaway({
         Back to giveaway
       </Link>
 
-      <header className="flex flex-col gap-2">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          {giveaway.item_name}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={method} size="sm" />
-          {deadline ? <CountdownPill deadline={deadline} showLabel /> : null}
+      <header className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+        <span className="block overflow-hidden rounded-card shadow-flat">
+          <PostImage
+            src={giveaway.images[0]?.image_url}
+            alt=""
+            aspectRatio={1}
+            sizes="112px"
+            className="h-full"
+          />
+        </span>
+        <div className="flex min-w-0 flex-col justify-center gap-2">
+          <p className="text-overline font-semibold text-tone-warning-fg uppercase">
+            {t("giveaway.manageRecipients")}
+          </p>
+          <h1 className="text-h1 text-balance">{giveaway.item_name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={method} size="sm" />
+            {deadline ? <CountdownPill deadline={deadline} showLabel /> : null}
+          </div>
         </div>
       </header>
 
-      <Notice tone="trade">
+      <Notice tone="warning">
         <p className="text-body text-ink-secondary">
           You chose to pick recipients yourself. Select them below once
           registration closes, and a chat room opens for each one.
@@ -146,7 +162,12 @@ export function ManageGiveaway({
                   as="div"
                   shape="card"
                   elevation="raised"
-                  className="flex items-center gap-3 p-4"
+                  className={cn(
+                    "flex items-center gap-3 border-l-2 p-4",
+                    picked.has(e.receiver_id)
+                      ? "border-l-tone-warning-solid bg-tone-warning-bg/35"
+                      : "border-l-transparent",
+                  )}
                 >
                   <Checkbox
                     isSelected={picked.has(e.receiver_id)}
@@ -179,7 +200,7 @@ export function ManageGiveaway({
         )}
       </section>
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="sticky action-bar-bottom z-[20] -mx-3 flex flex-col-reverse gap-2 border-t border-line bg-surface/95 px-3 py-3 backdrop-blur sm:mx-0 sm:flex-row sm:justify-end sm:rounded-card sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         {/* This used to link to the public detail page, which is not a
             scanner. The handover is closed by reading the recipient's rotating
             QR, so the scanner itself belongs here. */}
