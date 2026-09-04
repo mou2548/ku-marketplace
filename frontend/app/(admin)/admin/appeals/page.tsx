@@ -25,15 +25,29 @@ export default async function AdminAppealsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-        Appeals
-      </h1>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+      <header className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+            Independent review
+          </p>
+          <h1 className="mt-1 text-h1">Appeals</h1>
+          <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+            Re-check moderation decisions using the appellant&apos;s new evidence
+            and recorded reasoning.
+          </p>
+        </div>
+        <span data-numeric className="shrink-0 text-caption text-ink-muted">
+          {appeals.length} total
+        </span>
+      </header>
 
       <ul className="flex flex-col gap-3">
         {appeals.map((a) => (
           <li key={a.appeal_id}>
-            <Surface shape="card" className="flex flex-col gap-3 p-4">
+            <Surface shape="panel" className="overflow-hidden p-0">
+              <div aria-hidden className="h-1 bg-tone-trade-solid" />
+              <div className="flex flex-col gap-3 p-5">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">
@@ -70,6 +84,7 @@ export default async function AdminAppealsPage() {
                   {a.resolution_note ? `Note: ${a.resolution_note}` : ""}
                 </p>
               )}
+              </div>
             </Surface>
           </li>
         ))}
