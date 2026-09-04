@@ -15,7 +15,7 @@ import { useStatusText } from "@/lib/i18n/status-text";
 import { publishListing } from "@/lib/actions/posts";
 import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
-import { ITEM_CONDITION, POST_TYPE, type PostType } from "@/lib/status";
+import { POST_TYPE, type PostType } from "@/lib/status";
 
 /**
  * The brief asked for this choice to be explicit: sell, trade, or both in one
@@ -69,88 +69,80 @@ export function ListItemForm({ item }: { item: Item }) {
       >
         <ArrowLeft aria-hidden className="size-4" />{t("inventory.backToItem")}</Link>
 
-      <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">{t("inventory.listAnItem")}</h1>
-
-      <Surface shape="card" className="flex items-center gap-3 p-4">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{item.name}</p>
-          {/* Same ban as list/page.tsx: rarity is a rim or a chip, never a
-              tinted line of text. */}
-          <p className="text-caption text-ink-muted">
-            {st.of(ITEM_CONDITION[item.condition]).label} · {item.quantity} in stock
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-overline font-semibold text-ink-brand uppercase">
+            {t("inventory.whatListing")}
           </p>
+          <h1 className="mt-1 text-h1">{t("inventory.listAnItem")}</h1>
+          <p className="mt-1 truncate text-body-sm text-ink-muted">{item.name}</p>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onPress={() => router.push(`/inventory/${item.item_id}/edit`)}
         >{t("inventory.editItem")}</Button>
-      </Surface>
+      </header>
 
-      <RadioGroupField
-        label={t("listing.kind")}
-        value={postType}
-        onChange={(v) => setPostType(v as PostType)}
-        variant="card"
-      >
-        <Radio value="SellOnly" description={t("listing.sellOnly")}>
-          <span className="flex items-center gap-2">
-            <Store aria-hidden className="size-4" />
-            {st.of(POST_TYPE.SellOnly).label}
-          </span>
-        </Radio>
-        <Radio value="TradeOnly" description={t("listing.tradeOnly")}>
-          <span className="flex items-center gap-2">
-            <ArrowLeftRight aria-hidden className="size-4" />
-            {st.of(POST_TYPE.TradeOnly).label}
-          </span>
-        </Radio>
-        <Radio
-          value="Both"
-          description={t("listing.both")}
+      <Surface shape="panel" className="flex flex-col gap-5 p-4 sm:p-5">
+        <RadioGroupField
+          label={t("listing.kind")}
+          value={postType}
+          onChange={(v) => setPostType(v as PostType)}
+          variant="card"
         >
-          <span className="flex items-center gap-2">
-            <Sparkles aria-hidden className="size-4" />
-            {st.of(POST_TYPE.Both).label}
-          </span>
-        </Radio>
-      </RadioGroupField>
+          <Radio value="SellOnly" description={t("listing.sellOnly")}>
+            <span className="flex items-center gap-2">
+              <Store aria-hidden className="size-4" />
+              {st.of(POST_TYPE.SellOnly).label}
+            </span>
+          </Radio>
+          <Radio value="TradeOnly" description={t("listing.tradeOnly")}>
+            <span className="flex items-center gap-2">
+              <ArrowLeftRight aria-hidden className="size-4" />
+              {st.of(POST_TYPE.TradeOnly).label}
+            </span>
+          </Radio>
+          <Radio value="Both" description={t("listing.both")}>
+            <span className="flex items-center gap-2">
+              <Sparkles aria-hidden className="size-4" />
+              {st.of(POST_TYPE.Both).label}
+            </span>
+          </Radio>
+        </RadioGroupField>
 
-      {wantsPrice ? (
-        <TextInput
-          label={t("listing.price")}
-          value={price}
-          onChange={(v) => setPrice(v.replace(/\D/g, ""))}
-          inputMode="numeric"
-          isRequired
-          icon={<Coins className="size-4" />}
-          suffix={<span className="text-caption">{t("listing.thb")}</span>}
-          hint={
-            postType === "Both"
-              ? "This price applies to a direct purchase. Someone offering a trade proposes their own cash difference."
-              : undefined
-          }
-        />
-      ) : null}
+        {wantsPrice ? (
+          <TextInput
+            label={t("listing.price")}
+            value={price}
+            onChange={(v) => setPrice(v.replace(/\D/g, ""))}
+            inputMode="numeric"
+            isRequired
+            icon={<Coins className="size-4" />}
+            suffix={<span className="text-caption">{t("listing.thb")}</span>}
+            hint={postType === "Both" ? t("listing.priceHintBoth") : undefined}
+          />
+        ) : null}
 
-      {wantsTradeTerms ? (
+        {wantsTradeTerms ? (
+          <TextAreaField
+            label={t("listing.wantInTrade")}
+            value={wanted}
+            onChange={setWanted}
+            rows={3}
+            placeholder={t("listing.wantPlaceholder")}
+            hint={t("listing.wantHint")}
+          />
+        ) : null}
+
         <TextAreaField
-          label={t("listing.wantInTrade")}
-          value={wanted}
-          onChange={setWanted}
-          rows={3}
-          placeholder={t("listing.wantPlaceholder")}
-          hint={t("listing.wantHint")}
+          label={t("listing.description")}
+          value={description}
+          onChange={setDescription}
+          rows={4}
+          placeholder={t("listing.descPlaceholder")}
         />
-      ) : null}
-
-      <TextAreaField
-        label={t("listing.description")}
-        value={description}
-        onChange={setDescription}
-        rows={4}
-        placeholder={t("listing.descPlaceholder")}
-      />
+      </Surface>
 
       <div className="sticky action-bar-bottom z-[20] flex gap-2 lg:static">
         <Button variant="secondary" block onPress={() => router.back()}>{t("inventory.cancel")}</Button>

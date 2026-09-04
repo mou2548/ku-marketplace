@@ -36,25 +36,29 @@ export default async function ListItemPage({
    * cannot see is the one thing this screen must not ask for.
    */
   const preview = (
-    <Surface shape="card" className="flex w-full max-w-md flex-col gap-3 p-5 mx-auto">
-      <p className="text-overline text-ink-muted uppercase">{t("inventory.whatListing")}</p>
-
-      <span
-        className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
-        style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
-      >
+    <Surface shape="panel" className="mx-auto flex w-full max-w-md flex-col overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
         <PostImage
           src={item.images.find((i) => i.is_primary)?.image_url}
-          alt=""
-          aspectRatio={1}
+          alt={item.name}
+          aspectRatio={4 / 3}
           sizes="320px"
-          className="!aspect-square"
+          className="h-full"
         />
-      </span>
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-1 bg-[var(--slot-edge)]"
+          style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
+        />
+      </div>
 
-      <p className="font-semibold">{item.name}</p>
+      <div className="flex flex-col gap-3 p-5">
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("inventory.whatListing")}
+        </p>
+        <p className="text-h3">{item.name}</p>
 
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
+        <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
           <dt className="text-ink-muted">{t("inventory.category")}</dt>
           <dd>{item.category}</dd>
@@ -69,18 +73,25 @@ export default async function ListItemPage({
           <dt className="text-ink-muted">{t("inventory.quantity")}</dt>
           <dd data-numeric>{item.quantity}</dd>
         </div>
-      </dl>
+        </dl>
 
-      {item.description ? (
-        <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
-          {item.description}
-        </p>
-      ) : null}
+        {item.description ? (
+          <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
+            {item.description}
+          </p>
+        ) : null}
+      </div>
     </Surface>
   );
 
   return (
-    <TwoColumn rail={preview} columns="minmax(0,1fr) minmax(0,1fr)">
+    <TwoColumn
+      rail={preview}
+      railSide="left"
+      railFirst
+      columns="22rem minmax(0,1fr)"
+      className="gap-8"
+    >
       <ListItemForm item={item} />
     </TwoColumn>
   );
