@@ -19,6 +19,8 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Notice } from "@/components/patterns/notice";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { PostImage } from "@/components/kit/post-image";
+import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import {
   acceptOfferAction,
@@ -113,17 +115,20 @@ export function OfferReview({
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
+          <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+            {t("offer.reviewOffer")}
+          </p>
           {/* Same two lines as the card the viewer tapped to get here. */}
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+          <h1 className="mt-1 text-h1">
             {isOwner
-              ? `${sides.counterparty.name} wants to trade`
-              : `Your offer to ${sides.counterparty.name}`}
+              ? t("offer.receivedTitle", { name: sides.counterparty.name })
+              : t("offer.sentTitle", { name: sides.counterparty.name })}
           </h1>
           {/* The post is the thing being argued over and had no route out of
               this screen. The inbox card is one big link, so the second
               destination belongs here. */}
           <p className="text-body-sm text-ink-muted">
-            {isOwner ? "for your " : "for their "}
+            {isOwner ? t("offer.forYour") : t("offer.forTheir")}{" "}
             <Link
               href={`/market/${offer.post_id}`}
               className="font-medium text-ink-brand hover:underline"
@@ -135,20 +140,36 @@ export function OfferReview({
         <StatusBadge status={OFFER_STATUS[offer.status]} />
       </header>
 
-      <TrustBadge
-        name={sides.counterparty.name}
-        isVerified={sides.counterparty.isVerified}
-        faculty={sides.counterparty.faculty}
-        year={sides.counterparty.year}
-      />
+      <Surface as="section" shape="card" className="overflow-hidden p-0">
+        <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] sm:grid-cols-[7rem_minmax(0,1fr)]">
+          <PostImage
+            src={
+              offer.post.item.images.find((image) => image.is_primary)
+                ?.image_url ?? offer.post.item.images[0]?.image_url
+            }
+            alt={offer.post.item.name}
+            aspectRatio={1}
+            sizes="112px"
+            className="h-full min-h-24 rounded-none"
+          />
+          <div className="flex min-w-0 flex-col justify-center gap-2 p-3.5 sm:p-4">
+            <TrustBadge
+              name={sides.counterparty.name}
+              isVerified={sides.counterparty.isVerified}
+              faculty={sides.counterparty.faculty}
+              year={sides.counterparty.year}
+              avatarUrl={sides.counterparty.avatar_url}
+            />
+            <p className="text-body-sm text-ink-secondary">
+              {describeOffer(sides)}
+            </p>
+          </div>
+        </div>
+      </Surface>
 
       {/* The deal in one sentence, above the bench rather than below it. This
           is the plain-language answer to "who gives what"; it has no business
           sitting under two item grids where it needs scrolling to reach. */}
-      <p className="text-body text-ink-secondary">
-        {describeOffer(sides)}
-      </p>
-
       {/* The bench, read-only. Sides are labelled from the viewer's
           perspective, so "You give" always means what leaves your hands. */}
       <TradeBench
@@ -168,9 +189,10 @@ export function OfferReview({
           <p className="flex items-center gap-2 text-body font-semibold text-tone-success-fg">
             <CheckCircle2 aria-hidden className="size-5 shrink-0" />{t("offer.accepted")}</p>
           <p className="text-body-sm text-ink-secondary">
-            You are trading with {sides.counterparty.name} for{" "}
-            {offer.post.item.name}, handed over in person. Every other offer on
-            this post is declined and a chat room is open.
+            {t("offer.acceptedBody", {
+              name: sides.counterparty.name,
+              item: offer.post.item.name,
+            })}
           </p>
           {transactionId ? (
             // The accepted offer's transaction; /history/:id redirects to its

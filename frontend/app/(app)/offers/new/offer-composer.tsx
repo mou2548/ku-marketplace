@@ -3,13 +3,21 @@
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowLeftRight, CheckCircle2, Package } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowLeftRight,
+  CheckCircle2,
+  Package,
+  Sparkles,
+} from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
 import { TextInput } from "@/components/kit/field";
 import { Overlay } from "@/components/kit/overlay";
 import { Surface } from "@/components/kit/surface";
+import { PostImage } from "@/components/kit/post-image";
+import { TrustBadge } from "@/components/kit/trust-badge";
 import { Notice } from "@/components/patterns/notice";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import { useToast } from "@/components/kit/toast";
@@ -248,16 +256,57 @@ export function OfferComposer({
       >
         <ArrowLeft aria-hidden className="size-4" />{t("offer.backToListing")}</Link>
 
-      <header className="flex flex-col gap-1">
-        <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-          Offer a trade for {post.item.name}
-        </h1>
-        {post.wanted_item_offer ? (
-          <p className="text-body-sm text-ink-muted">
-            The owner wants: {post.wanted_item_offer}
-          </p>
-        ) : null}
+      <header>
+        <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+          {t("offer.buildOffer")}
+        </p>
+        <h1 className="mt-1 text-h1">{t("offer.composeTitle")}</h1>
+        <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+          {t("offer.composeHint")}
+        </p>
       </header>
+
+      <Surface as="section" shape="panel" className="overflow-hidden p-0">
+        <div className="grid sm:grid-cols-[10rem_minmax(0,1fr)]">
+          <PostImage
+            src={
+              post.item.images.find((image) => image.is_primary)?.image_url ??
+              post.item.images[0]?.image_url
+            }
+            alt={post.item.name}
+            aspectRatio={1}
+            sizes="(max-width: 640px) 100vw, 160px"
+            className="h-44 rounded-none sm:h-full"
+          />
+          <div className="flex min-w-0 flex-col justify-center gap-3 p-4 sm:p-5">
+            <div>
+              <p className="text-overline text-ink-muted uppercase">
+                {t("offer.tradingFor")}
+              </p>
+              <h2 className="mt-1 text-[1.25rem] leading-[1.3] font-semibold">
+                {post.item.name}
+              </h2>
+            </div>
+            {post.wanted_item_offer ? (
+              <div className="flex gap-2.5 rounded-control bg-tone-trade-bg p-3 text-tone-trade-fg">
+                <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
+                <p className="text-caption leading-[1.55]">
+                  <span className="font-semibold">{t("offer.ownerWants")}</span>{" "}
+                  {post.wanted_item_offer}
+                </p>
+              </div>
+            ) : null}
+            <TrustBadge
+              name={post.seller.name}
+              isVerified={post.seller.isVerified}
+              faculty={post.seller.faculty}
+              year={post.seller.year}
+              avatarUrl={post.seller.avatar_url}
+              size="sm"
+            />
+          </div>
+        </div>
+      </Surface>
 
       {/* The stash comes first on a phone.
           The bench rendered above it, so at 360px the two plate panels plus
