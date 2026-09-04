@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, ApiError } from "./client";
 import { authHeader } from "./session";
 import type { UserSummary } from "./types";
 
@@ -9,6 +9,19 @@ export interface Membership {
   expires_at?: string | null;
   pending_review: boolean;
 }
+
+/**
+ * Free is the product baseline, represented by the absence of a paid
+ * membership for older accounts as well as by `effectiveTier: "Free"` for
+ * newer ones. Some existing users have no membership row at all, and the
+ * backend reports that state as 404. It must not make the whole account page
+ * unavailable.
+ */
+const FREE_MEMBERSHIP: Membership = {
+  tier: "Free",
+  expires_at: null,
+  pending_review: false,
+};
 
 export interface MembershipRequest {
   request_id: number;
@@ -45,9 +58,21 @@ function toMembership(raw: RawStatus): Membership {
 
 /** `GET /membership/status` — the signed-in user's own tier, real quota, pending payment. */
 export async function getMembership(): Promise<Membership> {
-  return toMembership(
-    await apiFetch<RawStatus>("/membership/status", { headers: await authHeader() }),
-  );
+  try {
+    return toMembership(
+      await apiFetch<RawStatus>("/membership/status", {
+        headers: await authHeader(),
+      }),
+    );
+  } catch (error) {
+    // A missing row means no paid entitlement yet. Only that exact API state
+    // degrades to Free; authentication, network, and server failures remain
+    // visible instead of being mistaken for a valid membership response.
+    if (error instanceof ApiError && error.status === 404) {
+      return FREE_MEMBERSHIP;
+    }
+    throw error;
+  }
 }
 
 /** `POST /membership/subscribe` */
