@@ -196,14 +196,18 @@ export function ReportForm({
         Back to the chat
       </Link>
 
-      <header className="flex flex-col gap-1">
-        <h1 className="text-h1">Report a problem</h1>
+      <header>
+        <p className="text-overline font-semibold text-tone-danger-fg uppercase">
+          Safety and support
+        </p>
+        <h1 className="mt-1 text-h1">Report a problem</h1>
         <p className="text-body-sm text-ink-muted">
           {itemName} - with {counterparty}
         </p>
       </header>
 
-      <RadioGroupField
+      <div className="max-w-xl">
+        <RadioGroupField
         label="What went wrong"
         value={reason}
         onChange={setReason}
@@ -226,7 +230,8 @@ export function ReportForm({
             </Radio>
           );
         })}
-      </RadioGroupField>
+        </RadioGroupField>
+      </div>
 
       <TextAreaField
         label="Details"

@@ -51,7 +51,9 @@ export default async function ReportPage({
    * which one they picked without navigating away and losing what they typed.
    */
   const subject = (
-    <Surface shape="card" className="flex flex-col gap-3 p-5">
+    <Surface shape="panel" className="overflow-hidden p-0">
+      <div aria-hidden className="h-1 bg-tone-danger-solid" />
+      <div className="flex flex-col gap-3 p-5">
       <p className="text-overline text-ink-muted uppercase">
         The deal you are reporting
       </p>
@@ -105,6 +107,7 @@ export default async function ReportPage({
           name={other.name}
           isVerified={other.isVerified}
         />
+      </div>
       </div>
     </Surface>
   );
