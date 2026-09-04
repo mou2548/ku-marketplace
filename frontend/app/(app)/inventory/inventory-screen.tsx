@@ -8,7 +8,7 @@ import { CheckSquare, Package, Plus, Store, X } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
-import { AddItemSlot, EmptySlot, InventoryGrid, InventorySlot } from "@/components/kit/inventory-slot";
+import { InventoryGrid, InventorySlot } from "@/components/kit/inventory-slot";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -69,18 +69,6 @@ export function InventoryScreen({
     [items],
   );
 
-  /**
-   * Complete the current row, and stop.
-   *
-   * This was a flat 18, which is three rows at the widest breakpoint and more
-   * than five at 360px: a student with two items met sixteen dashed
-   * placeholders — over five screens' worth of nothing — with the real item
-   * count lost at the top. The widest grid is six columns, so at most five
-   * cells are ever needed to square off the row, and one of them is the add
-   * tile rather than padding.
-   */
-  const trailing = (6 - ((slots.length + 1) % 6)) % 6;
-
   const selectedIds =
     selected === "all" ? items.map((i) => i.item_id) : [...selected].map(Number);
 
@@ -134,16 +122,16 @@ export function InventoryScreen({
         <p className="text-caption text-ink-muted">{t("inventory.selectHint")}</p>
       ) : null}
 
-      {/* The stash is the one surface that has to read as a game panel
-          (CLAUDE.md §3.3, §3.8) — a lit plate with the slots sunk into it,
-          not a grid of thumbnails floating on the page background. */}
+      {/* A quiet catalogue shelf. The condition rim keeps the inventory DNA,
+          while names and real photos carry the same product-first hierarchy
+          as the market feed and the approved ecommerce reference. */}
       <Surface
         as="section"
         shape="panel"
-        fill="plate"
-        noise
+        fill="sunken"
+        elevation="none"
         aria-label={t("inventory.title")}
-        className="p-4"
+        className="p-3 sm:p-4"
       >
         <InventoryGrid
           aria-label={t("inventory.itemsIn")}
@@ -161,6 +149,7 @@ export function InventoryScreen({
               <InventorySlot
                 id={slot.item_id}
                 item={slot}
+                showName
                 badge={
                   /* A slot is about 93px wide at 360px. The labelled badge
                      measured roughly 86px of that and was clamped to 81px by
@@ -178,17 +167,6 @@ export function InventoryScreen({
             );
           }}
         </InventoryGrid>
-
-        {/* A stash shows the room it has left. Without the empty wells the
-            panel collapsed to a single strip of thumbnails and the screen read
-            as a short list rather than a container you are filling. Count
-            matches InventoryGrid's own breakpoints so the rows stay whole. */}
-        <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6">
-          <AddItemSlot />
-          {Array.from({ length: trailing }, (_, i) => (
-            <EmptySlot key={i} label={t("inventory.emptySlot")} />
-          ))}
-        </div>
       </Surface>
 
       {selecting && selectedIds.length > 0 ? (

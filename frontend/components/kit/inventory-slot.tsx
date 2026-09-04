@@ -1,7 +1,6 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import {
@@ -11,6 +10,7 @@ import {
   type GridListProps,
 } from "react-aria-components";
 
+import { PostImage } from "@/components/kit/post-image";
 import { useStatusText } from "@/lib/i18n/status-text";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -46,9 +46,9 @@ export function InventoryGrid<T extends object>({
   return (
     <GridList
       {...props}
-      // 3 columns at 360px, opening up on larger screens. Slots stay square.
+      // Two image-led cards on a phone, opening up into a compact catalogue.
       className={cn(
-        "grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6",
+        "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
         className,
       )}
     />
@@ -124,12 +124,12 @@ export function InventorySlot({
         )}
       >
         {item.image_url ? (
-          <Image
+          <PostImage
             src={item.image_url}
-            alt=""
-            fill
+            alt={item.name}
+            aspectRatio={1}
             sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
-            className="rounded-slot object-cover p-1"
+            className="h-full rounded-slot"
           />
         ) : (
           <span
@@ -165,11 +165,11 @@ export function InventorySlot({
       </span>
 
       {showName ? (
-        <span
-          aria-hidden
-          className="line-clamp-2 px-0.5 text-meta leading-[1.4] text-ink-secondary"
-        >
-          {item.name}
+        <span aria-hidden className="flex min-w-0 flex-col gap-0.5 px-0.5">
+          <span className="line-clamp-2 text-body-sm leading-[1.45] font-medium text-ink-secondary group-hover:text-ink-brand">
+            {item.name}
+          </span>
+          <span className="truncate text-meta text-ink-muted">{item.category}</span>
         </span>
       ) : null}
     </GridListItem>
