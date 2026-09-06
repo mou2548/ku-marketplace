@@ -16,13 +16,13 @@ export function DetailLoading({ label = "Loading details" }: { label?: string })
     >
       <span className={cn(ghost, "h-5 w-32")} />
 
-      <div className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
+      <div className="grid min-w-0 gap-7 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
         <span
           aria-hidden
           className={cn(ghost, "block aspect-square w-full rounded-card")}
         />
 
-        <div aria-hidden className="flex min-w-0 flex-col gap-5 lg:pt-2">
+        <div aria-hidden className="flex min-w-0 flex-col gap-5 md:pt-2">
           <span className={cn(ghost, "h-3 w-24")} />
           <span className={cn(ghost, "h-7 w-32 rounded-pill")} />
           <div className="flex flex-col gap-2">

@@ -190,10 +190,10 @@ export function GiveawayDetail({
         {t("giveaway.back")}
       </Link>
 
-      <section className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
+      <section className="grid min-w-0 gap-7 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
         <ProductGallery images={giveaway.images} name={giveaway.item_name} />
 
-        <div className="flex min-w-0 flex-col gap-6 lg:pt-2">
+        <div className="flex min-w-0 flex-col gap-6 md:pt-2">
           <header className="flex flex-col gap-3">
             <p className="text-overline font-semibold text-tone-warning-fg uppercase">
               {t("giveaway.freeFromCommunity")}
@@ -236,7 +236,7 @@ export function GiveawayDetail({
           ) : null}
         </div>
 
-        <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
+        <aside className="min-w-0 md:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
           <Surface shape="panel" className="overflow-hidden">
             <div aria-hidden className="h-1 bg-tone-warning-solid" />
             <div className="flex flex-col gap-4 p-5">

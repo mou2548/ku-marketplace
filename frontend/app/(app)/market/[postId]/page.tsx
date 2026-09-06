@@ -82,10 +82,10 @@ export default async function PostDetailPage({
         {t("market.backToMarket")}
       </Link>
 
-      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
+      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
         <ProductGallery images={post.item.images} name={post.item.name} />
 
-        <div className="flex min-w-0 flex-col gap-6 lg:pt-2">
+        <div className="flex min-w-0 flex-col gap-6 md:pt-2">
           <header className="flex flex-col gap-3">
             <p className="text-overline font-semibold text-ink-brand uppercase">
               {post.item.category}
@@ -159,7 +159,7 @@ export default async function PostDetailPage({
           </section>
         </div>
 
-        <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
+        <aside className="min-w-0 md:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
           <Surface shape="panel" className="overflow-hidden">
             <div className="hidden border-b border-line p-5 xl:block">
               <ProductPrice post={post} tradeOnlyLabel={t("card.tradeOnly")} />

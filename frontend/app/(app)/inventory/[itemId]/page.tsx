@@ -161,10 +161,10 @@ export default async function ItemDetailPage({
         {t("inventory.backToStuff")}
       </Link>
 
-      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
+      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
         <ProductGallery images={item.images} name={item.name} />
 
-        <div className="flex min-w-0 flex-col gap-6 lg:pt-2">
+        <div className="flex min-w-0 flex-col gap-6 md:pt-2">
           <header className="flex flex-col gap-3">
             <p className="text-overline font-semibold text-ink-brand uppercase">
               {item.category}
