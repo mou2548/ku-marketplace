@@ -20,7 +20,7 @@ model User {
   lastNameTh      String           @map("last_name_th") @db.VarChar(100)
   passwordHash    String           @map("password_hash") @db.VarChar(255)
   phoneNumber     String?          @map("phone_number") @db.VarChar(20)
-  status          String?          @default("Active") @db.VarChar(20) @map("user_status")
+  status          String?          @default("Active") @map("user_status") @db.VarChar(20)
   emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
   isAdmin         Boolean?         @default(false) @map("isAdmin")
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
@@ -31,14 +31,14 @@ model User {
   giveaways       GiveawayPost[]
   giveawayTickets GiveawayTicket[]
 
-  reportsFiled           Report[]              @relation("ReportReporter")
-  reportsHandled         Report[]              @relation("ReportHandledBy")
-  appealsFiled           Appeal[]              @relation("AppealAppellant")
-  appealsHandled         Appeal[]              @relation("AppealHandledBy")
-  appointmentsProposed   AppointmentCard[]
-  chatMessages           ChatMessage[]
-  subscriptions          Subscription[]
-  subscriptionPayments   SubscriptionPayment[] @relation("SubscriptionPaymentUser")
+  reportsFiled                Report[]              @relation("ReportReporter")
+  reportsHandled              Report[]              @relation("ReportHandledBy")
+  appealsFiled                Appeal[]              @relation("AppealAppellant")
+  appealsHandled              Appeal[]              @relation("AppealHandledBy")
+  appointmentsProposed        AppointmentCard[]
+  chatMessages                ChatMessage[]
+  subscriptions               Subscription[]
+  subscriptionPayments        SubscriptionPayment[] @relation("SubscriptionPaymentUser")
   subscriptionPaymentsHandled SubscriptionPayment[] @relation("SubscriptionPaymentHandledBy")
 
   @@map("User")
@@ -56,7 +56,7 @@ model Item {
   // still for sale after a listing goes up.
   quantity       Int         @default(1)
   description    String?
-  status         String?     @default("Unlisted") @db.VarChar(20) @map("item_status")
+  status         String?     @default("Unlisted") @map("item_status") @db.VarChar(20)
   courseName     String?     @map("course_name") @db.VarChar(100)
   brandModel     String?     @map("brand_model") @db.VarChar(100)
   warrantyExpiry DateTime?   @map("warranty_expiry") @db.Date
@@ -79,7 +79,7 @@ model Post {
   postType          String        @map("post_type") @db.VarChar(20)
   // §was missing from schema.prisma entirely even though init.sql has had this
   // column since the start — added now because soft delete needs it.
-  status            String?       @default("Active") @db.VarChar(20) @map("post_status")
+  status            String?       @default("Active") @map("post_status") @db.VarChar(20)
   price             Decimal       @db.Decimal(10, 2)
   quantityTotal     Int           @default(1) @map("quantity_total")
   quantityRemaining Int           @default(1) @map("quantity_remaining")
@@ -98,7 +98,7 @@ model Offer {
   postId          Int           @map("post_id")
   proposerId      Int           @map("proposer_id")
   additionalMoney Decimal?      @default(0) @map("additional_money") @db.Decimal(10, 2)
-  status          String?       @default("Pending") @db.VarChar(20) @map("offer_status")
+  status          String?       @default("Pending") @map("offer_status") @db.VarChar(20)
   createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
   post            Post          @relation(fields: [postId], references: [postId])
   proposer        User          @relation(fields: [proposerId], references: [userId])
@@ -125,7 +125,7 @@ model Transaction {
   buyerId                         Int       @map("buyer_id")
   sellerId                        Int       @map("seller_id")
   quantity                        Int?      @default(1)
-  status                          String?   @default("Pending") @db.VarChar(20) @map("transaction_status")
+  status                          String?   @default("Pending") @map("transaction_status") @db.VarChar(20)
   activeReportId                  Int?      @map("active_report_id")
   deliveryMethod                  String    @map("delivery_method") @db.VarChar(20)
   slipImageUrl                    String?   @map("slip_image_url") @db.VarChar(500)
@@ -160,12 +160,14 @@ model Transaction {
 model GiveawayPost {
   giveawayId       Int              @id @default(autoincrement()) @map("giveaway_id")
   itemName         String           @map("item_name") @db.VarChar(255)
+  quantity         Int              @default(1)
   description      String?
   pickupLocation   String           @map("pickup_location") @db.VarChar(255)
   giverId          Int              @map("giver_id")
   allocationMethod String           @map("allocation_method") @db.VarChar(20)
   pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
-  status           String?          @default("Active") @db.VarChar(20) @map("giveaway_status")
+  registerDeadline DateTime?        @map("register_deadline") @db.Timestamp(6)
+  status           String?          @default("Active") @map("giveaway_status") @db.VarChar(20)
   createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   giver            User             @relation(fields: [giverId], references: [userId])
   images           GiveawayImage[]
@@ -181,7 +183,7 @@ model GiveawayImage {
   imageUrl     String       @map("image_url") @db.VarChar(500)
   // §was missing from schema.prisma even though init.sql has had this column
   // since the start.
-  status       String?      @default("Active") @db.VarChar(20) @map("image_status")
+  status       String?      @default("Active") @map("image_status") @db.VarChar(20)
   displayOrder Int?         @default(0) @map("display_order")
   createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
   giveaway     GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
@@ -194,11 +196,12 @@ model GiveawayTicket {
   giveawayId Int          @map("giveaway_id")
   receiverId Int          @map("receiver_id")
   qrToken    String?      @unique @map("qr_token") @db.VarChar(255)
-  status     String?      @default("Waiting") @db.VarChar(20) @map("ticket_status")
+  status     String?      @default("Registered") @map("ticket_status") @db.VarChar(20)
   updatedAt  DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
   giveaway   GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
   receiver   User         @relation(fields: [receiverId], references: [userId])
 
+  @@unique([giveawayId, receiverId])
   @@map("Giveaway_Ticket")
 }
 
@@ -209,7 +212,7 @@ model ItemImage {
   // §was missing from schema.prisma even though init.sql has had this column
   // since the start — this is why the app used to hard-delete images instead
   // of toggling this to 'Inactive'. Now wired up for soft delete.
-  status       String?   @default("Active") @db.VarChar(20) @map("item_image_status")
+  status       String?   @default("Active") @map("item_image_status") @db.VarChar(20)
   isPrimary    Boolean?  @default(false) @map("is_primary")
   displayOrder Int?      @default(0) @map("display_order")
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
@@ -226,7 +229,7 @@ model Report {
   reasonCategory String    @map("reason_category") @db.VarChar(100)
   details        String?
   evidenceUrls   Json?     @map("evidence_urls")
-  status         String?   @default("Pending") @db.VarChar(20) @map("report_status")
+  status         String?   @default("Pending") @map("report_status") @db.VarChar(20)
   handledBy      Int?      @map("handled_by")
   resolutionNote String?   @map("resolution_note")
   handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
@@ -247,7 +250,7 @@ model Appeal {
   appellantId    Int       @map("appellant_id")
   reason         String
   evidenceUrls   Json?     @map("evidence_urls")
-  status         String    @db.VarChar(20) @map("appeal_status")
+  status         String    @map("appeal_status") @db.VarChar(20)
   handledBy      Int?      @map("handled_by")
   resolutionNote String?   @map("resolution_note")
   createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
@@ -267,7 +270,7 @@ model AppointmentCard {
   date          DateTime  @db.Date
   time          DateTime  @db.Time(6)
   location      String    @db.VarChar(255)
-  status        String?   @default("Pending") @db.VarChar(20) @map("appointment_status")
+  status        String?   @default("Pending") @map("appointment_status") @db.VarChar(20)
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   transaction Transaction @relation(fields: [transactionId], references: [transactionId])
@@ -282,7 +285,7 @@ model ChatRoom {
   giveawayId    Int?      @map("giveaway_id")
   // §was missing from schema.prisma even though init.sql has had this column
   // since the start.
-  status        String?   @default("Active") @db.VarChar(20) @map("chat_room_status")
+  status        String?   @default("Active") @map("chat_room_status") @db.VarChar(20)
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   transaction Transaction?  @relation(fields: [transactionId], references: [transactionId])
@@ -311,7 +314,7 @@ model Subscription {
   userId             Int       @map("user_id")
   tier               String    @db.VarChar(20)
   postsUsedThisMonth Int?      @default(0) @map("posts_used_this_month")
-  status             String?   @default("Active") @db.VarChar(20) @map("subscription_status")
+  status             String?   @default("Active") @map("subscription_status") @db.VarChar(20)
   startDate          DateTime? @map("start_date") @db.Timestamp(6)
   endDate            DateTime? @map("end_date") @db.Timestamp(6)
 
@@ -327,7 +330,7 @@ model SubscriptionPayment {
   userId          Int       @map("user_id")
   amount          Int
   slipImageUrl    String    @map("slip_image_url") @db.VarChar(500)
-  status          String    @default("Pending") @db.VarChar(25) @map("payment_status")
+  status          String    @default("Pending") @map("payment_status") @db.VarChar(25)
   rejectionReason String?   @map("rejection_reason")
   handledBy       Int?      @map("handled_by")
   handledAt       DateTime? @map("handled_at") @db.Timestamp(6)

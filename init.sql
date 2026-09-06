@@ -153,8 +153,9 @@ CREATE TABLE "Giveaway_Ticket" (
     "giveaway_id" INTEGER NOT NULL REFERENCES "Giveaway_Post"("giveaway_id"),
     "receiver_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "qr_token" VARCHAR(255) UNIQUE,
-    "ticket_status" VARCHAR(20) DEFAULT 'Waiting' CHECK("ticket_status" IN ('Waiting', 'Received', 'Expired', 'Waived')),
-    "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "ticket_status" VARCHAR(20) DEFAULT 'Registered' CHECK("ticket_status" IN ('Registered', 'Waiting', 'NotSelected', 'Received', 'Forfeited', 'Expired')),
+    "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE ("giveaway_id", "receiver_id")
 );
 
 -- 12. Giveaway_Image Table
@@ -353,12 +354,12 @@ INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket
 (1, 4, 'TOK_1_PHY_A', 'Waiting'),
 (1, 5, 'TOK_1_PHY_B', 'Waiting'),
 (1, 6, 'TOK_1_PHY_C', 'Waiting'),
-(2, 7, 'TOK_2_SHIRT', 'Waiting'),
-(3, 8, 'TOK_3_TOEIC_A', 'Waiting'),
+(2, 7, 'TOK_2_SHIRT', 'Registered'),
+(3, 8, 'TOK_3_TOEIC_A', 'Registered'),
 (4, 3, 'TOK_4_CABLE', 'Expired'),
 (5, 4, 'TOK_5_GLASS', 'Received'),
 (5, 5, 'TOK_5_GLASS_LOSE', 'Expired'),
-(6, 4, 'TOK_6_RULER_WAIVED', 'Waived');
+(6, 4, 'TOK_6_RULER_FORFEITED', 'Forfeited');
 
 -- 12. Giveaway_Image (6 Images - Using picsum.photos)
 INSERT INTO "Giveaway_Image" ("giveaway_id", "image_status", "image_url", "display_order") VALUES
