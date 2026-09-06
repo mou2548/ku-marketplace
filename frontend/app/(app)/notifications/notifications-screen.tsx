@@ -182,10 +182,10 @@ export function NotificationsScreen({
                     elevation={n.read ? "flat" : "raised"}
                     interactive
                     className={cn(
-                      "flex items-start gap-3 border-l-2 p-4",
+                      "flex items-start gap-3 border-l-2 p-4 transition-opacity",
                       !n.read
                         ? cn("bg-surface", TONE_RAIL_LEFT[tone])
-                        : "border-l-transparent",
+                        : "border-l-transparent bg-surface-sunken/40 opacity-75 hover:opacity-100",
                     )}
                   >
                     <span
@@ -203,7 +203,9 @@ export function NotificationsScreen({
                       <p
                         className={cn(
                           "text-body",
-                          n.read ? "font-medium" : "font-semibold",
+                          n.read
+                            ? "font-medium text-ink-secondary"
+                            : "font-semibold text-ink",
                         )}
                       >
                         {n.title}
@@ -213,15 +215,26 @@ export function NotificationsScreen({
                       </p>
                     </div>
 
-                    <time
-                      dateTime={n.created_at}
-                      className="shrink-0 text-meta text-ink-muted"
-                    >
-                      {new Date(n.created_at).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </time>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {!n.read ? (
+                        <>
+                          <span
+                            aria-hidden
+                            className="size-2 rounded-pill bg-brand shadow-[0_0_0_3px_var(--color-brand-subtle)]"
+                          />
+                          <span className="sr-only">Unread</span>
+                        </>
+                      ) : null}
+                      <time
+                        dateTime={n.created_at}
+                        className="text-meta text-ink-muted"
+                      >
+                        {new Date(n.created_at).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </time>
+                    </div>
                   </Surface>
                 </Link>
               </li>
@@ -264,7 +277,8 @@ function FilterTab({
     >
       <span>{label}</span>
 
-      {/* Unread is the number worth acting on; the total is context for it. */}
+      {/* Unread is the number worth acting on. Repeating unread and total as
+          adjacent bare numbers made the tabs look like duplicate counters. */}
       {unread > 0 ? (
         <span
           data-numeric
@@ -272,12 +286,15 @@ function FilterTab({
         >
           {unread}
         </span>
-      ) : null}
-      <span data-numeric className="text-meta text-ink-muted">
-        {total}
-      </span>
+      ) : (
+        <span data-numeric className="text-meta text-ink-muted">
+          {total}
+        </span>
+      )}
       {unread > 0 ? (
-        <span className="sr-only">, {unread} unread</span>
+        <span className="sr-only">
+          , {unread} unread out of {total}
+        </span>
       ) : null}
     </button>
   );
