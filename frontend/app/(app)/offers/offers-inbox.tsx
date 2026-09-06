@@ -17,6 +17,7 @@ import {
 } from "@/components/kit/tabs";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { OfferSummary } from "@/components/kit/offer-summary";
+import { PostImage } from "@/components/kit/post-image";
 import type { Offer } from "@/lib/api/types";
 import { offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
@@ -123,19 +124,24 @@ function OfferList({
           <li key={offer.offer_id}>
             <Link href={`/offers/${offer.offer_id}`}>
               <Surface as="div" shape="card" interactive className="flex h-full flex-col gap-4 p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-2">
-                  {/* Who and about what. The old version led with the post's
-                      item name, which on a received offer is your own thing —
-                      so the row opened by telling you something you know. */}
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">
-                      {direction === "sent"
-                        ? `Your offer to ${sides.counterparty.name}`
-                        : `${sides.counterparty.name} wants to trade`}
-                    </p>
+                <div className="flex items-start gap-3">
+                  <span className="block size-14 shrink-0 overflow-hidden rounded-slot bg-surface-sunken">
+                    <PostImage
+                      src={
+                        offer.post.item.images.find((image) => image.is_primary)
+                          ?.image_url ?? offer.post.item.images[0]?.image_url
+                      }
+                      alt=""
+                      aspectRatio={1}
+                      sizes="56px"
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{offer.post.item.name}</p>
                     <p className="truncate text-caption text-ink-muted">
-                      {direction === "sent" ? "for their " : "for your "}
-                      {offer.post.item.name}
+                      {direction === "sent"
+                        ? t("offer.sentToPerson", { name: sides.counterparty.name })
+                        : t("offer.receivedFromPerson", { name: sides.counterparty.name })}
                     </p>
                   </div>
                   <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />

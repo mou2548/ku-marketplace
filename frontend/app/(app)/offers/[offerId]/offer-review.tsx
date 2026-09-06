@@ -118,22 +118,18 @@ export function OfferReview({
           <p className="text-overline font-semibold text-tone-trade-fg uppercase">
             {t("offer.reviewOffer")}
           </p>
-          {/* Same two lines as the card the viewer tapped to get here. */}
-          <h1 className="mt-1 text-h1">
-            {isOwner
-              ? t("offer.receivedTitle", { name: sides.counterparty.name })
-              : t("offer.sentTitle", { name: sides.counterparty.name })}
-          </h1>
-          {/* The post is the thing being argued over and had no route out of
-              this screen. The inbox card is one big link, so the second
-              destination belongs here. */}
+          {/* The item stays the identity from inbox to detail. */}
+          <h1 className="mt-1 text-h1">{offer.post.item.name}</h1>
           <p className="text-body-sm text-ink-muted">
-            {isOwner ? t("offer.forYour") : t("offer.forTheir")}{" "}
+            {isOwner
+              ? t("offer.receivedFromPerson", { name: sides.counterparty.name })
+              : t("offer.sentToPerson", { name: sides.counterparty.name })}{" "}
+            <span aria-hidden>·</span>{" "}
             <Link
               href={`/market/${offer.post_id}`}
               className="font-medium text-ink-brand hover:underline"
             >
-              {offer.post.item.name}
+              {t("offer.openListing")}
             </Link>
           </p>
         </div>

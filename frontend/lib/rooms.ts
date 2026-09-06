@@ -33,6 +33,8 @@ export interface RoomSummary {
   counterparty: UserSummary;
   /** What the conversation is about. */
   subject: string;
+  /** The primary image of the item or giveaway that identifies this room. */
+  subjectImage?: string | null;
   lastMessage?: string;
   lastMessageAt?: string;
   /** True when the flow is waiting on the viewer — sorts these to the top. */
@@ -81,6 +83,10 @@ export function buildRooms({
         kind: roomKind(transaction),
         counterparty: transaction.buyer_id === viewerId ? transaction.seller : transaction.buyer,
         subject: transaction.post.item.name,
+        subjectImage:
+          transaction.post.item.images.find((image) => image.is_primary)?.image_url ??
+          transaction.post.item.images[0]?.image_url ??
+          null,
         lastMessage,
         lastMessageAt,
         needsYou,
@@ -94,6 +100,7 @@ export function buildRooms({
         kind: "Giveaway",
         counterparty: giveaway.giver,
         subject: giveaway.item_name,
+        subjectImage: giveaway.images[0]?.image_url ?? null,
         lastMessage,
         lastMessageAt,
         // A giveaway has no "your turn" concept the way a transaction does.

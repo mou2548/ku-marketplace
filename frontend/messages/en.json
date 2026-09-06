@@ -494,6 +494,7 @@
     "noMatches": "No matches",
     "noConversations": "No conversations yet",
     "noNamedPerson": "Nobody named “{query}” is in this list.",
+    "noMatchingConversation": "No item or person matches “{query}”.",
     "emptyBody": "A room opens automatically when you buy something, an offer is accepted, or you win a giveaway."
   },
   "appointment": {
@@ -643,6 +644,9 @@
     "theirExtraCash": "Extra cash they add, in baht",
     "receivedTitle": "{name} wants to trade",
     "sentTitle": "Your offer to {name}",
+    "sentToPerson": "Sent to {name}",
+    "receivedFromPerson": "From {name}",
+    "openListing": "Open listing",
     "forYour": "for your",
     "forTheir": "for their",
     "acceptedBody": "You are trading with {name} for {item}, handed over in person. Every other offer on this post is declined and a chat room is open."

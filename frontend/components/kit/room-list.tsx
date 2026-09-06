@@ -10,9 +10,9 @@ import { ROOM_KIND_TONE } from "@/lib/rooms";
 import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./empty-state";
+import { PostImage } from "./post-image";
 import { TabList, Tabs, UnderlineTab } from "./tabs";
 import {
-  TONE_CHIP,
   TONE_DOT,
   TONE_RAIL_LEFT,
   TONE_TEXT,
@@ -26,8 +26,9 @@ import {
  * review asked for them to be the same thing to the student too. Splitting them
  * across three screens would have meant three places to check for a reply.
  *
- * Each row leads with the person, because that is what people remember, and
- * says underneath where the conversation came from.
+ * Each row leads with the item, because one counterparty can share several
+ * transactions with the viewer. The person remains searchable and appears in
+ * the supporting line.
  */
 export function RoomList({
   rooms,
@@ -48,7 +49,11 @@ export function RoomList({
   const byKind = filter === "all" ? rooms : rooms.filter((r) => r.kind === filter);
   const q = query.trim().toLowerCase();
   const shown = q
-    ? byKind.filter((r) => r.counterparty.name.toLowerCase().includes(q))
+    ? byKind.filter(
+        (r) =>
+          r.subject.toLowerCase().includes(q) ||
+          r.counterparty.name.toLowerCase().includes(q),
+      )
     : byKind;
 
   return (
@@ -100,7 +105,7 @@ export function RoomList({
             title={q ? t("chat.noMatches") : t("chat.noConversations")}
             description={
               q
-                ? t("chat.noNamedPerson", { query: query.trim() })
+                ? t("chat.noMatchingConversation", { query: query.trim() })
                 : t("chat.emptyBody")
             }
           />
@@ -139,30 +144,19 @@ function RoomRow({
           : "hover:bg-gray-100",
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "grid size-11 shrink-0 place-items-center overflow-hidden rounded-pill border text-caption font-semibold",
-          TONE_CHIP[tone],
-        )}
-        style={
-          room.counterparty.avatar_url
-            ? {
-                backgroundImage: `url(${room.counterparty.avatar_url})`,
-                backgroundSize: "cover",
-              }
-            : undefined
-        }
-      >
-        {room.counterparty.avatar_url
-          ? null
-          : room.counterparty.name.slice(0, 2)}
+      <span className="block size-12 shrink-0 overflow-hidden rounded-slot bg-surface-sunken">
+        <PostImage
+          src={room.subjectImage}
+          alt=""
+          aspectRatio={1}
+          sizes="48px"
+        />
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-body font-semibold">
-            {room.counterparty.name}
+            {room.subject}
           </span>
           {room.lastMessageAt ? (
             <time
@@ -180,11 +174,13 @@ function RoomRow({
           ) : null}
         </span>
 
-        {/* Where this conversation came from — the review asked for this to sit
-            directly under the name. A dot + coloured label, not a boxed chip:
-            kind is a category, not a severity, and it sits in a dense list
-            where every row would otherwise carry its own small filled block. */}
+        {/* Person and room kind support the item identity. A dot + coloured
+            label stays light enough for a dense list. */}
         <span className="flex min-w-0 items-center gap-1.5">
+          <span className="min-w-0 truncate text-meta text-ink-muted">
+            {room.counterparty.name}
+          </span>
+          <span aria-hidden className="text-meta text-ink-muted">·</span>
           <span className="flex shrink-0 items-center gap-1">
             <span
               aria-hidden
@@ -198,9 +194,6 @@ function RoomRow({
             >
               {t(`chat.${room.kind.toLowerCase()}`)}
             </span>
-          </span>
-          <span className="min-w-0 truncate text-meta text-ink-muted">
-            {room.subject}
           </span>
         </span>
 
