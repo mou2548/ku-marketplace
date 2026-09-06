@@ -10,30 +10,38 @@ import type {
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
 import { buildRooms, type RoomSummary } from "@/lib/rooms";
-import { resolveTransactionActor, type Party } from "@/lib/status";
+import {
+  resolveTransactionActor,
+  type Party,
+  type TicketStatus,
+} from "@/lib/status";
 
 /**
  * "My giveaways" — every giveaway the viewer gives, or ever held a ticket
  * for. There is no bulk endpoint for either half, so this checks all of them
  * (`getGiveaways()`, real but unfiltered) against the viewer one at a time.
- * `getMyTicket` only sees `Waiting`/`Received` tickets (same limit as
- * `GET /giveaways/{id}/recipients` — see docs/design/api-gaps.md §8), so a
- * viewer whose ticket has since expired or been forfeited can drop out of
- * their own inbox even though the backend still lets them open the room
- * directly. Small, known gap — not worth a new endpoint for.
+ * `getMyTicket` reads the full recipient roster, so completed outcomes stay in
+ * the inbox and can supply a truthful status badge such as `Missed pickup`.
  */
-async function myGiveaways(viewerId: number): Promise<GiveawayPost[]> {
+interface ViewerGiveaway {
+  giveaway: GiveawayPost;
+  ticketStatus?: TicketStatus;
+}
+
+async function myGiveaways(viewerId: number): Promise<ViewerGiveaway[]> {
   const all = await getGiveaways();
   const mine = await Promise.all(
     all.map(async (giveaway) => {
-      if (giveaway.giver_id === viewerId) return giveaway;
+      if (giveaway.giver_id === viewerId) return { giveaway };
       const ticket = await getMyTicket(giveaway.giveaway_id, giveaway, viewerId).catch(
         () => undefined,
       );
-      return ticket ? giveaway : undefined;
+      return ticket
+        ? { giveaway, ticketStatus: ticket.status }
+        : undefined;
     }),
   );
-  return mine.filter((g): g is GiveawayPost => g !== undefined);
+  return mine.filter((entry): entry is ViewerGiveaway => entry !== undefined);
 }
 
 /**
@@ -64,12 +72,13 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           viewerId,
           lastMessage: last?.content ?? undefined,
           lastMessageAt: last?.created_at,
+          lastMessageSenderId: last?.sender_id,
           needsYou: resolveTransactionActor(transaction, viewer).actor === viewer,
         };
       }),
     ),
     Promise.all(
-      giveaways.map(async (giveaway) => {
+      giveaways.map(async ({ giveaway, ticketStatus }) => {
         const { roomId, messages } = await getGiveawayMessages(giveaway.giveaway_id);
         const last = messages.at(-1);
         return {
@@ -77,6 +86,8 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           roomId,
           lastMessage: last?.content ?? undefined,
           lastMessageAt: last?.created_at,
+          lastMessageSenderId: last?.sender_id,
+          ticketStatus,
         };
       }),
     ),

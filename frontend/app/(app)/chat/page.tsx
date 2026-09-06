@@ -57,6 +57,7 @@ export default async function ChatInboxPage() {
         <RoomList
           rooms={rooms}
           activeRoomId={first?.summary.room_id}
+          viewerId={viewer.userId}
           heading={t("nav.chat")}
         />
       </div>

@@ -21,7 +21,6 @@ import {
 import { cn } from "@/lib/utils";
 
 import { Button, LinkButton } from "./button";
-import { LocaleSwitch } from "@/components/patterns/locale-switch";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
@@ -40,7 +39,7 @@ export interface NavBadges {
 
 interface NavEntry {
   href: string;
-  /** Message key under `nav.` — the labels are rendered in two languages. */
+  /** Message key under `nav.`. */
   labelKey: string;
   icon: typeof Store;
   badge?: keyof NavBadges;
@@ -199,8 +198,6 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-            <LocaleSwitch className="hidden sm:flex" />
-
             <ThemeSwitch />
 
             <Link
@@ -307,10 +304,6 @@ function MobileMenu({
   const t = useTranslations();
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* The header switch is hidden below sm:, so the drawer carries it on a
-          phone — where most of this product is read. */}
-      <LocaleSwitch className="w-fit sm:hidden" />
-
       <LinkButton href="/post" block size="lg" onClick={onNavigate}>
         <Plus className="size-5" />{t("nav.postAnItem")}</LinkButton>
 

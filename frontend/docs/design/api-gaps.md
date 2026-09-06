@@ -338,3 +338,19 @@ Needs an owner decision:
 - route reject to `cancel-request` with a canned reason, or
 - remove the button and leave chat as the channel, or
 - add the endpoint (outside this scope, `CLAUDE.md` 0).
+
+## Chat unread state is local to one browser
+
+Recorded 2026-09-06 while redesigning the conversation list.
+
+The API returns messages and timestamps but has no read receipt, last-read
+timestamp, or unread count. The sidebar therefore records the time a room was
+opened in browser storage and shows an unread dot only when a newer message
+from someone else exists. This is truthful for future messages on that browser,
+but it cannot synchronize read state between devices or recover historical
+read state from before the marker was created.
+
+A cross-device unread badge requires a backend field or endpoint that records
+the viewer's last-read message per room. The frontend must not infer that state
+from transaction workflow ownership (`needsYou`), because whose turn it is and
+whether a message was read are different facts.

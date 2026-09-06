@@ -15,8 +15,12 @@
  * pure part of that — no I/O, just the shape and the sort.
  */
 
-import type { GiveawayPost, Transaction, UserSummary } from "@/lib/api/types";
-import type { Tone } from "@/lib/status";
+import type {
+  GiveawayPost,
+  Transaction,
+  UserSummary,
+} from "@/lib/api/types";
+import type { TicketStatus, Tone } from "@/lib/status";
 
 export type RoomKind = "Sale" | "Trade" | "Giveaway";
 
@@ -37,11 +41,14 @@ export interface RoomSummary {
   subjectImage?: string | null;
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageSenderId?: number;
   /** True when the flow is waiting on the viewer — sorts these to the top. */
   needsYou: boolean;
   href: string;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
+  /** Present when the viewer joined this giveaway rather than created it. */
+  giveawayTicketStatus?: TicketStatus;
 }
 
 /** A trade and a sale are both transactions; the difference is whether an
@@ -58,6 +65,7 @@ export interface TransactionRoomSource {
   viewerId: number;
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageSenderId?: number;
   /** Whose turn it is — sorts this room to the top of the inbox. */
   needsYou: boolean;
 }
@@ -67,6 +75,8 @@ export interface GiveawayRoomSource {
   roomId: number;
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageSenderId?: number;
+  ticketStatus?: TicketStatus;
 }
 
 export function buildRooms({
@@ -78,7 +88,15 @@ export function buildRooms({
 }): RoomSummary[] {
   const summaries: RoomSummary[] = [
     ...transactionRooms.map(
-      ({ transaction, roomId, viewerId, lastMessage, lastMessageAt, needsYou }): RoomSummary => ({
+      ({
+        transaction,
+        roomId,
+        viewerId,
+        lastMessage,
+        lastMessageAt,
+        lastMessageSenderId,
+        needsYou,
+      }): RoomSummary => ({
         room_id: roomId,
         kind: roomKind(transaction),
         counterparty: transaction.buyer_id === viewerId ? transaction.seller : transaction.buyer,
@@ -89,13 +107,21 @@ export function buildRooms({
           null,
         lastMessage,
         lastMessageAt,
+        lastMessageSenderId,
         needsYou,
         href: `/chat/${roomId}`,
         transaction,
       }),
     ),
     ...giveawayRooms.map(
-      ({ giveaway, roomId, lastMessage, lastMessageAt }): RoomSummary => ({
+      ({
+        giveaway,
+        roomId,
+        lastMessage,
+        lastMessageAt,
+        lastMessageSenderId,
+        ticketStatus,
+      }): RoomSummary => ({
         room_id: roomId,
         kind: "Giveaway",
         counterparty: giveaway.giver,
@@ -103,10 +129,12 @@ export function buildRooms({
         subjectImage: giveaway.images[0]?.image_url ?? null,
         lastMessage,
         lastMessageAt,
+        lastMessageSenderId,
         // A giveaway has no "your turn" concept the way a transaction does.
         needsYou: false,
         href: `/chat/${roomId}`,
         giveaway,
+        giveawayTicketStatus: ticketStatus,
       }),
     ),
   ];

@@ -39,7 +39,11 @@ export default async function RoomPage({
           messaging app people already use behaves. One divider between the two
           columns, no gutter and no card — the room is the surface. */}
       <aside className="hidden h-full w-80 shrink-0 border-r border-line xl:block xl:w-96">
-        <RoomList rooms={rooms} activeRoomId={detail.summary.room_id} />
+        <RoomList
+          rooms={rooms}
+          activeRoomId={detail.summary.room_id}
+          viewerId={viewer.userId}
+        />
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1">
