@@ -567,10 +567,16 @@ function ItemPick({
         </span>
 
         <span
-          className="block w-14 shrink-0 overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+          className="block size-14 shrink-0 overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
           style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
         >
-          <PostImage src={primary?.image_url} alt="" aspectRatio={1} sizes="56px" />
+          <PostImage
+            src={primary?.image_url}
+            alt=""
+            aspectRatio={1}
+            sizes="56px"
+            className="h-full"
+          />
         </span>
 
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -580,10 +586,7 @@ function ItemPick({
           <span className="truncate text-caption text-ink-muted">
             {item.category}
             <span aria-hidden> · </span>
-            <span
-              style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
-              className="text-[var(--slot-edge)]"
-            >
+            <span className="font-medium text-ink-secondary">
               {st.of(rarity).label}
             </span>
           </span>
