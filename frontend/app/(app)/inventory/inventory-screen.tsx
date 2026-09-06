@@ -40,16 +40,23 @@ export function InventoryScreen({
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Selection>(new Set());
   const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
-  const listedCount = items.filter((item) => listed.has(item.item_id)).length;
+  const transferredIds = useMemo(
+    () => new Set(items.filter((item) => item.status === "Transferred").map((item) => item.item_id)),
+    [items],
+  );
+  const listedCount = items.filter(
+    (item) => !transferredIds.has(item.item_id) && listed.has(item.item_id),
+  ).length;
+  const activeCount = items.length - transferredIds.size;
 
-  /**
-   * Two states, and only two. `Transferred` is filtered out upstream in
-   * page.tsx — an item that has been handed over is not in this inventory at
-   * all — so the badge here answers one question: is a post standing for this
-   * thing right now?
-   */
-  const statusOf = (item: Item): Extract<ItemStatus, "Listed" | "Unlisted"> =>
-    listed.has(item.item_id) ? "Listed" : "Unlisted";
+  /** Active items reflect their current listing, while transferred items stay
+   * visible as read-only history for completed sale/trade totals. */
+  const statusOf = (item: Item): ItemStatus =>
+    item.status === "Transferred"
+      ? "Transferred"
+      : listed.has(item.item_id)
+        ? "Listed"
+        : "Unlisted";
 
   const slots: InventoryItem[] = useMemo(
     () =>
@@ -65,7 +72,11 @@ export function InventoryScreen({
   );
 
   const selectedIds =
-    selected === "all" ? items.map((i) => i.item_id) : [...selected].map(Number);
+    selected === "all"
+      ? items
+          .filter((item) => !transferredIds.has(item.item_id))
+          .map((item) => item.item_id)
+      : [...selected].map(Number);
 
   function exitSelecting() {
     setSelecting(false);
@@ -101,8 +112,13 @@ export function InventoryScreen({
               {listedCount} {t("inventory.onTheMarket")}
             </span>
             <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-secondary">
-              {items.length - listedCount} {t("inventory.notListed")}
+              {activeCount - listedCount} {t("inventory.notListed")}
             </span>
+            {transferredIds.size > 0 ? (
+              <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-muted">
+                {transferredIds.size} transferred
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -134,6 +150,7 @@ export function InventoryScreen({
           aria-label={t("inventory.itemsIn")}
           items={slots}
           selectionMode={selecting ? "multiple" : "none"}
+          disabledKeys={selecting ? transferredIds : undefined}
           selectedKeys={selected}
           onSelectionChange={setSelected}
           // RAC fires this for Enter as well as click, so the keyboard path is

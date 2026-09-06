@@ -27,16 +27,9 @@ export default async function InventoryPage() {
 
   const [allItems, posts] = await Promise.all([getMyItems(), listPosts()]);
 
-  /**
-   * The third state never belongs on this screen. `Transferred` means the item
-   * has been handed to a buyer and is not the viewer's any more — it stayed
-   * here only because a transfer never reassigns `owner_id`, so a thing they
-   * had given away still sat in the grid and counted toward the item total.
-   *
-   * The inventory is now exactly the two states DatabaseSchema.pdf §2.2 names
-   * for something you still own: Unlisted and Listed. What left is in /history.
-   */
-  const items = allItems.filter((i) => i.status !== "Transferred");
+  // Transferred rows remain as read-only item history. Hiding them would make
+  // the new sold/traded totals impossible to inspect from the inventory.
+  const items = allItems;
 
   /**
    * Flow 1 moves an item Unlisted → Listed when a post is created. The badge

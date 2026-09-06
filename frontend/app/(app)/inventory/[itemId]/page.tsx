@@ -37,6 +37,7 @@ export default async function ItemDetailPage({
 
   const posts = await listPosts();
   const post = posts.find((candidate) => candidate.item_id === item.item_id);
+  const isTransferred = item.status === "Transferred";
   const rarity = ITEM_CONDITION[item.condition];
   const rest = items.filter(
     (candidate) =>
@@ -165,19 +166,30 @@ export default async function ItemDetailPage({
             <div className="flex items-center justify-between gap-3 border-b border-line p-5">
               <span className="flex items-center gap-2 text-body-sm font-semibold">
                 <Store aria-hidden className="size-4 text-ink-brand" />
-                {post ? t("inventory.onTheMarket") : t("inventory.notListed")}
+                {isTransferred
+                  ? "Transferred"
+                  : post
+                    ? t("inventory.onTheMarket")
+                    : t("inventory.notListed")}
               </span>
-              {post ? <ListingTypeBadge type={post.post_type} /> : null}
+              {post && !isTransferred ? (
+                <ListingTypeBadge type={post.post_type} />
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-3 p-5">
-              {post?.post_type !== "TradeOnly" && post ? (
+              {!isTransferred && post?.post_type !== "TradeOnly" && post ? (
                 <p data-numeric className="text-[2rem] leading-tight font-bold text-ink-brand">
                   ฿{post.price.toLocaleString("en-GB")}
                 </p>
               ) : null}
 
-              {post ? (
+              {isTransferred ? (
+                <p className="text-body-sm text-ink-secondary">
+                  This item has left your active inventory. Its listing and
+                  completed outcome remain visible above as history.
+                </p>
+              ) : post ? (
                 <>
                   <LinkButton size="lg" block href={`/inventory/${item.item_id}/list`}>
                     <Tag className="size-4" />
@@ -204,18 +216,24 @@ export default async function ItemDetailPage({
                 </>
               )}
 
-              <LinkButton
-                variant="ghost"
-                block
-                href={`/inventory/${item.item_id}/edit`}
-              >
-                <Pencil className="size-4" />
-                {t("inventory.editDetails")}
-              </LinkButton>
+              {!isTransferred ? (
+                <LinkButton
+                  variant="ghost"
+                  block
+                  href={`/inventory/${item.item_id}/edit`}
+                >
+                  <Pencil className="size-4" />
+                  {t("inventory.editDetails")}
+                </LinkButton>
+              ) : null}
             </div>
 
             <div className="bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
-              {post ? t("inventory.listedHint") : t("inventory.unlistedHint")}
+              {isTransferred
+                ? "Read-only history"
+                : post
+                  ? t("inventory.listedHint")
+                  : t("inventory.unlistedHint")}
             </div>
           </Surface>
         </aside>

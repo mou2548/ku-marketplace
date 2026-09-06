@@ -5,7 +5,12 @@ import { getMyAppeals } from "@/lib/api/appeals";
 import { getMyReports } from "@/lib/api/reports";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
-import { APPEAL_STATUS, REPORT_STATUS, TRANSACTION_STATUS } from "@/lib/status";
+import {
+  APPEAL_STATUS,
+  REPORT_STATUS,
+  TICKET_STATUS,
+  TRANSACTION_STATUS,
+} from "@/lib/status";
 
 /**
  * The notification log (E-series). There is no `/notifications` endpoint and
@@ -140,15 +145,20 @@ export async function getNotifications(): Promise<Notification[]> {
 
   for (const tk of tickets) {
     const waiting = tk.status === "Waiting";
+    const presentation = TICKET_STATUS[tk.status];
+    const bodyByStatus = {
+      Registered: `Your registration is recorded for ${tk.giveaway.quantity} available place${tk.giveaway.quantity === 1 ? "" : "s"}.`,
+      Waiting: `Your place is confirmed. Collect at ${tk.giveaway.pickup_location}.`,
+      Received: "The handover was completed.",
+      Not_Selected: "The allocation finished and you were not selected.",
+      Forfeited: "You voluntarily gave up this collection before the deadline.",
+      Expired: "The pickup deadline passed before collection.",
+    };
     out.push({
       notification_id: nid("giveaway", tk.ticket_id),
       kind: "giveaway",
-      title: waiting
-        ? `You have a giveaway ticket: ${tk.giveaway.item_name}`
-        : `Ticket ${tk.status.toLowerCase()}: ${tk.giveaway.item_name}`,
-      body: tk.giveaway.pickup_location
-        ? `Pickup at ${tk.giveaway.pickup_location}.`
-        : "Open the ticket for pickup details.",
+      title: `${tr(presentation.labelKey)}: ${tk.giveaway.item_name}`,
+      body: bodyByStatus[tk.status],
       href: `/giveaway/${tk.giveaway_id}/ticket/${tk.ticket_id}`,
       created_at: tk.updated_at,
       read: !waiting,
