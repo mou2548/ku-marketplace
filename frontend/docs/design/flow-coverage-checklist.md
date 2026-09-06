@@ -60,14 +60,14 @@ each row must finish as `Pass` or as an owner-approved `Blocked` item.
 | 3.1 | Giver creates a giveaway | `POST /giveaways` | `/post?type=giveaway` | Active giveaway appears in browse | Upload, validation, submit error | Mapped |
 | 3.2 | Recipient registers | `POST /giveaways/:id/join` | `/giveaway/:giveawayId` | Registration/ticket created | Duplicate, closed, busy/error | Mapped |
 | 3.3 | Capacity is visible before joining | Quantity/deadlines/progress in giveaway responses | Browse/detail/create/manage | Student sees registered/max and remaining places | Ghost/zero/error | Pass |
-| 3.4 | First Come fills available places | Row-locked join and unique entrant constraint | Detail join action | Final place closes registration immediately | Unit boundary passes; concurrent DB test pending | Mapped |
+| 3.4 | First Come fills available places | Row-locked join and unique entrant constraint | Detail join action | Final place closes registration immediately | Unit boundary and isolated-schema concurrent DB tests pass | Pass |
 | 3.5 | Underfilled Random guarantees everyone | Multi-recipient draw up to `quantity` | Detail draw action | All entrants selected when entrants ≤ capacity | 0/fewer/equal unit cases | Pass |
 | 3.6 | Oversubscribed Random draws winners | Unique shuffled selection capped at `quantity` | Detail draw action | Exactly `quantity` unique winners | More-than-capacity unit case | Pass |
 | 3.7 | Manual giver chooses recipients | `POST /giveaways/:id/select` | `/giveaway/:id/manage` | Selected recipients receive collection state | Empty/picked-count/API error | Mapped |
 | 3.8 | Winner opens collection ticket | QR generation endpoint | `/giveaway/:id/ticket/:ticketId` | Rotating/refreshable QR is visible | Invalid/expired/no-ticket | Mapped |
 | 3.9 | Giver scans winner QR | QR scan endpoint | `/giveaway/:id/manage` | Ticket `Received` | Invalid token and camera fallback | Mapped |
 | 3.10 | Winner voluntarily forfeits | Forfeit persists `Forfeited` owner-only | Ticket confirmation action | Distinct forfeited history | Busy/error | Pass |
-| 3.11 | Winner misses pickup deadline | Read/QR reconciliation persists `Expired` | Ticket/history | Distinct expired history | Scheduled worker still absent | Mapped |
+| 3.11 | Winner misses pickup deadline | Scheduled sweep plus read/QR reconciliation persists `Expired` | Ticket/history | Distinct expired history | Startup sweep and 15-second background interval | Pass |
 | 3.12 | Entrant is not selected | Draw/select persists `NotSelected` | Ticket/history/management | Distinct not-selected history | Full roster preserved | Pass |
 
 ## Flow 4 — auth, account, membership, and destinations
@@ -124,8 +124,6 @@ commit rather than promoted to `Pass` here.
 
 | Blocker | Required contract work |
 |---|---|
-| Exact-time giveaway expiry | A scheduled worker is still required to expire untouched tickets at the deadline; reads and QR actions reconcile them today. |
-| Concurrent First Come proof | Run an integration test with simultaneous joins against an isolated database before promoting row 3.4 to Pass. |
 | Completed-deal refund entry | Add or confirm a transition from `Completed` to `Pending Refund`. |
 
 Frontend code must not fabricate successful states for the remaining rows.

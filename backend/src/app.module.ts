@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     PostsModule,
     GiveawaysModule,
@@ -34,7 +36,11 @@ import { UsersModule } from './users/users.module';
     CloudinaryModule,
     UsersModule,
   ],
-  controllers: [AppController, TransactionsController, AdminTransactionEvidenceController],
+  controllers: [
+    AppController,
+    TransactionsController,
+    AdminTransactionEvidenceController,
+  ],
   providers: [AppService, TransactionsService],
 })
 export class AppModule {}
