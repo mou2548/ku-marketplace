@@ -28,7 +28,9 @@ import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/i18n/status-text";
 import { createGiveaway } from "@/lib/actions/giveaways";
+import { publishListing } from "@/lib/actions/posts";
 import type { ApiError } from "@/lib/api/client";
+import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
 import {
   ALLOCATION_METHOD,
@@ -180,16 +182,34 @@ export function PostComposer({
       return;
     }
 
-    // POST /posts is not wired yet — out of scope for the giveaway work this
-    // composer was touched for.
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show(
-      picked.size === 1
-        ? "Listed. It is live in the market now."
-        : `Listed ${picked.size} items. They are live in the market now.`,
-    );
-    router.push("/");
+    const pickedItems = items.filter((item) => picked.has(item.item_id));
+    try {
+      const created = await Promise.all(
+        pickedItems.map((item) =>
+          publishListing({
+            item_id: item.item_id,
+            post_type: kind,
+            price: wantsPrice ? Number(price) : 0,
+            quantity_total: item.quantity,
+          }),
+        ),
+      );
+
+      toast.show(
+        created.length === 1
+          ? "Listed. It is live in the market now."
+          : `Listed ${created.length} items. They are live in the market now.`,
+      );
+      router.push(
+        created.length === 1
+          ? `/market/${wireIdToNumber(created[0].post_id)}`
+          : "/",
+      );
+    } catch (error) {
+      toast.show((error as ApiError).message ?? "Could not publish the listing.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (items.length === 0) {
