@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ForgotPasswordForm } from "@/components/kit/auth/password-forms";
+import { Surface } from "@/components/kit/surface";
 import { OTP_TTL_MINUTES } from "@/lib/auth-rules";
 
 /**
@@ -12,11 +13,15 @@ export const metadata = { title: "Forgot password - KU Marketplace" };
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(165deg,#FAFAFA_0%,var(--page-background)_100%)] p-6">
-      <div className="flex w-full max-w-md flex-col gap-6 rounded-3xl bg-white p-8 shadow-elevated">
+    <main id="main" className="flex min-h-screen items-center justify-center bg-page p-6">
+      <Surface
+        shape="panel"
+        elevation="floating"
+        className="flex w-full max-w-md flex-col gap-6 p-8"
+      >
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold text-primary-dark">Forgot your password</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold text-ink">Forgot your password</h1>
+          <p className="text-sm text-ink-muted">
             Enter the university email you signed up with and we will email you
             a {OTP_TTL_MINUTES}-minute reset code.
           </p>
@@ -26,11 +31,11 @@ export default function ForgotPasswordPage() {
 
         <Link
           href="/login"
-          className="text-center text-sm text-muted-foreground hover:text-foreground"
+          className="text-center text-sm text-ink-muted hover:text-ink"
         >
           Back to sign in
         </Link>
-      </div>
-    </div>
+      </Surface>
+    </main>
   );
 }

@@ -149,7 +149,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                 alt=""
                 width={32}
                 height={32}
-                className="h-8 w-auto object-contain"
+                className="size-8 object-contain"
                 priority
               />
             </span>

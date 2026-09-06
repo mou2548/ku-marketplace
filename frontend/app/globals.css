@@ -100,6 +100,10 @@
   --bg-surface-raised: #ffffff;
   --bg-surface-sunken: var(--gray-100);
   --bg-surface-inverse: var(--gray-900);
+  /* Operational chrome stays dark in both themes. Unlike an inverse content
+     surface, admin navigation and a camera view must not flip to white when
+     the page switches to dark mode. */
+  --bg-immersive: var(--gray-900);
   /* Solid brand chrome: the header, hero bands, section headers. */
   --bg-brand-strong: var(--green-800);
   --bg-brand-band: var(--green-700);
@@ -430,6 +434,7 @@
   --bg-surface-raised: #2f3542;
   --bg-surface-sunken: #252a32;
   --bg-surface-inverse: #f1f2f6;
+  --bg-immersive: #0d0f12;
   --bg-brand-strong: #19432c;
   --bg-brand-band: #257248;
   --on-brand-strong: #ffffff;
@@ -566,6 +571,7 @@
   --color-surface-raised: var(--bg-surface-raised);
   --color-surface-sunken: var(--bg-surface-sunken);
   --color-surface-inverse: var(--bg-surface-inverse);
+  --color-immersive: var(--bg-immersive);
 
   --color-line: var(--border-subtle);
   --color-line-default: var(--border-default);

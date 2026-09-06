@@ -98,6 +98,28 @@ The following checks apply to every `Mapped` row before it becomes `Pass`:
 - Engineering: focused backend tests when available, frontend lint, TypeScript,
   production build, and `git diff --check`.
 
+## Visual route audit — 6 September 2026
+
+The consumer and admin route surfaces were rendered from live seeded data in both
+themes at 360, 768, and 1280 CSS pixels. The audit covered all 33 authenticated
+screens represented by the routes above, plus the login, forgot-password,
+reset-password, and email-verification screens. Dynamic routes used real seeded IDs
+and actor-specific sessions; the offer composer was also rechecked with its canonical
+`?post=` query.
+
+- No route crash, horizontal overflow, clipped primary action, or bottom-navigation
+  collision was visible in the six viewport/theme matrices.
+- The audit found and fixed inverted light surfaces in the dark-theme admin header,
+  QR scanner, forgot-password card, and reset-password card.
+- `/posts` is a raw diagnostic data route rather than a consumer screen; it is excluded
+  from visual acceptance and should not be linked from product navigation.
+- This is visual route coverage, not proof of every async and permission branch.
+  Rows remain `Mapped` until keyboard behavior and their loading, empty, success, and
+  backend-rejection states have been exercised as required by the matrix above.
+
+Production lint, type-check, and build results are recorded with the implementation
+commit rather than promoted to `Pass` here.
+
 ## Current blockers requiring backend scope
 
 | Blocker | Required contract work |

@@ -106,7 +106,7 @@ export function QrScanner({
   return (
     <div
       className={cn(
-        "relative flex min-h-dvh flex-col items-center justify-center gap-5 bg-surface-inverse p-6 text-white",
+        "relative flex min-h-dvh flex-col items-center justify-center gap-5 bg-immersive p-6 text-white",
         className,
       )}
     >
