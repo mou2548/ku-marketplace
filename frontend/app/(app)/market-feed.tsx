@@ -1,8 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
-import { Search, SlidersHorizontal, Store } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  SlidersHorizontal,
+  Store,
+} from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -52,6 +58,8 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<Set<ItemCategory>>(new Set());
   const [conditions, setConditions] = useState<Set<ItemCondition>>(new Set());
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const [filterScroll, setFilterScroll] = useState({ left: false, right: false });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -82,6 +90,29 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   );
 
   const activeFilters = categories.size + conditions.size;
+
+  useEffect(() => {
+    const bar = filterBarRef.current;
+    if (!bar) return;
+
+    const update = () => {
+      const maxScroll = bar.scrollWidth - bar.clientWidth;
+      setFilterScroll({
+        left: bar.scrollLeft > 4,
+        right: bar.scrollLeft < maxScroll - 4,
+      });
+    };
+
+    update();
+    bar.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+
+    return () => {
+      bar.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [availableCategories]);
 
   function toggle<T>(set: Set<T>, value: T, apply: (next: Set<T>) => void) {
     const next = new Set(set);
@@ -215,18 +246,40 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
           </OverlayTrigger>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="shrink-0">{segmentTabs}</div>
-          <span aria-hidden className="h-7 w-px shrink-0 bg-line" />
-          {availableCategories.map((cat) => (
-            <FilterChip
-              key={cat}
-              isActive={categories.has(cat)}
-              onToggle={() => toggle(categories, cat, setCategories)}
-            >
-              {cat}
-            </FilterChip>
-          ))}
+        <div className="relative min-w-0">
+          <div
+            ref={filterBarRef}
+            className="flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <div className="shrink-0">{segmentTabs}</div>
+            <span aria-hidden className="h-7 w-px shrink-0 bg-line" />
+            {availableCategories.map((cat) => (
+              <FilterChip
+                key={cat}
+                isActive={categories.has(cat)}
+                onToggle={() => toggle(categories, cat, setCategories)}
+              >
+                {cat}
+              </FilterChip>
+            ))}
+          </div>
+
+          {filterScroll.left ? (
+            <FilterScrollButton
+              direction="left"
+              onPress={() =>
+                filterBarRef.current?.scrollBy({ left: -240, behavior: "smooth" })
+              }
+            />
+          ) : null}
+          {filterScroll.right ? (
+            <FilterScrollButton
+              direction="right"
+              onPress={() =>
+                filterBarRef.current?.scrollBy({ left: 240, behavior: "smooth" })
+              }
+            />
+          ) : null}
         </div>
       </div>
 
@@ -260,6 +313,37 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
                 ))}
               </MasonryGrid>
           )}
+    </div>
+  );
+}
+
+function FilterScrollButton({
+  direction,
+  onPress,
+}: {
+  direction: "left" | "right";
+  onPress: () => void;
+}) {
+  const Icon = direction === "left" ? ChevronLeft : ChevronRight;
+  const label = direction === "left" ? "Show previous filters" : "Show more filters";
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-y-0 flex w-14 items-center",
+        direction === "left"
+          ? "left-0 justify-start bg-gradient-to-r from-page via-page/95 to-transparent"
+          : "right-0 justify-end bg-gradient-to-l from-page via-page/95 to-transparent",
+      )}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onPress}
+        className="pointer-events-auto grid size-9 place-items-center rounded-pill border border-line bg-surface text-ink-secondary shadow-raised transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        <Icon aria-hidden className="size-4" />
+      </button>
     </div>
   );
 }
