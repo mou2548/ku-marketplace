@@ -399,7 +399,7 @@ export function ItemForm({
         rows={5}
       />
 
-      <div className="sticky action-bar-bottom z-[20] flex gap-2 lg:static">
+      <div className="sticky action-bar-bottom z-[20] flex gap-2 rounded-card bg-surface/95 p-2 shadow-floating backdrop-blur-sm lg:static lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
         <Button
           variant="secondary"
           block

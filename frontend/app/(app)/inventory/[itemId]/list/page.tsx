@@ -86,9 +86,8 @@ export default async function ListItemPage({
 
   return (
     <TwoColumn
-      rail={preview}
+      rail={<div className="hidden lg:block">{preview}</div>}
       railSide="left"
-      railFirst
       columns="22rem minmax(0,1fr)"
       className="gap-8"
     >
