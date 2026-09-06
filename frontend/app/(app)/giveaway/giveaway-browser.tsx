@@ -71,7 +71,7 @@ export function GiveawayBrowser({
             />
           ) : (
             <MasonryGrid
-              columns={{ base: 2, md: 3, lg: 4, xl: 5 }}
+              columns={{ base: 1, md: 2, lg: 3, xl: 4 }}
               className="pt-1"
             >
               {open.map((g) => (
@@ -115,10 +115,16 @@ export function GiveawayBrowser({
                             location: ticket.giveaway.pickup_location,
                           })}
                         </p>
+                        <StatusBadge
+                          status={TICKET_STATUS[ticket.status]}
+                          size="sm"
+                          className="mt-2 w-fit max-w-full sm:hidden"
+                        />
                       </div>
                       <StatusBadge
                         status={TICKET_STATUS[ticket.status]}
                         size="sm"
+                        className="hidden shrink-0 sm:inline-flex"
                       />
                     </Surface>
                   </Link>
@@ -148,8 +154,8 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
           <PostImage
             src={image}
             alt={giveaway.item_name}
-            aspectRatio={0.9}
-            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw"
+            aspectRatio={1.35}
+            sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 25vw"
             className="transition-transform duration-[--dur-slow] ease-[--ease-out] group-hover/drop:scale-[1.025]"
           />
           <span
@@ -181,7 +187,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
             {giveaway.pickup_location}
           </p>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
             {giveaway.register_deadline ? (
               <CountdownPill
                 deadline={{
@@ -195,10 +201,12 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
             ) : null}
             <span
               data-numeric
-              className="flex items-center gap-1 text-meta text-ink-muted"
+              className="flex items-center gap-1.5 text-caption font-medium text-ink-secondary"
             >
               <Users aria-hidden className="size-3.5" />
-              {giveaway.registered_count}/{giveaway.quantity}
+              {giveaway.registered_count} registered
+              <span aria-hidden className="text-ink-disabled">·</span>
+              {giveaway.quantity} recipient {giveaway.quantity === 1 ? "place" : "places"}
             </span>
           </div>
 
