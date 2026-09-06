@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getMyItems } from "@/lib/api/items";
+import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 
@@ -45,6 +45,20 @@ export default async function InventoryPage() {
    * from them.
    */
   const listedItemIds = posts.map((p) => p.item_id);
+  const summaries = Object.fromEntries(
+    await Promise.all(
+      items.map(async (item) => [
+        item.item_id,
+        await getItemHistorySummary(item.item_id).catch(() => undefined),
+      ] as const),
+    ),
+  );
 
-  return <InventoryScreen items={items} listedItemIds={listedItemIds} />;
+  return (
+    <InventoryScreen
+      items={items}
+      listedItemIds={listedItemIds}
+      summaries={summaries}
+    />
+  );
 }

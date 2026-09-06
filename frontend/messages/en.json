@@ -76,6 +76,10 @@
       "Not_Selected": {
         "label": "Not selected"
       },
+      "Forfeited": {
+        "label": "Forfeited",
+        "hint": "You gave up this collection before the pickup deadline"
+      },
       "Expired": {
         "label": "Pickup window closed"
       }
@@ -91,6 +95,12 @@
       },
       "Not_Selected": {
         "label": "Not selected"
+      },
+      "Forfeited": {
+        "label": "Forfeited"
+      },
+      "Expired": {
+        "label": "Missed pickup"
       }
     },
     "allocation": {

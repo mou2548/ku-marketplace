@@ -14,6 +14,7 @@ import {
   Plus,
   Sparkles,
   Store,
+  Users,
 } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
@@ -97,11 +98,9 @@ export function PostComposer({
 
   // Giveaway terms.
   const [place, setPlace] = useState("");
+  const [giveawayQuantity, setGiveawayQuantity] = useState("1");
   const [method, setMethod] = useState<AllocationMethod>("Random");
   const [closeAt, setCloseAt] = useState<DateValue | null>(
-    today(tz).add({ days: 2 }),
-  );
-  const [pickupFrom, setPickupFrom] = useState<DateValue | null>(
     today(tz).add({ days: 2 }),
   );
   const [pickupTo, setPickupTo] = useState<DateValue | null>(
@@ -117,7 +116,10 @@ export function PostComposer({
   const canPublish =
     picked.size > 0 &&
     (isGiveaway
-      ? place.trim().length > 0 && !!closeAt
+      ? place.trim().length > 0 &&
+        Number(giveawayQuantity) > 0 &&
+        !!closeAt &&
+        !!pickupTo
       : !wantsPrice || Number(price) > 0);
 
   function toggle(id: number) {
@@ -136,9 +138,8 @@ export function PostComposer({
       // POST /giveaways, once per selected item. A giveaway carries the
       // item's name, description and primary image across because the
       // giveaway table has no item_id to point at (docs/design/api-gaps.md
-      // §1). `pickupFrom`/`pickupTo` have nowhere to go — the backend has one
-      // deadline field, not a signup window and a separate pickup window
-      // (api-gaps.md §8) — so only `closeAt` is sent.
+      // §1). Capacity and the separate registration/pickup deadlines are sent
+      // explicitly. Collection has one final deadline in the API.
       const pickedItems = items.filter((i) => picked.has(i.item_id));
       try {
         const created = [];
@@ -147,10 +148,16 @@ export function PostComposer({
           created.push(
             await createGiveaway({
               item_name: item.name,
+              quantity: Number(giveawayQuantity),
               description: description || item.description || undefined,
               pickup_location: place,
               allocation_method: method,
-              pickup_deadline: closeAt ? closeAt.toDate(tz).toISOString() : undefined,
+              register_deadline: closeAt
+                ? closeAt.toDate(tz).toISOString()
+                : undefined,
+              pickup_deadline: pickupTo
+                ? pickupTo.toDate(tz).toISOString()
+                : undefined,
               images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
             }),
           );
@@ -408,6 +415,18 @@ export function PostComposer({
                 placeholder="e.g. Outside Engineering Building 1"
               />
 
+              <TextInput
+                label="Maximum recipients"
+                value={giveawayQuantity}
+                onChange={(value) =>
+                  setGiveawayQuantity(value.replace(/\D/g, ""))
+                }
+                inputMode="numeric"
+                isRequired
+                icon={<Users className="size-4" />}
+                hint="The number of people who can receive this giveaway"
+              />
+
               {/* Radio cards, not a dropdown: the three options carry three
                   different social contracts and the giver is choosing on
                   behalf of everyone who will register (research R7). */}
@@ -443,20 +462,13 @@ export function PostComposer({
                 hint="At this point recipients are chosen by the method above and a chat room opens for them"
               />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <DatePickerField
-                  label="Pickup opens"
-                  value={pickupFrom}
-                  onChange={setPickupFrom}
-                  minValue={closeAt ?? today(tz)}
-                />
-                <DatePickerField
-                  label="Pickup closes"
-                  value={pickupTo}
-                  onChange={setPickupTo}
-                  minValue={pickupFrom ?? today(tz)}
-                />
-              </div>
+              <DatePickerField
+                label="Pickup deadline"
+                value={pickupTo}
+                onChange={setPickupTo}
+                minValue={closeAt?.add({ days: 1 }) ?? today(tz)}
+                hint="Selected recipients must collect by this date"
+              />
 
               <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
                 Recipients who do not collect within this window lose their

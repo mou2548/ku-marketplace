@@ -248,6 +248,7 @@ export type TicketStatus =
   | "Waiting"
   | "Received"
   | "Not_Selected"
+  | "Forfeited"
   | "Expired";
 
 export const TICKET_STATUS: Record<TicketStatus, StatusPresentation> = {
@@ -266,16 +267,26 @@ export const TICKET_STATUS: Record<TicketStatus, StatusPresentation> = {
   Received: { tone: "success", labelKey: "ticket.Received.label", icon: "PartyPopper" },
   // Losing the draw is an outcome the entrant paid attention for, not a no-op.
   Not_Selected: { tone: "danger", labelKey: "ticket.Not_Selected.label", icon: "CircleX" },
+  Forfeited: {
+    tone: "neutral",
+    labelKey: "ticket.Forfeited.label",
+    icon: "Undo2",
+    hintKey: "ticket.Forfeited.hint",
+  },
   Expired: { tone: "danger", labelKey: "ticket.Expired.label", icon: "TimerOff" },
 };
 
 /**
  * The roster view of a ticket, for the giver looking at a list of entrants.
- * Coarser than `TicketStatus` on purpose: Waiting, Received and Expired all
- * collapse to `Selected`, because from the roster's point of view the place
- * was theirs regardless of what they did with it (see `getEntrants`).
+ * Roster-facing outcomes. Waiting and Received collapse to Selected because
+ * both mean a place was allocated; forfeiture and expiry stay distinct.
  */
-export type EntrantStatus = "Registered" | "Selected" | "Not_Selected";
+export type EntrantStatus =
+  | "Registered"
+  | "Selected"
+  | "Not_Selected"
+  | "Forfeited"
+  | "Expired";
 
 export const ENTRANT_STATUS: Record<EntrantStatus, StatusPresentation> = {
   Registered: {
@@ -291,6 +302,8 @@ export const ENTRANT_STATUS: Record<EntrantStatus, StatusPresentation> = {
     hintKey: "entrant.Selected.hint",
   },
   Not_Selected: { tone: "danger", labelKey: "entrant.Not_Selected.label", icon: "CircleX" },
+  Forfeited: { tone: "neutral", labelKey: "entrant.Forfeited.label", icon: "Undo2" },
+  Expired: { tone: "danger", labelKey: "entrant.Expired.label", icon: "TimerOff" },
 };
 
 export type AllocationMethod = "FirstCome" | "Random" | "Manual";

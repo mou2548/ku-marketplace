@@ -18,15 +18,11 @@ Consequences accepted:
   has been given away still reads `Listed` or `Unlisted` in the inventory.
 - Editing the item afterwards does not update the giveaway.
 
-## 2. A giveaway has no capacity
+## 2. Giveaway capacity is explicit
 
-There is no column for how many places a giveaway has. `FirstCome` therefore
-cannot show "3 of 5 taken", which is the one number that method exists to
-communicate, and the giver cannot state up front how many people will be
-chosen.
-
-The UI shows `registered_count` alone, and the allocation-method hint explains
-how places are handed out without promising a number.
+Resolved. `quantity` is the maximum recipient count and the API returns
+participant count, remaining places, and registration-open state. The create,
+browse, detail, and management screens all expose that same value.
 
 ## 3. There is no profile endpoint, so a person is not a destination
 
@@ -44,19 +40,12 @@ readable names matching the seed, because the per-category extra fields
 something known at build time. If the endpoint ever returns a category not in
 that map, it simply gets no extra fields, which is the correct fallback.
 
-## 5. Entrant allocation state is derived, not returned
+## 5. Entrant allocation state is explicit
 
-There is no endpoint that says which entrants were selected. `getEntrants` in
-`lib/api/fixtures.ts` derives it from each entrant's ticket status —
-`Waiting`/`Received`/`Expired` mean the place was theirs, `Not_Selected` means it
-was not. A real client will have to do the same join over the ticket list.
-
-The same roster gives a `FirstCome` entrant their queue position while they are
-still `Registered` (`getQueuePosition`, sorting `Entrant.registered_at`), which
-matches `flow3.png`'s "system grants places in order of registration time."
-There is still no capacity column (see gap 2 above), so the position is honest
-about rank but cannot say how many ranks win — `GET /giveaways/{id}/recipients`
-would need to answer that, or the frontend would need to keep guessing.
+Resolved by the capacity and ticket-outcome contract. Recipient rows now carry
+both a plain-language outcome and the stored ticket status, while giveaway rows
+carry quantity, participant count, remaining places, and registration-open state.
+The frontend no longer derives winners or queue capacity from timestamps.
 
 ## 6. A chat room has no members
 
@@ -205,80 +194,31 @@ anywhere consumes it. The access token is 15 minutes
 to match that lifetime and simply expires with it. No silent-refresh logic
 exists to write, and there is nothing to build it against.
 
-## 8. Giveaway Allocation System — what `lib/api/giveaways.ts` adapts around
+## 8. Giveaway Allocation System — remaining adapter boundaries
 
-The 9 endpoints in the spec's "Giveaway Allocation System" table are all wired
-now (`giveaway-detail.tsx`, `manage-giveaway.tsx`,
-`giveaway/[giveawayId]/ticket/[ticketId]/ticket-screen.tsx`,
-`post-composer.tsx`'s giveaway branch). Two of them — `POST /giveaways` and
-`POST /giveaways/{id}/join` — used to require `giver_id`/`receiver_id` in the
-body; the backend now reads both from the JWT (`@CurrentUser()`), matching the
-spec's request examples (empty body for `join`, no `giver_id` for `create`).
-What is still adapted around, not fixed, because it would mean inventing a
-backend capability rather than reading one that exists:
+Capacity, registration deadline, pickup deadline, and ticket outcomes are now
+explicit API values. `Registered`, `Waiting`, `NotSelected`, `Received`,
+`Forfeited`, and `Expired` are preserved directly; the frontend no longer uses a
+timestamp heuristic. First Come closes atomically at capacity, and Random selects
+up to the configured quantity (including the under-capacity all-win case).
 
-- **One deadline field, not two.** `GiveawayPost` has `pickup_deadline` only.
-  The UI's "registration closes" countdown and "collect by" date are the same
-  timestamp shown twice — there is no separate signup window and pickup
-  window. `pickup_start_date`/`pickup_end_date` on the frontend `GiveawayPost`
-  type are always `null` from the real API; `post-composer.tsx` still collects
-  a pickup-open/pickup-close range from the giver, but only `closeAt` is ever
-  sent, because there is nowhere to send the rest.
-- **No standalone profile endpoint, but names are no longer fabricated.**
-  There is still no `GET /users/{id}` (§3 still applies for "what else is this
-  person selling?" and for a name-as-link), but `giveaways.service.ts` now
-  includes the `giver`/`receiver` relation and returns a `{ user_id, name,
-  isVerified }` summary alongside every id it names — `create`, `findAll`,
-  `detail`, `join`, `draw`, `select`, and `recipients` all carry it.
-  `giveaways.ts`'s `toUserSummary` reads that summary and only falls back to
-  `placeholderUser`'s `User #<id>` if it is missing. The Manual giver's
-  "choose recipients" list (`ManageGiveaway`) shows real names now, not ids.
-- **`ticket_status` is `Waiting | Received | Expired`, nothing else.**
-  `Waiting` means "pending the draw" before a Random/Manual giveaway closes
-  and "ready to collect" after — `deriveTicketStatus` in `giveaways.ts` tells
-  them apart using the giveaway's own `status`/`allocation_method`, not the
-  ticket alone. Worse, `Expired` is written for three different real events —
-  lost the draw, forfeited voluntarily, and timed out uncollected (spec
-  §5.4/§5.5 want these as separate, auditable states) — with no field that
-  says which. The best available signal is whether the status changed before
-  or after `pickup_deadline`; `deriveTicketStatus` uses that as a heuristic
-  (`Not_Selected` before, `Expired` after) and forfeited tickets are
-  indistinguishable from lost-the-draw ones under it.
-- **No automatic timeout.** Spec §5.4 says a ticket "changes to timed-out
-  automatically" past the pickup deadline. Nothing server-side does this —
-  `ticket_status` only ever changes on an explicit `select`/`draw`/`forfeit`/
-  `qr/scan` call. A ticket that is never scanned and never forfeited stays
-  `Waiting` forever; the heuristic above only fires once *something* has
-  written `Expired` to that row.
-- **`GET /giveaways/{id}/recipients` only returns live tickets.** Filtered to
-  `Waiting`/`Received` server-side, so a forfeited or expired ticket
-  disappears from it entirely rather than showing up with that status. This
-  is also the endpoint `getMyTicket` and the giveaway ticket route reuse to
-  answer "does the viewer hold a ticket for this giveaway" — once that ticket
-  expires or is forfeited, the answer silently reverts to "no", and the
-  ticket page 404s instead of showing why.
-- **Nobody calls `POST /giveaways/{id}/draw` unless a person does.** The
-  backend does not run the draw when the deadline passes. `giveaway-detail.tsx`
-  now shows the Random giver a "Run the draw" button (not in the spec's
-  screens, but without it a Random giveaway can never resolve); FirstCome has
-  no equivalent because a `Waiting` ticket already *is* the win — `join()`
-  never rejects on capacity, so first-come-first-served currently has no
-  capacity limit either (no column for one).
-- **`GET /giveaways` (list) was added, outside the spec table.** The "Open"
-  tab in `giveaway/page.tsx` (`GiveawayBrowser`) now reads real data via
-  `getGiveaways()` in `lib/api/giveaways.ts` — a newly created giveaway used
-  to be invisible everywhere (the create call succeeded, but nothing linked
-  to it) because this endpoint didn't exist yet and the browse tab still read
-  `lib/api/fixtures.ts`. `giveaways.service.ts`'s `findAll()` returns every
-  giveaway regardless of status, same as `detail()`; the frontend still does
-  the `status === "Active"` filtering for the tab.
-- **"My tickets" still has no endpoint and is still mock.** The "My entries"
-  tab is the one piece of `giveaway/page.tsx` still on `lib/api/fixtures.ts`
-  — there is no reverse lookup from a user to their tickets anywhere in the
-  spec. The standalone ticket route moved from `/giveaway/ticket/[id]` to
-  `/giveaway/[giveawayId]/ticket/[ticketId]` for the same root cause: there
-  is no `GET` for a single ticket by its own id, only by giveaway id via
-  `recipients`, so the route now carries both.
+The remaining gaps are narrower:
+
+- There is no standalone `GET /users/{id}`. Giveaway responses include compact
+  giver/receiver summaries, but the UI cannot link those names to a full public
+  profile or query everything else that person is offering.
+- There is no `GET /giveaway-tickets/me` or single-ticket read endpoint. "My
+  entries", history, and the ticket route rebuild the viewer's ticket by querying
+  the full recipient roster of each giveaway. This is correct but produces a
+  bounded N+1 request pattern.
+- Random allocation still requires the giver to press "Run the draw"; no scheduled
+  worker runs automatically when `register_deadline` passes.
+- Pickup expiry is reconciled when the recipient roster or QR endpoints are read.
+  There is no background worker that updates untouched tickets exactly at the
+  deadline.
+- `GET /giveaways` remains an application endpoint outside the original endpoint
+  table. It returns all statuses; the browser uses the explicit
+  `registration_open` field for its Open tab.
 
 ## 9. Report & Moderation (§7) — what adapts around real gaps
 

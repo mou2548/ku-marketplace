@@ -91,6 +91,15 @@ export interface Item {
   images: ItemImage[];
 }
 
+export interface ItemHistorySummary {
+  item_id: number;
+  inventory_quantity: number;
+  posted_quantity: number;
+  currently_listed_quantity: number;
+  sold_quantity: number;
+  traded_quantity: number;
+}
+
 export interface Post {
   post_id: number;
   item_id: number;
@@ -192,15 +201,17 @@ export interface GiveawayPost {
   pickup_location: string;
   giver_id: number;
   allocation_method: AllocationMethod;
-  registered_deadline?: string | null;
-  pickup_start_date?: string | null;
-  pickup_end_date?: string | null;
+  quantity: number;
+  register_deadline?: string | null;
+  pickup_deadline?: string | null;
+  registration_open: boolean;
+  remaining_slots: number;
+  all_registered_guaranteed: boolean;
   status: "Active" | "Closed" | "Completed";
   created_at: string;
   images: Array<{ image_id: number; image_url: string; display_order: number }>;
   giver: UserSummary;
-  /** Client-side aggregate for the card. */
-  registered_count?: number;
+  registered_count: number;
 }
 
 export interface GiveawayTicket {
@@ -214,11 +225,8 @@ export interface GiveawayTicket {
 }
 
 /**
- * Who else is in a giveaway's group chat room. Built from
- * `GET /giveaways/{id}/recipients` (`lib/api/giveaways.ts`'s `getEntrants`),
- * which only ever returns a `Waiting`/`Received` ticket — a forfeited or
- * expired one drops out of this list entirely rather than showing up as
- * `Not_Selected`. See docs/design/api-gaps.md §8.
+ * Who else is in a giveaway's group chat room. Built from the full recipient
+ * roster, including allocation and collection outcomes.
  */
 export interface Entrant {
   receiver_id: number;

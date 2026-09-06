@@ -42,25 +42,23 @@ export function GiveawayDetail({
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
-  const [joined, setJoined] = useState(!!ticket);
+  const [joinedStatus, setJoinedStatus] = useState(ticket?.status);
   const [busy, setBusy] = useState(false);
   const [drawing, setDrawing] = useState(false);
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
 
-  // The backend has one deadline field, not a separate signup window and
-  // pickup window (docs/design/api-gaps.md §8) — it stands in for both here.
-  const drawDeadline = giveaway.registered_deadline
+  const drawDeadline = giveaway.register_deadline
     ? {
         kind: "giveaway-pickup" as const,
-        expiresAt: Date.parse(giveaway.registered_deadline),
+        expiresAt: Date.parse(giveaway.register_deadline),
         labelKey: "deadline.draw.label",
         onExpiry: "forfeit" as const,
       }
     : undefined;
 
-  const pickupBy = giveaway.registered_deadline
-    ? new Date(giveaway.registered_deadline).toLocaleDateString(
+  const pickupBy = giveaway.pickup_deadline
+    ? new Date(giveaway.pickup_deadline).toLocaleDateString(
         locale === "th" ? "th-TH" : "en-GB",
         { day: "numeric", month: "short" },
       )
@@ -69,9 +67,13 @@ export function GiveawayDetail({
   async function join() {
     setBusy(true);
     try {
-      await joinGiveaway(giveaway.giveaway_id);
-      setJoined(true);
-      toast.show("Registered. Wait for the draw.");
+      const joined = await joinGiveaway(giveaway.giveaway_id);
+      setJoinedStatus(joined.status);
+      toast.show(
+        joined.status === "Waiting"
+          ? "Your place is confirmed. Open your ticket when you collect."
+          : "Registered. Wait for the result.",
+      );
       router.refresh();
     } catch (error) {
       toast.show((error as ApiError).message ?? "Could not register. Try again.");
@@ -138,6 +140,15 @@ export function GiveawayDetail({
           </p>
           {drawDeadline ? <CountdownPill deadline={drawDeadline} showLabel /> : null}
         </Notice>
+          {giveaway.all_registered_guaranteed ? (
+            <Notice tone="success">
+              <p className="text-body-sm font-medium text-tone-success-fg">
+                Registration has closed with no more than {giveaway.quantity}{" "}
+                entrant{giveaway.quantity === 1 ? "" : "s"}. Everyone registered
+                receives a place; no random elimination is needed.
+              </p>
+            </Notice>
+          ) : null}
         </div>
 
         <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
@@ -172,9 +183,19 @@ export function GiveawayDetail({
               {giveaway.registered_count ? (
                 <p data-numeric className="flex items-center gap-2 text-body-sm text-ink-muted">
                   <Users aria-hidden className="size-4 shrink-0" />
-                  {t("giveaway.registered", {
-                    count: giveaway.registered_count,
-                  })}
+                  {giveaway.registered_count}/{giveaway.quantity} registered
+                </p>
+              ) : (
+                <p data-numeric className="flex items-center gap-2 text-body-sm text-ink-muted">
+                  <Users aria-hidden className="size-4 shrink-0" />
+                  0/{giveaway.quantity} registered
+                </p>
+              )}
+              {giveaway.allocation_method === "FirstCome" ? (
+                <p data-numeric className="text-caption text-ink-secondary">
+                  {giveaway.remaining_slots > 0
+                    ? `${giveaway.remaining_slots} place${giveaway.remaining_slots === 1 ? "" : "s"} left`
+                    : "All places have been allocated"}
                 </p>
               ) : null}
 
@@ -202,8 +223,9 @@ export function GiveawayDetail({
                   Run the draw
                 </Button>
                 <p className="text-caption leading-[1.6] text-ink-secondary">
-                  Picks one entrant at random and closes registration. This
-                  cannot be undone.
+                  Selects up to {giveaway.quantity} recipients and closes
+                  registration. If registrations do not exceed that number,
+                  everyone receives a place.
                 </p>
               </div>
             ) : (
@@ -235,16 +257,20 @@ export function GiveawayDetail({
               Open my ticket
             </LinkButton>
           </div>
-        ) : joined ? (
+        ) : joinedStatus ? (
           <Notice tone="success">
             <p className="text-body font-medium text-tone-success-fg">
-              Registered. Waiting for the draw.
+              {joinedStatus === "Waiting"
+                ? "Your place is confirmed."
+                : "Registered. Waiting for the result."}
             </p>
             <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
-              If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page.
+              {joinedStatus === "Waiting"
+                ? "First come, first served confirms your place immediately. Open this page again to show your collection QR."
+                : "If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page."}
             </p>
           </Notice>
-        ) : giveaway.status === "Active" ? (
+        ) : giveaway.registration_open ? (
           <Button size="lg" block isLoading={busy} onPress={join}>
             <Gift className="size-5" />
             Register for this giveaway

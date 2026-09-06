@@ -1,6 +1,6 @@
 import { apiFetch } from "./client";
 import { authHeader, getCurrentUserId } from "./session";
-import type { Item } from "./types";
+import type { Item, ItemHistorySummary } from "./types";
 
 /** Raw `/items` shape — camelCase, straight off Prisma. */
 interface RawItemImage {
@@ -77,6 +77,15 @@ export async function getItems(): Promise<Item[]> {
 /** `GET /items/:item_id` — public. */
 export async function getItem(id: number): Promise<Item> {
   return toItem(await apiFetch<RawItem>(`/items/${id}`));
+}
+
+/** Owner-only completed outcome totals for one inventory item. */
+export async function getItemHistorySummary(
+  id: number,
+): Promise<ItemHistorySummary> {
+  return apiFetch<ItemHistorySummary>(`/items/${id}/history-summary`, {
+    headers: await authHeader(),
+  });
 }
 
 /**

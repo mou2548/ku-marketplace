@@ -23,7 +23,7 @@ import type { ApiError } from "@/lib/api/client";
 import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
 import { decodeTicketQr } from "@/lib/giveaway-qr";
-import { ALLOCATION_METHOD } from "@/lib/status";
+import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,9 +31,8 @@ import { cn } from "@/lib/utils";
  * FirstCome allocates on registration and Random is drawn by the system, and
  * neither leaves a giver anything to decide.
  *
- * `entrants` is `GET /giveaways/{id}/recipients` before this giveaway has
- * been drawn — every row is still `selected` (the backend's `Waiting`) until
- * `select()` runs. There is no registration timestamp in that response, so
+ * `entrants` is the complete roster, including explicit allocation outcomes.
+ * There is no registration timestamp in that response, so
  * the list is shown in the order the API returns it (ticket id ascending,
  * i.e. join order) rather than a fabricated clock time.
  */
@@ -52,10 +51,10 @@ export function ManageGiveaway({
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
 
-  const deadline = giveaway.registered_deadline
+  const deadline = giveaway.register_deadline
     ? {
         kind: "giveaway-pickup" as const,
-        expiresAt: Date.parse(giveaway.registered_deadline),
+        expiresAt: Date.parse(giveaway.register_deadline),
         labelKey: "deadline.registration-closes.label",
         onExpiry: "forfeit" as const,
       }
@@ -65,7 +64,7 @@ export function ManageGiveaway({
     setPicked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
-      else next.add(id);
+      else if (next.size < giveaway.quantity) next.add(id);
       return next;
     });
   }
@@ -144,7 +143,8 @@ export function ManageGiveaway({
             Entrants
           </h2>
           <span data-numeric className="text-caption text-ink-muted">
-            {entrants.length} registered
+            {entrants.filter((entry) => entry.ticket_status === "Registered").length}{" "}
+            waiting · {giveaway.quantity} places
           </span>
         </div>
 
@@ -172,6 +172,7 @@ export function ManageGiveaway({
                   <Checkbox
                     isSelected={picked.has(e.receiver_id)}
                     onChange={() => toggle(e.receiver_id)}
+                    isDisabled={e.ticket_status !== "Registered"}
                     aria-label={`Select ${e.user.name}`}
                   />
 
@@ -183,6 +184,11 @@ export function ManageGiveaway({
                       year={e.user.year}
                     />
                   </div>
+
+                  <StatusBadge
+                    status={TICKET_STATUS[e.ticket_status]}
+                    size="sm"
+                  />
 
                   {/* No registration timestamp in the API response — the
                       list itself is already in join order (ticket id
@@ -228,7 +234,8 @@ export function ManageGiveaway({
           onPress={confirmSelection}
         >
           <Users className="size-4" />
-          Confirm {picked.size} recipient{picked.size === 1 ? "" : "s"}
+          Confirm {picked.size}/{giveaway.quantity} recipient
+          {picked.size === 1 ? "" : "s"}
         </Button>
       </div>
     </div>

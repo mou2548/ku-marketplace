@@ -33,10 +33,9 @@ export default async function DealsPage() {
     getGiveaways(),
   ]);
 
-  // There is no "my tickets" endpoint — check each giveaway for a live ticket
-  // the viewer holds. Same bounded N+1 the chat inbox already accepts
-  // (`rooms-query.ts`); a forfeited or expired ticket drops out here, same as
-  // it does there (docs/design/api-gaps.md §8).
+  // There is no "my tickets" endpoint — check each giveaway for the viewer's
+  // ticket. The full roster keeps forfeited, expired, and not-selected history
+  // visible instead of silently dropping those outcomes.
   const tickets = (
     await Promise.all(
       giveaways.map((giveaway) =>

@@ -37,7 +37,7 @@ each row must finish as `Pass` or as an owner-approved `Blocked` item.
 | 1.19 | Buyer requests refund after completion | No dedicated transition exists | No truthful entry action | Transaction `Pending Refund` | Cannot represent | Blocked |
 | 1.20 | Seller uploads refund evidence | `POST /transactions/:id/refund-slip` | `/history/:txId` or chat action card | Buyer can confirm refund | Upload busy/error | Mapped |
 | 1.21 | Buyer confirms refund | `POST /transactions/:id/confirm-refund` | `/history/:txId` or chat action card | Transaction `Refunded` | Busy/error | Mapped |
-| 1.22 | Owner reads item outcome totals | Endpoint does not exist | Planned `/inventory` summary | Listed, sold, and traded unit totals | Ghost, zero, endpoint error | Blocked |
+| 1.22 | Owner reads item outcome totals | `GET /items/:itemId/history-summary` | `/inventory` and `/inventory/:itemId` | Listed, sold, and traded unit totals | Ghost, zero, endpoint error | Pass |
 
 ## Flow 2 — report, sanction, and appeal
 
@@ -59,16 +59,16 @@ each row must finish as `Pass` or as an owner-approved `Blocked` item.
 |---|---|---|---|---|---|---|
 | 3.1 | Giver creates a giveaway | `POST /giveaways` | `/post?type=giveaway` | Active giveaway appears in browse | Upload, validation, submit error | Mapped |
 | 3.2 | Recipient registers | `POST /giveaways/:id/join` | `/giveaway/:giveawayId` | Registration/ticket created | Duplicate, closed, busy/error | Mapped |
-| 3.3 | Capacity is visible before joining | `Giveaway_Post.quantity` is absent from Prisma/API | Browse/detail/create/manage | Student sees registered/max and remaining places | Ghost/zero/error | Blocked |
-| 3.4 | First Come fills available places | Join has no atomic capacity check | Detail join action | Final place closes registration immediately | Concurrent-final-place case | Blocked |
-| 3.5 | Underfilled Random guarantees everyone | Draw selects exactly one ticket | Detail draw action | All entrants selected when entrants ≤ capacity | 0/fewer/equal cases | Blocked |
-| 3.6 | Oversubscribed Random draws winners | Draw selects exactly one ticket | Detail draw action | Exactly `quantity` unique winners | More-than-capacity case | Blocked |
+| 3.3 | Capacity is visible before joining | Quantity/deadlines/progress in giveaway responses | Browse/detail/create/manage | Student sees registered/max and remaining places | Ghost/zero/error | Pass |
+| 3.4 | First Come fills available places | Row-locked join and unique entrant constraint | Detail join action | Final place closes registration immediately | Unit boundary passes; concurrent DB test pending | Mapped |
+| 3.5 | Underfilled Random guarantees everyone | Multi-recipient draw up to `quantity` | Detail draw action | All entrants selected when entrants ≤ capacity | 0/fewer/equal unit cases | Pass |
+| 3.6 | Oversubscribed Random draws winners | Unique shuffled selection capped at `quantity` | Detail draw action | Exactly `quantity` unique winners | More-than-capacity unit case | Pass |
 | 3.7 | Manual giver chooses recipients | `POST /giveaways/:id/select` | `/giveaway/:id/manage` | Selected recipients receive collection state | Empty/picked-count/API error | Mapped |
 | 3.8 | Winner opens collection ticket | QR generation endpoint | `/giveaway/:id/ticket/:ticketId` | Rotating/refreshable QR is visible | Invalid/expired/no-ticket | Mapped |
 | 3.9 | Giver scans winner QR | QR scan endpoint | `/giveaway/:id/manage` | Ticket `Received` | Invalid token and camera fallback | Mapped |
-| 3.10 | Winner voluntarily forfeits | Forfeit endpoint persists `Expired` | Ticket confirmation action | Must persist/display `Forfeited` | Busy/error | Blocked |
-| 3.11 | Winner misses pickup deadline | No automatic timeout job | Ticket/history | Must persist/display `Expired` | Deadline state | Blocked |
-| 3.12 | Entrant is not selected | Backend also persists `Expired` | Ticket/history/management | Must remain distinguishable from forfeit/timeout | Missing ticket history | Blocked |
+| 3.10 | Winner voluntarily forfeits | Forfeit persists `Forfeited` owner-only | Ticket confirmation action | Distinct forfeited history | Busy/error | Pass |
+| 3.11 | Winner misses pickup deadline | Read/QR reconciliation persists `Expired` | Ticket/history | Distinct expired history | Scheduled worker still absent | Mapped |
+| 3.12 | Entrant is not selected | Draw/select persists `NotSelected` | Ticket/history/management | Distinct not-selected history | Full roster preserved | Pass |
 
 ## Flow 4 — auth, account, membership, and destinations
 
@@ -124,12 +124,8 @@ commit rather than promoted to `Pass` here.
 
 | Blocker | Required contract work |
 |---|---|
-| Item outcome totals | Owner-only item history-summary query over completed direct and offer-backed transactions. |
-| Giveaway capacity | Map the existing `quantity` and `register_deadline` columns through Prisma and API. |
-| Allocation boundaries | Atomic First Come capacity and multi-winner Random behavior. |
-| Ticket auditability | Persist `Forfeited` separately and add reliable expiry/not-selected history. |
+| Exact-time giveaway expiry | A scheduled worker is still required to expire untouched tickets at the deadline; reads and QR actions reconcile them today. |
+| Concurrent First Come proof | Run an integration test with simultaneous joins against an isolated database before promoting row 3.4 to Pass. |
 | Completed-deal refund entry | Add or confirm a transition from `Completed` to `Pending Refund`. |
 
-`frontend/AGENTS.md` currently fixes the API contract and forbids backend edits. These
-rows remain `Blocked` until the repository owner changes that scope; frontend code must
-not fabricate successful states for them.
+Frontend code must not fabricate successful states for the remaining rows.

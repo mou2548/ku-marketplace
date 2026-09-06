@@ -98,9 +98,8 @@ export interface RoomDetail {
   appointment?: AppointmentCardData;
   /**
    * Who else is in a giveaway room — real (`lib/api/giveaways.ts`'s
-   * `getEntrants`, `GET /giveaways/{id}/recipients`). A forfeited or expired
-   * ticket drops out of this list entirely rather than showing as
-   * `Not_Selected`. See docs/design/api-gaps.md §8.
+   * `getEntrants`, `GET /giveaways/{id}/recipients`). Outcome states remain
+   * visible instead of disappearing from the roster.
    */
   entrants?: Entrant[];
 }
@@ -142,7 +141,7 @@ export async function getRoomDetail(
       const giveaway = summary.giveaway;
       const [{ messages }, entrants] = await Promise.all([
         getGiveawayMessages(giveaway.giveaway_id),
-        getEntrants(giveaway.giveaway_id, giveaway),
+        getEntrants(giveaway.giveaway_id),
       ]);
       return { summary, giveaway, entrants, messages };
     }

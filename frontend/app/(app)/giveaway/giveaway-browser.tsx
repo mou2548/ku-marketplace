@@ -30,7 +30,7 @@ export function GiveawayBrowser({
   const t = useTranslations();
   // "Open" has to mean open. Closed and Completed rows are still reachable
   // from a ticket or a chat room; they are not something to browse and enter.
-  const open = giveaways.filter((g) => g.status === "Active");
+  const open = giveaways.filter((g) => g.registration_open);
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
@@ -182,28 +182,47 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
           </p>
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            {giveaway.registered_deadline ? (
+            {giveaway.register_deadline ? (
               <CountdownPill
                 deadline={{
                   kind: "giveaway-pickup",
-                  expiresAt: Date.parse(giveaway.registered_deadline),
+                  expiresAt: Date.parse(giveaway.register_deadline),
                   labelKey: "deadline.registration-closes.label",
                   onExpiry: "forfeit",
                 }}
                 expiredLabel="Registration closed"
               />
             ) : null}
-            {giveaway.registered_count ? (
-              <span
-                data-numeric
-                className="flex items-center gap-1 text-meta text-ink-muted"
-              >
-                <Users aria-hidden className="size-3.5" />
-                {t("giveaway.registered", {
-                  count: giveaway.registered_count,
-                })}
-              </span>
-            ) : null}
+            <span
+              data-numeric
+              className="flex items-center gap-1 text-meta text-ink-muted"
+            >
+              <Users aria-hidden className="size-3.5" />
+              {giveaway.registered_count}/{giveaway.quantity}
+            </span>
+          </div>
+
+          <div
+            role="progressbar"
+            aria-label={`${giveaway.registered_count} registered for ${giveaway.quantity} recipient places`}
+            aria-valuemin={0}
+            aria-valuemax={giveaway.quantity}
+            aria-valuenow={Math.min(
+              giveaway.registered_count,
+              giveaway.quantity,
+            )}
+            className="h-1.5 overflow-hidden rounded-pill bg-surface-sunken"
+          >
+            <span
+              aria-hidden
+              className="block h-full rounded-pill bg-brand"
+              style={{
+                width: `${Math.min(
+                  (giveaway.registered_count / giveaway.quantity) * 100,
+                  100,
+                )}%`,
+              }}
+            />
           </div>
 
           <TrustBadge

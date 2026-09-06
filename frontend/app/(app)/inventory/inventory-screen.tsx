@@ -15,7 +15,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/i18n/status-text";
-import type { Item } from "@/lib/api/types";
+import type { Item, ItemHistorySummary } from "@/lib/api/types";
 import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
 
 /**
@@ -27,9 +27,11 @@ import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
 export function InventoryScreen({
   items,
   listedItemIds,
+  summaries,
 }: {
   items: Item[];
   listedItemIds: number[];
+  summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
   const t = useTranslations();
   const statusText = useStatusText();
@@ -142,6 +144,7 @@ export function InventoryScreen({
             const item = items.find((i) => i.item_id === slot.item_id)!;
             const itemStatus = statusOf(item);
             const rarity = ITEM_CONDITION[item.condition];
+            const summary = summaries[item.item_id];
             return (
               <GridListItem
                 id={slot.item_id}
@@ -186,6 +189,32 @@ export function InventoryScreen({
                       >
                         {statusText.of(rarity).label}
                       </span>
+                      {summary ? (
+                        <dl className="grid grid-cols-3 gap-1 border-t border-line pt-2 text-center">
+                          <div>
+                            <dt className="text-[0.625rem] text-ink-muted">Posted</dt>
+                            <dd data-numeric className="text-meta font-semibold">
+                              {summary.posted_quantity}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-[0.625rem] text-ink-muted">Sold</dt>
+                            <dd data-numeric className="text-meta font-semibold">
+                              {summary.sold_quantity}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-[0.625rem] text-ink-muted">Traded</dt>
+                            <dd data-numeric className="text-meta font-semibold">
+                              {summary.traded_quantity}
+                            </dd>
+                          </div>
+                        </dl>
+                      ) : (
+                        <p className="border-t border-line pt-2 text-meta text-ink-muted">
+                          History unavailable
+                        </p>
+                      )}
                     </div>
                     <span aria-hidden className="block h-1 bg-[var(--slot-edge)]" />
                   </>

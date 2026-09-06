@@ -7,8 +7,8 @@ import type { ChatMessage, Entrant, GiveawayPost, GiveawayTicket, UserSummary } 
 /**
  * Wires the 9 endpoints in the "Giveaway Allocation System" table of
  * `Software Project Proposal.pdf` to `giveaways.service.ts`'s actual response
- * shapes. Two things the raw backend does not give us, adapted here rather
- * than invented as new endpoints (frontend/CLAUDE.md §0):
+ * shapes. User summaries are adapted here because there is no standalone
+ * `GET /users/{id}` endpoint:
  *
  * - There is still no standalone `GET /users/{id}`, but `giveaways.service.ts`
  *   now includes the `giver`/`receiver` relation on every endpoint that names
@@ -17,12 +17,8 @@ import type { ChatMessage, Entrant, GiveawayPost, GiveawayTicket, UserSummary } 
  *   `placeholderUser`'s `User #<id>` if a caller is running against an older
  *   backend build that doesn't send it yet. See `docs/design/api-gaps.md` §3
  *   and §8.
- * - `ticket_status` is only ever `Waiting | Received | Expired`. What the UI
- *   needs — "pending the draw" vs "ready to collect" vs "not selected" vs
- *   "timed out" vs "forfeited" — is derived in `deriveTicketStatus` from the
- *   ticket status plus the giveaway's own status/method/deadline. It cannot
- *   tell "lost the draw" apart from "forfeited before the deadline": both are
- *   bare `Expired` with no other signal. See §8 in api-gaps.md.
+ * Ticket outcomes and registration capacity are now explicit in the API, so
+ * the adapter preserves them instead of guessing from timestamps.
  */
 
 function numFromLabel(label: string): number {
@@ -68,8 +64,13 @@ interface RawGiveaway {
   giver_id: number;
   giver?: RawUserSummary;
   allocation_method: string;
+  quantity: number;
   pickup_deadline: string | null;
+  register_deadline: string | null;
   participant_count: number;
+  remaining_slots: number;
+  registration_open: boolean;
+  all_registered_guaranteed: boolean;
   status: string | null;
   images: RawImage[];
   created_at: string | null;
@@ -89,7 +90,14 @@ interface RawRecipient {
   receiver_id: number;
   receiver?: RawUserSummary;
   ticket_id: string;
-  status: "selected" | "received";
+  status:
+    | "registered"
+    | "selected"
+    | "not_selected"
+    | "received"
+    | "forfeited"
+    | "expired";
+  ticket_status: string;
 }
 
 interface RawRecipientsResponse {
@@ -114,7 +122,8 @@ function toAllocationMethod(raw: string): AllocationMethod {
 }
 
 function toGiveawayStatus(raw: string | null): GiveawayStatus {
-  return raw === "Closed" ? "Closed" : "Active";
+  if (raw === "Closed" || raw === "Completed") return raw;
+  return "Active";
 }
 
 function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
@@ -125,11 +134,12 @@ function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
     pickup_location: raw.pickup_location,
     giver_id: raw.giver_id,
     allocation_method: toAllocationMethod(raw.allocation_method),
-    // The backend has one deadline, not a separate signup window and pickup
-    // window — it doubles as both. See api-gaps.md §8.
-    registered_deadline: raw.pickup_deadline,
-    pickup_start_date: null,
-    pickup_end_date: null,
+    quantity: raw.quantity,
+    register_deadline: raw.register_deadline,
+    pickup_deadline: raw.pickup_deadline,
+    registration_open: raw.registration_open,
+    remaining_slots: raw.remaining_slots,
+    all_registered_guaranteed: raw.all_registered_guaranteed,
     status: toGiveawayStatus(raw.status),
     created_at: raw.created_at ?? new Date().toISOString(),
     images: raw.images.map((image, index) => ({
@@ -143,40 +153,17 @@ function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
 }
 
 /**
- * Folds `ticket_status` (`Waiting | Received | Expired`) plus the giveaway's
- * own state into the five-value status the UI already renders
- * (`lib/status.ts`'s `TicketStatus`). `Waiting` means two different things
- * depending on the method and whether the draw/select has happened yet, and
- * `Expired` means three different things the API does not distinguish
- * (lost the draw, forfeited, or timed out) — see api-gaps.md §8.
+ * Preserve explicit ticket outcomes. Unknown values degrade to Registered so
+ * an older server never fabricates a winning QR state.
  */
-function deriveTicketStatus(
-  rawStatus: string | null,
-  giveaway: Pick<GiveawayPost, "status" | "allocation_method" | "registered_deadline">,
-  updatedAt: string | null,
-): TicketStatus {
+function toTicketStatus(rawStatus: string | null): TicketStatus {
+  if (rawStatus === "Registered") return "Registered";
+  if (rawStatus === "Waiting") return "Waiting";
   if (rawStatus === "Received") return "Received";
-
-  if (rawStatus === "Waiting") {
-    // FirstCome has no draw to wait for — `join()` granting the ticket is
-    // the win, so it means "ready to collect" immediately. Random/Manual
-    // tickets stay "pending" until the giveaway closes (draw/select ran).
-    const pendingDraw =
-      giveaway.allocation_method !== "FirstCome" && giveaway.status === "Active";
-    return pendingDraw ? "Registered" : "Waiting";
-  }
-
-  // rawStatus === "Expired": lost the draw, forfeited, or never collected in
-  // time all land here. The best available signal is whether it happened
-  // after the pickup deadline had already passed.
-  const deadline = giveaway.registered_deadline
-    ? Date.parse(giveaway.registered_deadline)
-    : null;
-  const changedAt = updatedAt ? Date.parse(updatedAt) : null;
-  if (deadline !== null && changedAt !== null && changedAt > deadline) {
-    return "Expired";
-  }
-  return "Not_Selected";
+  if (rawStatus === "NotSelected") return "Not_Selected";
+  if (rawStatus === "Forfeited") return "Forfeited";
+  if (rawStatus === "Expired") return "Expired";
+  return "Registered";
 }
 
 function toGiveawayTicket(raw: RawTicket, giveaway: GiveawayPost): GiveawayTicket {
@@ -184,7 +171,7 @@ function toGiveawayTicket(raw: RawTicket, giveaway: GiveawayPost): GiveawayTicke
     ticket_id: numFromLabel(raw.ticket_id),
     giveaway_id: giveaway.giveaway_id,
     receiver_id: raw.receiver_id,
-    status: deriveTicketStatus(raw.status, giveaway, raw.updated_at),
+    status: toTicketStatus(raw.status),
     updated_at: raw.updated_at ?? giveaway.created_at,
     created_at: raw.updated_at ?? giveaway.created_at,
     giveaway,
@@ -196,7 +183,8 @@ export interface RecipientRow {
   receiver_id: number;
   ticket_id: number;
   user: UserSummary;
-  status: "selected" | "received";
+  status: RawRecipient["status"];
+  ticket_status: TicketStatus;
 }
 
 function toRecipientRow(raw: RawRecipient): RecipientRow {
@@ -206,6 +194,7 @@ function toRecipientRow(raw: RawRecipient): RecipientRow {
     ticket_id: numFromLabel(raw.ticket_id),
     user: toUserSummary(raw.receiver, raw.receiver_id),
     status: raw.status,
+    ticket_status: toTicketStatus(raw.ticket_status),
   };
 }
 
@@ -216,9 +205,11 @@ function toRecipientRow(raw: RawRecipient): RecipientRow {
 
 export interface CreateGiveawayInput {
   item_name: string;
+  quantity: number;
   description?: string;
   pickup_location: string;
   allocation_method: AllocationMethod;
+  register_deadline?: string;
   pickup_deadline?: string;
   images?: { image_url: string; display_order: number }[];
 }
@@ -290,13 +281,8 @@ export async function selectRecipients(
 }
 
 /**
- * `GET /giveaways/{id}/recipients`. Dual purpose, same as the backend
- * intends: before a Manual giveaway is drawn every entrant is still
- * `Waiting`, so this doubles as the entrant roster the giver picks from
- * (`ManageGiveaway`) and, after the draw, the recipient summary (spec §5.5).
- * It only ever returns `Waiting`/`Received` tickets — a forfeited or expired
- * one drops out of the list entirely, so §5.5's full four-state view is not
- * fully answerable from this endpoint alone. See api-gaps.md §8.
+ * Full entrant and outcome roster. Registered, selected, not selected,
+ * received, forfeited, and expired remain distinguishable.
  */
 export async function getRecipients(giveawayId: number): Promise<RecipientRow[]> {
   const raw = await apiFetch<RawRecipientsResponse>(`/giveaways/${giveawayId}/recipients`);
@@ -306,8 +292,7 @@ export async function getRecipients(giveawayId: number): Promise<RecipientRow[]>
 /**
  * Not a spec endpoint — a lookup built from `getRecipients` for the one thing
  * the detail page needs on load: "does the signed-in viewer already hold a
- * live ticket for this giveaway, and what does it say". Only sees
- * `Waiting`/`Received` tickets, same limits as `getRecipients` above.
+ * ticket for this giveaway, and what does it say".
  */
 export async function getMyTicket(
   giveawayId: number,
@@ -321,7 +306,7 @@ export async function getMyTicket(
     ticket_id: mine.ticket_id,
     giveaway_id: giveaway.giveaway_id,
     receiver_id: mine.receiver_id,
-    status: deriveTicketStatus(mine.status === "received" ? "Received" : "Waiting", giveaway, null),
+    status: mine.ticket_status,
     updated_at: giveaway.created_at,
     created_at: giveaway.created_at,
     giveaway,
@@ -329,25 +314,21 @@ export async function getMyTicket(
 }
 
 /**
- * Who else is in the giveaway's group chat room — real replacement for
- * `fixtures.ts`'s `getEntrants`. Same pending-draw heuristic as `getMyTicket`
- * above (`RecipientRow.status` is already flattened to `selected`/`received`
- * by the backend, so it's re-expanded through `deriveTicketStatus`), folded
- * down to the roster's narrower `Registered | Selected` (`EntrantStatus`
- * also allows `Not_Selected`, but `deriveTicketStatus` can never return it
- * for a synthetic `Received`/`Waiting` input — that value only comes from a
- * real `Expired` raw status, and `getRecipients` drops a forfeited/expired
- * ticket before this ever sees it; see api-gaps.md §8).
+ * Who else is in the giveaway's group chat room, including a truthful outcome
+ * status for the giver's roster.
  */
-export async function getEntrants(giveawayId: number, giveaway: GiveawayPost): Promise<Entrant[]> {
+export async function getEntrants(giveawayId: number): Promise<Entrant[]> {
   const rows = await getRecipients(giveawayId);
   return rows.map((row) => {
-    const ticketStatus = deriveTicketStatus(
-      row.status === "received" ? "Received" : "Waiting",
-      giveaway,
-      null,
-    );
-    const status: EntrantStatus = ticketStatus === "Registered" ? "Registered" : "Selected";
+    const statusByTicket: Record<TicketStatus, EntrantStatus> = {
+      Registered: "Registered",
+      Waiting: "Selected",
+      Received: "Selected",
+      Not_Selected: "Not_Selected",
+      Forfeited: "Forfeited",
+      Expired: "Expired",
+    };
+    const status = statusByTicket[row.ticket_status];
     return { receiver_id: row.receiver_id, user: row.user, status };
   });
 }

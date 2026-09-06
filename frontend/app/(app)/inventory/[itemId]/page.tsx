@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, CalendarDays, Eye, Pencil, Store, Tag } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, CalendarDays, Eye, Pencil, Store, Tag } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
@@ -9,7 +9,7 @@ import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { ProductGallery } from "@/components/market/product-gallery";
-import { getItem, getMyItems } from "@/lib/api/items";
+import { getItem, getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 import type { Item } from "@/lib/api/types";
@@ -26,9 +26,10 @@ export default async function ItemDetailPage({
   if (!(await getAccessToken())) redirect("/login");
 
   const { itemId } = await params;
-  const [item, items] = await Promise.all([
+  const [item, items, summary] = await Promise.all([
     getItem(Number(itemId)).catch(() => undefined),
     getMyItems(),
+    getItemHistorySummary(Number(itemId)).catch(() => undefined),
   ]);
   if (!item || !items.some((candidate) => candidate.item_id === item.item_id)) {
     notFound();
@@ -104,6 +105,33 @@ export default async function ItemDetailPage({
               </p>
             </div>
           ) : null}
+
+          <section>
+            <h2 className="mb-3 text-h3">Item activity</h2>
+            {summary ? (
+              <dl className="grid grid-cols-3 gap-2">
+                <ActivityMetric
+                  icon={<Store className="size-4" />}
+                  label="Posted"
+                  value={summary.posted_quantity}
+                />
+                <ActivityMetric
+                  icon={<Tag className="size-4" />}
+                  label="Sold"
+                  value={summary.sold_quantity}
+                />
+                <ActivityMetric
+                  icon={<ArrowLeftRight className="size-4" />}
+                  label="Traded"
+                  value={summary.traded_quantity}
+                />
+              </dl>
+            ) : (
+              <Surface shape="card" elevation="flat" className="p-4 text-body-sm text-ink-muted">
+                Item history is temporarily unavailable.
+              </Surface>
+            )}
+          </section>
 
           <section>
             <h2 className="mb-3 text-h3">{t("market.productInfo")}</h2>
@@ -194,6 +222,28 @@ export default async function ItemDetailPage({
       </section>
 
       {rest.length > 0 ? <OtherItems items={rest} title={t("inventory.theRest")} /> : null}
+    </div>
+  );
+}
+
+function ActivityMetric({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-card bg-surface p-3 shadow-raised">
+      <dt className="flex items-center gap-1.5 text-meta text-ink-muted">
+        {icon}
+        {label}
+      </dt>
+      <dd data-numeric className="mt-1 text-h2 text-ink-brand">
+        {value}
+      </dd>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { forfeitTicket, generateTicketQr } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
@@ -44,8 +45,8 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
     }
   }
 
-  const pickupBy = giveaway.registered_deadline
-    ? new Date(giveaway.registered_deadline).toLocaleDateString("en-GB", {
+  const pickupBy = giveaway.pickup_deadline
+    ? new Date(giveaway.pickup_deadline).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
       })
@@ -73,23 +74,29 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={TICKET_STATUS[ticket.status]} />
-              <span className="text-body-sm text-ink-muted">
-                {t("giveaway.selected")}
-              </span>
+              {ticket.status === "Waiting" || ticket.status === "Received" ? (
+                <span className="text-body-sm text-ink-muted">
+                  {t("giveaway.selected")}
+                </span>
+              ) : null}
             </div>
           </div>
         </header>
 
-        <Surface shape="panel" className="overflow-hidden p-0">
-          <div aria-hidden className="h-1 bg-tone-warning-solid" />
-          <div className="p-5">
-            <QrTicket onGenerate={generate} />
-          </div>
-          <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-caption text-tone-warning-fg">
-            <Gift aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>{t("giveaway.ticketHint")}</span>
-          </div>
-        </Surface>
+        {ticket.status === "Waiting" ? (
+          <Surface shape="panel" className="overflow-hidden p-0">
+            <div aria-hidden className="h-1 bg-tone-warning-solid" />
+            <div className="p-5">
+              <QrTicket onGenerate={generate} />
+            </div>
+            <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-caption text-tone-warning-fg">
+              <Gift aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("giveaway.ticketHint")}</span>
+            </div>
+          </Surface>
+        ) : (
+          <TicketOutcome status={ticket.status} />
+        )}
 
         <Surface shape="card" className="flex flex-col gap-2.5 p-4">
           <p className="flex items-center gap-2 text-body">
@@ -161,5 +168,26 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
         />
       </Surface>
     </div>
+  );
+}
+
+function TicketOutcome({
+  status,
+}: {
+  status: Exclude<GiveawayTicket["status"], "Waiting">;
+}) {
+  const copy = {
+    Registered: "Your registration is recorded. Wait for the allocation result.",
+    Received: "Collection completed. The giver recorded the handover.",
+    Not_Selected: "You were not selected for this giveaway.",
+    Forfeited: "You chose to give up this collection before the deadline.",
+    Expired: "The pickup deadline passed before this item was collected.",
+  }[status];
+  const tone = status === "Received" ? "success" : "neutral";
+
+  return (
+    <Notice tone={tone}>
+      <p className="text-body font-medium">{copy}</p>
+    </Notice>
   );
 }
