@@ -128,6 +128,13 @@ export function TradeBench({
               <InventorySlot id={item.item_id} item={item} showName />
             )}
           </InventoryGrid>
+
+          {youGet.length === 0 ? (
+            <div className="flex min-h-16 items-center justify-center gap-2 rounded-control bg-surface-sunken text-body-sm text-ink-muted">
+              <PackageOpen aria-hidden className="size-4" />
+              <span>No item</span>
+            </div>
+          ) : null}
         </div>
       </Surface>
 
@@ -140,12 +147,16 @@ export function TradeBench({
           aria-hidden
           className={cn(
             "grid size-11 shrink-0 place-items-center rounded-pill shadow-raised",
-            youPay
+            isReadOnly && additionalMoney === 0
+              ? "bg-surface text-ink-muted"
+              : youPay
               ? "bg-tone-warning-bg text-tone-warning-fg"
               : "bg-tone-success-bg text-tone-success-fg",
           )}
         >
-          {youPay ? (
+          {isReadOnly && additionalMoney === 0 ? (
+            <Coins className="size-5" />
+          ) : youPay ? (
             <ArrowUpRight className="size-5" />
           ) : (
             <ArrowDownLeft className="size-5" />
@@ -168,22 +179,31 @@ export function TradeBench({
         {/* Whose money it is, said out loud. The proposer always puts up the
             cash, so on a received offer this is money arriving — labelling it
             "Add cash" told the wrong half of the trade to pay. */}
-        <TextInput
-          aria-label={
-            youPay
-              ? t("offer.yourExtraCash")
-              : t("offer.theirExtraCash")
-          }
-          label={youPay ? t("offer.youAdd") : t("offer.theyAdd")}
-          value={additionalMoney ? String(additionalMoney) : ""}
-          onChange={(v) => onAdditionalMoneyChange(Number(v.replace(/\D/g, "")) || 0)}
-          isReadOnly={isReadOnly}
-          inputMode="numeric"
-          placeholder="0"
-          icon={<Coins className="size-4" />}
-          suffix={<span className="text-caption">{t("listing.thb")}</span>}
-          className="flex-1 lg:w-full"
-        />
+        {isReadOnly && additionalMoney === 0 ? (
+          <div className="min-w-0 flex-1 lg:text-center">
+            <p className="text-caption font-semibold text-ink-secondary">
+              Cash
+            </p>
+            <p className="mt-0.5 text-meta text-ink-muted">No cash added</p>
+          </div>
+        ) : (
+          <TextInput
+            aria-label={
+              youPay ? t("offer.yourExtraCash") : t("offer.theirExtraCash")
+            }
+            label={youPay ? t("offer.youAdd") : t("offer.theyAdd")}
+            value={additionalMoney ? String(additionalMoney) : ""}
+            onChange={(v) =>
+              onAdditionalMoneyChange(Number(v.replace(/\D/g, "")) || 0)
+            }
+            isReadOnly={isReadOnly}
+            inputMode="numeric"
+            placeholder="0"
+            icon={<Coins className="size-4" />}
+            suffix={<span className="text-caption">{t("listing.thb")}</span>}
+            className="flex-1 lg:w-full"
+          />
+        )}
       </div>
 
       {/* ---- What leaves you ---- */}
@@ -246,6 +266,13 @@ export function TradeBench({
               />
             )}
           </InventoryGrid>
+
+          {isReadOnly && youGive.length === 0 ? (
+            <div className="flex min-h-16 items-center justify-center gap-2 rounded-control bg-surface-sunken text-body-sm text-ink-muted">
+              <PackageOpen aria-hidden className="size-4" />
+              <span>No item</span>
+            </div>
+          ) : null}
 
           {emptyWells > 0 ? (
             <div className="mt-2 grid grid-cols-4 gap-2">
