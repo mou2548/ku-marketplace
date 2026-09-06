@@ -40,7 +40,6 @@ const SEGMENTS: Array<{ id: Segment; labelKey: string }> = [
 
 const CONDITIONS: ItemCondition[] = [
   "New",
-  "Very Good",
   "Good",
   "Acceptable",
   "Poor",
