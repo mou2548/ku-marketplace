@@ -63,6 +63,94 @@ export default async function ItemDetailPage({
     ]);
   }
 
+  const actionPanel = (
+    <Surface shape="panel" className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-line p-5">
+        <span className="flex items-center gap-2 text-body-sm font-semibold">
+          <Store aria-hidden className="size-4 text-ink-brand" />
+          {isTransferred
+            ? "Transferred"
+            : post
+              ? t("inventory.onTheMarket")
+              : t("inventory.notListed")}
+        </span>
+        {post && !isTransferred ? (
+          <ListingTypeBadge type={post.post_type} />
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3 p-5">
+        {!isTransferred && post?.post_type !== "TradeOnly" && post ? (
+          <p
+            data-numeric
+            className="text-[2rem] leading-tight font-bold text-ink-brand"
+          >
+            ฿{post.price.toLocaleString("en-GB")}
+          </p>
+        ) : null}
+
+        {isTransferred ? (
+          <p className="text-body-sm text-ink-secondary">
+            This item has left your active inventory. Its listing and completed
+            outcome remain visible below as history.
+          </p>
+        ) : post ? (
+          <>
+            <LinkButton
+              size="lg"
+              block
+              href={`/inventory/${item.item_id}/list`}
+            >
+              <Tag className="size-4" />
+              {t("inventory.editListing")}
+            </LinkButton>
+            <LinkButton
+              variant="secondary"
+              block
+              href={`/market/${post.post_id}`}
+            >
+              <Eye className="size-4" />
+              {t("inventory.viewPublic")}
+            </LinkButton>
+          </>
+        ) : (
+          <>
+            <p className="text-body-sm text-ink-secondary">
+              {t("inventory.privateItemHint")}
+            </p>
+            <LinkButton
+              size="lg"
+              block
+              href={`/inventory/${item.item_id}/list`}
+            >
+              <Tag className="size-4" />
+              {t("inventory.listIt")}
+            </LinkButton>
+          </>
+        )}
+
+        {!isTransferred ? (
+          <LinkButton
+            variant="ghost"
+            block
+            href={`/inventory/${item.item_id}/edit`}
+          >
+            <Pencil className="size-4" />
+            {t("inventory.editDetails")}
+          </LinkButton>
+        ) : null}
+      </div>
+
+      <div className="bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
+        {isTransferred
+          ? "Read-only history"
+          : post
+            ? t("inventory.listedHint")
+            : t("inventory.unlistedHint")}
+      </div>
+    </Surface>
+  );
+
   return (
     <div className="flex flex-col gap-8 pb-6 lg:gap-12">
       <Link
@@ -97,6 +185,8 @@ export default async function ItemDetailPage({
             </div>
             <h1 className="text-display text-balance">{item.name}</h1>
           </header>
+
+          <div className="xl:hidden">{actionPanel}</div>
 
           {item.description ? (
             <div>
@@ -161,81 +251,8 @@ export default async function ItemDetailPage({
           </p>
         </div>
 
-        <aside className="min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
-          <Surface shape="panel" className="overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-line p-5">
-              <span className="flex items-center gap-2 text-body-sm font-semibold">
-                <Store aria-hidden className="size-4 text-ink-brand" />
-                {isTransferred
-                  ? "Transferred"
-                  : post
-                    ? t("inventory.onTheMarket")
-                    : t("inventory.notListed")}
-              </span>
-              {post && !isTransferred ? (
-                <ListingTypeBadge type={post.post_type} />
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-3 p-5">
-              {!isTransferred && post?.post_type !== "TradeOnly" && post ? (
-                <p data-numeric className="text-[2rem] leading-tight font-bold text-ink-brand">
-                  ฿{post.price.toLocaleString("en-GB")}
-                </p>
-              ) : null}
-
-              {isTransferred ? (
-                <p className="text-body-sm text-ink-secondary">
-                  This item has left your active inventory. Its listing and
-                  completed outcome remain visible above as history.
-                </p>
-              ) : post ? (
-                <>
-                  <LinkButton size="lg" block href={`/inventory/${item.item_id}/list`}>
-                    <Tag className="size-4" />
-                    {t("inventory.editListing")}
-                  </LinkButton>
-                  <LinkButton
-                    variant="secondary"
-                    block
-                    href={`/market/${post.post_id}`}
-                  >
-                    <Eye className="size-4" />
-                    {t("inventory.viewPublic")}
-                  </LinkButton>
-                </>
-              ) : (
-                <>
-                  <p className="text-body-sm text-ink-secondary">
-                    {t("inventory.privateItemHint")}
-                  </p>
-                  <LinkButton size="lg" block href={`/inventory/${item.item_id}/list`}>
-                    <Tag className="size-4" />
-                    {t("inventory.listIt")}
-                  </LinkButton>
-                </>
-              )}
-
-              {!isTransferred ? (
-                <LinkButton
-                  variant="ghost"
-                  block
-                  href={`/inventory/${item.item_id}/edit`}
-                >
-                  <Pencil className="size-4" />
-                  {t("inventory.editDetails")}
-                </LinkButton>
-              ) : null}
-            </div>
-
-            <div className="bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
-              {isTransferred
-                ? "Read-only history"
-                : post
-                  ? t("inventory.listedHint")
-                  : t("inventory.unlistedHint")}
-            </div>
-          </Surface>
+        <aside className="hidden min-w-0 xl:sticky xl:top-24 xl:block">
+          {actionPanel}
         </aside>
       </section>
 

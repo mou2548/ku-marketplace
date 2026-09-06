@@ -99,6 +99,87 @@ export function GiveawayDetail({
     }
   }
 
+  const participationAction = isGiver ? (
+    /* Only a Manual giveaway has anything for its giver to do. FirstCome
+       allocates as people register and Random is drawn by the system. */
+    giveaway.allocation_method === "Manual" ? (
+      <LinkButton
+        size="lg"
+        block
+        href={`/giveaway/${giveaway.giveaway_id}/manage`}
+      >
+        <Users className="size-5" />
+        Choose recipients
+      </LinkButton>
+    ) : giveaway.allocation_method === "Random" ? (
+      giveaway.status === "Active" ? (
+        <div className="flex flex-col gap-2">
+          <Button size="lg" block isLoading={drawing} onPress={runDraw}>
+            <Dices className="size-5" />
+            Run the draw
+          </Button>
+          <p className="text-caption leading-[1.6] text-ink-secondary">
+            Selects up to {giveaway.quantity} recipients and closes
+            registration. If registrations do not exceed that number, everyone
+            receives a place.
+          </p>
+        </div>
+      ) : (
+        <Notice tone="success">
+          <p className="text-body font-medium text-tone-success-fg">
+            The draw has run. A chat room is open with the winner.
+          </p>
+        </Notice>
+      )
+    ) : (
+      <Notice tone="success">
+        <p className="text-body font-medium text-tone-success-fg">
+          This is your giveaway. Nothing for you to do.
+        </p>
+        <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
+          {st.of(method).hint}. A chat room opens with each entrant as they
+          register so you can arrange collection.
+        </p>
+      </Notice>
+    )
+  ) : ticket ? (
+    <div className="flex flex-col gap-2">
+      <StatusBadge status={TICKET_STATUS[ticket.status]} />
+      <LinkButton
+        size="lg"
+        block
+        href={`/giveaway/${giveaway.giveaway_id}/ticket/${ticket.ticket_id}`}
+      >
+        Open my ticket
+      </LinkButton>
+    </div>
+  ) : joinedStatus ? (
+    <Notice tone="success">
+      <p className="text-body font-medium text-tone-success-fg">
+        {joinedStatus === "Waiting"
+          ? "Your place is confirmed."
+          : "Registered. Waiting for the result."}
+      </p>
+      <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
+        {joinedStatus === "Waiting"
+          ? "First come, first served confirms your place immediately. Open this page again to show your collection QR."
+          : "If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page."}
+      </p>
+    </Notice>
+  ) : giveaway.registration_open ? (
+    <Button size="lg" block isLoading={busy} onPress={join}>
+      <Gift className="size-5" />
+      Register for this giveaway
+    </Button>
+  ) : (
+    <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
+      <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
+      <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
+        Registration for this giveaway has closed.
+      </p>
+    </Surface>
+  );
+
   return (
     <div className="flex flex-col gap-7 pb-6">
       <Link
@@ -117,9 +198,11 @@ export function GiveawayDetail({
             <p className="text-overline font-semibold text-tone-warning-fg uppercase">
               {t("giveaway.freeFromCommunity")}
             </p>
-          <StatusBadge status={method} size="sm" className="w-fit" />
+            <StatusBadge status={method} size="sm" className="w-fit" />
             <h1 className="text-display text-balance">{giveaway.item_name}</h1>
           </header>
+
+          <div className="xl:hidden">{participationAction}</div>
 
           {giveaway.description ? (
             <div>
@@ -130,16 +213,18 @@ export function GiveawayDetail({
             </div>
           ) : null}
 
-        {/* How you will find out, stated before you commit. */}
+          {/* How you will find out, stated before you commit. */}
           <Notice tone={method.tone} className="flex flex-col gap-2">
             <p className="text-body-sm font-semibold">
-            {st.of(method).label}
-          </p>
-          <p className="text-caption leading-[1.6] text-ink-secondary">
-            {st.of(method).hint}
-          </p>
-          {drawDeadline ? <CountdownPill deadline={drawDeadline} showLabel /> : null}
-        </Notice>
+              {st.of(method).label}
+            </p>
+            <p className="text-caption leading-[1.6] text-ink-secondary">
+              {st.of(method).hint}
+            </p>
+            {drawDeadline ? (
+              <CountdownPill deadline={drawDeadline} showLabel />
+            ) : null}
+          </Notice>
           {giveaway.all_registered_guaranteed ? (
             <Notice tone="success">
               <p className="text-body-sm font-medium text-tone-success-fg">
@@ -180,17 +265,17 @@ export function GiveawayDetail({
                   {t("giveaway.collectBy", { date: pickupBy })}
                 </p>
               ) : null}
-              {giveaway.registered_count ? (
-                <p data-numeric className="flex items-center gap-2 text-body-sm text-ink-muted">
-                  <Users aria-hidden className="size-4 shrink-0" />
-                  {giveaway.registered_count}/{giveaway.quantity} registered
-                </p>
-              ) : (
-                <p data-numeric className="flex items-center gap-2 text-body-sm text-ink-muted">
-                  <Users aria-hidden className="size-4 shrink-0" />
-                  0/{giveaway.quantity} registered
-                </p>
-              )}
+              <p
+                data-numeric
+                className="flex flex-wrap items-center gap-1.5 text-body-sm text-ink-muted"
+              >
+                <Users aria-hidden className="size-4 shrink-0" />
+                {giveaway.registered_count} registered
+                <span aria-hidden className="text-ink-disabled">
+                  ·
+                </span>
+                {giveaway.quantity} recipient {giveaway.quantity === 1 ? "place" : "places"}
+              </p>
               {giveaway.allocation_method === "FirstCome" ? (
                 <p data-numeric className="text-caption text-ink-secondary">
                   {giveaway.remaining_slots > 0
@@ -199,92 +284,10 @@ export function GiveawayDetail({
                 </p>
               ) : null}
 
-              <div className="h-px bg-line" />
-
-        {isGiver ? (
-          /* Only a Manual giveaway has anything for its giver to do. FirstCome
-             allocates as people register and Random is drawn by the system, so
-             offering those givers a "Manage entrants" button led them to a
-             screen whose only action was a draw that was never theirs. */
-          giveaway.allocation_method === "Manual" ? (
-            <LinkButton
-              size="lg"
-              block
-              href={`/giveaway/${giveaway.giveaway_id}/manage`}
-            >
-              <Users className="size-5" />
-              Choose recipients
-            </LinkButton>
-          ) : giveaway.allocation_method === "Random" ? (
-            giveaway.status === "Active" ? (
-              <div className="flex flex-col gap-2">
-                <Button size="lg" block isLoading={drawing} onPress={runDraw}>
-                  <Dices className="size-5" />
-                  Run the draw
-                </Button>
-                <p className="text-caption leading-[1.6] text-ink-secondary">
-                  Selects up to {giveaway.quantity} recipients and closes
-                  registration. If registrations do not exceed that number,
-                  everyone receives a place.
-                </p>
+              <div className="hidden xl:block">
+                <div className="mb-4 h-px bg-line" />
+                {participationAction}
               </div>
-            ) : (
-              <Notice tone="success">
-                <p className="text-body font-medium text-tone-success-fg">
-                  The draw has run. A chat room is open with the winner.
-                </p>
-              </Notice>
-            )
-          ) : (
-            <Notice tone="success">
-              <p className="text-body font-medium text-tone-success-fg">
-                This is your giveaway. Nothing for you to do.
-              </p>
-              <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
-                {st.of(method).hint}. A chat room opens with each entrant as they
-                register so you can arrange collection.
-              </p>
-            </Notice>
-          )
-        ) : ticket ? (
-          <div className="flex flex-col gap-2">
-            <StatusBadge status={TICKET_STATUS[ticket.status]} />
-            <LinkButton
-              size="lg"
-              block
-              href={`/giveaway/${giveaway.giveaway_id}/ticket/${ticket.ticket_id}`}
-            >
-              Open my ticket
-            </LinkButton>
-          </div>
-        ) : joinedStatus ? (
-          <Notice tone="success">
-            <p className="text-body font-medium text-tone-success-fg">
-              {joinedStatus === "Waiting"
-                ? "Your place is confirmed."
-                : "Registered. Waiting for the result."}
-            </p>
-            <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
-              {joinedStatus === "Waiting"
-                ? "First come, first served confirms your place immediately. Open this page again to show your collection QR."
-                : "If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page."}
-            </p>
-          </Notice>
-        ) : giveaway.registration_open ? (
-          <Button size="lg" block isLoading={busy} onPress={join}>
-            <Gift className="size-5" />
-            Register for this giveaway
-          </Button>
-        ) : (
-          /* Closed and Completed giveaways stay readable — they are linked
-             from tickets and from chat rooms — but they cannot be entered. */
-          <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
-            <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
-            <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
-              Registration for this giveaway has closed.
-            </p>
-          </Surface>
-        )}
             </div>
             <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-meta text-tone-warning-fg">
               <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
