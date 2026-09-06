@@ -82,6 +82,47 @@ export class ItemsService {
     return item;
   }
 
+  async historySummary(id: number, userId: number) {
+    const item = await this.prisma.item.findUnique({
+      where: { itemId: id, deletedAt: null },
+      include: {
+        post: {
+          include: {
+            transactions: {
+              where: { status: 'Completed' },
+              select: { offerId: true, quantity: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+    if (item.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to view this item history',
+      );
+    }
+
+    const completed = item.post?.transactions ?? [];
+    const sumQuantity = (withOffer: boolean) =>
+      completed
+        .filter((transaction) => Boolean(transaction.offerId) === withOffer)
+        .reduce((total, transaction) => total + (transaction.quantity ?? 1), 0);
+
+    return {
+      item_id: item.itemId,
+      inventory_quantity: item.quantity,
+      posted_quantity: item.post?.quantityTotal ?? 0,
+      currently_listed_quantity:
+        item.post?.status === 'Active' ? item.post.quantityRemaining : 0,
+      sold_quantity: sumQuantity(false),
+      traded_quantity: sumQuantity(true),
+    };
+  }
+
   async update(id: number, updateItemDto: UpdateItemDto, userId: number) {
     const item = await this.prisma.item.findUnique({
       where: { itemId: id, deletedAt: null },

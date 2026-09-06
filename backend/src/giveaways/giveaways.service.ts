@@ -16,10 +16,12 @@ export interface GiveawayImage {
 
 export interface CreateGiveawayPayload {
   item_name?: string;
+  quantity?: number;
   description?: string;
   pickup_location?: string;
   allocation_method?: string;
   pickup_deadline?: string;
+  register_deadline?: string;
   images?: GiveawayImage[];
 }
 
@@ -85,21 +87,42 @@ export class GiveawaysService {
     ) {
       throw new BadRequestException('allocation_method ไม่ถูกต้อง');
     }
-    const deadline = payload.pickup_deadline
+    const quantity = payload.quantity ?? 1;
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new BadRequestException('quantity ต้องเป็นจำนวนเต็มที่มากกว่า 0');
+    }
+    const pickupDeadline = payload.pickup_deadline
       ? new Date(payload.pickup_deadline)
       : null;
-    if (deadline && Number.isNaN(deadline.getTime())) {
+    const registerDeadline = payload.register_deadline
+      ? new Date(payload.register_deadline)
+      : null;
+    if (pickupDeadline && Number.isNaN(pickupDeadline.getTime())) {
       throw new BadRequestException('pickup_deadline ไม่ถูกต้อง');
+    }
+    if (registerDeadline && Number.isNaN(registerDeadline.getTime())) {
+      throw new BadRequestException('register_deadline ไม่ถูกต้อง');
+    }
+    if (
+      pickupDeadline &&
+      registerDeadline &&
+      registerDeadline >= pickupDeadline
+    ) {
+      throw new BadRequestException(
+        'register_deadline ต้องอยู่ก่อน pickup_deadline',
+      );
     }
 
     const giveaway = await this.prisma.giveawayPost.create({
       data: {
         giverId,
         itemName: payload.item_name,
+        quantity,
         description: payload.description,
         pickupLocation: payload.pickup_location,
         allocationMethod: payload.allocation_method,
-        pickupDeadline: deadline,
+        pickupDeadline,
+        registerDeadline,
         images: {
           create: (payload.images ?? []).map((image) => ({
             imageUrl: image.image_url,
@@ -123,7 +146,9 @@ export class GiveawaysService {
       pickupLocation: string;
       giverId: number;
       allocationMethod: string;
+      quantity: number;
       pickupDeadline: Date | null;
+      registerDeadline: Date | null;
       status: string | null;
       createdAt: Date | null;
       images: { imageUrl: string; displayOrder: number | null }[];
@@ -144,8 +169,25 @@ export class GiveawaysService {
       giver_id: giveaway.giverId,
       giver: this.serializeUserSummary(giveaway.giver),
       allocation_method: giveaway.allocationMethod,
+      quantity: giveaway.quantity,
       pickup_deadline: giveaway.pickupDeadline,
+      register_deadline: giveaway.registerDeadline,
       participant_count: participantCount,
+      remaining_slots: Math.max(giveaway.quantity - participantCount, 0),
+      registration_open:
+        giveaway.status === 'Active' &&
+        (!giveaway.registerDeadline ||
+          giveaway.registerDeadline > new Date()) &&
+        (giveaway.allocationMethod !== 'FirstCome' ||
+          participantCount < giveaway.quantity),
+      all_registered_guaranteed:
+        giveaway.allocationMethod === 'Random' &&
+        (giveaway.status !== 'Active' ||
+          Boolean(
+            giveaway.registerDeadline &&
+            giveaway.registerDeadline <= new Date(),
+          )) &&
+        participantCount <= giveaway.quantity,
       status: giveaway.status,
       images: giveaway.images.map((image) => ({
         image_url: image.imageUrl,
@@ -188,26 +230,71 @@ export class GiveawaysService {
 
   async join(id: string, receiverId: number) {
     const giveawayId = this.id(id, 'giveaway');
-    const giveaway = await this.prisma.giveawayPost.findUnique({
-      where: { giveawayId },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "giveaway_id"
+        FROM "Giveaway_Post"
+        WHERE "giveaway_id" = ${giveawayId}
+        FOR UPDATE
+      `;
+      const giveaway = await tx.giveawayPost.findUnique({
+        where: { giveawayId },
+      });
+      if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
+      if (giveaway.giverId === receiverId) {
+        throw new ForbiddenException('ผู้ให้ไม่สามารถลงทะเบียนรับของตนเอง');
+      }
+      if (
+        giveaway.status !== 'Active' ||
+        (giveaway.registerDeadline && giveaway.registerDeadline <= new Date())
+      ) {
+        throw new ConflictException('กิจกรรมนี้ปิดรับแล้ว');
+      }
+      if (!(await tx.user.findUnique({ where: { userId: receiverId } }))) {
+        throw new NotFoundException('ไม่พบผู้รับ');
+      }
+      const existing = await tx.giveawayTicket.findUnique({
+        where: { giveawayId_receiverId: { giveawayId, receiverId } },
+      });
+      if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
+
+      const participantCount = await tx.giveawayTicket.count({
+        where: { giveawayId },
+      });
+      if (
+        giveaway.allocationMethod === 'FirstCome' &&
+        participantCount >= giveaway.quantity
+      ) {
+        throw new ConflictException('สิทธิ์รับของครบแล้ว');
+      }
+
+      const ticket = await tx.giveawayTicket.create({
+        data: {
+          giveawayId,
+          receiverId,
+          status:
+            giveaway.allocationMethod === 'FirstCome'
+              ? 'Waiting'
+              : 'Registered',
+        },
+        include: { receiver: true },
+      });
+      const fillsFinalPlace =
+        giveaway.allocationMethod === 'FirstCome' &&
+        participantCount + 1 >= giveaway.quantity;
+      if (fillsFinalPlace) {
+        await tx.giveawayPost.update({
+          where: { giveawayId },
+          data: { status: 'Closed' },
+        });
+      }
+      return {
+        ...this.serializeTicket(ticket),
+        registration_open: !fillsFinalPlace,
+        remaining_slots: Math.max(giveaway.quantity - participantCount - 1, 0),
+        guaranteed: giveaway.allocationMethod === 'FirstCome',
+      };
     });
-    if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
-    if (giveaway.status !== 'Active')
-      throw new ConflictException('กิจกรรมนี้ปิดรับแล้ว');
-    if (
-      !(await this.prisma.user.findUnique({ where: { userId: receiverId } }))
-    ) {
-      throw new NotFoundException('ไม่พบผู้รับ');
-    }
-    const existing = await this.prisma.giveawayTicket.findFirst({
-      where: { giveawayId, receiverId },
-    });
-    if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
-    const ticket = await this.prisma.giveawayTicket.create({
-      data: { giveawayId, receiverId, status: 'Waiting' },
-      include: { receiver: true },
-    });
-    return this.serializeTicket(ticket);
   }
 
   private serializeTicket(ticket: {
@@ -233,60 +320,110 @@ export class GiveawaysService {
     };
   }
 
-  async draw(id: string) {
+  async draw(id: string, giverId: number) {
     const giveawayId = this.id(id, 'giveaway');
-    const result = await this.prisma.$transaction(async (tx) => {
+    const winners = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "giveaway_id"
+        FROM "Giveaway_Post"
+        WHERE "giveaway_id" = ${giveawayId}
+        FOR UPDATE
+      `;
       const giveaway = await tx.giveawayPost.findUnique({
         where: { giveawayId },
       });
       if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
+      if (giveaway.giverId !== giverId) {
+        throw new ForbiddenException('เฉพาะผู้ให้เท่านั้นที่จับฉลากได้');
+      }
       if (giveaway.allocationMethod !== 'Random') {
         throw new BadRequestException('โพสต์นี้ไม่ได้ใช้วิธี Random');
       }
       const tickets = await tx.giveawayTicket.findMany({
-        where: { giveawayId, status: 'Waiting' },
+        where: { giveawayId, status: 'Registered' },
         include: { receiver: true },
+        orderBy: { ticketId: 'asc' },
       });
       if (tickets.length === 0)
         throw new ConflictException('ยังไม่มีผู้เข้าร่วมที่รอจับฉลาก');
-      const winner = tickets[Math.floor(Math.random() * tickets.length)];
+      const selected = this.pickRandomTickets(tickets, giveaway.quantity);
+      const winnerIds = selected.map((ticket) => ticket.ticketId);
       await tx.giveawayTicket.updateMany({
         where: {
           giveawayId,
-          status: 'Waiting',
-          ticketId: { not: winner.ticketId },
+          status: 'Registered',
+          ticketId: { in: winnerIds },
         },
-        data: { status: 'Expired', updatedAt: new Date() },
+        data: { status: 'Waiting', updatedAt: new Date() },
+      });
+      await tx.giveawayTicket.updateMany({
+        where: {
+          giveawayId,
+          status: 'Registered',
+          ticketId: { notIn: winnerIds },
+        },
+        data: { status: 'NotSelected', updatedAt: new Date() },
       });
       await tx.giveawayPost.update({
         where: { giveawayId },
         data: { status: 'Closed' },
       });
-      return winner;
+      return selected;
     });
     return {
       giveaway_id: this.label('giveaway', giveawayId),
       allocation_method: 'Random',
-      recipients: [this.asRecipient(result)],
+      recipients: winners.map((ticket) => this.asRecipient(ticket, 'Waiting')),
       status: 'drawn',
     };
   }
 
-  async select(id: string, receiverIds: number[]) {
+  private pickRandomTickets<T>(tickets: T[], capacity: number): T[] {
+    if (tickets.length <= capacity) return [...tickets];
+    const shuffled = [...tickets];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[swapIndex]] = [
+        shuffled[swapIndex],
+        shuffled[index],
+      ];
+    }
+    return shuffled.slice(0, capacity);
+  }
+
+  async select(id: string, receiverIds: number[], giverId: number) {
     const giveawayId = this.id(id, 'giveaway');
     const uniqueIds = [...new Set(receiverIds)];
     if (uniqueIds.length === 0)
       throw new BadRequestException('ต้องระบุ receiver_ids');
     const selected = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "giveaway_id"
+        FROM "Giveaway_Post"
+        WHERE "giveaway_id" = ${giveawayId}
+        FOR UPDATE
+      `;
       const giveaway = await tx.giveawayPost.findUnique({
         where: { giveawayId },
       });
       if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
+      if (giveaway.giverId !== giverId) {
+        throw new ForbiddenException('เฉพาะผู้ให้เท่านั้นที่เลือกผู้รับได้');
+      }
       if (giveaway.allocationMethod !== 'Manual') {
         throw new BadRequestException('โพสต์นี้ไม่ได้ใช้วิธี Manual');
       }
+      if (uniqueIds.length > giveaway.quantity) {
+        throw new BadRequestException(
+          `เลือกผู้รับได้สูงสุด ${giveaway.quantity} คน`,
+        );
+      }
       const tickets = await tx.giveawayTicket.findMany({
-        where: { giveawayId, receiverId: { in: uniqueIds }, status: 'Waiting' },
+        where: {
+          giveawayId,
+          receiverId: { in: uniqueIds },
+          status: 'Registered',
+        },
         include: { receiver: true },
       });
       if (tickets.length !== uniqueIds.length) {
@@ -295,10 +432,18 @@ export class GiveawaysService {
       await tx.giveawayTicket.updateMany({
         where: {
           giveawayId,
-          status: 'Waiting',
+          status: 'Registered',
+          receiverId: { in: uniqueIds },
+        },
+        data: { status: 'Waiting', updatedAt: new Date() },
+      });
+      await tx.giveawayTicket.updateMany({
+        where: {
+          giveawayId,
+          status: 'Registered',
           receiverId: { notIn: uniqueIds },
         },
-        data: { status: 'Expired', updatedAt: new Date() },
+        data: { status: 'NotSelected', updatedAt: new Date() },
       });
       await tx.giveawayPost.update({
         where: { giveawayId },
@@ -309,40 +454,60 @@ export class GiveawaysService {
     return {
       giveaway_id: this.label('giveaway', giveawayId),
       allocation_method: 'Manual',
-      recipients: selected.map((ticket) => this.asRecipient(ticket)),
+      recipients: selected.map((ticket) => this.asRecipient(ticket, 'Waiting')),
       status: 'selected',
     };
   }
 
-  private asRecipient(ticket: {
-    ticketId: number;
-    receiverId: number;
-    status: string | null;
-    receiver: {
-      userId: number;
-      firstNameEn: string;
-      lastNameEn: string;
-      emailVerifiedAt: Date | null;
+  private asRecipient(
+    ticket: {
+      ticketId: number;
+      receiverId: number;
+      status: string | null;
+      receiver: {
+        userId: number;
+        firstNameEn: string;
+        lastNameEn: string;
+        emailVerifiedAt: Date | null;
+      };
+    },
+    statusOverride?: string,
+  ) {
+    const status = statusOverride ?? ticket.status ?? 'Registered';
+    const outcomeByStatus: Record<string, string> = {
+      Registered: 'registered',
+      Waiting: 'selected',
+      NotSelected: 'not_selected',
+      Received: 'received',
+      Forfeited: 'forfeited',
+      Expired: 'expired',
     };
-  }) {
     return {
       recipient_id: this.label('recipient', ticket.ticketId),
       receiver_id: ticket.receiverId,
       receiver: this.serializeUserSummary(ticket.receiver),
       ticket_id: this.label('ticket', ticket.ticketId),
-      status: ticket.status === 'Received' ? 'received' : 'selected',
+      status: outcomeByStatus[status] ?? status.toLowerCase(),
+      ticket_status: status,
     };
   }
 
   async recipients(id: string) {
     const giveawayId = this.id(id, 'giveaway');
-    if (
-      !(await this.prisma.giveawayPost.findUnique({ where: { giveawayId } }))
-    ) {
+    const giveaway = await this.prisma.giveawayPost.findUnique({
+      where: { giveawayId },
+    });
+    if (!giveaway) {
       throw new NotFoundException('ไม่พบโพสต์แจกของ');
     }
+    if (giveaway.pickupDeadline && giveaway.pickupDeadline <= new Date()) {
+      await this.prisma.giveawayTicket.updateMany({
+        where: { giveawayId, status: 'Waiting' },
+        data: { status: 'Expired', updatedAt: new Date() },
+      });
+    }
     const tickets = await this.prisma.giveawayTicket.findMany({
-      where: { giveawayId, status: { in: ['Waiting', 'Received'] } },
+      where: { giveawayId },
       include: { receiver: true },
       orderBy: { ticketId: 'asc' },
     });
@@ -352,16 +517,22 @@ export class GiveawaysService {
     };
   }
 
-  async forfeit(id: string, confirm: boolean) {
+  async forfeit(id: string, confirm: boolean, receiverId: number) {
     if (!confirm) throw new BadRequestException('ต้องยืนยันการสละสิทธิ์');
     const ticketId = this.id(id, 'recipient');
     const ticket = await this.prisma.giveawayTicket.findUnique({
       where: { ticketId },
     });
     if (!ticket) throw new NotFoundException('ไม่พบผู้รับ');
+    if (ticket.receiverId !== receiverId) {
+      throw new ForbiddenException('สละสิทธิ์ของผู้รับคนอื่นไม่ได้');
+    }
+    if (ticket.status !== 'Waiting') {
+      throw new ConflictException('ticket นี้ไม่ได้อยู่ในสถานะพร้อมรับของ');
+    }
     await this.prisma.giveawayTicket.update({
       where: { ticketId },
-      data: { status: 'Expired', updatedAt: new Date() },
+      data: { status: 'Forfeited', updatedAt: new Date() },
     });
     return {
       recipient_id: this.label('recipient', ticketId),
@@ -370,36 +541,77 @@ export class GiveawaysService {
     };
   }
 
-  async qrGenerate(giveawayIdValue: string, ticketIdValue: string) {
+  async qrGenerate(
+    giveawayIdValue: string,
+    ticketIdValue: string,
+    receiverId: number,
+  ) {
     const giveawayId = this.id(giveawayIdValue, 'giveaway');
     const ticketId = this.id(ticketIdValue, 'ticket');
     const ticket = await this.prisma.giveawayTicket.findFirst({
       where: { ticketId, giveawayId, status: 'Waiting' },
+      include: { giveaway: true },
     });
     if (!ticket) throw new NotFoundException('ไม่พบ ticket ที่พร้อมรับของ');
+    if (ticket.receiverId !== receiverId) {
+      throw new ForbiddenException('เปิด QR ของผู้รับคนอื่นไม่ได้');
+    }
+    if (
+      ticket.giveaway.pickupDeadline &&
+      ticket.giveaway.pickupDeadline <= new Date()
+    ) {
+      await this.prisma.giveawayTicket.update({
+        where: { ticketId },
+        data: { status: 'Expired', updatedAt: new Date() },
+      });
+      throw new ConflictException('เลยกำหนดรับของแล้ว');
+    }
     const token = randomUUID();
     await this.prisma.giveawayTicket.update({
       where: { ticketId },
       data: { qrToken: token, updatedAt: new Date() },
     });
-    const giveaway = await this.prisma.giveawayPost.findUnique({
-      where: { giveawayId },
-    });
     return {
       giveaway_id: this.label('giveaway', giveawayId),
       ticket_id: this.label('ticket', ticketId),
       token,
-      expires_at: giveaway?.pickupDeadline,
+      expires_at: ticket.giveaway.pickupDeadline,
     };
   }
 
-  async qrScan(giveawayIdValue: string, ticketIdValue: string, token = '') {
+  async qrScan(
+    giveawayIdValue: string,
+    ticketIdValue: string,
+    token = '',
+    giverId: number,
+  ) {
     const giveawayId = this.id(giveawayIdValue, 'giveaway');
     const ticketId = this.id(ticketIdValue, 'ticket');
     const ticket = await this.prisma.giveawayTicket.findFirst({
       where: { ticketId, giveawayId },
+      include: { giveaway: true },
     });
     if (!ticket) throw new NotFoundException('ไม่พบ ticket');
+    if (ticket.giveaway.giverId !== giverId) {
+      throw new ForbiddenException('เฉพาะผู้ให้เท่านั้นที่สแกน QR ได้');
+    }
+    if (
+      ticket.status === 'Waiting' &&
+      ticket.giveaway.pickupDeadline &&
+      ticket.giveaway.pickupDeadline <= new Date()
+    ) {
+      await this.prisma.giveawayTicket.update({
+        where: { ticketId },
+        data: { status: 'Expired', updatedAt: new Date() },
+      });
+      return new MessageOverride('QR หมดอายุ', {
+        giveaway_id: this.label('giveaway', giveawayId),
+        ticket_id: this.label('ticket', ticketId),
+        valid: false,
+        status: 'expired',
+        checked_at: new Date(),
+      });
+    }
     const valid =
       Boolean(token) && ticket.qrToken === token && ticket.status === 'Waiting';
     if (valid) {
@@ -438,7 +650,10 @@ export class GiveawaysService {
     }
   }
 
-  private async getOrCreateGiveawayChatRoom(giveawayId: number, userId: number) {
+  private async getOrCreateGiveawayChatRoom(
+    giveawayId: number,
+    userId: number,
+  ) {
     await this.assertGiveawayMember(giveawayId, userId);
     let room = await this.prisma.chatRoom.findFirst({ where: { giveawayId } });
     if (!room) {
@@ -463,8 +678,10 @@ export class GiveawaysService {
     };
   }) {
     const createdAt = message.createdAt ?? new Date();
-    const expired = Date.now() - createdAt.getTime() > IMAGE_DISPLAY_LIFETIME_MS;
-    const hasImages = Array.isArray(message.imageUrls) && message.imageUrls.length > 0;
+    const expired =
+      Date.now() - createdAt.getTime() > IMAGE_DISPLAY_LIFETIME_MS;
+    const hasImages =
+      Array.isArray(message.imageUrls) && message.imageUrls.length > 0;
 
     return {
       message_id: message.messageId,
@@ -472,7 +689,8 @@ export class GiveawaysService {
       sender_id: message.senderId,
       sender: this.serializeUserSummary(message.sender),
       content: message.content,
-      image_urls: hasImages && !expired ? (message.imageUrls as string[]) : null,
+      image_urls:
+        hasImages && !expired ? (message.imageUrls as string[]) : null,
       images_expired: hasImages && expired,
       created_at: message.createdAt,
     };
@@ -493,7 +711,9 @@ export class GiveawaysService {
     });
     return {
       room_id: room.roomId,
-      messages: messages.map((message) => this.serializeGiveawayMessage(message)),
+      messages: messages.map((message) =>
+        this.serializeGiveawayMessage(message),
+      ),
     };
   }
 
@@ -505,7 +725,9 @@ export class GiveawaysService {
   ) {
     const { content, image_urls } = payload;
     if (!content && (!image_urls || image_urls.length === 0)) {
-      throw new BadRequestException('ข้อความต้องมี content หรือ image_urls อย่างน้อยหนึ่งอย่าง');
+      throw new BadRequestException(
+        'ข้อความต้องมี content หรือ image_urls อย่างน้อยหนึ่งอย่าง',
+      );
     }
     if (image_urls && image_urls.length > 5) {
       throw new BadRequestException('ส่งรูปภาพได้สูงสุด 5 รูปต่อข้อความ');

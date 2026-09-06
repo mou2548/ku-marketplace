@@ -35,6 +35,15 @@ export class ItemsController {
     return this.itemsService.count();
   }
 
+  @Get(':item_id/history-summary')
+  @UseGuards(JwtAuthGuard)
+  historySummary(
+    @Param('item_id', ParseIntPipe) itemId: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.itemsService.historySummary(itemId, user.userId);
+  }
+
   @Get(':item_id')
   findOne(@Param('item_id', ParseIntPipe) itemId: number) {
     return this.itemsService.findOne(itemId);
