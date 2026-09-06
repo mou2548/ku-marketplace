@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { ArrowLeftRight, Coins } from "lucide-react";
+import { ArrowLeftRight, Coins, PackageOpen } from "lucide-react";
 
 import type { Item } from "@/lib/api/types";
 import type { MoneyDirection } from "@/lib/offers";
@@ -47,20 +47,23 @@ export function OfferSummary({
   className?: string;
 }) {
   const t = useTranslations();
-  const thumb = size === "sm" ? "w-16" : "w-24";
-
   return (
-    <div className={cn("flex flex-wrap items-start gap-3", className)}>
+    <div
+      className={cn(
+        "grid w-full grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] items-stretch gap-2",
+        className,
+      )}
+    >
       <Stack
         items={youGet}
         label={t("offer.youGet")}
-        thumb={thumb}
+        size={size}
         money={moneyDirection === "you-receive" ? money : 0}
       />
 
       <span
         aria-hidden
-        className="mt-6 grid size-8 shrink-0 place-items-center rounded-pill bg-tone-trade-bg text-tone-trade-fg"
+        className="grid size-8 place-self-center place-items-center rounded-pill bg-tone-trade-bg text-tone-trade-fg"
       >
         <ArrowLeftRight className="size-4" />
       </span>
@@ -68,7 +71,7 @@ export function OfferSummary({
       <Stack
         items={youGive}
         label={t("offer.youGive")}
-        thumb={thumb}
+        size={size}
         money={moneyDirection === "you-pay" ? money : 0}
       />
     </div>
@@ -78,45 +81,55 @@ export function OfferSummary({
 function Stack({
   items,
   label,
-  thumb,
+  size,
   money,
 }: {
   items: Item[];
   label: string;
-  thumb: string;
+  size: "sm" | "md";
   /** Cash travelling with this pile. Zero renders nothing. */
   money: number;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-overline text-ink-muted uppercase">
+    <div className="flex min-w-0 flex-col gap-2 rounded-control bg-surface-sunken/70 p-2.5 sm:p-3">
+      <span className="text-overline font-semibold text-tone-trade-fg uppercase">
         {label}
       </span>
-      <ul className="flex flex-wrap items-start gap-1.5">
+      <ul className="flex min-w-0 flex-1 flex-col gap-2">
         {items.map((item) => {
           const rarity = ITEM_CONDITION[item.condition];
           return (
-            <li key={item.item_id} className={cn("shrink-0", thumb)}>
+            <li key={item.item_id} className="flex min-w-0 items-center gap-2">
               <span
-                className="block overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+                className={cn(
+                  "block shrink-0 overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]",
+                  size === "sm" ? "size-11" : "size-16",
+                )}
                 style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
               >
                 <PostImage
                   src={item.images.find((i) => i.is_primary)?.image_url}
                   alt={item.name}
                   aspectRatio={1}
-                  sizes="96px"
+                  sizes={size === "sm" ? "44px" : "64px"}
                 />
               </span>
-              <span className="mt-1 block truncate text-meta text-ink-muted">
+              <span className="min-w-0 truncate text-meta font-medium text-ink-secondary">
                 {item.name}
               </span>
             </li>
           );
         })}
 
+        {items.length === 0 && money === 0 ? (
+          <li className="flex min-h-11 items-center gap-2 text-meta text-ink-muted">
+            <PackageOpen aria-hidden className="size-4 shrink-0" />
+            <span>No item</span>
+          </li>
+        ) : null}
+
         {money > 0 ? (
-          <li className="shrink-0">
+          <li className="mt-auto shrink-0">
             <span
               data-numeric
               className="flex items-center gap-1 rounded-pill bg-tone-trade-bg px-2.5 py-1 text-caption font-semibold whitespace-nowrap text-tone-trade-fg"

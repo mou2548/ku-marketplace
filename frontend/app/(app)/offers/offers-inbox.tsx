@@ -122,8 +122,13 @@ function OfferList({
 
         return (
           <li key={offer.offer_id}>
-            <Link href={`/offers/${offer.offer_id}`}>
-              <Surface as="div" shape="card" interactive className="flex h-full flex-col gap-4 p-4 sm:p-5">
+            <Link href={`/offers/${offer.offer_id}`} className="block h-full">
+              <Surface
+                as="div"
+                shape="card"
+                interactive
+                className="flex h-full min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-5"
+              >
                 <div className="flex items-start gap-3">
                   <span className="block size-14 shrink-0 overflow-hidden rounded-slot bg-surface-sunken">
                     <PostImage
@@ -137,15 +142,37 @@ function OfferList({
                     />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{offer.post.item.name}</p>
-                    <p className="truncate text-caption text-ink-muted">
-                      {direction === "sent"
-                        ? t("offer.sentToPerson", { name: sides.counterparty.name })
-                        : t("offer.receivedFromPerson", { name: sides.counterparty.name })}
+                    <p className="text-overline font-semibold text-ink-muted uppercase">
+                      Offer for
                     </p>
+                    <p className="line-clamp-2 font-semibold">
+                      {offer.post.item.name}
+                    </p>
+                    <span className="mt-1 flex min-w-0 items-center gap-1.5">
+                      <span className="shrink-0 text-meta text-ink-muted">
+                        {direction === "sent" ? "To" : "From"}
+                      </span>
+                      <TrustBadge
+                        name={sides.counterparty.name}
+                        isVerified={sides.counterparty.isVerified}
+                        faculty={sides.counterparty.faculty}
+                        size="sm"
+                        className="min-w-0"
+                      />
+                    </span>
                   </div>
-                  <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />
+                  <StatusBadge
+                    status={OFFER_STATUS[offer.status]}
+                    size="sm"
+                    className="hidden shrink-0 sm:inline-flex"
+                  />
                 </div>
+
+                <StatusBadge
+                  status={OFFER_STATUS[offer.status]}
+                  size="sm"
+                  className="w-fit max-w-full sm:hidden"
+                />
 
                 {/* The piles themselves, with photos — fairness is judged by
                     looking, not by reading a count (research P3, principle 6). */}
@@ -161,15 +188,6 @@ function OfferList({
                     just shown, which is a third block of the same information
                     on a card the owner called too dense. It stays on the
                     detail screen, where nothing else competes with it. */}
-
-                {direction === "received" ? (
-                  <TrustBadge
-                    name={sides.counterparty.name}
-                    isVerified={sides.counterparty.isVerified}
-                    faculty={sides.counterparty.faculty}
-                    size="sm"
-                  />
-                ) : null}
 
                 {/* The card had no action row at all. On a received offer the
                     decision is the entire point of the row and it was
