@@ -21,7 +21,7 @@ export default async function AdminMembershipsPage() {
     redirect("/login");
   }
   if (!(await isCurrentUserAdmin())) {
-    redirect("/");
+    redirect("/feed");
   }
 
   const requests = await listPendingPayments();

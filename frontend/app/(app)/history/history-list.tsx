@@ -145,7 +145,7 @@ export function HistoryList({
           title={t("history.emptyTitle")}
           description={t("history.emptyBody")}
           action={
-            <LinkButton href="/">
+            <LinkButton href="/feed">
               <Store className="size-4" />{t("history.goToMarket")}</LinkButton>
           }
         />

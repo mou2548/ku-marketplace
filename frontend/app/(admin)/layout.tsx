@@ -28,7 +28,7 @@ export default async function AdminLayout({
 }) {
   if (!(await getAccessToken())) redirect("/login");
   const viewer = await getMe().catch(() => undefined);
-  if (!viewer || !viewer.isAdmin) redirect("/");
+  if (!viewer || !viewer.isAdmin) redirect("/feed");
 
   const [reports, appeals, memberships] = await Promise.all([
     adminListReports(),
@@ -62,7 +62,7 @@ export default async function AdminLayout({
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <ThemeSwitch className="text-white hover:bg-white/10 hover:text-white" />
               <Link
-                href="/"
+                href="/feed"
                 className="flex min-h-11 items-center gap-2 rounded-control px-2 text-body-sm text-white/80 hover:bg-white/10 hover:text-white sm:px-3"
               >
                 <ArrowLeft aria-hidden className="size-4" />

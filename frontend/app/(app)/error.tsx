@@ -34,7 +34,7 @@ export default function AppError({
             <RefreshCw aria-hidden className="size-4" />
             Try again
           </Button>
-          <LinkButton size="lg" block variant="secondary" href="/">
+          <LinkButton size="lg" block variant="secondary" href="/feed">
             <Store aria-hidden className="size-4" />
             Back to the market
           </LinkButton>

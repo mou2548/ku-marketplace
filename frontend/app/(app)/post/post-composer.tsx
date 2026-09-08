@@ -203,7 +203,7 @@ export function PostComposer({
       router.push(
         created.length === 1
           ? `/market/${wireIdToNumber(created[0].post_id)}`
-          : "/",
+          : "/feed",
       );
     } catch (error) {
       toast.show((error as ApiError).message ?? "Could not publish the listing.");

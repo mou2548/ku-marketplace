@@ -75,7 +75,7 @@ export default async function PostDetailPage({
   return (
     <div className="flex flex-col gap-8 pb-6 lg:gap-12">
       <Link
-        href="/"
+        href="/feed"
         className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
       >
         <ArrowLeft aria-hidden className="size-4" />

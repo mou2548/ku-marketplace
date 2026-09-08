@@ -53,7 +53,7 @@ interface NavEntry {
 }
 
 const NAV: NavEntry[] = [
-  { href: "/", labelKey: "nav.market", icon: Store, onTabBar: true },
+  { href: "/feed", labelKey: "nav.market", icon: Store, onTabBar: true },
   { href: "/offers", labelKey: "nav.offers", icon: Handshake, badge: "offers", onTabBar: true },
   // The route keeps its name; the label does not. The screen has been a record
   // of past deals since chat moved out of it, and "Deals" next to "Offers" —
@@ -65,7 +65,7 @@ const NAV: NavEntry[] = [
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return pathname.startsWith(href);
 }
 
 function Count({ value }: { value?: number }) {
@@ -138,7 +138,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           </DrawerTrigger>
 
           <Link
-            href="/"
+            href="/feed"
             aria-label={t("nav.brand")}
             className="group flex shrink-0 items-center gap-2.5 rounded-control outline-none"
           >

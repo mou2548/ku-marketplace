@@ -34,7 +34,7 @@ export async function login(
   }
 
   await setSession(accessToken);
-  redirect("/");
+  redirect("/feed");
 }
 
 export interface RegisterState {
@@ -78,7 +78,7 @@ export async function verifyRegisterOtp(
   }
 
   await setSession(accessToken);
-  redirect("/");
+  redirect("/feed");
 }
 
 export interface ResendState {
