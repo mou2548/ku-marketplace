@@ -51,6 +51,31 @@ const CONDITIONS: ItemCondition[] = [
   "Poor",
 ];
 
+function filterPosts(
+  posts: Post[],
+  segment: Segment,
+  query: string,
+  categories: Set<ItemCategory>,
+  conditions: Set<ItemCondition>,
+) {
+  const q = query.trim().toLowerCase();
+
+  return posts.filter((post) => {
+    if (segment === "sell" && post.post_type === "TradeOnly") return false;
+    if (segment === "trade" && post.post_type === "SellOnly") return false;
+    if (categories.size > 0 && !categories.has(post.item.category)) return false;
+    if (conditions.size > 0 && !conditions.has(post.item.condition)) return false;
+    if (!q) return true;
+
+    return (
+      post.item.course_name?.toLowerCase().includes(q) ||
+      post.item.name.toLowerCase().includes(q) ||
+      post.description?.toLowerCase().includes(q) ||
+      post.wanted_item_offer?.toLowerCase().includes(q)
+    );
+  });
+}
+
 export function MarketFeed({ posts }: { posts: Post[] }) {
   const t = useTranslations();
   const st = useStatusText();
@@ -58,29 +83,19 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<Set<ItemCategory>>(new Set());
   const [conditions, setConditions] = useState<Set<ItemCondition>>(new Set());
+  const [draftCategories, setDraftCategories] = useState<Set<ItemCategory>>(new Set());
+  const [draftConditions, setDraftConditions] = useState<Set<ItemCondition>>(new Set());
   const filterBarRef = useRef<HTMLDivElement>(null);
   const [filterScroll, setFilterScroll] = useState({ left: false, right: false });
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return posts.filter((post) => {
-      if (segment === "sell" && post.post_type === "TradeOnly") return false;
-      if (segment === "trade" && post.post_type === "SellOnly") return false;
-
-      if (categories.size > 0 && !categories.has(post.item.category)) return false;
-      if (conditions.size > 0 && !conditions.has(post.item.condition)) return false;
-
-      if (!q) return true;
-      // Course code is matched first and exactly the way P1 types it.
-      return (
-        post.item.course_name?.toLowerCase().includes(q) ||
-        post.item.name.toLowerCase().includes(q) ||
-        post.description?.toLowerCase().includes(q) ||
-        post.wanted_item_offer?.toLowerCase().includes(q)
-      );
-    });
+    return filterPosts(posts, segment, query, categories, conditions);
   }, [posts, segment, query, categories, conditions]);
+
+  const draftResultCount = useMemo(
+    () => filterPosts(posts, segment, query, draftCategories, draftConditions).length,
+    [posts, segment, query, draftCategories, draftConditions],
+  );
 
   // Derived from the data, because the seed's category names and the design
   // document's slugs do not match and the database is the one that is right.
@@ -154,8 +169,8 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
           {availableCategories.map((cat) => (
             <FilterChip
               key={cat}
-              isActive={categories.has(cat)}
-              onToggle={() => toggle(categories, cat, setCategories)}
+              isActive={draftCategories.has(cat)}
+              onToggle={() => toggle(draftCategories, cat, setDraftCategories)}
             >
               {cat}
             </FilterChip>
@@ -169,25 +184,14 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
           {CONDITIONS.map((c) => (
             <FilterChip
               key={c}
-              isActive={conditions.has(c)}
-              onToggle={() => toggle(conditions, c, setConditions)}
+              isActive={draftConditions.has(c)}
+              onToggle={() => toggle(draftConditions, c, setDraftConditions)}
             >
               {st.of(ITEM_CONDITION[c]).label}
             </FilterChip>
           ))}
         </div>
       </fieldset>
-
-      {activeFilters > 0 ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onPress={() => {
-            setCategories(new Set());
-            setConditions(new Set());
-          }}
-        >{t("feed.clearFilters")}</Button>
-      ) : null}
     </div>
   );
 
@@ -221,7 +225,14 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
             />
           </div>
 
-          <OverlayTrigger>
+          <OverlayTrigger
+            onOpenChange={(open) => {
+              if (open) {
+                setDraftCategories(new Set(categories));
+                setDraftConditions(new Set(conditions));
+              }
+            }}
+          >
             <Button
               variant="secondary"
               size="icon"
@@ -240,7 +251,33 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
                 ) : null}
               </span>
             </Button>
-            <Overlay title={t("feed.filters")}>
+            <Overlay
+              title={t("feed.filters")}
+              size="sm"
+              footer={
+                <>
+                  <Button
+                    variant="ghost"
+                    onPress={() => {
+                      setDraftCategories(new Set());
+                      setDraftConditions(new Set());
+                    }}
+                    isDisabled={draftCategories.size + draftConditions.size === 0}
+                  >
+                    {t("feed.clearFilters")}
+                  </Button>
+                  <Button
+                    slot="close"
+                    onPress={() => {
+                      setCategories(new Set(draftCategories));
+                      setConditions(new Set(draftConditions));
+                    }}
+                  >
+                    {t("feed.showResults", { count: draftResultCount })}
+                  </Button>
+                </>
+              }
+            >
               {filterControls}
             </Overlay>
           </OverlayTrigger>

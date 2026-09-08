@@ -121,11 +121,12 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           <OverlayTrigger>
             <Button variant="secondary">Forfeit this ticket</Button>
             <Overlay
+              isBusy={forfeiting}
               title="Forfeit this ticket?"
               description="You will lose your place. This cannot be undone, and it will not be offered to anyone else."
               footer={
                 <>
-                  <Button variant="ghost" slot="close">
+                  <Button variant="ghost" slot="close" isDisabled={forfeiting}>
                     Keep my ticket
                   </Button>
                   <Button variant="danger" isLoading={forfeiting} onPress={forfeit}>

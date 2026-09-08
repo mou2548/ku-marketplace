@@ -72,6 +72,7 @@ export function ReportDialog({
     <OverlayTrigger onOpenChange={(open) => !open && reset()}>
       {trigger}
       <Overlay
+        isBusy={busy}
         title={`Report this ${reportType === "Post" ? "post" : "user"}`}
         description={
           submitted

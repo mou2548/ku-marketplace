@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
-import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { Overlay } from "@/components/kit/overlay";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Notice } from "@/components/patterns/notice";
 import { TradeBench } from "@/components/kit/trade-bench";
@@ -53,6 +53,8 @@ export function OfferReview({
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [decision, setDecision] = useState<"accept" | "reject" | "withdraw" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   // A trade is always handed over in person — there is no shipping branch for a
   // swap (activity diagram: trade flow). Acceptance resolves in place; the
   // panel names this counterparty and item so the right deal is seen closing.
@@ -75,26 +77,29 @@ export function OfferReview({
     failure: string,
   ) {
     setBusy(true);
+    setActionError(null);
     try {
       await call();
     } catch (err) {
       setBusy(false);
-      toast.error(err instanceof Error ? err.message : failure);
+      setActionError(err instanceof Error ? err.message : failure);
       return;
     }
     setBusy(false);
     toast.success(message);
+    setDecision(null);
     router.push("/offers");
   }
 
   async function accept() {
     setBusy(true);
+    setActionError(null);
     let result;
     try {
       result = await acceptOfferAction(offer.post_id, offer.offer_id);
     } catch (err) {
       setBusy(false);
-      toast.error(err instanceof Error ? err.message : "Could not accept this offer");
+      setActionError(err instanceof Error ? err.message : "Could not accept this offer");
       return;
     }
     setBusy(false);
@@ -103,6 +108,7 @@ export function OfferReview({
     // room to link to, which is the only thing left to do here.
     setTransactionId(wireIdToNumber(result.transaction_id));
     setAccepted(true);
+    setDecision(null);
   }
 
   return (
@@ -211,63 +217,113 @@ export function OfferReview({
           <div className="sticky action-bar-bottom z-[20] flex flex-col-reverse gap-2 rounded-card bg-surface p-3 shadow-floating sm:static sm:flex-row sm:justify-end sm:bg-transparent sm:p-0 sm:shadow-none">
             <Button
               variant="secondary"
-              onPress={() =>
-                respond(
-                  () => rejectOfferAction(offer.post_id, offer.offer_id),
-                  "Offer declined",
-                  "Could not decline this offer",
-                )
-              }
+              onPress={() => setDecision("reject")}
               isDisabled={busy}
             >
               <X className="size-4" />{t("offer.decline")}</Button>
 
-            <OverlayTrigger>
-              <Button>
-                <Check className="size-4" />{t("offer.acceptOffer")}</Button>
-
-              <Overlay
-                title={t("offer.confirmTrade")}
-                description={t("offer.confirmTradeBody")}
-                footer={
-                  <>
-                    <Button variant="ghost" slot="close">{t("offer.notYet")}</Button>
-                    <Button isLoading={busy} slot="close" onPress={accept}>{t("offer.confirmAcceptance")}</Button>
-                  </>
-                }
-              >
-                {offer.additional_money > 0 ? (
-                  <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-                    This offer adds cash: ฿
-                    {offer.additional_money.toLocaleString("en-GB")} —
-                    a slip upload and slip check are added before the QR
-                  </p>
-                ) : (
-                  <p className="mt-4 rounded-control bg-tone-trade-bg p-3 text-caption leading-[1.6] text-tone-trade-fg">
-                    Pure trade with no money. No slip needed. It ends with a
-                    QR scan.
-                  </p>
-                )}
-              </Overlay>
-            </OverlayTrigger>
+            <Button variant="trade" onPress={() => setDecision("accept")}>
+              <Check className="size-4" />{t("offer.acceptOffer")}</Button>
           </div>
         ) : (
           <div className="flex justify-end">
             <Button
               variant="secondary"
               isLoading={busy}
-              onPress={() =>
-                respond(
-                  () => withdrawOfferAction(offer.post_id, offer.offer_id),
-                  "Offer withdrawn",
-                  "Could not withdraw this offer",
-                )
-              }
+              onPress={() => setDecision("withdraw")}
             >
               <Undo2 className="size-4" />{t("offer.withdraw")}</Button>
           </div>
         )
       ) : null}
+
+      <Overlay
+        isOpen={decision !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDecision(null);
+            setActionError(null);
+          }
+        }}
+        isBusy={busy}
+        size="sm"
+        title={
+          decision === "accept"
+            ? t("offer.confirmTrade")
+            : decision === "reject"
+              ? t("offer.declineTitle")
+              : t("offer.withdrawTitle")
+        }
+        description={
+          decision === "accept"
+            ? t("offer.confirmTradeBody")
+            : decision === "reject"
+              ? t("offer.declineBody")
+              : t("offer.withdrawBody")
+        }
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              isDisabled={busy}
+              onPress={() => setDecision(null)}
+            >
+              {t("offer.notYet")}
+            </Button>
+            <Button
+              variant={decision === "accept" ? "trade" : decision === "reject" ? "danger" : "primary"}
+              isLoading={busy}
+              onPress={() => {
+                if (decision === "accept") void accept();
+                if (decision === "reject") {
+                  void respond(
+                    () => rejectOfferAction(offer.post_id, offer.offer_id),
+                    "Offer declined",
+                    "Could not decline this offer",
+                  );
+                }
+                if (decision === "withdraw") {
+                  void respond(
+                    () => withdrawOfferAction(offer.post_id, offer.offer_id),
+                    "Offer withdrawn",
+                    "Could not withdraw this offer",
+                  );
+                }
+              }}
+            >
+              {decision === "accept"
+                ? t("offer.confirmAcceptance")
+                : decision === "reject"
+                  ? t("offer.confirmDecline")
+                  : t("offer.confirmWithdraw")}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <p className="rounded-control bg-surface-sunken p-3 text-body-sm text-ink-secondary shadow-sunken">
+            {offer.post.item.name} <span aria-hidden>·</span> {sides.counterparty.name}
+          </p>
+          {decision === "accept" ? (
+            offer.additional_money > 0 ? (
+              <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
+                This offer adds cash: ฿
+                {offer.additional_money.toLocaleString("en-GB")} — a slip
+                upload and slip check are added before the QR.
+              </p>
+            ) : (
+              <p className="rounded-control bg-tone-trade-bg p-3 text-caption leading-[1.6] text-tone-trade-fg">
+                Pure trade with no money. No slip needed. It ends with a QR scan.
+              </p>
+            )
+          ) : null}
+          {actionError ? (
+            <p role="alert" className="text-body-sm font-medium text-tone-danger-fg">
+              {actionError}
+            </p>
+          ) : null}
+        </div>
+      </Overlay>
     </div>
   );
 }

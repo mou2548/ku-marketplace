@@ -284,6 +284,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           description="Transfer the amount, then upload the slip. An admin checks it and switches your tier."
         >
           <SlipUploader
+            embedded
             amount={current?.price ?? 0}
             onUpload={async (file) => {
               const url = await uploadFile(file);

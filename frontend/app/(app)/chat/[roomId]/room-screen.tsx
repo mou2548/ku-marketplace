@@ -987,6 +987,7 @@ function DealDetails({
               <Button variant="ghost" size="sm">
                 <XCircle className="size-4" />{t("deal.requestCancellation")}</Button>
               <Overlay
+                isBusy={busy}
                 title={t("deal.cancelTitle")}
                 description={t("deal.cancelBody")}
                 footer={

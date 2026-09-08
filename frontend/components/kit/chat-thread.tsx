@@ -195,7 +195,11 @@ export function ChatThread({
                               className="aspect-square object-cover shadow-raised"
                             />
                           </button>
-                          <Overlay title={t("chat.photo")} size="lg">
+                          <Overlay
+                            title={t("chat.photo")}
+                            size="lg"
+                            bodyClassName="px-2 pb-2 sm:px-5 sm:pb-3"
+                          >
                             <div className="flex items-center justify-center">
                               <Image
                                 src={url}

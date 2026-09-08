@@ -34,6 +34,8 @@ export interface SlipUploaderProps {
    * later has nothing else to fall back on without this.
    */
   slipUrl?: string | null;
+  /** Removes the extra card shell when the uploader already lives in a dialog. */
+  embedded?: boolean;
   className?: string;
 }
 
@@ -43,6 +45,7 @@ export function SlipUploader({
   isUploaded = false,
   uploadedAt,
   slipUrl,
+  embedded = false,
   className,
 }: SlipUploaderProps) {
   const t = useTranslations();
@@ -74,7 +77,12 @@ export function SlipUploader({
   }
 
   return (
-    <Surface shape="card" className={cn("p-4", className)}>
+    <Surface
+      shape="card"
+      elevation={embedded ? "none" : "raised"}
+      fill={embedded ? "none" : "surface"}
+      className={cn(embedded ? "p-0" : "p-4", className)}
+    >
       <header className="mb-3 flex items-baseline justify-between gap-2">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("slip.upload")}</h4>
         <span data-numeric className="text-body-lg font-semibold">

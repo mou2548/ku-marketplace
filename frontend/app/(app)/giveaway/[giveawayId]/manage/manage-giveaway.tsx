@@ -218,6 +218,7 @@ export function ManageGiveaway({
           </Button>
 
           <Overlay
+            isBusy={busy}
             title="Scan a recipient's ticket"
             description="The QR rotates every 15 minutes, so ask them to open it now rather than sending a screenshot."
           >

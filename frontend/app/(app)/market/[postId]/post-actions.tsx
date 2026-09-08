@@ -93,6 +93,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
             <ShoppingBag className="size-5" />{t("market.buyNow")}</Button>
 
           <Overlay
+            isBusy={busy}
             title={t("market.chooseDelivery")}
             description={t("market.chooseDeliveryBody")}
             footer={

@@ -338,6 +338,7 @@ export function OfferComposer({
 
       <Overlay
         isOpen={!!splitTarget}
+        isBusy={splitBusy}
         onOpenChange={(open) => {
           if (!open) setSplitTarget(null);
         }}
