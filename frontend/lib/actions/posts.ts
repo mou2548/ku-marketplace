@@ -25,29 +25,32 @@ import { getAccessToken, getCurrentUserId } from "@/lib/api/session";
  * `setTimeout` placeholder instead (see docs/design/audit-2026.md).
  */
 
-async function requireUserId(): Promise<number> {
-  if (!(await getAccessToken())) {
+async function requireUser(): Promise<{ token: string; userId: number }> {
+  const token = await getAccessToken();
+  if (!token) {
     throw new Error("Not signed in");
   }
   const userId = await getCurrentUserId();
   if (userId == null) {
     throw new Error("Not signed in");
   }
-  return userId;
+  return { token, userId };
 }
 
-async function requireSession(): Promise<void> {
-  if (!(await getAccessToken())) {
+async function requireSession(): Promise<string> {
+  const token = await getAccessToken();
+  if (!token) {
     throw new Error("Not signed in");
   }
+  return token;
 }
 
 /** `POST /posts` — put an owned item on the market. */
 export async function publishListing(
   payload: CreatePostPayload,
 ): Promise<PostSummary> {
-  await requireSession();
-  return createPost(payload);
+  const token = await requireSession();
+  return createPost(payload, { token });
 }
 
 /**
@@ -60,8 +63,8 @@ export async function sendOffer(
   postId: PostId,
   payload: Omit<CreateOfferPayload, "proposer_id">,
 ): Promise<OfferSummary> {
-  const proposerId = await requireUserId();
-  return createOffer(postId, { ...payload, proposer_id: proposerId });
+  const { token, userId: proposerId } = await requireUser();
+  return createOffer(postId, { ...payload, proposer_id: proposerId }, { token });
 }
 
 /** `POST /posts/:post_id/offers/:offer_id/accept` — seller accepts. */
@@ -69,9 +72,9 @@ export async function acceptOfferAction(
   postId: PostId,
   offerId: PostId,
 ): Promise<AcceptOfferResult> {
-  await requireSession();
+  const token = await requireSession();
   // Meetup-only: a trade has no shipping branch (see PRODUCT.md).
-  return acceptOffer(postId, offerId, { delivery_method: "Meetup" });
+  return acceptOffer(postId, offerId, { delivery_method: "Meetup" }, { token });
 }
 
 /** `POST /posts/:post_id/offers/:offer_id/reject` — seller declines. */
@@ -79,8 +82,8 @@ export async function rejectOfferAction(
   postId: PostId,
   offerId: PostId,
 ): Promise<OfferStatusChangeResult> {
-  await requireSession();
-  return rejectOffer(postId, offerId);
+  const token = await requireSession();
+  return rejectOffer(postId, offerId, { token });
 }
 
 /** `POST /posts/:post_id/offers/:offer_id/withdraw` — proposer takes it back. */
@@ -88,6 +91,6 @@ export async function withdrawOfferAction(
   postId: PostId,
   offerId: PostId,
 ): Promise<OfferStatusChangeResult> {
-  await requireSession();
-  return withdrawOffer(postId, offerId);
+  const token = await requireSession();
+  return withdrawOffer(postId, offerId, { token });
 }
