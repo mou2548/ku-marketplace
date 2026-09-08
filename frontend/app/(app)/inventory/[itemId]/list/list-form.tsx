@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowLeftRight, Coins, Sparkles, Store } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { TextAreaField, TextInput } from "@/components/kit/field";
@@ -144,7 +145,7 @@ export function ListItemForm({ item }: { item: Item }) {
         />
       </Surface>
 
-      <div className="sticky action-bar-bottom z-[20] flex gap-2 rounded-card bg-surface/95 p-2 shadow-floating backdrop-blur-sm lg:static lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
+      <ActionBar>
         <Button variant="secondary" block onPress={() => router.back()}>{t("inventory.cancel")}</Button>
         <Button
           block
@@ -154,7 +155,7 @@ export function ListItemForm({ item }: { item: Item }) {
           onPress={publish}
         >
           <Store aria-hidden className="size-4" />{t("inventory.publish")}</Button>
-      </div>
+      </ActionBar>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, Flag, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
@@ -80,13 +81,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
   }
 
   return (
-    <div
-      className={
-        "sticky action-bar-bottom z-[20] " +
-        "-mx-4 flex gap-2 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur " +
-        "lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
-      }
-    >
+    <ActionBar className="-mx-1">
       {canBuy ? (
         <OverlayTrigger>
           <Button block size="lg" className="lg:w-auto">
@@ -149,11 +144,16 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
         targetId={post.post_id}
         reasons={POST_REPORT_REASONS}
         trigger={
-          <Button variant="ghost" size="lg" aria-label={t("market.reportPost")}>
+          <Button
+            variant="ghost"
+            size="lg"
+            aria-label={t("market.reportPost")}
+            className="self-end lg:self-auto"
+          >
             <Flag className="size-5" />
           </Button>
         }
       />
-    </div>
+    </ActionBar>
   );
 }

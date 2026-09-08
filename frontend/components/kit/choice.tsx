@@ -74,7 +74,7 @@ export function SelectField<T extends object>({
 
       <Popover
         className={cn(
-          "w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
+          "z-[90] w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
           "max-h-64",
           "data-[entering]:anim-pop-in",
           "data-[exiting]:anim-fade-out",

@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { MessagesSquare, Search } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 
 import type { RoomKind, RoomSummary } from "@/lib/rooms";
 import { ROOM_KIND_TONE } from "@/lib/rooms";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./empty-state";
 import { PostImage } from "./post-image";
+import { SearchField } from "./search-field";
 import { StatusBadge } from "./status-badge";
 import { TabList, Tabs, UnderlineTab } from "./tabs";
 import { TONE_DOT, TONE_TEXT } from "./tone";
@@ -128,19 +129,13 @@ export function RoomList({
           </div>
         ) : null}
 
-        <div className="relative mb-3">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-muted"
-          />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label={t("chat.searchConversations")}
-            placeholder={t("chat.search")}
-            className="h-10 w-full rounded-pill bg-surface-sunken pr-4 pl-10 text-body-sm shadow-sunken"
-          />
-        </div>
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          label={t("chat.searchConversations")}
+          placeholder={t("chat.search")}
+          className="mb-3"
+        />
 
         <Tabs
           selectedKey={filter}

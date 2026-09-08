@@ -62,7 +62,7 @@ export function PostCard({
         href={`/market/${postId}`}
         className="block rounded-card outline-none"
       >
-        <div className="relative overflow-hidden rounded-[1rem] bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/pin:-translate-y-0.5 group-hover/pin:shadow-floating group-focus-visible/pin:shadow-floating">
+        <div className="relative overflow-hidden rounded-card bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/pin:-translate-y-0.5 group-hover/pin:shadow-floating group-focus-visible/pin:shadow-floating">
           <PostImage
             src={imageUrl}
             alt={name}

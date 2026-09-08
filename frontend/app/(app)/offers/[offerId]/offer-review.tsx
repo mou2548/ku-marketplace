@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
 import { Overlay } from "@/components/kit/overlay";
 import { StatusBadge } from "@/components/kit/status-badge";
@@ -214,7 +215,7 @@ export function OfferReview({
              a full-height read-only bench — two plate panels and a seam. This
              is the highest-stakes control in the group; it does not scroll
              away. */
-          <div className="sticky action-bar-bottom z-[20] flex flex-col-reverse gap-2 rounded-card bg-surface p-3 shadow-floating sm:static sm:flex-row sm:justify-end sm:bg-transparent sm:p-0 sm:shadow-none">
+          <ActionBar>
             <Button
               variant="secondary"
               onPress={() => setDecision("reject")}
@@ -224,7 +225,7 @@ export function OfferReview({
 
             <Button variant="trade" onPress={() => setDecision("accept")}>
               <Check className="size-4" />{t("offer.acceptOffer")}</Button>
-          </div>
+          </ActionBar>
         ) : (
           <div className="flex justify-end">
             <Button

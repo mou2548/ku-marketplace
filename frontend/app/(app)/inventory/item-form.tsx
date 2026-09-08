@@ -10,6 +10,7 @@ import {
 } from "@internationalized/date";
 import { ImagePlus, Save, X } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button } from "@/components/kit/button";
 import {
   Radio,
@@ -399,7 +400,7 @@ export function ItemForm({
         rows={5}
       />
 
-      <div className="sticky action-bar-bottom z-[20] flex gap-2 rounded-card bg-surface/95 p-2 shadow-floating backdrop-blur-sm lg:static lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none">
+      <ActionBar>
         <Button
           variant="secondary"
           block
@@ -410,7 +411,7 @@ export function ItemForm({
           <Save className="size-5" />
           {mode === "create" ? "Add to inventory" : "Save"}
         </Button>
-      </div>
+      </ActionBar>
     </TwoColumn>
   );
 }

@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ScanLine, Users } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button } from "@/components/kit/button";
 import { Checkbox } from "@/components/kit/choice";
 import { CountdownPill } from "@/components/kit/countdown-pill";
@@ -207,7 +208,7 @@ export function ManageGiveaway({
         )}
       </section>
 
-      <div className="sticky action-bar-bottom z-[20] -mx-3 flex flex-col-reverse gap-2 border-t border-line bg-surface/95 px-3 py-3 backdrop-blur sm:mx-0 sm:flex-row sm:justify-end sm:rounded-card sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      <ActionBar>
         {/* This used to link to the public detail page, which is not a
             scanner. The handover is closed by reading the recipient's rotating
             QR, so the scanner itself belongs here. */}
@@ -239,7 +240,7 @@ export function ManageGiveaway({
           Confirm {picked.size}/{giveaway.quantity} recipient
           {picked.size === 1 ? "" : "s"}
         </Button>
-      </div>
+      </ActionBar>
     </div>
   );
 }

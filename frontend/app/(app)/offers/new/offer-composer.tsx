@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
 import { TextInput } from "@/components/kit/field";
@@ -370,10 +371,7 @@ export function OfferComposer({
       </Overlay>
 
       {/* Sticky on mobile: the submit must not be below a scrolling stash. */}
-      <Surface
-        shape="card"
-        className="sticky action-bar-bottom z-[20] flex items-center gap-3 p-3 lg:static"
-      >
+      <ActionBar layout="summary" className="p-3">
         {/* Same phrasing as the review screen and the inbox card, so what you
             are about to send reads the way it will read once it is sent. */}
         <p className="min-w-0 flex-1 text-caption text-ink-muted">
@@ -384,7 +382,7 @@ export function OfferComposer({
         </p>
         <Button size="lg" isDisabled={!canSubmit} isLoading={busy} onPress={submit}>
           <ArrowLeftRight className="size-5" />{t("offer.send")}</Button>
-      </Surface>
+      </ActionBar>
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Search,
   SlidersHorizontal,
   Store,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { MasonryGrid, MasonryItem } from "@/components/kit/masonry-grid";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostCard } from "@/components/kit/post-card";
+import { SearchField } from "@/components/kit/search-field";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
 import { useStatusText } from "@/lib/i18n/status-text";
 import type { ItemCategory, Post } from "@/lib/api/types";
@@ -211,19 +211,13 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
 
       <div className="sticky top-[4.25rem] z-[20] -mx-3 flex flex-col gap-3 border-y border-line bg-page px-3 py-3 sm:-mx-4 sm:px-4 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted"
-            />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label={t("feed.searchLabel")}
-              placeholder={t("feed.searchPlaceholder")}
-              className="h-12 w-full rounded-pill bg-surface pr-4 pl-11 text-body text-ink shadow-raised placeholder:text-ink-muted"
-            />
-          </div>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            label={t("feed.searchLabel")}
+            placeholder={t("feed.searchPlaceholder")}
+            className="min-w-0 flex-1 bg-surface shadow-raised"
+          />
 
           <OverlayTrigger
             onOpenChange={(open) => {

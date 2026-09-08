@@ -150,7 +150,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
         href={`/giveaway/${giveaway.giveaway_id}`}
         className="block rounded-card outline-none"
       >
-        <div className="relative overflow-hidden rounded-[1rem] bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/drop:-translate-y-0.5 group-hover/drop:shadow-floating group-focus-visible/drop:shadow-floating">
+        <div className="relative overflow-hidden rounded-card bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/drop:-translate-y-0.5 group-hover/drop:shadow-floating group-focus-visible/drop:shadow-floating">
           <PostImage
             src={image}
             alt={giveaway.item_name}

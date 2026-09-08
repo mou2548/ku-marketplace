@@ -83,7 +83,7 @@ export function DatePickerField<T extends DateValue>({
 
       <Popover
         className={cn(
-          "rounded-panel bg-surface p-4 shadow-overlay",
+          "z-[90] rounded-panel bg-surface p-4 shadow-overlay",
           "data-[entering]:anim-pop-in",
           "data-[exiting]:anim-fade-out",
         )}
