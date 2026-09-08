@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, type RequestOptions } from "./client";
 import { authHeader, getCurrentUserId } from "./session";
 import type { Item, ItemHistorySummary } from "./types";
 
@@ -69,8 +69,8 @@ export interface ItemPayload {
 }
 
 /** `GET /items` — public, no owner filter. */
-export async function getItems(): Promise<Item[]> {
-  const raw = await apiFetch<RawItem[]>("/items");
+export async function getItems(opts?: RequestOptions): Promise<Item[]> {
+  const raw = await apiFetch<RawItem[]>("/items", opts);
   return raw.map(toItem);
 }
 
@@ -94,10 +94,10 @@ export async function getItemHistorySummary(
  * Named to match `lib/api/fixtures.ts`'s `getMyItems()` so pages only change
  * their import, not their call site (see `lib/api/types.ts`'s header comment).
  */
-export async function getMyItems(): Promise<Item[]> {
+export async function getMyItems(opts?: RequestOptions): Promise<Item[]> {
   const userId = await getCurrentUserId();
   if (!userId) return [];
-  const items = await getItems();
+  const items = await getItems(opts);
   return items.filter((i) => i.owner_id === userId);
 }
 

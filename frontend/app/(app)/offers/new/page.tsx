@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { getMyItems } from "@/lib/api/items";
 import { getPost } from "@/lib/api/posts";
+import { getAccessToken } from "@/lib/api/session";
 
 import { OfferComposer } from "./offer-composer";
 
@@ -15,11 +16,14 @@ export default async function NewOfferPage({
   searchParams: Promise<{ post?: string }>;
 }) {
   const { post: postParam } = await searchParams;
+  const token = await getAccessToken();
+  if (!token) redirect("/login");
+
   const post = postParam
-    ? await getPost(Number(postParam)).catch(() => undefined)
+    ? await getPost(Number(postParam), { token }).catch(() => undefined)
     : undefined;
   if (!post) notFound();
 
-  const items = await getMyItems();
+  const items = await getMyItems({ token });
   return <OfferComposer post={post} inventory={items} />;
 }
