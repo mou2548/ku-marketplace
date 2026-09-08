@@ -25,7 +25,7 @@ export function AppealDecision({ appealId }: { appealId: number }) {
         status: upheld ? "Approved" : "Rejected",
         resolution_note: note,
       });
-      toast.show(
+      toast.success(
         upheld
           ? `Appeal #${appealId} upheld. The penalty is lifted.`
           : `Appeal #${appealId} rejected. The original decision stands.`,
@@ -33,7 +33,7 @@ export function AppealDecision({ appealId }: { appealId: number }) {
       setNote("");
       router.refresh();
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not record the decision.");
+      toast.error((error as ApiError).message ?? "Could not record the decision.");
     } finally {
       setBusy(false);
     }

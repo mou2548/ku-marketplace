@@ -91,10 +91,10 @@ export function VerdictForm({
           resolution_note: note,
         });
       }
-      toast.show("Decision recorded and sent to both parties.");
+      toast.success("Decision recorded and sent to both parties.");
       router.push("/admin/reports");
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not record the decision.");
+      toast.error((error as ApiError).message ?? "Could not record the decision.");
     } finally {
       setBusy(false);
     }

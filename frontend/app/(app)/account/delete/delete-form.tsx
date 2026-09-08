@@ -34,11 +34,11 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
       await deleteAccount();
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not close account");
+      toast.error(err instanceof Error ? err.message : "Could not close account");
       return;
     }
     setBusy(false);
-    toast.show("Account closed");
+    toast.success("Account closed");
     router.push("/login");
   }
 

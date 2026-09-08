@@ -53,11 +53,11 @@ export function ListItemForm({ item }: { item: Item }) {
       });
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not list this item");
+      toast.error(err instanceof Error ? err.message : "Could not list this item");
       return;
     }
     setBusy(false);
-    toast.show("Listed. It is live in the market now.");
+    toast.success("Listed. It is live in the market now.");
     router.push(`/market/${wireIdToNumber(post.post_id)}`);
   }
 

@@ -288,7 +288,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
             onUpload={async (file) => {
               const url = await uploadFile(file);
               await subscribeToMembership(selected, url);
-              toast.show("Slip uploaded. An admin will review it shortly.");
+              toast.success("Slip uploaded. An admin will review it shortly.");
               router.refresh();
             }}
           />

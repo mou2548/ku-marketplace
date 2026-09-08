@@ -72,7 +72,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
     // POST /posts/{id}/buy → { delivery_method, quantity }
     await new Promise((r) => setTimeout(r, 400));
     setBusy(false);
-    toast.show("Deal created. A chat room has been opened for you.");
+    toast.success("Deal created. A chat room has been opened for you.");
     // UI mock: the real call returns the new transaction id. Transaction 6 is
     // the fixture where the viewer is the buyer, so the redirect through
     // /history/[txId] lands in a room instead of a 404. Delete with the fixtures.

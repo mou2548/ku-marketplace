@@ -34,14 +34,14 @@ export default function DealScanPage({
       try {
         await completeHandover(Number(txId), token);
       } catch (err) {
-        toast.show(
+        toast.error(
           err instanceof Error
             ? err.message
             : "That code did not work. Ask the seller to refresh it.",
         );
         return;
       }
-      toast.show("Receipt confirmed. The deal is closed.");
+      toast.success("Receipt confirmed. The deal is closed.");
       router.push(`/history/${txId}`);
     },
     [router, toast, txId],

@@ -73,12 +73,12 @@ export function ManageGiveaway({
     setBusy(true);
     try {
       const chosen = await selectRecipients(giveaway.giveaway_id, [...picked]);
-      toast.show(
+      toast.success(
         `Selected ${chosen.length} recipient${chosen.length === 1 ? "" : "s"}. Chat rooms are open.`,
       );
       router.push(`/giveaway/${giveaway.giveaway_id}`);
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not confirm selection.");
+      toast.error((error as ApiError).message ?? "Could not confirm selection.");
     } finally {
       setBusy(false);
     }
@@ -87,14 +87,15 @@ export function ManageGiveaway({
   async function handleScan(raw: string) {
     const decoded = decodeTicketQr(raw);
     if (!decoded) {
-      toast.show("That QR is not a giveaway ticket.");
+      toast.error("That QR is not a giveaway ticket.");
       return;
     }
     try {
       const valid = await scanTicketQr(decoded.giveawayId, decoded.ticketId, decoded.token);
-      toast.show(valid ? "Ticket accepted. Handover recorded." : "This QR is not valid.");
+      if (valid) toast.success("Ticket accepted. Handover recorded.");
+      else toast.error("This QR is not valid.");
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not check that QR.");
+      toast.error((error as ApiError).message ?? "Could not check that QR.");
     }
   }
 

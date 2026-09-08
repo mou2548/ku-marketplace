@@ -33,11 +33,11 @@ export function MembershipReview({
       await decideMembershipPayment(requestId, approved);
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not record the decision");
+      toast.error(err instanceof Error ? err.message : "Could not record the decision");
       return;
     }
     setBusy(false);
-    toast.show(
+    toast.success(
       approved
         ? `${tier} granted to ${userName}.`
         : `Request #${requestId} rejected. The student has been told the amount does not match.`,

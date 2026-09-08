@@ -41,11 +41,11 @@ export function ProfileFields({
     try {
       await updateProfile(patch);
     } catch (err) {
-      toast.show(err instanceof Error ? err.message : `Could not save ${what.toLowerCase()}`);
+      toast.error(err instanceof Error ? err.message : `Could not save ${what.toLowerCase()}`);
       return;
     }
     apply();
-    toast.show(`${what} saved`);
+    toast.success(`${what} saved`);
   }
 
   const facultyLine = [faculty, year ? `Year ${year}` : null]

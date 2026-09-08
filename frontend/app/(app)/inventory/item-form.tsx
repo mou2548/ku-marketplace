@@ -151,11 +151,11 @@ export function ItemForm({
       }
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not save item");
+      toast.error(err instanceof Error ? err.message : "Could not save item");
       return;
     }
     setBusy(false);
-    toast.show(mode === "create" ? "Item added to your inventory" : "Changes saved");
+    toast.success(mode === "create" ? "Item added to your inventory" : "Changes saved");
     router.push("/inventory");
   }
 

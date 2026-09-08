@@ -147,7 +147,7 @@ export function OfferComposer({
       await saveItemEdits(original.item_id, { quantity: original.quantity - n });
     } catch (err) {
       setSplitBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not split this item");
+      toast.error(err instanceof Error ? err.message : "Could not split this item");
       return;
     }
 
@@ -175,7 +175,7 @@ export function OfferComposer({
         () => undefined,
       );
       setSplitBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not split this item");
+      toast.error(err instanceof Error ? err.message : "Could not split this item");
       return;
     }
 
@@ -207,7 +207,7 @@ export function OfferComposer({
       });
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not send this offer");
+      toast.error(err instanceof Error ? err.message : "Could not send this offer");
       return;
     }
     setBusy(false);

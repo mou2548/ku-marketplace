@@ -36,10 +36,10 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
     setForfeiting(true);
     try {
       await forfeitTicket(ticket.ticket_id);
-      toast.show("Ticket forfeited.");
+      toast.success("Ticket forfeited.");
       router.push(`/giveaway/${giveaway.giveaway_id}`);
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not forfeit. Try again.");
+      toast.error((error as ApiError).message ?? "Could not forfeit. Try again.");
     } finally {
       setForfeiting(false);
     }

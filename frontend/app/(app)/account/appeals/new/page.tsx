@@ -29,10 +29,10 @@ export default function NewAppealPage() {
     setBusy(true);
     try {
       await createAppeal({ report_id: Number(reportId), reason });
-      toast.show("Appeal submitted. A different admin will review it.");
+      toast.success("Appeal submitted. A different admin will review it.");
       router.push("/account/appeals");
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not submit the appeal.");
+      toast.error((error as ApiError).message ?? "Could not submit the appeal.");
     } finally {
       setBusy(false);
     }

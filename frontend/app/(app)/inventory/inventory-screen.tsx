@@ -257,7 +257,7 @@ export function InventoryScreen({
               if (selectedIds.length === 1) {
                 router.push(`/inventory/${selectedIds[0]}/list`);
               } else {
-                toast.show(`Preparing to list ${selectedIds.length} items`);
+                toast.info(`Preparing to list ${selectedIds.length} items`);
               }
             }}
           >

@@ -342,11 +342,11 @@ export function RoomScreen({
       await call();
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : failure);
+      toast.error(err instanceof Error ? err.message : failure);
       return;
     }
     setBusy(false);
-    toast.show(message);
+    toast.success(message);
     if (next) {
       router.push(next);
     } else {
@@ -363,7 +363,7 @@ export function RoomScreen({
           : undefined;
       if (sent) setMessages((prev) => [...prev, sent]);
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not send the message.");
+      toast.error((error as ApiError).message ?? "Could not send the message.");
     }
   }
 
@@ -372,7 +372,7 @@ export function RoomScreen({
   async function handleAttach(files: FileList) {
     if (!transaction && !giveaway) return;
     const selected = Array.from(files).slice(0, 5);
-    if (files.length > 5) toast.show(t("deal.photoLimit"));
+    if (files.length > 5) toast.warning(t("deal.photoLimit"));
 
     setBusy(true);
     try {
@@ -387,7 +387,7 @@ export function RoomScreen({
         : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
       setMessages((prev) => [...prev, sent]);
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not send the photos.");
+      toast.error((error as ApiError).message ?? "Could not send the photos.");
     } finally {
       setBusy(false);
     }
@@ -404,9 +404,9 @@ export function RoomScreen({
       });
       setAppointment(created);
       setPlace("");
-      toast.show(t("deal.meetupProposed"));
+      toast.success(t("deal.meetupProposed"));
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not propose a meetup.");
+      toast.error((error as ApiError).message ?? "Could not propose a meetup.");
     } finally {
       setBusy(false);
     }
@@ -418,9 +418,9 @@ export function RoomScreen({
     try {
       const updated = await respondToAppointment(appointment.appointment_id, response);
       setAppointment(updated);
-      toast.show(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
+      toast.success(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not respond to the meetup.");
+      toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
     } finally {
       setBusy(false);
     }
@@ -497,7 +497,7 @@ export function RoomScreen({
               // taken. Until then it says so rather than reporting a rejection
               // that never reached the buyer. See docs/design/api-gaps.md.
               onReject={() =>
-                toast.show(
+                toast.warning(
                   "Rejecting a slip is not supported yet. Ask the buyer in chat, or request a cancellation.",
                 )
               }

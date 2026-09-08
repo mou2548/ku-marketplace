@@ -69,14 +69,14 @@ export function GiveawayDetail({
     try {
       const joined = await joinGiveaway(giveaway.giveaway_id);
       setJoinedStatus(joined.status);
-      toast.show(
+      toast.success(
         joined.status === "Waiting"
           ? "Your place is confirmed. Open your ticket when you collect."
           : "Registered. Wait for the result.",
       );
       router.refresh();
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not register. Try again.");
+      toast.error((error as ApiError).message ?? "Could not register. Try again.");
     } finally {
       setBusy(false);
     }
@@ -86,14 +86,14 @@ export function GiveawayDetail({
     setDrawing(true);
     try {
       const recipients = await drawGiveaway(giveaway.giveaway_id);
-      toast.show(
+      toast.success(
         recipients.length > 0
           ? "Draw complete. The winner has been notified."
           : "Draw complete.",
       );
       router.refresh();
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not run the draw.");
+      toast.error((error as ApiError).message ?? "Could not run the draw.");
     } finally {
       setDrawing(false);
     }

@@ -164,7 +164,7 @@ export function PostComposer({
             }),
           );
         }
-        toast.show(
+        toast.success(
           created.length === 1
             ? "Giveaway posted. Registration is open."
             : `Posted ${created.length} giveaways. Registration is open.`,
@@ -175,7 +175,7 @@ export function PostComposer({
         // redundant round trip through the list.
         router.push(created.length === 1 ? `/giveaway/${created[0].giveaway_id}` : "/giveaway");
       } catch (error) {
-        toast.show((error as ApiError).message ?? "Could not post the giveaway.");
+        toast.error((error as ApiError).message ?? "Could not post the giveaway.");
       } finally {
         setBusy(false);
       }
@@ -195,7 +195,7 @@ export function PostComposer({
         ),
       );
 
-      toast.show(
+      toast.success(
         created.length === 1
           ? "Listed. It is live in the market now."
           : `Listed ${created.length} items. They are live in the market now.`,
@@ -206,7 +206,7 @@ export function PostComposer({
           : "/feed",
       );
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not publish the listing.");
+      toast.error((error as ApiError).message ?? "Could not publish the listing.");
     } finally {
       setBusy(false);
     }

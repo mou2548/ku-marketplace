@@ -39,11 +39,11 @@ export function EditProfileForm({ profile }: { profile: User }) {
       });
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not save profile");
+      toast.error(err instanceof Error ? err.message : "Could not save profile");
       return;
     }
     setBusy(false);
-    toast.show("Profile saved");
+    toast.success("Profile saved");
     router.push("/account");
   }
 

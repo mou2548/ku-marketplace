@@ -79,11 +79,11 @@ export function OfferReview({
       await call();
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : failure);
+      toast.error(err instanceof Error ? err.message : failure);
       return;
     }
     setBusy(false);
-    toast.show(message);
+    toast.success(message);
     router.push("/offers");
   }
 
@@ -94,7 +94,7 @@ export function OfferReview({
       result = await acceptOfferAction(offer.post_id, offer.offer_id);
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not accept this offer");
+      toast.error(err instanceof Error ? err.message : "Could not accept this offer");
       return;
     }
     setBusy(false);
