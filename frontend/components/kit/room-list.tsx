@@ -267,7 +267,6 @@ function RoomRow({
                 {
                   day: "numeric",
                   month: "short",
-                  year: "numeric",
                 },
               )}
             </time>
