@@ -609,10 +609,10 @@ export function resolveTransactionActor(
       if (!requiresPayment(tx)) {
         return you(
         "buyer",
-        "prompt.propose-appointment.you",
-        "prompt.propose-appointment.them",
+        "prompt.scan-qr.you",
+        "prompt.scan-qr.them",
         "warning",
-        "propose-appointment",
+        "scan-qr",
       );
       }
       if (!tx.payment_confirmed_by_buyer_at) {
@@ -633,6 +633,9 @@ export function resolveTransactionActor(
       );
 
     case "Processing":
+      if (requiresPayment(tx) && !tx.payment_confirmed_by_seller_at) {
+        return you("seller", "prompt.review-slip.you", "prompt.review-slip.them", "warning", "review-slip");
+      }
       if (tx.delivery_method === "Shipping") {
         if (!tx.tracking_number) {
           return you(
@@ -691,6 +694,8 @@ export type DeadlineKind =
   | "seller-confirm-payment"
   | "seller-ship"
   | "cancel-response"
+  | "return-response"
+  | "refund-confirmation"
   | "giveaway-pickup"
   | "ticket-rotation";
 

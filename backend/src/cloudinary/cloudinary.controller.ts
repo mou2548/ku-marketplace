@@ -27,7 +27,9 @@ export class CloudinaryController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException('ต้องแนบไฟล์รูปภาพมาด้วย (field name: file)');
+      throw new BadRequestException(
+        'ต้องแนบไฟล์รูปภาพมาด้วย (field name: file)',
+      );
     }
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException('รองรับเฉพาะไฟล์ JPEG, PNG, WEBP เท่านั้น');

@@ -36,6 +36,8 @@ import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import {
   askToCancel,
+  answerCancellation,
+  confirmRefundReceived,
   confirmItemArrived,
   confirmSlip,
   createHandoverToken,
@@ -70,6 +72,7 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
+import { useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
 import {
@@ -240,6 +243,7 @@ export function RoomScreen({
   const toast = useToast();
   const st = useStatusText();
   const [tracking, setTracking] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [place, setPlace] = useState("");
   const [when, setWhen] = useState<DateValue | null>(null);
   const [time, setTime] = useState("12:00");
@@ -294,7 +298,11 @@ export function RoomScreen({
   /* Null means nobody has touched it, so the deal decides: open when the next
      move is yours. Once opened or closed by hand, that choice sticks. */
   const detailOpen = detailToggled ?? isYourTurn;
-  const reportable = canReport(deadline ? [deadline] : []);
+  const now = useNow();
+  const missedMeetup = appointment?.status === "Confirmed" &&
+    new Date(`${appointment.date}T${appointment.time}+07:00`).getTime() <= now &&
+    transaction && !["Completed", "Cancelled", "Refunded"].includes(transaction.status);
+  const reportable = canReport(deadline ? [deadline] : [], now) || Boolean(missedMeetup);
 
   // Flow 3: only the giver may type in a giveaway room.
   const giveawayReadOnly = !!giveaway && giveaway.giver_id !== viewerId;
@@ -427,7 +435,36 @@ export function RoomScreen({
   }
 
   function currentAction(): React.ReactNode {
-    if (!transaction || !isYourTurn) return null;
+    if (!transaction) return null;
+    if (transaction.cancellation_response === "Pending") {
+      const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+      return <ActionCard title="Cancellation / return request">
+        <p>{transaction.cancellation_reason}</p>
+        {transaction.cancellation_requested_by !== myId ? <div className="flex gap-3">
+          <Button isLoading={busy} onPress={() => act(() => answerCancellation(transaction.transaction_id, "accept"), "Request accepted", "Could not respond")}>Accept</Button>
+          <Button variant="danger" isLoading={busy} onPress={() => act(() => answerCancellation(transaction.transaction_id, "reject"), "Sent for review", "Could not respond")}>Reject</Button>
+        </div> : <p>Waiting for the other party to respond.</p>}
+      </ActionCard>;
+    }
+    if (transaction.active_report_id && transaction.cancellation_response === "Rejected") {
+      return <ActionCard title="Under review"><p>Wait for the administrator to review this request.</p></ActionCard>;
+    }
+    if (transaction.status === "Pending Refund" || (transaction.status === "Cancelled" && transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer)) {
+      const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+      return <ActionCard title="Return and refund">
+        <div className="flex flex-col gap-3">
+          {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
+            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} onUpload={(file) => act(() => submitRefundSlip(transaction.transaction_id, file), "Refund slip uploaded", "Could not upload refund slip")} /> :
+            transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
+          ) : null}
+          {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
+            transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
+            <QrTicket onGenerate={() => createHandoverToken(transaction.transaction_id)} ariaLabel="Item return QR" caption="Show this code only when both parties are ready to return the goods." />
+          ) : null}
+        </div>
+      </ActionCard>;
+    }
+    if (!isYourTurn) return null;
 
     switch (prompt?.action) {
       case "propose-appointment":
@@ -516,13 +553,14 @@ export function RoomScreen({
                 icon={<Truck className="size-4" />}
                 hint={t("deal.trackingHint")}
               />
+              <TextInput label="Estimated delivery date" type="date" value={deliveryDate} onChange={setDeliveryDate} isRequired />
               <Button
                 block
-                isDisabled={!tracking.trim()}
+                isDisabled={!tracking.trim() || !deliveryDate}
                 isLoading={busy}
                 onPress={() =>
                   act(
-                    () => saveTracking(transaction.transaction_id, tracking.trim()),
+                    () => saveTracking(transaction.transaction_id, tracking.trim(), deliveryDate),
                     "Tracking number saved",
                     "Could not save the tracking number",
                   )
@@ -605,7 +643,8 @@ export function RoomScreen({
   const sellerQr =
     transaction &&
     transaction.delivery_method === "Meetup" &&
-    transaction.status === "Processing" &&
+    (transaction.status === "Processing" || (transaction.status === "Pending" && transaction.offer_id != null && !transaction.additional_money)) &&
+    !transaction.cancellation_response &&
     viewer === "seller" ? (
       <ActionCard title={t("deal.letBuyerScan")}>
         <OverlayTrigger>
@@ -804,7 +843,7 @@ export function RoomScreen({
           ref={appointmentPinRef}
           className={cn(
             "border-b border-line",
-            transaction.delivery_method === "Meetup"
+            (transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund")
               ? "bg-tone-success-bg/60"
               : "bg-tone-info-bg/60",
           )}
@@ -815,7 +854,7 @@ export function RoomScreen({
             aria-expanded={pinOpen}
             className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-caption"
           >
-            {transaction.delivery_method === "Meetup" ? (
+            {(transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund") ? (
               <>
                 <CalendarClock
                   aria-hidden
@@ -847,9 +886,10 @@ export function RoomScreen({
 
           {pinOpen ? (
             <div className="px-4 pb-4">
-              {transaction.delivery_method !== "Meetup" ? (
+              {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment ? (
+                <div className="flex flex-col gap-3">
                 <AppointmentCard
                   status={appointment.status}
                   scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
@@ -859,6 +899,8 @@ export function RoomScreen({
                   onAccept={() => handleAppointmentResponse("confirm")}
                   onDecline={() => handleAppointmentResponse("reject")}
                 />
+                <ProposeMeetup place={place} onPlaceChange={setPlace} when={when} onWhenChange={setWhen} time={time} onTimeChange={setTime} isBusy={busy} onPropose={handlePropose} />
+                </div>
               ) : (
                 /* Flow 1 puts the appointment after the payment is confirmed
                    and before the QR scan, and the API has a card to create.
@@ -982,14 +1024,14 @@ function DealDetails({
           ) : null}
 
           {transaction.status === "Pending" ||
-          transaction.status === "Processing" ? (
+          transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by) ? (
             <OverlayTrigger>
               <Button variant="ghost" size="sm">
-                <XCircle className="size-4" />{t("deal.requestCancellation")}</Button>
+                <XCircle className="size-4" />{transaction.status === "Completed" ? "Request return (within 7 days)" : t("deal.requestCancellation")}</Button>
               <Overlay
                 isBusy={busy}
-                title={t("deal.cancelTitle")}
-                description={t("deal.cancelBody")}
+                title={transaction.status === "Completed" ? "Request a return" : t("deal.cancelTitle")}
+                description={transaction.status === "Completed" ? "Explain the reason. The other party must respond before goods or money are returned." : t("deal.cancelBody")}
                 footer={
                   <>
                     <Button variant="ghost" slot="close">{t("deal.keepDeal")}</Button>

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ConflictException } from '@nestjs/common';
 import { GiveawaysService } from './giveaways.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
@@ -34,6 +33,10 @@ describe('GiveawaysService allocation boundaries', () => {
         count: jest.fn(),
         create: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      chatRoom: {
+        findFirst: jest.fn().mockResolvedValue({ roomId: 1 }),
+        create: jest.fn(),
       },
       ...overrides,
     };
@@ -86,6 +89,8 @@ describe('GiveawaysService allocation boundaries', () => {
       giveawayId: 2,
       giverId: 9,
       allocationMethod: 'Random',
+      status: 'Active',
+      registerDeadline: new Date(Date.now() - 1000),
       quantity: 3,
     });
     tx.giveawayTicket.findMany.mockResolvedValue([ticket(1), ticket(2)]);
@@ -108,6 +113,8 @@ describe('GiveawaysService allocation boundaries', () => {
       giveawayId: 2,
       giverId: 9,
       allocationMethod: 'Random',
+      status: 'Active',
+      registerDeadline: new Date(Date.now() - 1000),
       quantity: 2,
     });
     tx.giveawayTicket.findMany.mockResolvedValue([ticket(1), ticket(2)]);
@@ -123,18 +130,20 @@ describe('GiveawaysService allocation boundaries', () => {
     );
   });
 
-  it('does not draw when Random has no registered entrants', async () => {
+  it('closes an empty Random draw without repeatedly retrying', async () => {
     const { service, tx } = setupTransaction();
     tx.giveawayPost.findUnique.mockResolvedValue({
       giveawayId: 2,
       giverId: 9,
       allocationMethod: 'Random',
+      status: 'Active',
+      registerDeadline: new Date(Date.now() - 1000),
       quantity: 2,
     });
     tx.giveawayTicket.findMany.mockResolvedValue([]);
 
-    await expect(service.draw('giveaway_2', 9)).rejects.toBeInstanceOf(
-      ConflictException,
+    await expect(service.draw('giveaway_2', 9)).resolves.toEqual(
+      expect.objectContaining({ recipients: [] }),
     );
   });
 
@@ -145,6 +154,8 @@ describe('GiveawaysService allocation boundaries', () => {
       giveawayId: 2,
       giverId: 9,
       allocationMethod: 'Random',
+      status: 'Active',
+      registerDeadline: new Date(Date.now() - 1000),
       quantity: 2,
     });
     tx.giveawayTicket.findMany.mockResolvedValue([

@@ -41,7 +41,7 @@ export default function DealScanPage({
         );
         return;
       }
-      toast.success("Receipt confirmed. The deal is closed.");
+      toast.success("Handover recorded. Check the deal for any remaining steps.");
       router.push(`/history/${txId}`);
     },
     [router, toast, txId],
@@ -50,8 +50,8 @@ export default function DealScanPage({
   return (
     <QrScanner
       onScan={onScan}
-      title="Scan the seller QR"
-      hint="Inspect the item before you scan. Scanning closes the deal immediately."
+      title="Scan the handover QR"
+      hint="Inspect the goods before confirming the handover."
     />
   );
 }

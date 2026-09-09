@@ -304,6 +304,12 @@
       },
       "draw": {
         "label": "Draw"
+      },
+      "return-response": {
+        "label": "Respond to the return request within 24 hours"
+      },
+      "refund-confirmation": {
+        "label": "Confirm receipt of the refund"
       }
     }
   },
@@ -520,7 +526,7 @@
     "upload": "Upload your transfer slip",
     "viewFull": "View full slip",
     "choose": "Choose a slip image",
-    "formats": "JPG or PNG, up to 8 MB",
+    "formats": "JPG or PNG, up to 5 MB",
     "uploading": "Uploading",
     "check": "Check the slip and confirm payment",
     "amountDue": "Amount due",

@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getMyAppeals } from "@/lib/api/appeals";
+import { getMyAppeals, getEligibleAppeals } from "@/lib/api/appeals";
 import { getAccessToken } from "@/lib/api/session";
 import { APPEAL_STATUS, REPORT_STATUS, type AppealStatus } from "@/lib/status";
 
@@ -25,9 +25,9 @@ const APPEAL_FLOW: AppealStatus[] = ["Pending", "Under_Review", "Approved", "Rej
 export default async function MyAppealsPage() {
   const tStatus = await getTranslations("status");
   if (!(await getAccessToken())) redirect("/login");
-  const appeals = await getMyAppeals();
+  const [appeals, eligible] = await Promise.all([getMyAppeals(), getEligibleAppeals()]);
 
-  if (appeals.length === 0) {
+  if (appeals.length === 0 && eligible.length === 0) {
     return (
       <EmptyState
         icon={<Scale className="size-6" />}
@@ -75,6 +75,14 @@ export default async function MyAppealsPage() {
   return (
     <TwoColumn rail={legend}>
       <h1 className="text-h1">My appeals</h1>
+      {eligible.map((report) => (
+        <Surface key={report.report_id} shape="card" className="flex flex-col gap-2 p-4">
+          <h2 className="font-semibold">Report #{report.report_id}: {report.reason_category}</h2>
+          <p>{report.resolution_note}</p>
+          <p className="text-caption text-ink-muted">Appeal by {new Date(report.deadline).toLocaleString("en-GB")}. Use this report number in the appeal form.</p>
+          <LinkButton href="/account/appeals/new" variant="secondary">Appeal this decision</LinkButton>
+        </Surface>
+      ))}
 
       <ul className="flex flex-col gap-2">
         {appeals.map((a) => (

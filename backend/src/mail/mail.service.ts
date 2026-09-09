@@ -4,12 +4,22 @@ import { Resend } from 'resend';
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly resend = new Resend(process.env.RESEND_API_KEY);
+  private readonly resend = process.env.RESEND_API_KEY
+    ? new Resend(process.env.RESEND_API_KEY)
+    : null;
+
+  constructor() {
+    if (!this.resend && process.env.NODE_ENV === 'production') {
+      throw new Error('RESEND_API_KEY is required in production');
+    }
+  }
 
   async sendOtp(email: string, otp: string): Promise<void> {
-    // เอา OTP ขึ้น terminal เสมอ ไม่ว่าส่งอีเมลจะสำเร็จหรือไม่ — สะดวกตอน dev/test
-    // (Resend ตัวฟรีที่ยังไม่ verify domain ส่งได้แค่หาอีเมลเจ้าของบัญชีเท่านั้น)
-    this.logger.log(`[DEV] OTP สำหรับ ${email} คือ ${otp}`);
+    // Local development can verify accounts without an email provider.
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`[DEV] OTP for ${email}: ${otp}`);
+    }
+    if (!this.resend) return;
 
     const { data, error } = await this.resend.emails.send({
       from: 'KU Marketplace <onboarding@resend.dev>',
@@ -21,7 +31,9 @@ export class MailService {
     if (error) {
       // แค่ log ไว้เฉยๆ ไม่ throw ต่อแล้ว — เพราะ OTP ใช้งานได้จริงผ่าน terminal/dev endpoint
       // อยู่แล้วแม้อีเมลส่งไม่ออก (เช่นติด restriction ของ Resend ตอนยังไม่ verify domain)
-      this.logger.warn(`ส่งอีเมลไม่สำเร็จ (แต่ OTP ยังใช้ได้ตามข้างบน): ${error.message}`);
+      this.logger.warn(
+        `ส่งอีเมลไม่สำเร็จ (แต่ OTP ยังใช้ได้ตามข้างบน): ${error.message}`,
+      );
       return;
     }
 
@@ -30,7 +42,10 @@ export class MailService {
 
   /** เหมือน sendOtp() แต่ใช้คำสำหรับ flow ลืมรหัสผ่านโดยเฉพาะ กันสับสนกับ OTP สมัครสมาชิก */
   async sendPasswordResetOtp(email: string, otp: string): Promise<void> {
-    this.logger.log(`[DEV] รหัสรีเซ็ตรหัสผ่านสำหรับ ${email} คือ ${otp}`);
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`[DEV] Password reset OTP for ${email}: ${otp}`);
+    }
+    if (!this.resend) return;
 
     const { data, error } = await this.resend.emails.send({
       from: 'KU Marketplace <onboarding@resend.dev>',
@@ -40,10 +55,14 @@ export class MailService {
     });
 
     if (error) {
-      this.logger.warn(`ส่งอีเมลไม่สำเร็จ (แต่ OTP ยังใช้ได้ตามข้างบน): ${error.message}`);
+      this.logger.warn(
+        `ส่งอีเมลไม่สำเร็จ (แต่ OTP ยังใช้ได้ตามข้างบน): ${error.message}`,
+      );
       return;
     }
 
-    this.logger.log(`ส่งรหัสรีเซ็ตรหัสผ่านไปยัง ${email} ทางอีเมลสำเร็จ (id: ${data?.id})`);
+    this.logger.log(
+      `ส่งรหัสรีเซ็ตรหัสผ่านไปยัง ${email} ทางอีเมลสำเร็จ (id: ${data?.id})`,
+    );
   }
 }

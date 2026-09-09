@@ -27,6 +27,7 @@ export default async function AppLayout({
   const viewerId = await getCurrentUserId();
 
   let user: { name: string } | undefined;
+  let restricted = false;
   let badges = { actions: 0, offers: 0, deals: 0 };
 
   if (viewerId) {
@@ -36,6 +37,7 @@ export default async function AppLayout({
     ]);
 
     if (me) {
+      restricted = me.status === "Suspended" || me.status === "Banned";
       user = {
         name: [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email,
       };
@@ -55,6 +57,7 @@ export default async function AppLayout({
   return (
     <ToastProvider>
       <AppShell user={user} badges={badges}>
+        {restricted && <p role="status" className="p-4 text-body-sm text-ink-secondary">Your account is restricted. Marketplace actions are unavailable; you can review decisions and submit an appeal from My appeals.</p>}
         {children}
       </AppShell>
     </ToastProvider>

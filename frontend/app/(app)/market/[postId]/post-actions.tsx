@@ -12,6 +12,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
 import type { DeliveryMethod } from "@/lib/status";
+import { buyPostAction } from "@/lib/actions/posts";
 import type { Post } from "@/lib/api/types";
 
 /** §7.5.1 — the system-provided reasons for a post report. */
@@ -69,22 +70,26 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
   }
 
   async function buy() {
+    if (busy) return;
     setBusy(true);
-    // POST /posts/{id}/buy → { delivery_method, quantity }
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.success("Deal created. A chat room has been opened for you.");
-    // UI mock: the real call returns the new transaction id. Transaction 6 is
-    // the fixture where the viewer is the buyer, so the redirect through
-    // /history/[txId] lands in a room instead of a 404. Delete with the fixtures.
-    router.push("/history/6");
+    try {
+      const deal = await buyPostAction(post.post_id, { delivery_method: method, quantity: 1 });
+      const transactionId = Number(deal.transaction_id.replace(/^transaction_/, ""));
+      if (!Number.isSafeInteger(transactionId) || transactionId < 1) throw new Error("The purchase returned an invalid transaction ID");
+      toast.success("Deal created. A chat room has been opened for you.");
+      router.push(`/history/${transactionId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the purchase");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <ActionBar className="-mx-1">
       {canBuy ? (
         <OverlayTrigger>
-          <Button block size="lg" className="lg:w-auto">
+          <Button block size="lg" className="lg:w-auto" isDisabled={post.quantity_remaining < 1}>
             <ShoppingBag className="size-5" />{t("market.buyNow")}</Button>
 
           <Overlay

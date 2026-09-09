@@ -102,7 +102,7 @@ export async function respondToCancellation(
   reason?: string,
 ): Promise<Transaction> {
   return post<Transaction>(`/transactions/${transactionId}/cancel-request/respond`, {
-    response,
+    response: response === "accept" ? "Approved" : "Rejected",
     ...(reason ? { reason } : {}),
   });
 }

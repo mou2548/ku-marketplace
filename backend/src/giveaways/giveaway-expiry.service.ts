@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
+import { GiveawaysService } from './giveaways.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const EXPIRY_SWEEP_INTERVAL_MS = 15_000;
@@ -9,7 +10,10 @@ export class GiveawayExpiryService implements OnApplicationBootstrap {
   private readonly logger = new Logger(GiveawayExpiryService.name);
   private sweepRunning = false;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly giveaways: GiveawaysService,
+  ) {}
 
   async onApplicationBootstrap() {
     await this.runSweepSafely();
@@ -31,10 +35,43 @@ export class GiveawayExpiryService implements OnApplicationBootstrap {
     return result.count;
   }
 
+  async allocateClosedRegistrations(now = new Date()) {
+    const due = await this.prisma.giveawayPost.findMany({
+      where: {
+        status: 'Active',
+        registerDeadline: { lte: now },
+        allocationMethod: 'Random',
+      },
+      select: { giveawayId: true, giverId: true },
+    });
+    for (const giveaway of due) {
+      try {
+        await this.giveaways.draw(
+          String(giveaway.giveawayId),
+          giveaway.giverId,
+        );
+      } catch (error) {
+        // Another worker may have drawn it after the query. Continue other draws.
+        this.logger.warn(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+    await this.prisma.giveawayPost.updateMany({
+      where: {
+        status: 'Active',
+        allocationMethod: 'FirstCome',
+        registerDeadline: { lte: now },
+      },
+      data: { status: 'Closed' },
+    });
+  }
+
   private async runSweepSafely() {
     if (this.sweepRunning) return;
     this.sweepRunning = true;
     try {
+      await this.allocateClosedRegistrations();
       const count = await this.expireOverdueTickets();
       if (count > 0) {
         this.logger.log(`Expired ${count} overdue giveaway ticket(s)`);

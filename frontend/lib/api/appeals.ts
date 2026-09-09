@@ -60,3 +60,7 @@ export async function adminDecideAppeal(
     body: JSON.stringify(input),
   });
 }
+
+export async function getEligibleAppeals(): Promise<Array<{ report_id: number; reason_category: string; resolution_note: string | null; deadline: string }>> {
+  return apiFetch("/appeals/eligible", await authedInit());
+}

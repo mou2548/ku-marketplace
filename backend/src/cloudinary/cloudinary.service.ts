@@ -16,7 +16,10 @@ export class CloudinaryService {
    * ใช้ upload_stream เพราะไฟล์อยู่ใน memory (multer memoryStorage) ไม่ได้
    * เขียนลง disk ก่อน — ไม่มีการเก็บไฟล์ไว้ที่ server เราเองเลย
    */
-  uploadBuffer(buffer: Buffer, folder = 'ku-marketplace'): Promise<UploadApiResponse> {
+  uploadBuffer(
+    buffer: Buffer,
+    folder = 'ku-marketplace',
+  ): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {

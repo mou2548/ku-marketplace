@@ -59,8 +59,8 @@ export function SlipUploader({
       setError("The file must be an image");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setError("The file is larger than 8 MB");
+    if (file.size > 5 * 1024 * 1024) {
+      setError("The file is larger than 5 MB");
       return;
     }
     setError(null);

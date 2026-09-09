@@ -2,6 +2,9 @@
 
 import {
   acceptOffer,
+  buyPost,
+  type BuyPostPayload,
+  type BuyPostResult,
   createOffer,
   createPost,
   rejectOffer,
@@ -93,4 +96,10 @@ export async function withdrawOfferAction(
 ): Promise<OfferStatusChangeResult> {
   const token = await requireSession();
   return withdrawOffer(postId, offerId, { token });
+}
+
+/** Create a purchase using the authenticated buyer and return the real deal ID. */
+export async function buyPostAction(postId: PostId, payload: Omit<BuyPostPayload, "buyer_id">): Promise<BuyPostResult> {
+  const { token, userId } = await requireUser();
+  return buyPost(postId, { ...payload, buyer_id: userId }, { token });
 }

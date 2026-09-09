@@ -68,7 +68,9 @@ export class AppointmentCardsService {
       include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
-    return appointments.map((appointment) => this.serializeAppointment(appointment));
+    return appointments.map((appointment) =>
+      this.serializeAppointment(appointment),
+    );
   }
 
   /** นัดหมายเดียว — เช็คสิทธิ์ว่า user เป็นคู่กรณีของธุรกรรมนี้จริง */
@@ -97,40 +99,57 @@ export class AppointmentCardsService {
     respondAppointmentDto: RespondAppointmentDto,
     userId: number,
   ) {
-    const appointment = await this.findOneForUser(appointmentId, userId);
-    const { transaction } = appointment;
-
-    if (appointment.proposedBy === userId) {
-      throw new BadRequestException(
-        'The user who proposed this appointment cannot respond to it',
-      );
-    }
-
-    if (appointment.status !== 'Pending') {
-      throw new BadRequestException(
-        `Appointment ${appointmentId} has already been answered (status: ${appointment.status})`,
-      );
-    }
-
-    const statusMap: Record<string, string> = {
-      confirm: 'Confirmed',
-      reject: 'Rejected',
-    };
-
-    const newStatus = statusMap[respondAppointmentDto.response];
-
-    if (!newStatus) {
-      throw new BadRequestException(
-        `Invalid response: ${respondAppointmentDto.response}. Response must be 'confirm' or 'reject'.`,
-      );
-    }
-
-    const updated = await this.prisma.appointmentCard.update({
-      where: { appointmentId },
-      data: { status: newStatus },
-      include: { proposer: true },
+    const original = await this.findOneForUser(appointmentId, userId);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${original.transactionId} FOR UPDATE`;
+      const appointment = await tx.appointmentCard.findUniqueOrThrow({
+        where: { appointmentId },
+        include: { transaction: true },
+      });
+      const latest = await tx.appointmentCard.findFirst({
+        where: { transactionId: appointment.transactionId },
+        orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
+      });
+      if (appointment.proposedBy === userId)
+        throw new BadRequestException(
+          'The proposer cannot respond to their own appointment',
+        );
+      if (
+        appointment.status !== 'Pending' ||
+        latest?.appointmentId !== appointmentId
+      )
+        throw new BadRequestException(
+          'This appointment is already answered or superseded',
+        );
+      const transaction = appointment.transaction;
+      const returning =
+        transaction.status === 'Pending Refund' &&
+        transaction.itemReceivedConfirmedByBuyerAt &&
+        !transaction.itemReturnConfirmedAt;
+      if (
+        !returning &&
+        (!['Pending', 'Processing'].includes(transaction.status ?? '') ||
+          transaction.cancellationResponse === 'Pending' ||
+          transaction.activeReportId)
+      )
+        throw new BadRequestException(
+          'This transaction cannot arrange a handover now',
+        );
+      const status =
+        respondAppointmentDto.response === 'confirm'
+          ? 'Confirmed'
+          : respondAppointmentDto.response === 'reject'
+            ? 'Rejected'
+            : null;
+      if (!status)
+        throw new BadRequestException('Invalid appointment response');
+      const updated = await tx.appointmentCard.update({
+        where: { appointmentId },
+        data: { status },
+        include: { proposer: true },
+      });
+      return this.serializeAppointment(updated);
     });
-    return this.serializeAppointment(updated);
   }
 
   /**
@@ -141,6 +160,9 @@ export class AppointmentCardsService {
    */
   async generateQr(appointmentId: number, userId: number) {
     const appointment = await this.findOneForUser(appointmentId, userId);
-    return this.transactionService.generateQr(appointment.transactionId, userId);
+    return this.transactionService.generateQr(
+      appointment.transactionId,
+      userId,
+    );
   }
 }

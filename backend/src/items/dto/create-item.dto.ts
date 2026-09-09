@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsDateString,
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -34,8 +35,7 @@ export class CreateItemDto {
   @IsNotEmpty()
   category: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsIn(['New', 'Good', 'Acceptable', 'Poor'])
   condition: string;
 
   @IsInt()
@@ -46,10 +46,6 @@ export class CreateItemDto {
   @IsString()
   @IsOptional()
   description?: string;
-
-  @IsString()
-  @IsOptional()
-  status?: string;
 
   @IsString()
   @IsOptional()

@@ -51,6 +51,19 @@ function partyOf(tx: Transaction, viewerId: number): Party {
  * Only one is live at a time — they belong to different steps.
  */
 export function deadlineFor(tx: Transaction): Deadline | undefined {
+  if (tx.active_report_id) return undefined;
+  if (tx.cancellation_response === "Pending" && tx.cancellation_requested_at) {
+    if (tx.status === "Completed") return {
+      kind: "return-response", expiresAt: new Date(tx.cancellation_requested_at).getTime() + 24 * 3600000,
+      labelKey: "deadline.return-response.label", onExpiry: "escalate",
+    };
+    return cancelResponseDeadline(tx.cancellation_requested_at);
+  }
+  if ((tx.status === "Pending Refund" || tx.status === "Cancelled") && tx.refund_submitted_at && !tx.refund_confirmed_by_buyer) return {
+    kind: "refund-confirmation",
+    expiresAt: new Date(tx.refund_submitted_at).getTime() + (tx.item_received_confirmed_by_buyer_at ? 72 : 24) * 3600000,
+    labelKey: "deadline.refund-confirmation.label", onExpiry: "escalate",
+  };
   // Seller has 24h to confirm the slip. `uploadPaymentSlip`
   // (transaction.service.ts) sets `payment_confirmed_by_buyer_at` and moves
   // `status` to `Processing` in the same write, so "Pending with a buyer
@@ -69,9 +82,6 @@ export function deadlineFor(tx: Transaction): Deadline | undefined {
     tx.estimated_delivery_date
   ) {
     return shippingDeadline(tx.estimated_delivery_date);
-  }
-  if (tx.status === "Pending Refund") {
-    return cancelResponseDeadline(tx.created_at);
   }
   return undefined;
 }

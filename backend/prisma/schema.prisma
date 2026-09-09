@@ -24,6 +24,7 @@ model User {
   emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
   isAdmin         Boolean?         @default(false) @map("isAdmin")
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  notifications   Notification[]
   items           Item[]
   offers          Offer[]
   purchases       Transaction[]    @relation("TransactionBuyer")
@@ -142,6 +143,7 @@ model Transaction {
   cancellationReason              String?   @map("cancellation_reason")
   cancellationRequestedAt         DateTime? @map("cancellation_requested_at") @db.Timestamp(6)
   cancellationResponse            String?   @map("cancellation_response") @db.VarChar(20)
+  refundSubmittedAt               DateTime? @map("refund_submitted_at") @db.Timestamp(6)
   refundSlipUrl                   String?   @map("refund_slip_url") @db.VarChar(500)
   refundConfirmedByBuyer          Boolean?  @default(false) @map("refund_confirmed_by_buyer")
   createdAt                       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
@@ -230,6 +232,7 @@ model Report {
   details        String?
   evidenceUrls   Json?     @map("evidence_urls")
   status         String?   @default("Pending") @map("report_status") @db.VarChar(20)
+  sanction       String?   @db.VarChar(30)
   handledBy      Int?      @map("handled_by")
   resolutionNote String?   @map("resolution_note")
   handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
@@ -341,4 +344,17 @@ model SubscriptionPayment {
   handler      User?        @relation("SubscriptionPaymentHandledBy", fields: [handledBy], references: [userId])
 
   @@map("Subscription_Payment")
+}
+
+model Notification {
+  notificationId Int @id @default(autoincrement()) @map("notification_id")
+  userId Int @map("user_id")
+  user User @relation(fields: [userId], references: [userId])
+  eventKey String @unique @map("event_key") @db.VarChar(255)
+  title String
+  body String
+  href String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@index([userId, createdAt])
+  @@map("Notification")
 }

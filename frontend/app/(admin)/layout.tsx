@@ -74,7 +74,7 @@ export default async function AdminLayout({
 
         <main
           id="main"
-          className="w-full flex-1 px-4 py-6 pb-24 md:pb-8 lg:px-8"
+          className="w-full flex-1 px-4 py-6 pb-24 lg:pb-8 lg:px-8"
         >
           {children}
         </main>

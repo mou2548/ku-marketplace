@@ -11,6 +11,7 @@ export interface AuthUser {
   userId: number;
   email: string;
   firstNameEn: string;
+  status?: "Active" | "Suspended" | "Banned" | "Deleted";
   isAdmin: boolean | null;
 }
 

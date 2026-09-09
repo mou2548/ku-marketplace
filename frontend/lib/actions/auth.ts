@@ -27,14 +27,17 @@ export async function login(
   }
 
   let accessToken: string;
+  let restricted = false;
   try {
-    ({ accessToken } = await authApi.login(email, password));
+    const result = await authApi.login(email, password);
+    accessToken = result.accessToken;
+    restricted = result.user.status === "Suspended" || result.user.status === "Banned";
   } catch (err) {
     return { error: messageFor(err) };
   }
 
   await setSession(accessToken);
-  redirect("/feed");
+  redirect(restricted ? "/account/appeals" : "/feed");
 }
 
 export interface RegisterState {

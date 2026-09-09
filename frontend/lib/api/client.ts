@@ -4,13 +4,9 @@
  * Two things every caller would otherwise re-derive live here: the response
  * envelope, and auth.
  *
- * Envelope — successful bodies are wrapped by a global `ResponseInterceptor` as
- * `{ statusCode, message, data: { data } }`. Endpoints that also wrap their own
- * payload in a service `{ success, message, data }` (the posts module) end up
- * three layers deep; endpoints that return a raw row (the transactions module)
- * are two. `unwrap` peels whichever applies so functions return the payload
- * directly. Paginated bodies (`{ data, meta }`) are left one layer up so callers
- * keep `meta`.
+ * Envelope — the backend returns `{ success, message, data }`, with `meta`
+ * alongside `data` for paginated lists. Legacy nested envelopes are supported
+ * as well. Pagination metadata must survive unwrapping.
  *
  * Auth — mutating endpoints are behind `JwtAuthGuard`. Callers reach the bearer
  * token two ways, both supported here:
@@ -27,7 +23,7 @@
  * `fetch` writes its own multipart boundary).
  */
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000").replace(
+const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(
   /\/+$/,
   "",
 );
@@ -77,7 +73,7 @@ function unwrap(raw: unknown): unknown {
     v = v.data;
   }
   // Service's own ok(): { success, message, data }
-  if (isObject(v) && "success" in v && "data" in v) {
+  if (isObject(v) && "success" in v && "data" in v && !("meta" in v)) {
     v = v.data;
   }
   return v;

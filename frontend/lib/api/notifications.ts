@@ -1,3 +1,5 @@
+import { apiFetch } from "./client";
+import { authHeader } from "./session";
 import { getTranslations } from "next-intl/server";
 import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getMyOffers } from "@/lib/api/offers";
@@ -60,7 +62,7 @@ export async function getNotifications(): Promise<Notification[]> {
     getGiveaways().catch(() => []),
   ]);
 
-  const out: Notification[] = [];
+  const out: Notification[] = await apiFetch<Notification[]>("/notifications", { headers: await authHeader() }).catch(() => []);
 
   for (const o of offers) {
     const iAmOwner = o.post.seller.user_id === viewerId;

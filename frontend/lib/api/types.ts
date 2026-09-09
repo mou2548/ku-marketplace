@@ -151,7 +151,9 @@ export interface Transaction {
   cancellation_requested_at?: string | null;
   cancellation_response?: "Pending" | "Approved" | "Rejected" | null;
   refund_slip_url?: string | null;
+  refund_submitted_at?: string | null;
   refund_confirmed_by_buyer?: boolean | null;
+  item_return_confirmed_at?: string | null;
   created_at: string;
   /** Present on a trade — drives whether the payment sequence runs at all. */
   additional_money?: number | null;

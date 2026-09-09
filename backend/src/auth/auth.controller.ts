@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Body, Query, Res, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { UsePipes } from '@nestjs/common';
+import { ZodValidationPipe } from 'nestjs-zod';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  Res,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
@@ -21,6 +32,7 @@ const cookieOptions = {
   maxAge: 60 * 60 * 24 * 7 * 1000,
 };
 
+@UsePipes(ZodValidationPipe)
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -37,11 +49,12 @@ export class AuthController {
 
   // §rename — เดิมคือ /auth/register/verify-otp ย้ายมาตาม spec (path เก่าหายไป)
   @Post('otp/verify')
-  async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res) {
-    const { user, accessToken, refreshToken } = await this.authService.verifyRegisterOtp(
-      dto.email,
-      dto.otp,
-    );
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { user, accessToken, refreshToken } =
+      await this.authService.verifyRegisterOtp(dto.email, dto.otp);
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, cookieOptions);
 
@@ -55,8 +68,12 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res) {
-    const { user, accessToken, refreshToken } = await this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { user, accessToken, refreshToken } =
+      await this.authService.login(dto);
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, cookieOptions);
 
@@ -110,7 +127,9 @@ export class AuthController {
         ? await this.otpService.peekPasswordResetOtp(email)
         : await this.otpService.peekOtp(email);
     if (!otp) {
-      throw new NotFoundException('ไม่พบ OTP ที่ยังไม่หมดอายุสำหรับอีเมลนี้ — ลองขอ OTP ใหม่ก่อน');
+      throw new NotFoundException(
+        'ไม่พบ OTP ที่ยังไม่หมดอายุสำหรับอีเมลนี้ — ลองขอ OTP ใหม่ก่อน',
+      );
     }
     return { email, otp };
   }

@@ -34,20 +34,21 @@ export class TransactionsService {
    * จาก created_at ทุกครั้งที่อ่าน ถ้าเกิน 7 วันให้ซ่อน image_urls แล้วส่ง
    * images_expired: true แทน ดู frontend/docs/design/api-gaps.md สำหรับข้อจำกัดนี้
    */
-  private serializeMessage(message: {
-    messageId: number;
-    roomId: number;
-    senderId: number;
-    content: string | null;
-    imageUrls: unknown;
-    createdAt: Date | null;
-    sender: {
-      userId: number;
-      firstNameEn: string;
-      lastNameEn: string;
-      emailVerifiedAt: Date | null;
-    };
-  },
+  private serializeMessage(
+    message: {
+      messageId: number;
+      roomId: number;
+      senderId: number;
+      content: string | null;
+      imageUrls: unknown;
+      createdAt: Date | null;
+      sender: {
+        userId: number;
+        firstNameEn: string;
+        lastNameEn: string;
+        emailVerifiedAt: Date | null;
+      };
+    },
     // §7.1/§7.5.3 — an admin reviewing a report needs the real evidence, not
     // the 7-day display expiry meant for the two parties' own view of it.
     forAdmin = false,
@@ -55,7 +56,8 @@ export class TransactionsService {
     const createdAt = message.createdAt ?? new Date();
     const expired =
       !forAdmin && Date.now() - createdAt.getTime() > IMAGE_DISPLAY_LIFETIME_MS;
-    const hasImages = Array.isArray(message.imageUrls) && message.imageUrls.length > 0;
+    const hasImages =
+      Array.isArray(message.imageUrls) && message.imageUrls.length > 0;
 
     return {
       message_id: message.messageId,
@@ -63,7 +65,8 @@ export class TransactionsService {
       sender_id: message.senderId,
       sender: this.serializeUserSummary(message.sender),
       content: message.content,
-      image_urls: hasImages && !expired ? (message.imageUrls as string[]) : null,
+      image_urls:
+        hasImages && !expired ? (message.imageUrls as string[]) : null,
       images_expired: hasImages && expired,
       created_at: message.createdAt,
     };
@@ -123,17 +126,14 @@ export class TransactionsService {
   private async getOrCreateChatRoom(transactionId: number, userId: number) {
     await this.assertParticipant(transactionId, userId);
 
-    let room = await this.prisma.chatRoom.findFirst({
-      where: { transactionId },
-    });
-
-    if (!room) {
-      room = await this.prisma.chatRoom.create({
-        data: { transactionId },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
+      const room = await tx.chatRoom.findFirst({
+        where: { transactionId },
+        orderBy: { roomId: 'asc' },
       });
-    }
-
-    return room;
+      return room ?? tx.chatRoom.create({ data: { transactionId } });
+    });
   }
 
   /**
@@ -187,29 +187,45 @@ export class TransactionsService {
     createAppointmentDto: CreateAppointmentDto,
     userId: number,
   ) {
-    const transaction = await this.assertParticipant(transactionId, userId);
-
-    // §6.3 — การ์ดนัดหมายมีไว้สำหรับธุรกรรมที่เลือกนัดรับด้วยตนเอง (Meetup) เท่านั้น
-    if (transaction.deliveryMethod !== 'Meetup') {
-      throw new BadRequestException(
-        'การ์ดนัดหมายใช้ได้เฉพาะธุรกรรมที่เลือกนัดรับด้วยตนเองเท่านั้น',
-      );
-    }
-
-    const { date, time, location } = createAppointmentDto;
-
-    const appointment = await this.prisma.appointmentCard.create({
-      data: {
-        transactionId,
-        proposedBy: userId,
-        date: new Date(date),
-        time: new Date(`${date}T${time}:00Z`),
-        location,
-        status: 'Pending',
-      },
-      include: { proposer: true },
+    await this.assertParticipant(transactionId, userId);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
+      const transaction = await tx.transaction.findUniqueOrThrow({
+        where: { transactionId },
+      });
+      const returning =
+        transaction.status === 'Pending Refund' &&
+        transaction.itemReceivedConfirmedByBuyerAt &&
+        !transaction.itemReturnConfirmedAt;
+      if (
+        !returning &&
+        (!['Pending', 'Processing'].includes(transaction.status ?? '') ||
+          transaction.deliveryMethod !== 'Meetup' ||
+          transaction.cancellationResponse === 'Pending' ||
+          transaction.activeReportId)
+      ) {
+        throw new BadRequestException(
+          'This transaction cannot arrange a handover now',
+        );
+      }
+      const { date, time, location } = createAppointmentDto;
+      await tx.appointmentCard.updateMany({
+        where: { transactionId, status: 'Pending' },
+        data: { status: 'Rejected' },
+      });
+      const appointment = await tx.appointmentCard.create({
+        data: {
+          transactionId,
+          proposedBy: userId,
+          date: new Date(date),
+          time: new Date(`${date}T${time}:00Z`),
+          location,
+          status: 'Pending',
+        },
+        include: { proposer: true },
+      });
+      return this.serializeAppointment(appointment);
     });
-    return this.serializeAppointment(appointment);
   }
 
   /** §appointment-cards GET — เดิมมีแค่ POST เส้นนี้ ดูรายการนัดหมายต้องไปทาง
@@ -229,7 +245,9 @@ export class TransactionsService {
       include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
-    return appointments.map((appointment) => this.serializeAppointment(appointment));
+    return appointments.map((appointment) =>
+      this.serializeAppointment(appointment),
+    );
   }
 
   /**
@@ -264,6 +282,8 @@ export class TransactionsService {
       include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
-    return appointments.map((appointment) => this.serializeAppointment(appointment));
+    return appointments.map((appointment) =>
+      this.serializeAppointment(appointment),
+    );
   }
 }

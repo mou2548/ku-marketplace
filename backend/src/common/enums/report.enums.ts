@@ -36,7 +36,7 @@ export const AppealStatus = {
 export type AppealStatus = (typeof AppealStatus)[keyof typeof AppealStatus];
 
 /**
- * §7.1 — not a DB column (no `Sanction` table/enum in init.sql). A
+ * §7.1 — stored on Report.sanction so appeal reversal preserves other penalties. A
  * `Violation_Confirmed` report carries one of these; `report.service.ts`
  * turns `Suspend_*` into a `User.status` update (`Suspended`/`Banned` already
  * exist on that column) and leaves `Warn`/`None` as the report's own

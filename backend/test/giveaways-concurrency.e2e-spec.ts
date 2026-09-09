@@ -60,7 +60,10 @@ describe('GiveawaysService First Come concurrency (database)', () => {
     `);
 
     prisma = new PrismaClient({
-      adapter: new PrismaPg(connectionString, { schema }),
+      adapter: new PrismaPg(
+        { connectionString, options: `-c search_path=${schema}` },
+        { schema },
+      ),
     });
     service = new GiveawaysService(prisma as unknown as PrismaService);
   });

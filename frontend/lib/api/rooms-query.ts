@@ -1,3 +1,4 @@
+import { ApiError } from "./client";
 import { getAppointmentCards, getChatHistory } from "@/lib/api/chat";
 import { getEntrants, getGiveawayMessages, getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getTransaction, getTransactions } from "@/lib/api/transactions";
@@ -17,11 +18,9 @@ import {
 } from "@/lib/status";
 
 /**
- * "My giveaways" — every giveaway the viewer gives, or ever held a ticket
- * for. There is no bulk endpoint for either half, so this checks all of them
- * (`getGiveaways()`, real but unfiltered) against the viewer one at a time.
- * `getMyTicket` reads the full recipient roster, so completed outcomes stay in
- * the inbox and can supply a truthful status badge such as `Missed pickup`.
+ * Giveaway chats the viewer may currently access: the giver and selected
+ * recipients. Expired, forfeited and unselected tickets remain in giveaway
+ * history but do not grant access to the winners' shared conversation.
  */
 interface ViewerGiveaway {
   giveaway: GiveawayPost;
@@ -31,12 +30,12 @@ interface ViewerGiveaway {
 async function myGiveaways(viewerId: number): Promise<ViewerGiveaway[]> {
   const all = await getGiveaways();
   const mine = await Promise.all(
-    all.map(async (giveaway) => {
+    all.map(async (giveaway): Promise<ViewerGiveaway | undefined> => {
       if (giveaway.giver_id === viewerId) return { giveaway };
       const ticket = await getMyTicket(giveaway.giveaway_id, giveaway, viewerId).catch(
         () => undefined,
       );
-      return ticket
+      return ticket && (ticket.status === "Waiting" || ticket.status === "Received")
         ? { giveaway, ticketStatus: ticket.status }
         : undefined;
     }),
@@ -79,7 +78,15 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
     ),
     Promise.all(
       giveaways.map(async ({ giveaway, ticketStatus }) => {
-        const { roomId, messages } = await getGiveawayMessages(giveaway.giveaway_id);
+        let chat;
+        try {
+          chat = await getGiveawayMessages(giveaway.giveaway_id);
+        } catch (error) {
+          // Eligibility can change between loading tickets and opening rooms.
+          if (error instanceof ApiError && [403, 404].includes(error.status)) return undefined;
+          throw error;
+        }
+        const { roomId, messages } = chat;
         const last = messages.at(-1);
         return {
           giveaway,
@@ -93,7 +100,7 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
     ),
   ]);
 
-  return buildRooms({ transactionRooms, giveawayRooms });
+  return buildRooms({ transactionRooms, giveawayRooms: giveawayRooms.filter((room) => room !== undefined) });
 }
 
 export interface RoomDetail {

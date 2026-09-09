@@ -97,6 +97,11 @@ export class GiveawaysService {
     const registerDeadline = payload.register_deadline
       ? new Date(payload.register_deadline)
       : null;
+    if (payload.allocation_method !== 'FirstCome' && !registerDeadline) {
+      throw new BadRequestException(
+        'A registration deadline is required for Random and Manual giveaways',
+      );
+    }
     if (pickupDeadline && Number.isNaN(pickupDeadline.getTime())) {
       throw new BadRequestException('pickup_deadline ไม่ถูกต้อง');
     }
@@ -339,13 +344,20 @@ export class GiveawaysService {
       if (giveaway.allocationMethod !== 'Random') {
         throw new BadRequestException('โพสต์นี้ไม่ได้ใช้วิธี Random');
       }
+      if (
+        giveaway.status !== 'Active' ||
+        !giveaway.registerDeadline ||
+        giveaway.registerDeadline > new Date()
+      ) {
+        throw new ConflictException(
+          'Allocation is only available after registration closes',
+        );
+      }
       const tickets = await tx.giveawayTicket.findMany({
         where: { giveawayId, status: 'Registered' },
         include: { receiver: true },
         orderBy: { ticketId: 'asc' },
       });
-      if (tickets.length === 0)
-        throw new ConflictException('ยังไม่มีผู้เข้าร่วมที่รอจับฉลาก');
       const selected = this.pickRandomTickets(tickets, giveaway.quantity);
       const winnerIds = selected.map((ticket) => ticket.ticketId);
       await tx.giveawayTicket.updateMany({
@@ -368,6 +380,9 @@ export class GiveawaysService {
         where: { giveawayId },
         data: { status: 'Closed' },
       });
+      if (!(await tx.chatRoom.findFirst({ where: { giveawayId } }))) {
+        await tx.chatRoom.create({ data: { giveawayId } });
+      }
       return selected;
     });
     return {
@@ -413,6 +428,15 @@ export class GiveawaysService {
       if (giveaway.allocationMethod !== 'Manual') {
         throw new BadRequestException('โพสต์นี้ไม่ได้ใช้วิธี Manual');
       }
+      if (
+        giveaway.status !== 'Active' ||
+        !giveaway.registerDeadline ||
+        giveaway.registerDeadline > new Date()
+      ) {
+        throw new ConflictException(
+          'Allocation is only available after registration closes',
+        );
+      }
       if (uniqueIds.length > giveaway.quantity) {
         throw new BadRequestException(
           `เลือกผู้รับได้สูงสุด ${giveaway.quantity} คน`,
@@ -449,6 +473,9 @@ export class GiveawaysService {
         where: { giveawayId },
         data: { status: 'Closed' },
       });
+      if (!(await tx.chatRoom.findFirst({ where: { giveawayId } }))) {
+        await tx.chatRoom.create({ data: { giveawayId } });
+      }
       return tickets;
     });
     return {
@@ -643,7 +670,11 @@ export class GiveawaysService {
     if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
     if (giveaway.giverId === userId) return;
     const ticket = await this.prisma.giveawayTicket.findFirst({
-      where: { giveawayId, receiverId: userId },
+      where: {
+        giveawayId,
+        receiverId: userId,
+        status: { in: ['Waiting', 'Received'] },
+      },
     });
     if (!ticket) {
       throw new ForbiddenException('คุณไม่ได้อยู่ในห้องแชทนี้');

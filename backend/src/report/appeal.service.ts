@@ -113,6 +113,41 @@ export class AppealService {
 
   private readonly appealInclude = { appellant: true } as const;
 
+  async findEligible(userId: number) {
+    const reports = await this.prisma.report.findMany({
+      where: {
+        status: ReportStatus.Violation_Confirmed,
+        handledAt: {
+          gte: new Date(Date.now() - APPEAL_WINDOW_DAYS * 86400000),
+        },
+        appeals: { none: {} },
+      },
+      orderBy: { handledAt: 'desc' },
+    });
+    const eligible: Array<{
+      report_id: number;
+      reason_category: string;
+      resolution_note: string | null;
+      deadline: Date;
+    }> = [];
+    for (const report of reports) {
+      if (
+        (await this.resolveReportedUserId(report)) === userId &&
+        report.handledAt
+      ) {
+        eligible.push({
+          report_id: report.reportId,
+          reason_category: report.reasonCategory,
+          resolution_note: report.resolutionNote,
+          deadline: new Date(
+            report.handledAt.getTime() + APPEAL_WINDOW_DAYS * 86400000,
+          ),
+        });
+      }
+    }
+    return eligible;
+  }
+
   async findAllForUser(appellantId: number) {
     const appeals = await this.prisma.appeal.findMany({
       where: { appellantId },
@@ -149,7 +184,10 @@ export class AppealService {
         'Only the user the report was filed against can appeal it',
       );
     }
-    if (!report.handledAt) {
+    if (
+      !report.handledAt ||
+      report.status !== ReportStatus.Violation_Confirmed
+    ) {
       throw new BadRequestException(
         'Report has not been resolved yet — nothing to appeal',
       );

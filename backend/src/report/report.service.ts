@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { ReportStatus, ReportType, Sanction } from '../common/enums/report.enums';
+import {
+  ReportStatus,
+  ReportType,
+  Sanction,
+} from '../common/enums/report.enums';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
 import { TransactionService } from '../transaction/transaction.service';
@@ -88,7 +92,9 @@ export class ReportService {
       evidence_urls: report.evidenceUrls,
       status: report.status,
       handled_by: report.handledBy,
-      handler: report.handler ? this.serializeUserSummary(report.handler) : null,
+      handler: report.handler
+        ? this.serializeUserSummary(report.handler)
+        : null,
       resolution_note: report.resolutionNote,
       handled_at: report.handledAt,
       created_at: report.createdAt,
@@ -98,6 +104,27 @@ export class ReportService {
   private readonly reportInclude = { reporter: true, handler: true } as const;
 
   async create(reporterId: number, dto: CreateReportDto) {
+    if (dto.report_type === ReportType.Transaction) {
+      const target = await this.prisma.transaction.findUnique({
+        where: { transactionId: dto.target_id },
+      });
+      if (!target) throw new NotFoundException('Transaction not found');
+      if (target.buyerId !== reporterId && target.sellerId !== reporterId)
+        throw new ForbiddenException(
+          'Only transaction participants may report it',
+        );
+    } else if (dto.report_type === ReportType.Post) {
+      if (
+        !(await this.prisma.post.findUnique({
+          where: { postId: dto.target_id, deletedAt: null, status: 'Active' },
+        }))
+      )
+        throw new NotFoundException('Post not found');
+    } else if (
+      !(await this.prisma.user.findUnique({ where: { userId: dto.target_id } }))
+    ) {
+      throw new NotFoundException('User not found');
+    }
     await this.assertUnderRateLimit(reporterId);
     const report = await this.prisma.report.create({
       data: {
@@ -219,6 +246,12 @@ export class ReportService {
     const userId = await this.resolveReportedUserId(report);
     if (userId === undefined) return;
 
+    const existing = await this.prisma.user.findUnique({ where: { userId } });
+    if (
+      existing?.status === 'Deleted' ||
+      (existing?.status === 'Banned' && sanction !== Sanction.Suspend_Permanent)
+    )
+      return;
     await this.prisma.user.update({
       where: { userId },
       data: {
@@ -238,6 +271,17 @@ export class ReportService {
     visible: boolean,
   ) {
     if (report.reportType !== ReportType.Post) return;
+    if (
+      visible &&
+      (await this.prisma.report.count({
+        where: {
+          reportType: ReportType.Post,
+          targetId: report.targetId,
+          status: ReportStatus.Violation_Confirmed,
+        },
+      }))
+    )
+      return;
     await this.prisma.post.update({
       where: { postId: report.targetId },
       data: { status: visible ? 'Active' : 'Inactive' },
@@ -261,10 +305,26 @@ export class ReportService {
     if (userId === undefined) return;
     const user = await this.prisma.user.findUnique({ where: { userId } });
     if (user?.status === 'Suspended' || user?.status === 'Banned') {
-      await this.prisma.user.update({
-        where: { userId },
-        data: { status: 'Active' },
+      const decisions = await this.prisma.report.findMany({
+        where: {
+          reportId: { not: reportId },
+          status: ReportStatus.Violation_Confirmed,
+        },
       });
+      const remaining = [] as Array<string | null>;
+      for (const decision of decisions) {
+        if ((await this.resolveReportedUserId(decision)) === userId)
+          remaining.push(decision.sanction);
+      }
+      // A legacy verdict has no recorded sanction; do not guess that it is safe to lift it.
+      const status = remaining.includes(null)
+        ? user.status
+        : remaining.includes(Sanction.Suspend_Permanent)
+          ? 'Banned'
+          : remaining.includes(Sanction.Suspend_Temporary)
+            ? 'Suspended'
+            : 'Active';
+      await this.prisma.user.update({ where: { userId }, data: { status } });
     }
   }
 
@@ -275,6 +335,10 @@ export class ReportService {
       where: { reportId },
       data: {
         status: dto.status,
+        sanction:
+          dto.status === ReportStatus.Violation_Confirmed
+            ? (dto.sanction ?? Sanction.None)
+            : Sanction.None,
         resolutionNote: dto.resolution_note,
         handledBy: adminId,
         handledAt: new Date(),

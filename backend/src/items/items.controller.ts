@@ -1,3 +1,5 @@
+import { UsePipes } from '@nestjs/common';
+import { ClassValidatorPipe } from '../common/pipes/class-validator.pipe';
 import {
   Body,
   Controller,
@@ -17,6 +19,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
 
 @Controller('items')
+@UsePipes(ClassValidatorPipe)
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
 

@@ -24,6 +24,8 @@ CREATE TABLE "Item" (
     "owner_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "name" VARCHAR(255) NOT NULL,
     "category" VARCHAR(50) NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1 CHECK ("quantity" > 0),
+    "deleted_at" TIMESTAMP,
     "condition" VARCHAR(50) NOT NULL CHECK("condition" IN ('New', 'Good', 'Acceptable', 'Poor')),
     "description" TEXT,
     "item_status" VARCHAR(20) DEFAULT 'Unlisted' CHECK("item_status" IN ('Unlisted', 'Listed', 'Transferred')),
@@ -49,6 +51,7 @@ CREATE TABLE "Item_Image" (
 CREATE TABLE "Post" (
     "post_id" SERIAL PRIMARY KEY,
     "item_id" INTEGER UNIQUE NOT NULL REFERENCES "Item"("item_id"),
+    "deleted_at" TIMESTAMP,
     "post_type" VARCHAR(20) NOT NULL CHECK("post_type" IN ('SellOnly', 'TradeOnly', 'Both')),
     "post_status" VARCHAR(20) DEFAULT 'Active' CHECK("post_status" IN ('Active', 'Inactive')),
     "price" DECIMAL(10,2) NOT NULL CHECK("price" >= 0),
@@ -84,6 +87,7 @@ CREATE TABLE "Report" (
     "details" TEXT,
     "evidence_urls" JSONB,
     "report_status" VARCHAR(20) DEFAULT 'Pending' CHECK ("report_status" IN ('Pending','Under_Investigation', 'Violation_Confirmed','Report_Dismissed')),
+    "sanction" VARCHAR(30),
     "handled_by" INTEGER REFERENCES "User"("user_id"),
     "resolution_note" TEXT,
     "handled_at" TIMESTAMP,
@@ -226,22 +230,34 @@ CREATE TABLE "Subscription_Payment" (
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "refund_submitted_at" TIMESTAMP;
+CREATE TABLE IF NOT EXISTS "Notification" (
+  "notification_id" SERIAL PRIMARY KEY,
+  "user_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
+  "event_key" VARCHAR(255) NOT NULL UNIQUE,
+  "title" TEXT NOT NULL,
+  "body" TEXT NOT NULL,
+  "href" TEXT NOT NULL,
+  "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "Notification_user_id_created_at_idx" ON "Notification"("user_id", "created_at");
+
 -- ==========================================
 -- KU MARKETPLACE - EXTENDED MOCK DATA SCRIPT (WITH WORKING IMAGE URLS)
 -- ==========================================
 
 -- 1. User (10 Users)
 INSERT INTO "User" ("email", "first_name_en", "last_name_en", "first_name_th", "last_name_th", "password_hash", "phone_number", "user_status", "email_verified_at", "isAdmin") VALUES
-('admin1@ku.th', 'Admin', 'One', 'แอดมิน', 'หนึ่ง', '$2b$10$hash1', '0811111111', 'Active', NOW(), TRUE),
-('admin2@ku.th', 'Admin', 'Two', 'แอดมิน', 'สอง', '$2b$10$hash2', '0811111112', 'Active', NOW(), TRUE),
-('user1@ku.th', 'Somchai', 'Jaidee', 'สมชาย', 'ใจดี', '$2b$10$hash3', '0822222221', 'Active', NOW(), FALSE),
-('user2@ku.th', 'Somsri', 'Maneerat', 'สมศรี', 'มณีรัตน์', '$2b$10$hash4', '0822222222', 'Active', NOW(), FALSE),
-('user3@ku.th', 'Anan', 'Suksan', 'อานนท์', 'สุขสันต์', '$2b$10$hash5', '0822222223', 'Active', NOW(), FALSE),
-('user4@ku.th', 'Kanya', 'Thongdee', 'กัญญา', 'ทองดี', '$2b$10$hash6', '0822222224', 'Active', NOW(), FALSE),
-('user5@ku.th', 'Nattapong', 'Ruang', 'ณัฐพงษ์', 'เรือง', '$2b$10$hash7', '0822222225', 'Active', NOW(), FALSE),
-('user6@ku.th', 'Ploy', 'Suay', 'พลอย', 'สวย', '$2b$10$hash8', '0822222226', 'Active', NOW(), FALSE),
-('user7@ku.th', 'Wichai', 'Keng', 'วิชัย', 'เก่ง', '$2b$10$hash9', '0822222227', 'Active', NOW(), FALSE),
-('user8@ku.th', 'Bad', 'Guy', 'แย่', 'จัง', '$2b$10$hash10', '0899999999', 'Suspended', NOW(), FALSE);
+('admin1@ku.th', 'Admin', 'One', 'แอดมิน', 'หนึ่ง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0811111111', 'Active', NOW(), TRUE),
+('admin2@ku.th', 'Admin', 'Two', 'แอดมิน', 'สอง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0811111112', 'Active', NOW(), TRUE),
+('user1@ku.th', 'Somchai', 'Jaidee', 'สมชาย', 'ใจดี', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222221', 'Active', NOW(), FALSE),
+('user2@ku.th', 'Somsri', 'Maneerat', 'สมศรี', 'มณีรัตน์', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222222', 'Active', NOW(), FALSE),
+('user3@ku.th', 'Anan', 'Suksan', 'อานนท์', 'สุขสันต์', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222223', 'Active', NOW(), FALSE),
+('user4@ku.th', 'Kanya', 'Thongdee', 'กัญญา', 'ทองดี', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222224', 'Active', NOW(), FALSE),
+('user5@ku.th', 'Nattapong', 'Ruang', 'ณัฐพงษ์', 'เรือง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222225', 'Active', NOW(), FALSE),
+('user6@ku.th', 'Ploy', 'Suay', 'พลอย', 'สวย', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222226', 'Active', NOW(), FALSE),
+('user7@ku.th', 'Wichai', 'Keng', 'วิชัย', 'เก่ง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222227', 'Active', NOW(), FALSE),
+('user8@ku.th', 'Bad', 'Guy', 'แย่', 'จัง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0899999999', 'Suspended', NOW(), FALSE);
 
 -- 2. Item (15 Items)
 INSERT INTO "Item" ("owner_id", "name", "category", "condition", "description", "item_status", "course_name", "brand_model", "warranty_expiry", "size") VALUES

@@ -1,6 +1,6 @@
 "use server";
 
-import { ApiError } from "@/lib/api/client";
+import { apiFetch } from "@/lib/api/client";
 import {
   createAppointment as createAppointmentApi,
   getAppointmentCards as getAppointmentCardsApi,
@@ -52,36 +52,14 @@ export async function respondToAppointment(
   return respondAppointmentApi(appointmentId, response);
 }
 
-/**
- * `apiFetch` (lib/api/client.ts) hardcodes `Content-Type: application/json`,
- * so it cannot carry a file — this does its own multipart request straight to
- * the shared `POST /uploads/image` endpoint instead (same one item/giveaway
- * images already go through). Kept server-side like every other backend call
- * in this app; the client only ever hands this action a `FormData`.
- */
+/** Upload through the shared API client so URL and response handling agree. */
 export async function uploadChatImage(formData: FormData): Promise<string> {
   await requireSession();
-
-  const API_URL = process.env.API_URL ?? "http://localhost:3000";
-  let res: Response;
-  try {
-    res = await fetch(`${API_URL}/uploads/image`, {
-      method: "POST",
-      headers: await authHeader(),
-      body: formData,
-      cache: "no-store",
-    });
-  } catch {
-    throw new ApiError(0, `Could not reach the server at ${API_URL}`);
-  }
-
-  const body = await res.json().catch(() => null);
-  if (!res.ok || !body?.success) {
-    const message =
-      body && typeof body === "object" && "message" in body && body.message
-        ? String(body.message)
-        : `Upload failed with status ${res.status}`;
-    throw new ApiError(res.status, message);
-  }
-  return (body.data as { url: string }).url;
+  const { url } = await apiFetch<{ url: string }>("/uploads/image", {
+    method: "POST",
+    headers: await authHeader(),
+    body: formData,
+    cache: "no-store",
+  });
+  return url;
 }

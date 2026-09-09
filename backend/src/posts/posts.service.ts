@@ -5,6 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import {
+  MEMBERSHIP_CONFIG,
+  type MembershipTier,
+} from '../common/constants/membership.constant';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreatePostPayload {
@@ -139,7 +144,19 @@ export class PostsService {
     };
   }
 
-  async createPost(payload: CreatePostPayload) {
+  private async requirePostOwner(postId: string, userId: number) {
+    const post = await this.prisma.post.findUnique({
+      where: { postId: this.id(postId, 'post'), deletedAt: null },
+      include: { item: true },
+    });
+    if (!post) throw new NotFoundException('Post not found');
+    if (post.item.ownerId !== userId)
+      throw new ForbiddenException(
+        'Only the post owner can perform this action',
+      );
+  }
+
+  async createPost(payload: CreatePostPayload, userId: number) {
     if (!payload.item_id || !payload.post_type || payload.price === undefined) {
       throw new BadRequestException(
         'item_id, post_type และ price จำเป็นต้องระบุ',
@@ -154,27 +171,97 @@ export class PostsService {
     const itemId = payload.item_id;
     const postType = payload.post_type;
     const price = payload.price;
-    if (payload.price < 0 || quantity < 1) {
+    if (
+      !Number.isFinite(payload.price) ||
+      payload.price < 0 ||
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      !Number.isSafeInteger(itemId) ||
+      itemId < 1
+    ) {
       throw new BadRequestException(
         'price ต้องไม่ติดลบและ quantity_total ต้องมากกว่า 0',
       );
     }
 
     const post = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "item_id" FROM "Item" WHERE "item_id" = ${itemId} FOR UPDATE`;
       const item = await tx.item.findUnique({ where: { itemId } });
       if (!item) throw new NotFoundException('ไม่พบสินค้า');
+      if (item.ownerId !== userId)
+        throw new ForbiddenException('Only the owner can list this item');
+      if (item.deletedAt || item.status !== 'Unlisted')
+        throw new ConflictException('Item is not available for listing');
       const existing = await tx.post.findUnique({ where: { itemId } });
-      if (existing) throw new ConflictException('สินค้านี้มีโพสต์อยู่แล้ว');
-
-      const created = await tx.post.create({
-        data: {
+      if (existing && !existing.deletedAt)
+        throw new ConflictException('สินค้านี้มีโพสต์อยู่แล้ว');
+      if (quantity > item.quantity)
+        throw new BadRequestException(
+          'Listing quantity exceeds inventory quantity',
+        );
+      if (
+        existing &&
+        (await tx.report.count({
+          where: { reportType: 'Post', targetId: existing.postId },
+        }))
+      ) {
+        throw new ConflictException(
+          'A reported listing must retain its original evidence',
+        );
+      }
+      const reservedOffer = await tx.offerItem.findFirst({
+        where: {
           itemId,
-          postType,
-          price,
-          quantityTotal: quantity,
-          quantityRemaining: quantity,
+          offer: {
+            transactions: {
+              some: {
+                status: {
+                  in: ['Pending', 'Processing', 'Pending Refund', 'Completed'],
+                },
+              },
+            },
+          },
         },
       });
+      if (reservedOffer)
+        throw new ConflictException('Item is reserved for an accepted trade');
+
+      if (!existing) {
+        await tx.$queryRaw`SELECT "user_id" FROM "User" WHERE "user_id" = ${userId} FOR UPDATE`;
+        const subscription = await tx.subscription.findFirst({
+          where: { userId },
+        });
+        const now = new Date();
+        const tier: MembershipTier =
+          subscription?.status === 'Active' &&
+          subscription.endDate &&
+          subscription.endDate > now
+            ? (subscription.tier as MembershipTier)
+            : 'Free';
+        const quota =
+          MEMBERSHIP_CONFIG[tier]?.postQuota ?? (tier === 'Diamond' ? null : 3);
+        const monthStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+        );
+        const used = await tx.post.count({
+          where: { item: { ownerId: userId }, createdAt: { gte: monthStart } },
+        });
+        if (quota !== null && used >= quota)
+          throw new ForbiddenException('Monthly listing quota reached');
+      }
+
+      const data = {
+        itemId,
+        postType,
+        price,
+        quantityTotal: quantity,
+        quantityRemaining: quantity,
+        status: 'Active',
+        deletedAt: null,
+      };
+      const created = existing
+        ? await tx.post.update({ where: { postId: existing.postId }, data })
+        : await tx.post.create({ data });
       await tx.item.update({
         where: { itemId },
         data: { status: 'Listed' },
@@ -187,7 +274,7 @@ export class PostsService {
 
   async findAllPosts() {
     const posts = await this.prisma.post.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, status: 'Active' },
       include: {
         item: {
           include: {
@@ -208,7 +295,11 @@ export class PostsService {
 
   async getPostById(postId: string) {
     const post = await this.prisma.post.findUnique({
-      where: { postId: this.id(postId, 'post'), deletedAt: null },
+      where: {
+        postId: this.id(postId, 'post'),
+        deletedAt: null,
+        status: 'Active',
+      },
       include: {
         item: {
           include: {
@@ -227,10 +318,19 @@ export class PostsService {
     return this.serializePost(post);
   }
 
-  async updatePostPrice(postId: string, payload: UpdatePostPayload) {
-    if (payload.price === undefined || payload.price < 0) {
+  async updatePostPrice(
+    postId: string,
+    payload: UpdatePostPayload,
+    userId: number,
+  ) {
+    if (
+      !Number.isFinite(payload.price) ||
+      payload.price === undefined ||
+      payload.price < 0
+    ) {
       throw new BadRequestException('price ต้องเป็นเลขที่ไม่ติดลบ');
     }
+    await this.requirePostOwner(postId, userId);
     const id = this.id(postId, 'post');
     const found = await this.prisma.post.findUnique({
       where: { postId: id, deletedAt: null },
@@ -246,7 +346,8 @@ export class PostsService {
     };
   }
 
-  async deletePost(postId: string) {
+  async deletePost(postId: string, userId: number) {
+    await this.requirePostOwner(postId, userId);
     const id = this.id(postId, 'post');
     const post = await this.prisma.post.findUnique({
       where: { postId: id, deletedAt: null },
@@ -290,7 +391,11 @@ export class PostsService {
         'buyer_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
       );
     }
-    if (quantity < 1 || !['Meetup', 'Shipping'].includes(deliveryMethod)) {
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      !['Meetup', 'Shipping'].includes(deliveryMethod)
+    ) {
       throw new BadRequestException('quantity หรือ delivery_method ไม่ถูกต้อง');
     }
 
@@ -298,18 +403,18 @@ export class PostsService {
       const post = await tx.post.findUnique({
         where: { postId: id, deletedAt: null },
         include: {
-        item: {
-          include: {
-            images: {
-              where: { status: 'Active' },
-              orderBy: { displayOrder: 'asc' },
-            },
-            owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true },
+          item: {
+            include: {
+              images: {
+                where: { status: 'Active' },
+                orderBy: { displayOrder: 'asc' },
+              },
+              owner: {
+                select: { userId: true, firstNameEn: true, lastNameEn: true },
+              },
             },
           },
         },
-      },
       });
       if (!post) throw new NotFoundException('ไม่พบโพสต์');
       if (!['SellOnly', 'Both'].includes(post.postType)) {
@@ -335,9 +440,21 @@ export class PostsService {
           status: 'Pending',
         },
       });
-      await tx.post.update({
-        where: { postId: id },
+      const reserved = await tx.post.updateMany({
+        where: {
+          postId: id,
+          deletedAt: null,
+          status: 'Active',
+          quantityRemaining: { gte: quantity },
+        },
         data: { quantityRemaining: { decrement: quantity } },
+      });
+      if (reserved.count !== 1)
+        throw new ConflictException(
+          'Post is unavailable or stock is insufficient',
+        );
+      await tx.chatRoom.create({
+        data: { transactionId: created.transactionId },
       });
       return created;
     });
@@ -358,6 +475,16 @@ export class PostsService {
     if (!Number.isInteger(proposerId) || proposerId < 1) {
       throw new BadRequestException(
         'proposer_id จำเป็นต้องระบุและต้องเป็นจำนวนเต็มบวก',
+      );
+    }
+    if (
+      !Array.isArray(payload.item_ids) ||
+      payload.item_ids.some((id) => !Number.isSafeInteger(id) || id < 1) ||
+      !Number.isFinite(payload.additional_money ?? 0) ||
+      (payload.additional_money ?? 0) < 0
+    ) {
+      throw new BadRequestException(
+        'Invalid offered items or additional money',
       );
     }
     const itemIds = [...new Set(payload.item_ids ?? [])];
@@ -462,7 +589,9 @@ export class PostsService {
     postId: string,
     offerId: string,
     payload: AcceptOfferPayload,
+    userId: number,
   ) {
+    await this.requirePostOwner(postId, userId);
     const postPk = this.id(postId, 'post');
     const offerPk = this.id(offerId, 'offer');
     // §trade — a swap is always handed over in person. The trade flow in the
@@ -471,9 +600,10 @@ export class PostsService {
     void payload;
     const deliveryMethod = 'Meetup';
     const transaction = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "post_id" FROM "Post" WHERE "post_id" = ${postPk} FOR UPDATE`;
       const offer = await tx.offer.findFirst({
         where: { offerId: offerPk, postId: postPk },
-        include: { post: { include: { item: true } } },
+        include: { post: { include: { item: true } }, items: true },
       });
       if (!offer) throw new NotFoundException('ไม่พบ offer');
       if (offer.status !== 'Pending')
@@ -489,6 +619,44 @@ export class PostsService {
       if (offer.post.quantityRemaining < 1)
         throw new ConflictException('สินค้าไม่มีเหลือแล้ว');
 
+      const offeredIds = offer.items
+        .map((entry) => entry.itemId)
+        .sort((a, b) => a - b);
+      if (offeredIds.length === 0)
+        throw new ConflictException('Offer has no items');
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "item_id" FROM "Item" WHERE "item_id" IN (${Prisma.join(offeredIds)}) ORDER BY "item_id" FOR UPDATE`,
+      );
+      const available = await tx.item.count({
+        where: {
+          itemId: { in: offeredIds },
+          ownerId: offer.proposerId,
+          status: 'Unlisted',
+          deletedAt: null,
+        },
+      });
+      if (available !== offeredIds.length)
+        throw new ConflictException('An offered item is no longer available');
+      const reservedItem = await tx.offerItem.findFirst({
+        where: {
+          itemId: { in: offeredIds },
+          offerId: { not: offerPk },
+          offer: {
+            transactions: {
+              some: {
+                status: {
+                  in: ['Pending', 'Processing', 'Pending Refund', 'Completed'],
+                },
+              },
+            },
+          },
+        },
+      });
+      if (reservedItem)
+        throw new ConflictException(
+          'An offered item is reserved by another trade',
+        );
+
       const created = await tx.transaction.create({
         data: {
           postId: postPk,
@@ -500,17 +668,31 @@ export class PostsService {
           status: 'Pending',
         },
       });
-      await tx.offer.update({
-        where: { offerId: offerPk },
+      const accepted = await tx.offer.updateMany({
+        where: { offerId: offerPk, status: 'Pending' },
         data: { status: 'Accepted' },
       });
+      if (accepted.count !== 1)
+        throw new ConflictException('Offer is no longer pending');
       await tx.offer.updateMany({
         where: { postId: postPk, offerId: { not: offerPk }, status: 'Pending' },
         data: { status: 'Rejected' },
       });
-      await tx.post.update({
-        where: { postId: postPk },
+      const reserved = await tx.post.updateMany({
+        where: {
+          postId: postPk,
+          deletedAt: null,
+          status: 'Active',
+          quantityRemaining: { gte: 1 },
+        },
         data: { quantityRemaining: { decrement: 1 } },
+      });
+      if (reserved.count !== 1)
+        throw new ConflictException(
+          'Post is unavailable or stock is insufficient',
+        );
+      await tx.chatRoom.create({
+        data: { transactionId: created.transactionId },
       });
       return created;
     });
@@ -524,23 +706,31 @@ export class PostsService {
     };
   }
 
-  async withdrawOffer(postId: string, offerId: string) {
-    return this.changeOfferStatus(postId, offerId, 'Withdrawn');
+  async withdrawOffer(postId: string, offerId: string, userId: number) {
+    return this.changeOfferStatus(postId, offerId, 'Withdrawn', userId);
   }
 
-  async rejectOffer(postId: string, offerId: string) {
-    return this.changeOfferStatus(postId, offerId, 'Rejected');
+  async rejectOffer(postId: string, offerId: string, userId: number) {
+    return this.changeOfferStatus(postId, offerId, 'Rejected', userId);
   }
 
   private async changeOfferStatus(
     postId: string,
     offerId: string,
     status: string,
+    userId: number,
   ) {
     const postPk = this.id(postId, 'post');
     const offerPk = this.id(offerId, 'offer');
     const result = await this.prisma.offer.updateMany({
-      where: { offerId: offerPk, postId: postPk, status: 'Pending' },
+      where: {
+        offerId: offerPk,
+        postId: postPk,
+        status: 'Pending',
+        ...(status === 'Withdrawn'
+          ? { proposerId: userId }
+          : { post: { item: { ownerId: userId } } }),
+      },
       data: { status },
     });
     if (result.count === 0)
@@ -561,7 +751,10 @@ export class PostsService {
   async getMyOffers(userId: number) {
     const includeItem = {
       include: {
-        images: { where: { status: 'Active' }, orderBy: { displayOrder: 'asc' } },
+        images: {
+          where: { status: 'Active' },
+          orderBy: { displayOrder: 'asc' },
+        },
         owner: {
           select: { userId: true, firstNameEn: true, lastNameEn: true },
         },

@@ -20,6 +20,7 @@ import { useStatusText } from "@/lib/i18n/status-text";
 import type { ItemCategory, Post } from "@/lib/api/types";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { CATEGORY_OPTIONS } from "@/lib/categories";
 
 /**
  * E2. Three research findings drive this screen:
@@ -97,10 +98,10 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
     [posts, segment, query, draftCategories, draftConditions],
   );
 
-  // Derived from the data, because the seed's category names and the design
-  // document's slugs do not match and the database is the one that is right.
+  // Show every inventory category, including those without current listings.
+  // Keep additional categories from existing data available for filtering.
   const availableCategories = useMemo(
-    () => [...new Set(posts.map((p) => p.item.category))].sort(),
+    () => [...new Set<string>([...CATEGORY_OPTIONS, ...posts.map((p) => p.item.category)])],
     [posts],
   );
 

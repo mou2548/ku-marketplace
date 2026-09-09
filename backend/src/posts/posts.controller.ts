@@ -21,15 +21,9 @@ import type {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
 
-// หมายเหตุ: เพิ่มแค่ guard กันคนไม่ login เรียก endpoint ที่แก้ข้อมูลได้
-// ยังไม่ได้เปลี่ยนวิธีรับ owner_id/proposer_id/buyer_id (ยังมาจาก body เหมือนเดิม)
-// ในระยะยาวควรเปลี่ยนไปอ่านจาก @CurrentUser() แทนการเชื่อค่าที่ client ส่งมาตรงๆ
-// (เหมือนที่ items/membership/transaction ทำอยู่แล้ว) — เป็นคนละเรื่องกับ auth
-// ที่ควรคุยกับคนดูแล posts module ก่อนแก้
-//
-// §envelope — ข้อความ success เดิมที่เคยฝังอยู่ใน postsService.ok(...) ย้ายมาไว้
-// เป็น @ResponseMessage(...) ตรงนี้แทน เพราะตอนนี้ ResponseInterceptor ตัวเดียว
-// เป็นคนสร้าง { success, message, data } ให้ทั้งระบบ — service ไม่ห่อ envelope เองแล้ว
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
+
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
@@ -37,8 +31,11 @@ export class PostsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('สร้างโพสต์สำเร็จ')
-  createPost(@Body() body: CreatePostPayload) {
-    return this.postsService.createPost(body);
+  createPost(
+    @Body() body: CreatePostPayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.postsService.createPost(body, user.userId);
   }
 
   @Get()
@@ -59,22 +56,33 @@ export class PostsController {
   updatePostPrice(
     @Param('post_id') postId: string,
     @Body() body: UpdatePostPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.updatePostPrice(postId, body);
+    return this.postsService.updatePostPrice(postId, body, user.userId);
   }
 
   @Delete(':post_id')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('ลบโพสต์สำเร็จ')
-  deletePost(@Param('post_id') postId: string) {
-    return this.postsService.deletePost(postId);
+  deletePost(
+    @Param('post_id') postId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.postsService.deletePost(postId, user.userId);
   }
 
   @Post(':post_id/buy')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('ทำการซื้อสำเร็จ')
-  buyPost(@Param('post_id') postId: string, @Body() body: BuyPostPayload) {
-    return this.postsService.buyPost(postId, body);
+  buyPost(
+    @Param('post_id') postId: string,
+    @Body() body: BuyPostPayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.postsService.buyPost(postId, {
+      ...body,
+      buyer_id: user.userId,
+    });
   }
 
   @Post(':post_id/offers')
@@ -83,8 +91,12 @@ export class PostsController {
   createOffer(
     @Param('post_id') postId: string,
     @Body() body: CreateOfferPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.createOffer(postId, body);
+    return this.postsService.createOffer(postId, {
+      ...body,
+      proposer_id: user.userId,
+    });
   }
 
   @Get(':post_id/offers')
@@ -100,8 +112,9 @@ export class PostsController {
     @Param('post_id') postId: string,
     @Param('offer_id') offerId: string,
     @Body() body: AcceptOfferPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.acceptOffer(postId, offerId, body);
+    return this.postsService.acceptOffer(postId, offerId, body, user.userId);
   }
 
   @Post(':post_id/offers/:offer_id/withdraw')
@@ -111,8 +124,9 @@ export class PostsController {
   withdrawOffer(
     @Param('post_id') postId: string,
     @Param('offer_id') offerId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.withdrawOffer(postId, offerId);
+    return this.postsService.withdrawOffer(postId, offerId, user.userId);
   }
 
   @Post(':post_id/offers/:offer_id/reject')
@@ -122,7 +136,8 @@ export class PostsController {
   rejectOffer(
     @Param('post_id') postId: string,
     @Param('offer_id') offerId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.rejectOffer(postId, offerId);
+    return this.postsService.rejectOffer(postId, offerId, user.userId);
   }
 }

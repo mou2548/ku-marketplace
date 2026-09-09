@@ -12,7 +12,10 @@ import {
 import { AppealService } from './appeal.service';
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  AllowRestrictedAccount,
+} from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/interfaces/current-user.interface';
@@ -24,6 +27,7 @@ export class AppealController {
   constructor(private readonly appealService: AppealService) {}
 
   @Post('appeals')
+  @AllowRestrictedAccount()
   @UseGuards(JwtAuthGuard)
   create(
     @CurrentUser() user: CurrentUserPayload,
@@ -33,9 +37,17 @@ export class AppealController {
   }
 
   @Get('appeals')
+  @AllowRestrictedAccount()
   @UseGuards(JwtAuthGuard)
   findMine(@CurrentUser() user: CurrentUserPayload) {
     return this.appealService.findAllForUser(user.userId);
+  }
+
+  @Get('appeals/eligible')
+  @AllowRestrictedAccount()
+  @UseGuards(JwtAuthGuard)
+  eligible(@CurrentUser() user: CurrentUserPayload) {
+    return this.appealService.findEligible(user.userId);
   }
 
   @Get('admin/appeals')
