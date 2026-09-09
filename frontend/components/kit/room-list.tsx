@@ -265,8 +265,9 @@ function RoomRow({
               {new Date(room.lastMessageAt).toLocaleDateString(
                 locale === "th" ? "th-TH" : "en-GB",
                 {
-                day: "numeric",
-                month: "short",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
                 },
               )}
             </time>
