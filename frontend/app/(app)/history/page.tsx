@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 
 import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getCurrentUserId } from "@/lib/api/session";
@@ -27,6 +28,11 @@ export const metadata = { title: "History - KU Marketplace" };
 export default async function DealsPage() {
   const viewerId = await getCurrentUserId();
   if (!viewerId) redirect("/login");
+  const locale = await getLocale();
+  const dateFormatter = new Intl.DateTimeFormat(
+    locale === "th" ? "th-TH" : "en-GB",
+    { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" },
+  );
 
   const [transactions, giveaways] = await Promise.all([
     getTransactions(),
@@ -48,7 +54,11 @@ export default async function DealsPage() {
 
   return (
     <HistoryList
-      transactions={transactions}
+      transactions={transactions.map((transaction) => ({
+        ...transaction,
+        // Reuse the server's text during hydration; browser ICU data can differ.
+        created_date_label: dateFormatter.format(new Date(transaction.created_at)),
+      }))}
       tickets={tickets}
       viewerId={viewerId}
     />

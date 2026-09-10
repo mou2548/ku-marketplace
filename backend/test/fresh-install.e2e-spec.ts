@@ -74,6 +74,57 @@ describe('Fresh clone database', () => {
     }
   });
 
+  it('accepts a seeded offer and rejects its competitors without consuming unrelated offers', async () => {
+    const service = new PostsService(prisma as unknown as PrismaService);
+    await service.acceptOffer('3', '1', {}, 4);
+    expect(
+      (await prisma.offer.findUniqueOrThrow({ where: { offerId: 1 } })).status,
+    ).toBe('Accepted');
+    expect(
+      (await prisma.offer.findUniqueOrThrow({ where: { offerId: 8 } })).status,
+    ).toBe('Rejected');
+    expect(
+      (await prisma.offer.findUniqueOrThrow({ where: { offerId: 4 } })).status,
+    ).toBe('Pending');
+    expect(
+      (await prisma.post.findUniqueOrThrow({ where: { postId: 3 } }))
+        .quantityRemaining,
+    ).toBe(0);
+    await expect(service.acceptOffer('3', '8', {}, 4)).rejects.toThrow();
+    await service.acceptOffer('5', '4', {}, 6);
+    expect(
+      (await prisma.offer.findUniqueOrThrow({ where: { offerId: 4 } })).status,
+    ).toBe('Accepted');
+  });
+
+  it('rejects new offers using listed, deleted or reserved inventory and unavailable listings', async () => {
+    const service = new PostsService(prisma as unknown as PrismaService);
+    await expect(
+      service.createOffer('7', { proposer_id: 3, item_ids: [1] }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.createOffer('7', { proposer_id: 5, item_ids: [6] }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    const deleted = await prisma.item.create({
+      data: {
+        ownerId: 3,
+        name: 'Deleted offered item',
+        category: 'Books',
+        condition: 'Good',
+        deletedAt: new Date(),
+      },
+    });
+    await expect(
+      service.createOffer('7', { proposer_id: 3, item_ids: [deleted.itemId] }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.createOffer('4', { proposer_id: 3, item_ids: [17] }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.createOffer('3', { proposer_id: 3, item_ids: [17] }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('keeps remaining stock listed after a partial shipping sale and protects listed inventory', async () => {
     const posts = new PostsService(prisma as unknown as PrismaService);
     const items = new ItemsService(prisma as unknown as PrismaService);
@@ -452,6 +503,29 @@ describe('Fresh clone database', () => {
     expect(
       responses.filter((result) => result.status === 'fulfilled'),
     ).toHaveLength(1);
+    const notifications = await prisma.notification.findMany({
+      where: { href: `/history/${deal.transactionId}` },
+      orderBy: { notificationId: 'asc' },
+    });
+    expect(notifications).toHaveLength(3);
+    expect(notifications[0]).toMatchObject({
+      userId: 4,
+      title: 'New meetup proposed',
+    });
+    expect(notifications[1]).toMatchObject({
+      userId: 4,
+      title: 'Meetup change proposed',
+    });
+    expect(notifications[1].body).toContain('2026-09-16 at 12:00, Replacement');
+    expect(notifications[2].userId).toBe(3);
+    expect(['Meetup confirmed', 'Meetup declined']).toContain(
+      notifications[2].title,
+    );
+    expect(
+      await prisma.notification.count({
+        where: { userId: 5, href: `/history/${deal.transactionId}` },
+      }),
+    ).toBe(0);
     await transactionService().requestCancellation(deal.transactionId, 3, {
       reason: 'No longer needed',
     });
@@ -867,6 +941,49 @@ describe('Fresh clone database', () => {
     await expect(
       service.acceptOffer(postB.post_id, offerB.offer_id, {}, 5),
     ).rejects.toThrow();
+  });
+
+  it('accepts only one of two competing new offers under simultaneous seller decisions', async () => {
+    const service = new PostsService(prisma as unknown as PrismaService);
+    const items = await Promise.all(
+      [3, 4, 5].map((ownerId) =>
+        prisma.item.create({
+          data: {
+            ownerId,
+            name: 'Competing trade',
+            category: 'Books',
+            condition: 'Good',
+          },
+        }),
+      ),
+    );
+    const post = await service.createPost(
+      { item_id: items[0].itemId, post_type: 'TradeOnly', price: 0 },
+      3,
+    );
+    const offers = await Promise.all(
+      [4, 5].map((proposer_id, index) =>
+        service.createOffer(post.post_id, {
+          proposer_id,
+          item_ids: [items[index + 1].itemId],
+        }),
+      ),
+    );
+    const results = await Promise.allSettled(
+      offers.map((offer) =>
+        service.acceptOffer(post.post_id, offer.offer_id, {}, 3),
+      ),
+    );
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const postId = Number(post.post_id.replace('post_', ''));
+    const rows = await prisma.offer.findMany({ where: { postId } });
+    expect(rows.map((row) => row.status).sort()).toEqual([
+      'Accepted',
+      'Rejected',
+    ]);
+    expect(await prisma.transaction.count({ where: { postId } })).toBe(1);
   });
 
   it('does not authorize handover with an old appointment while a replacement is pending', async () => {

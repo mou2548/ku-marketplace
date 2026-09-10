@@ -511,6 +511,16 @@ export class PostsService {
     if (!['TradeOnly', 'Both'].includes(post.postType)) {
       throw new ConflictException('โพสต์นี้รองรับการซื้อเท่านั้น');
     }
+    if (
+      post.status !== 'Active' ||
+      post.quantityRemaining < 1 ||
+      post.item.deletedAt ||
+      post.item.status !== 'Listed'
+    ) {
+      throw new ConflictException(
+        'Post is unavailable or stock is insufficient',
+      );
+    }
     if (post.item.ownerId === proposerId) {
       throw new ConflictException(
         'เจ้าของโพสต์ไม่สามารถเสนอแลกสินค้าของตัวเองได้',
@@ -523,13 +533,35 @@ export class PostsService {
     }
     const items = await this.prisma.item.findMany({
       where: { itemId: { in: itemIds } },
-      select: { itemId: true, ownerId: true },
+      select: { itemId: true, ownerId: true, status: true, deletedAt: true },
     });
     if (items.length !== itemIds.length)
       throw new NotFoundException('ไม่พบสินค้าที่ใช้เสนอแลกบางรายการ');
     if (items.some((item) => item.ownerId !== proposerId)) {
       throw new ForbiddenException(
         'สินค้าที่ใช้เสนอแลกต้องเป็นของผู้เสนอเท่านั้น',
+      );
+    }
+    if (items.some((item) => item.status !== 'Unlisted' || item.deletedAt)) {
+      throw new ConflictException('An offered item is no longer available');
+    }
+    const reservedItem = await this.prisma.offerItem.findFirst({
+      where: {
+        itemId: { in: itemIds },
+        offer: {
+          transactions: {
+            some: {
+              status: {
+                in: ['Pending', 'Processing', 'Pending Refund', 'Completed'],
+              },
+            },
+          },
+        },
+      },
+    });
+    if (reservedItem) {
+      throw new ConflictException(
+        'An offered item is reserved by another trade',
       );
     }
 

@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, Gift, Handshake, ShieldAlert, Wallet } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
@@ -11,6 +12,7 @@ import { TONE_CHIP, TONE_RAIL_LEFT } from "@/components/kit/tone";
 import type { Notification } from "@/lib/api/notifications";
 import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { usePolling } from "@/lib/use-polling";
 
 const ICON: Record<Notification["kind"], typeof Bell> = {
   deal: Wallet,
@@ -88,6 +90,10 @@ export function NotificationsScreen({
 }) {
   const t = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
+  usePolling(() => {
+    if (document.visibilityState === "visible") router.refresh();
+  }, 10_000);
   const [filter, setFilter] = useState<Filter>("all");
 
   const counts = useMemo(() => {

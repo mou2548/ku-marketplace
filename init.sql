@@ -259,23 +259,28 @@ INSERT INTO "User" ("email", "first_name_en", "last_name_en", "first_name_th", "
 ('user7@ku.th', 'Wichai', 'Keng', 'วิชัย', 'เก่ง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0822222227', 'Active', NOW(), FALSE),
 ('user8@ku.th', 'Bad', 'Guy', 'แย่', 'จัง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0899999999', 'Suspended', NOW(), FALSE);
 
--- 2. Item (15 Items)
+-- 2. Item (17 Items)
 INSERT INTO "Item" ("owner_id", "name", "category", "condition", "description", "item_status", "course_name", "brand_model", "warranty_expiry", "size") VALUES
 (3, 'หนังสือ Physics I', 'Books', 'Good', 'มีรอยไฮไลท์เล็กน้อย 85%', 'Listed', '01420111', 'KU Press', NULL, NULL),
-(3, 'เสื้อนิสิตทรงบอย', 'Clothing', 'New', 'ยังไม่เคยใส่', 'Listed', NULL, 'ร้านมุมทอง', NULL, 'XL'),
+(3, 'เสื้อนิสิตทรงบอย', 'Clothing', 'New', 'ยังไม่เคยใส่', 'Transferred', NULL, 'ร้านมุมทอง', NULL, 'XL'),
 (4, 'iPad Air 5 64GB', 'Electronics', 'Good', 'ติดฟิล์มกระดาษ', 'Listed', NULL, 'Apple', '2026-12-31', '64GB'),
-(5, 'เครื่องคิดเลข FX-991EX', 'Electronics', 'Good', 'ใช้สอบเสร็จส่งต่อ', 'Listed', NULL, 'Casio', NULL, NULL),
+(5, 'เครื่องคิดเลข FX-991EX', 'Electronics', 'Good', 'ใช้สอบเสร็จส่งต่อ', 'Transferred', NULL, 'Casio', NULL, NULL),
 (6, 'หูฟัง Sony WH-1000XM4', 'Electronics', 'Good', 'อุปกรณ์ครบ', 'Listed', NULL, 'Sony', '2026-10-15', NULL),
 (5, 'รองเท้าคอนเวิร์ส สีขาว', 'Clothing', 'Acceptable', 'สภาพใช้งาน', 'Unlisted', NULL, 'Converse', NULL, '42'),
 (6, 'หนังสือ Calculus II', 'Books', 'Good', 'ไม่มีรอยเขียน', 'Unlisted', '01417112', 'KU Press', NULL, NULL),
 (7, 'พัดลม Hatari 16 นิ้ว', 'Appliances', 'Acceptable', 'ลมแรงปกติ', 'Transferred', NULL, 'Hatari', NULL, NULL),
 (4, 'แว่นตา Rayban', 'Accessories', 'New', 'ของแท้', 'Unlisted', NULL, 'Rayban', NULL, NULL),
-(3, 'กระเป๋า Anello', 'Bags', 'Good', 'ใช้งานได้ปกติ', 'Unlisted', NULL, 'Anello', NULL, 'Medium'),
+(3, 'กระเป๋า Anello', 'Bags', 'Good', 'ใช้งานได้ปกติ', 'Transferred', NULL, 'Anello', NULL, 'Medium'),
 (7, 'คีย์บอร์ด Keychron K2', 'Electronics', 'Good', 'สวิตช์สีน้ำตาล', 'Listed', NULL, 'Keychron', NULL, NULL),
 (8, 'ชีทสรุป Gen Chem', 'Books', 'Acceptable', 'จดครบทุกบท', 'Listed', '01403111', NULL, NULL, NULL),
 (8, 'ตุ๊กตาหมี IKEA', 'Toys', 'New', 'ป้ายห้อย', 'Listed', NULL, 'IKEA', NULL, NULL),
 (9, 'เมาส์ไร้สาย Logitech', 'Electronics', 'Poor', 'คลิกซ้ายเบิ้ลนิดหน่อย', 'Listed', NULL, 'Logitech', NULL, NULL),
-(9, 'กางเกงวอร์ม KU', 'Clothing', 'Good', 'ใส่ไป 2 ครั้ง', 'Listed', NULL, 'KU Shop', NULL, 'L');
+(9, 'กางเกงวอร์ม KU', 'Clothing', 'Good', 'ใส่ไป 2 ครั้ง', 'Listed', NULL, 'KU Shop', NULL, 'L'),
+(5, 'Trade demo headphones', 'Electronics', 'Good', 'Available for the pending iPad offer', 'Unlisted', NULL, NULL, NULL, NULL),
+(3, 'Trade demo notebook', 'Stationery', 'New', 'Available after a withdrawn offer', 'Unlisted', NULL, NULL, NULL, NULL);
+
+-- One iPad is reserved by transaction 4; a second remains available for offers.
+UPDATE "Item" SET "quantity" = 2 WHERE "item_id" = 3;
 
 -- 3. Item_Image (15 Images - Using picsum.photos for real mock images)
 INSERT INTO "Item_Image" ("item_id", "item_image_status", "image_url", "is_primary", "display_order") VALUES
@@ -297,18 +302,18 @@ INSERT INTO "Item_Image" ("item_id", "item_image_status", "image_url", "is_prima
 
 -- 4. Post (10 Posts)
 INSERT INTO "Post" ("item_id", "post_type", "post_status", "price", "quantity_total", "quantity_remaining") VALUES
-(1, 'SellOnly', 'Active', 150.00, 1, 1),
-(2, 'SellOnly', 'Active', 100.00, 1, 1),
-(3, 'Both', 'Active', 13500.00, 1, 1),
-(4, 'TradeOnly', 'Active', 0.00, 1, 1),
+(1, 'SellOnly', 'Active', 150.00, 1, 0),
+(2, 'SellOnly', 'Inactive', 100.00, 1, 0),
+(3, 'Both', 'Active', 13500.00, 2, 1),
+(4, 'TradeOnly', 'Inactive', 0.00, 1, 0),
 (5, 'Both', 'Active', 7000.00, 1, 1),
-(11, 'SellOnly', 'Active', 1500.00, 1, 1),
+(11, 'SellOnly', 'Active', 1500.00, 1, 0),
 (12, 'Both', 'Active', 50.00, 1, 1),
-(13, 'TradeOnly', 'Active', 0.00, 1, 1),
+(13, 'TradeOnly', 'Active', 0.00, 1, 0),
 (14, 'SellOnly', 'Active', 80.00, 1, 1),
-(15, 'SellOnly', 'Active', 200.00, 1, 1);
+(15, 'SellOnly', 'Active', 200.00, 1, 0);
 
--- 5. Offer (7 Offers)
+-- 5. Offer (8 Offers; offers 1 and 8 compete for the available iPad)
 INSERT INTO "Offer" ("post_id", "proposer_id", "additional_money", "offer_status") VALUES
 (3, 5, 12000.00, 'Pending'),
 (4, 3, 0.00, 'Accepted'),
@@ -316,17 +321,18 @@ INSERT INTO "Offer" ("post_id", "proposer_id", "additional_money", "offer_status
 (5, 4, 6000.00, 'Pending'),
 (8, 5, 50.00, 'Accepted'),
 (7, 3, 0.00, 'Withdrawn'),
-(4, 7, 100.00, 'Cancelled');
+(4, 7, 100.00, 'Cancelled'),
+(3, 6, 12500.00, 'Pending');
 
 -- 6. Offer_Item (7 Rows)
 INSERT INTO "Offer_Item" ("offer_id", "item_id") VALUES
-(1, 4),  
-(1, 6),  
-(2, 1),  
-(3, 7),  
-(4, 9),  
-(5, 6),  
-(6, 10); 
+(1, 16),
+(2, 10),
+(3, 7),
+(4, 9),
+(5, 6),
+(6, 17),
+(8, 7);
 
 -- 7. Report (5 Reports)
 INSERT INTO "Report" ("reporter_id", "report_type", "target_id", "reason_category", "details", "report_status", "handled_by", "resolution_note", "handled_at") VALUES
@@ -337,7 +343,7 @@ INSERT INTO "Report" ("reporter_id", "report_type", "target_id", "reason_categor
 (7, 'User', 4, 'Harassment', 'ด่าทอในแชท', 'Pending', NULL, NULL, NULL);
 
 -- 8. Transaction (8 Transactions - Using placehold.co for Slips)
-INSERT INTO "Transaction" ("post_id", "offer_id", "buyer_id", "seller_id", "quantity", "transaction_status", "active_report_id", "delivery_method", "slip_image_url", "tracking_number", "payment_confirmed_by_buyer_at", "payment_confirmed_by_seller_at") VALUES 
+INSERT INTO "Transaction" ("post_id", "offer_id", "buyer_id", "seller_id", "quantity", "transaction_status", "active_report_id", "delivery_method", "slip_image_url", "tracking_number", "payment_confirmed_by_buyer_at", "payment_confirmed_by_seller_at") VALUES
 (1, NULL, 4, 3, 1, 'Processing', NULL, 'Meetup', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX1', NULL, '2026-09-01 14:00:00', '2026-09-01 14:05:00'),
 (2, NULL, 5, 3, 1, 'Completed', NULL, 'Shipping', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX2', 'TH123456789', '2026-08-25 09:00:00', '2026-08-25 09:10:00'),
 (4, 2, 3, 5, 1, 'Completed', NULL, 'Meetup', NULL, NULL, NULL, NULL),
@@ -363,7 +369,7 @@ INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_loc
 ('หนังสือศัพท์ TOEIC', 2, 'แจก 2 เล่ม', 'หอพัก', 5, 'Manual', '2026-09-12 20:00:00', '2026-09-09 23:59:59', 'Active'),
 ('สายชาร์จ iPhone', 1, 'ยังใช้งานได้ดี', 'หน้าตึก SC1', 6, 'FirstCome', '2026-08-30 12:00:00', '2026-08-28 12:00:00', 'Closed'),
 ('แก้วน้ำ YETI (ปลอม)', 1, 'เก็บความเย็นได้อยู่', 'บาร์ใหม่', 7, 'Random', '2026-08-25 15:00:00', '2026-08-20 15:00:00', 'Completed'),
-('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Closed'); 
+('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Closed');
 
 -- 11. Giveaway_Ticket (9 Tickets)
 INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status") VALUES

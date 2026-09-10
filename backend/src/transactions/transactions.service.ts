@@ -209,6 +209,10 @@ export class TransactionsService {
         );
       }
       const { date, time, location } = createAppointmentDto;
+      const previous = await tx.appointmentCard.findFirst({
+        where: { transactionId },
+        orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
+      });
       await tx.appointmentCard.updateMany({
         where: { transactionId, status: 'Pending' },
         data: { status: 'Rejected' },
@@ -223,6 +227,18 @@ export class TransactionsService {
           status: 'Pending',
         },
         include: { proposer: true },
+      });
+      await tx.notification.create({
+        data: {
+          userId:
+            userId === transaction.buyerId
+              ? transaction.sellerId
+              : transaction.buyerId,
+          eventKey: `appointment:${appointment.appointmentId}:proposed`,
+          title: previous ? 'Meetup change proposed' : 'New meetup proposed',
+          body: `${date} at ${time}, ${location}. Please confirm or decline this appointment.`,
+          href: `/history/${transactionId}`,
+        },
       });
       return this.serializeAppointment(appointment);
     });

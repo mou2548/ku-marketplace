@@ -148,6 +148,16 @@ export class AppointmentCardsService {
         data: { status },
         include: { proposer: true },
       });
+      await tx.notification.create({
+        data: {
+          userId: appointment.proposedBy,
+          eventKey: `appointment:${appointmentId}:responded`,
+          title:
+            status === 'Confirmed' ? 'Meetup confirmed' : 'Meetup declined',
+          body: `${appointment.date.toISOString().slice(0, 10)} at ${appointment.time.toISOString().slice(11, 16)}, ${appointment.location}.`,
+          href: `/history/${appointment.transactionId}`,
+        },
+      });
       return this.serializeAppointment(updated);
     });
   }

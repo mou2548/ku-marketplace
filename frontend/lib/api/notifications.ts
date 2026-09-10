@@ -15,12 +15,9 @@ import {
 } from "@/lib/status";
 
 /**
- * The notification log (E-series). There is no `/notifications` endpoint and
- * no notification table — same principle as `lib/inbox.ts`: everything is
- * derived on the fly from the resources the user already has access to
- * (`/transactions`, `/offers`, `/reports`, `/appeals`, giveaway tickets). No
- * persistence, so "read" is a heuristic: an item is read once the thing it is
- * about has reached a state that no longer needs the user.
+ * Persisted appointment/deadline events are combined with activity derived
+ * from the viewer's deals, offers, moderation cases and giveaway tickets.
+ * Derived activity uses terminal resource state as a read heuristic.
  */
 export interface Notification {
   notification_id: number;

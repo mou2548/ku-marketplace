@@ -86,10 +86,10 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
   }
 
   return (
-    <ActionBar className="-mx-1">
+    <ActionBar className="-mx-1 lg:flex-col lg:items-stretch">
       {canBuy ? (
         <OverlayTrigger>
-          <Button block size="lg" className="lg:w-auto" isDisabled={post.quantity_remaining < 1}>
+          <Button block size="lg" isDisabled={post.quantity_remaining < 1}>
             <ShoppingBag className="size-5" />{t("market.buyNow")}</Button>
 
           <Overlay
@@ -138,7 +138,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           variant={canBuy ? "secondary" : "trade"}
           size="lg"
           block
-          className={canBuy ? "text-tone-trade-fg lg:w-auto" : "lg:w-auto"}
+          className={canBuy ? "text-tone-trade-fg" : undefined}
           href={`/offers/new?post=${post.post_id}`}
         >
           <ArrowLeftRight className="size-5" />{t("market.offerTrade")}</LinkButton>
@@ -153,7 +153,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
             variant="ghost"
             size="lg"
             aria-label={t("market.reportPost")}
-            className="self-end lg:self-auto"
+            className="self-end"
           >
             <Flag className="size-5" />
           </Button>

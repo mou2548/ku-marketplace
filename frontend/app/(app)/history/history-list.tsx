@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Handshake, MessagesSquare, Store } from "lucide-react";
@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 
 type Lens = "all" | "buying" | "selling";
 type StatusFilter = "all" | TransactionStatus;
+type HistoryTransaction = Transaction & { created_date_label: string };
 
 const LENSES: Lens[] = ["all", "buying", "selling"];
 
@@ -61,7 +62,7 @@ export function HistoryList({
   tickets,
   viewerId,
 }: {
-  transactions: Transaction[];
+  transactions: HistoryTransaction[];
   tickets: GiveawayTicket[];
   viewerId: number;
 }) {
@@ -233,9 +234,8 @@ const ACTION_CTA: Record<PromptAction | "none", string> = {
   none: "openDeal",
 };
 
-function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
+function DealRow({ tx, viewerId }: { tx: HistoryTransaction; viewerId: number }) {
   const t = useTranslations();
-  const locale = useLocale();
   const st = useStatusText();
   const viewer = tx.buyer_id === viewerId ? "buyer" : "seller";
   const prompt = resolveTransactionActor(tx, viewer);
@@ -244,10 +244,6 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
   const other = viewer === "buyer" ? tx.seller : tx.buyer;
   const isTrade = tx.offer_id != null;
 
-  const date = new Date(tx.created_at).toLocaleDateString(
-    locale === "th" ? "th-TH" : "en-GB",
-    { day: "numeric", month: "short", year: "numeric" },
-  );
   const amount =
     tx.final_amount > 0
       ? `฿${tx.final_amount.toLocaleString("en-GB")}`
@@ -262,7 +258,7 @@ function DealRow({ tx, viewerId }: { tx: Transaction; viewerId: number }) {
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-overline font-semibold text-ink-muted uppercase">
-            {isTrade ? t("history.trade") : t("history.sale")} · {date}
+            {isTrade ? t("history.trade") : t("history.sale")} · {tx.created_date_label}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {deadline ? <CountdownPill deadline={deadline} /> : null}
