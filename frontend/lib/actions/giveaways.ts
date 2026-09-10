@@ -46,7 +46,10 @@ export async function forfeitTicket(ticketId: number): Promise<void> {
   await forfeitTicketApi(ticketId);
 }
 
-export async function generateTicketQr(giveawayId: number, ticketId: number): Promise<string> {
+export async function generateTicketQr(
+  giveawayId: number,
+  ticketId: number,
+): Promise<{ token: string; expiresInSeconds: number }> {
   await requireSession();
   return generateTicketQrApi(giveawayId, ticketId);
 }

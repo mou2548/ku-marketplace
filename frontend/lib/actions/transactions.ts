@@ -105,10 +105,9 @@ export async function answerCancellation(
 
 export async function createHandoverToken(
   transactionId: number,
-): Promise<string> {
+): Promise<{ token: string; expiresInSeconds: number }> {
   await requireSession();
-  const { token } = await generateHandoverQr(transactionId);
-  return token;
+  return generateHandoverQr(transactionId);
 }
 
 export async function completeHandover(

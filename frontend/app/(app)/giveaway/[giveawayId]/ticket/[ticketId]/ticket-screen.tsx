@@ -87,7 +87,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           <Surface shape="panel" className="overflow-hidden p-0">
             <div aria-hidden className="h-1 bg-tone-warning-solid" />
             <div className="p-5">
-              <QrTicket onGenerate={generate} />
+              <QrTicket once onGenerate={generate} />
             </div>
             <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-caption text-tone-warning-fg">
               <Gift aria-hidden className="mt-0.5 size-4 shrink-0" />

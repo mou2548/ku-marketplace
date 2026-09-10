@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
@@ -299,6 +299,18 @@ export function RoomScreen({
      move is yours. Once opened or closed by hand, that choice sticks. */
   const detailOpen = detailToggled ?? isYourTurn;
   const now = useNow();
+  // §QR refresh loop — QrTicket schedules its own re-issue (every `periodMs`).
+  // Passing a fresh inline `() => createHandoverToken(id)` on every render made
+  // its effect re-run each second (this screen re-renders on `useNow` and the
+  // chat poll), so it fetched a new token constantly. A stable callback keyed
+  // only on the transaction id lets the timer actually wait.
+  const txIdForHandover = transaction?.transaction_id ?? null;
+  const requestHandoverToken = useCallback(() => {
+    if (txIdForHandover == null) {
+      throw new Error("This room has no transaction");
+    }
+    return createHandoverToken(txIdForHandover);
+  }, [txIdForHandover]);
   const missedMeetup = appointment?.status === "Confirmed" &&
     new Date(`${appointment.date}T${appointment.time}+07:00`).getTime() <= now &&
     transaction && !["Completed", "Cancelled", "Refunded"].includes(transaction.status);
@@ -425,7 +437,15 @@ export function RoomScreen({
     setBusy(true);
     try {
       const updated = await respondToAppointment(appointment.appointment_id, response);
-      setAppointment(updated);
+      // §appointment loop fix — a declined card is retired server-side, so the
+      // poll below clears `appointment`. Open the pin now so the propose-a-new-
+      // time form is the next thing the user sees, not a gap.
+      if (response === "reject") {
+        setAppointment(undefined);
+        setPinOpen(true);
+      } else {
+        setAppointment(updated);
+      }
       toast.success(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
@@ -459,7 +479,7 @@ export function RoomScreen({
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
             transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
-            <QrTicket onGenerate={() => createHandoverToken(transaction.transaction_id)} ariaLabel="Item return QR" caption="Show this code only when both parties are ready to return the goods." />
+            <QrTicket once onGenerate={requestHandoverToken} ariaLabel="Item return QR" caption="One code per 15 minutes. Show it only when both parties are ready to return the goods." />
           ) : null}
         </div>
       </ActionCard>;
@@ -592,6 +612,33 @@ export function RoomScreen({
           </ActionCard>
         );
       case "scan-qr":
+        // §appointment loop fix — the handover cannot happen until the current
+        // meetup is Confirmed. If it is not (no card yet, or a proposed change
+        // was just declined), send the buyer to the appointment pin instead of
+        // a scanner that the backend will reject.
+        if (appointment?.status !== "Confirmed") {
+          return (
+            <ActionCard title={t("deal.stepArrangeMeetup")}>
+              <div className="flex flex-col gap-3">
+                <p className="text-body text-ink-secondary">
+                  Agree and confirm a meetup time before the handover QR opens.
+                </p>
+                <Button
+                  block
+                  onPress={() => {
+                    setPinOpen(true);
+                    appointmentPinRef.current?.scrollIntoView({
+                      block: "nearest",
+                    });
+                  }}
+                >
+                  <CalendarClock className="size-4" />
+                  {t("deal.proposeTimeAndPlace")}
+                </Button>
+              </div>
+            </ActionCard>
+          );
+        }
         return (
           <ActionCard title={t("deal.stepScanQr")}>
             <LinkButton
@@ -645,6 +692,11 @@ export function RoomScreen({
     transaction.delivery_method === "Meetup" &&
     (transaction.status === "Processing" || (transaction.status === "Pending" && transaction.offer_id != null && !transaction.additional_money)) &&
     !transaction.cancellation_response &&
+    // §appointment loop fix — the backend refuses a handover QR unless the
+    // current appointment is Confirmed, so do not offer the button until it is.
+    // Otherwise declining a proposed change ("Another time") left this button
+    // live and pressing it threw a 500 through the server action.
+    appointment?.status === "Confirmed" &&
     viewer === "seller" ? (
       <ActionCard title={t("deal.letBuyerScan")}>
         <OverlayTrigger>
@@ -657,9 +709,8 @@ export function RoomScreen({
           >
             <div className="flex justify-center py-2">
               <QrTicket
-                onGenerate={() =>
-                  createHandoverToken(transaction.transaction_id)
-                }
+                once
+                onGenerate={requestHandoverToken}
                 ariaLabel={`QR code for handing over ${transaction.post.item.name}`}
               />
             </div>

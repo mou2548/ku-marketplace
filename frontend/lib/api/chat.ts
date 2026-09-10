@@ -64,6 +64,7 @@ interface RawAppointmentCard {
   time: string;
   location: string;
   status: "Pending" | "Confirmed" | "Rejected";
+  deleted_at: string | null;
   created_at: string;
 }
 
@@ -77,6 +78,7 @@ function toAppointmentCard(raw: RawAppointmentCard): AppointmentCardData {
     time: raw.time.slice(11, 19),
     location: raw.location,
     status: raw.status,
+    deleted_at: raw.deleted_at ?? null,
     created_at: raw.created_at,
   };
 }
