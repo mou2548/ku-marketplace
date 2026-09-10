@@ -193,6 +193,13 @@ export interface AppointmentCardData {
   time: string;
   location: string;
   status: AppointmentStatus;
+  /**
+   * Set once a newer proposal supersedes this card or the other party rejects
+   * it. `deriveAppointmentView` keeps only cards with this null, so declining a
+   * proposed change ("Another time") can never fall back to an older Confirmed
+   * card. Mirrors the backend's `assertHandoverReady`.
+   */
+  deleted_at?: string | null;
   created_at: string;
 }
 

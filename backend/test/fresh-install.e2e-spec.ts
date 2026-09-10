@@ -180,7 +180,7 @@ describe('Fresh clone database', () => {
     await expect(service.confirmDelivery(id, 4)).rejects.toThrow();
   });
 
-  it('uses real Redis for wrong, replaced, expired and simultaneous meetup QR scans', async () => {
+  it('uses real Redis: one code per 15 minutes, reused while alive, wrong/expired/simultaneous scans', async () => {
     const prefix = `qa-qr:${process.pid}:${Date.now()}:`;
     const redis = new Redis({
       host: process.env.REDIS_HOST ?? '127.0.0.1',
@@ -215,22 +215,29 @@ describe('Fresh clone database', () => {
         },
       });
       const first = await service.generateQr(deal.transactionId, 3);
+      expect(first.expiresInSeconds).toBeGreaterThan(0);
       await expect(
         service.scanQr(deal.transactionId, 5, { token: first.token }),
       ).rejects.toThrow();
       await expect(
         service.scanQr(deal.transactionId, 4, { token: 'wrong' }),
       ).rejects.toThrow();
+      // Asking again while the code is still alive returns the SAME token with
+      // the time it has left — one code per 15 minutes, not a fresh one per
+      // open. So `first.token` also stays valid.
       const second = await service.generateQr(deal.transactionId, 3);
-      await expect(
-        service.scanQr(deal.transactionId, 4, { token: first.token }),
-      ).rejects.toThrow();
+      expect(second.token).toBe(first.token);
+      expect(second.expiresInSeconds).toBeLessThanOrEqual(
+        first.expiresInSeconds,
+      );
       await redis.pexpire(`qr_token:${deal.transactionId}`, 1);
       await new Promise((resolve) => setTimeout(resolve, 20));
       await expect(
         service.scanQr(deal.transactionId, 4, { token: second.token }),
       ).rejects.toThrow();
+      // Once it has expired, the next request mints a genuinely new code.
       const third = await service.generateQr(deal.transactionId, 3);
+      expect(third.token).not.toBe(first.token);
       const scans = await Promise.allSettled([
         service.scanQr(deal.transactionId, 4, { token: third.token }),
         service.scanQr(deal.transactionId, 4, { token: third.token }),
@@ -538,6 +545,86 @@ describe('Fresh clone database', () => {
     ).rejects.toThrow();
   });
 
+  it('declining a proposed meetup change does not fall back to the old Confirmed card for handover', async () => {
+    const chats = new TransactionsService(prisma as unknown as PrismaService);
+    const appointments = new AppointmentCardsService(
+      prisma as unknown as PrismaService,
+      transactionService(),
+    );
+    const deal = await prisma.transaction.create({
+      data: {
+        postId: 1,
+        buyerId: 4,
+        sellerId: 3,
+        deliveryMethod: 'Meetup',
+        status: 'Processing',
+        paymentConfirmedByBuyerAt: new Date(),
+        paymentConfirmedBySellerAt: new Date(),
+      },
+    });
+
+    // A meetup is agreed and confirmed -> the handover QR is available.
+    const a = await chats.createAppointment(
+      deal.transactionId,
+      { date: '2026-09-15', time: '12:00', location: 'First' },
+      3,
+    );
+    await appointments.respondToAppointment(
+      a.appointment_id,
+      { response: 'confirm' },
+      4,
+    );
+    const beforeChange = await transactionService().generateQr(
+      deal.transactionId,
+      3,
+    );
+    expect(typeof beforeChange.token).toBe('string');
+    expect(beforeChange.token.length).toBeGreaterThan(0);
+
+    // One side proposes a change; the other declines it ("Another time").
+    const b = await chats.createAppointment(
+      deal.transactionId,
+      { date: '2026-09-16', time: '12:00', location: 'Replacement' },
+      3,
+    );
+    await appointments.respondToAppointment(
+      b.appointment_id,
+      { response: 'reject' },
+      4,
+    );
+
+    // Both the old Confirmed card and the rejected change are retired now.
+    const cards = await chats.getAppointmentCards(deal.transactionId, 3);
+    const byId = new Map(cards.map((card) => [card.appointment_id, card]));
+    expect(byId.get(a.appointment_id)?.status).toBe('Confirmed');
+    expect(byId.get(a.appointment_id)?.deleted_at).not.toBeNull();
+    expect(byId.get(b.appointment_id)?.status).toBe('Rejected');
+    expect(byId.get(b.appointment_id)?.deleted_at).not.toBeNull();
+
+    // So the handover must not be possible: no live Confirmed appointment.
+    await expect(
+      transactionService().generateQr(deal.transactionId, 3),
+    ).rejects.toThrow('Confirm the latest meetup appointment before handover');
+
+    // Proposing and confirming a fresh meetup restores the handover.
+    const c = await chats.createAppointment(
+      deal.transactionId,
+      { date: '2026-09-17', time: '12:00', location: 'Third' },
+      3,
+    );
+    await appointments.respondToAppointment(
+      c.appointment_id,
+      { response: 'confirm' },
+      4,
+    );
+    const afterRefix = await transactionService().generateQr(
+      deal.transactionId,
+      3,
+    );
+    expect(typeof afterRefix.token).toBe('string');
+    expect(afterRefix.token.length).toBeGreaterThan(0);
+  });
+
   it('provides every column selected by every Prisma model', async () => {
     for (const model of Prisma.dmmf.datamodel.models) {
       const columns = model.fields
@@ -615,6 +702,10 @@ describe('Fresh clone database', () => {
         return Promise.resolve();
       }),
       get: jest.fn((key: string) => Promise.resolve(tokens.get(key))),
+      // generateQr reuses a live token; the fake reports a full window left.
+      pttl: jest.fn((key: string) =>
+        Promise.resolve(tokens.has(key) ? 15 * 60 * 1000 : -2),
+      ),
       del: jest.fn((key: string) => Promise.resolve(tokens.delete(key))),
       eval: jest.fn(
         (_script: string, _count: number, key: string, token: string) => {
@@ -755,6 +846,62 @@ describe('Fresh clone database', () => {
     expect(
       await prisma.chatRoom.count({ where: { giveawayId: post.giveawayId } }),
     ).toBe(1);
+  });
+
+  it('gives a giveaway ticket one QR code per 15 minutes, rejecting a stale one', async () => {
+    const giveaways = new GiveawaysService(prisma as unknown as PrismaService);
+    const post = await prisma.giveawayPost.create({
+      data: {
+        giverId: 3,
+        itemName: 'QR window',
+        pickupLocation: 'Library',
+        quantity: 1,
+        allocationMethod: 'Manual',
+        pickupDeadline: new Date(Date.now() + 24 * 3600000),
+        tickets: { create: [{ receiverId: 4, status: 'Waiting' }] },
+      },
+      include: { tickets: true },
+    });
+    const gid = String(post.giveawayId);
+    const tid = String(post.tickets[0].ticketId);
+
+    const first = await giveaways.qrGenerate(gid, tid, 4);
+    expect(typeof first.token).toBe('string');
+    expect(first.expires_in_seconds).toBeGreaterThan(0);
+    expect(first.expires_in_seconds).toBeLessThanOrEqual(15 * 60);
+
+    // Reopening the ticket returns the same code with less time on it.
+    const again = await giveaways.qrGenerate(gid, tid, 4);
+    expect(again.token).toBe(first.token);
+    expect(again.expires_in_seconds).toBeLessThanOrEqual(
+      first.expires_in_seconds,
+    );
+
+    // Once the 15-minute window has passed the giver's scan no longer counts.
+    await prisma.giveawayTicket.update({
+      where: { ticketId: post.tickets[0].ticketId },
+      data: { qrIssuedAt: new Date(Date.now() - 16 * 60 * 1000) },
+    });
+    await giveaways.qrScan(gid, tid, first.token, 3);
+    expect(
+      (
+        await prisma.giveawayTicket.findUniqueOrThrow({
+          where: { ticketId: post.tickets[0].ticketId },
+        })
+      ).status,
+    ).toBe('Waiting');
+
+    // Reopening after expiry mints a genuinely new code that does scan.
+    const fresh = await giveaways.qrGenerate(gid, tid, 4);
+    expect(fresh.token).not.toBe(first.token);
+    await giveaways.qrScan(gid, tid, fresh.token, 3);
+    expect(
+      (
+        await prisma.giveawayTicket.findUniqueOrThrow({
+          where: { ticketId: post.tickets[0].ticketId },
+        })
+      ).status,
+    ).toBe('Received');
   });
 
   it('escalates an overdue response only once across concurrent workers', async () => {

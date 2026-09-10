@@ -198,6 +198,9 @@ model GiveawayTicket {
   giveawayId Int          @map("giveaway_id")
   receiverId Int          @map("receiver_id")
   qrToken    String?      @unique @map("qr_token") @db.VarChar(255)
+  // §giveaway QR — when the current qrToken was minted. One code per 15 minutes:
+  // qrGenerate reuses the token while this is < 15 min old.
+  qrIssuedAt DateTime?    @map("qr_issued_at") @db.Timestamp(6)
   status     String?      @default("Registered") @map("ticket_status") @db.VarChar(20)
   updatedAt  DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
   giveaway   GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
@@ -274,11 +277,19 @@ model AppointmentCard {
   time          DateTime  @db.Time(6)
   location      String    @db.VarChar(255)
   status        String?   @default("Pending") @map("appointment_status") @db.VarChar(20)
+  // §appointment loop fix — a card is "no longer in play" once a newer proposal
+  // supersedes it or the other party rejects it. NULL = still the live card.
+  // "Current appointment" = the newest row by (createdAt, appointmentId) with
+  // deletedAt NULL; handover needs that row to be Confirmed. Rejected cards get
+  // deletedAt set too, so declining a change can never re-expose an older
+  // Confirmed card.
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamp(6)
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   transaction Transaction @relation(fields: [transactionId], references: [transactionId])
   proposer    User        @relation(fields: [proposedBy], references: [userId])
 
+  @@index([transactionId, createdAt])
   @@map("Appointment_Card")
 }
 

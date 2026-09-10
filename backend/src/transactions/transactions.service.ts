@@ -80,6 +80,7 @@ export class TransactionsService {
     time: Date;
     location: string;
     status: string | null;
+    deletedAt: Date | null;
     createdAt: Date | null;
     proposer: {
       userId: number;
@@ -97,6 +98,10 @@ export class TransactionsService {
       time: appointment.time,
       location: appointment.location,
       status: appointment.status,
+      // §appointment loop fix — see appointment-cards.service.ts. NULL means
+      // this is still a live card; a value means a newer proposal replaced it
+      // or it was rejected.
+      deleted_at: appointment.deletedAt,
       created_at: appointment.createdAt,
     };
   }
@@ -210,12 +215,22 @@ export class TransactionsService {
       }
       const { date, time, location } = createAppointmentDto;
       const previous = await tx.appointmentCard.findFirst({
-        where: { transactionId },
+        where: { transactionId, deletedAt: null },
         orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
       });
+      // §appointment loop fix — retire whatever card was live before this
+      // proposal. A superseded Pending card is also a spent proposal, so it
+      // gets Rejected; a superseded Confirmed card keeps its status for
+      // history. Both get deleted_at, so if THIS new card is later rejected the
+      // deal cannot fall back to the old Confirmed one.
+      const supersededAt = new Date();
       await tx.appointmentCard.updateMany({
-        where: { transactionId, status: 'Pending' },
-        data: { status: 'Rejected' },
+        where: { transactionId, status: 'Pending', deletedAt: null },
+        data: { status: 'Rejected', deletedAt: supersededAt },
+      });
+      await tx.appointmentCard.updateMany({
+        where: { transactionId, status: 'Confirmed', deletedAt: null },
+        data: { deletedAt: supersededAt },
       });
       const appointment = await tx.appointmentCard.create({
         data: {

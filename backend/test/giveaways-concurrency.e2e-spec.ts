@@ -53,6 +53,7 @@ describe('GiveawaysService First Come concurrency (database)', () => {
         "giveaway_id" integer NOT NULL REFERENCES "${schema}"."Giveaway_Post"("giveaway_id"),
         "receiver_id" integer NOT NULL REFERENCES "${schema}"."User"("user_id"),
         "qr_token" varchar(255) UNIQUE,
+        "qr_issued_at" timestamp(6),
         "ticket_status" varchar(20) DEFAULT 'Registered',
         "updated_at" timestamp(6) DEFAULT now(),
         UNIQUE ("giveaway_id", "receiver_id")

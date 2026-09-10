@@ -36,6 +36,7 @@ export class AppointmentCardsService {
     time: Date;
     location: string;
     status: string | null;
+    deletedAt: Date | null;
     createdAt: Date | null;
     proposer: {
       userId: number;
@@ -53,6 +54,10 @@ export class AppointmentCardsService {
       time: appointment.time,
       location: appointment.location,
       status: appointment.status,
+      // §appointment loop fix — a retired card (superseded or rejected) is no
+      // longer the current appointment. The frontend derives "current" as the
+      // newest card with deleted_at null, mirroring assertHandoverReady.
+      deleted_at: appointment.deletedAt,
       created_at: appointment.createdAt,
     };
   }
@@ -107,7 +112,7 @@ export class AppointmentCardsService {
         include: { transaction: true },
       });
       const latest = await tx.appointmentCard.findFirst({
-        where: { transactionId: appointment.transactionId },
+        where: { transactionId: appointment.transactionId, deletedAt: null },
         orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
       });
       if (appointment.proposedBy === userId)
@@ -145,7 +150,13 @@ export class AppointmentCardsService {
         throw new BadRequestException('Invalid appointment response');
       const updated = await tx.appointmentCard.update({
         where: { appointmentId },
-        data: { status },
+        // §appointment loop fix — declining ("Another time") retires this card
+        // too, so the current appointment falls to nothing and the deal goes
+        // back to proposing a time, never back to an older Confirmed card.
+        data: {
+          status,
+          ...(status === 'Rejected' ? { deletedAt: new Date() } : {}),
+        },
         include: { proposer: true },
       });
       await tx.notification.create({

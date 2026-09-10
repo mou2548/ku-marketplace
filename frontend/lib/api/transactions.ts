@@ -122,11 +122,20 @@ export async function confirmRefund(transactionId: number): Promise<Transaction>
   return post<Transaction>(`/transactions/${transactionId}/confirm-refund`, {});
 }
 
-/** POST /transactions/{id}/qr/generate — the seller's handover token. */
+/**
+ * POST /transactions/{id}/qr/generate — the seller's handover token.
+ *
+ * The server issues one code per 15-minute window: while a code is alive this
+ * returns the same token with the seconds it has left, so a reopened QR keeps
+ * counting the original window down.
+ */
 export async function generateHandoverQr(
   transactionId: number,
-): Promise<{ token: string }> {
-  return post<{ token: string }>(`/transactions/${transactionId}/qr/generate`, {});
+): Promise<{ token: string; expiresInSeconds: number }> {
+  return post<{ token: string; expiresInSeconds: number }>(
+    `/transactions/${transactionId}/qr/generate`,
+    {},
+  );
 }
 
 /** POST /transactions/{id}/qr/scan — the buyer closes the deal in person. */

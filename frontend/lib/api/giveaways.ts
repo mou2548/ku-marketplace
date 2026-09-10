@@ -352,13 +352,18 @@ export async function forfeitTicket(ticketId: number): Promise<void> {
 export async function generateTicketQr(
   giveawayId: number,
   ticketId: number,
-): Promise<string> {
+): Promise<{ token: string; expiresInSeconds: number }> {
   const init = await authedInit();
-  const raw = await apiFetch<{ token: string }>(
+  const raw = await apiFetch<{ token: string; expires_in_seconds?: number }>(
     `/giveaways/${giveawayId}/tickets/${ticketId}/qr/generate`,
     { ...init, method: "POST", body: JSON.stringify({}) },
   );
-  return encodeTicketQr(giveawayId, ticketId, raw.token);
+  return {
+    token: encodeTicketQr(giveawayId, ticketId, raw.token),
+    // Server hands back one code per 15-minute window with the time it has
+    // left, so a reopened ticket keeps the original countdown.
+    expiresInSeconds: raw.expires_in_seconds ?? 15 * 60,
+  };
 }
 
 /** `POST /giveaways/{id}/tickets/{ticket_id}/qr/scan` */

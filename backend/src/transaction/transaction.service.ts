@@ -536,21 +536,34 @@ export class TransactionService {
       throw new BadRequestException('This item has already been handed over');
     }
 
-    const token = randomBytes(32).toString('hex');
-    await this.redis.set(
-      qrTokenKey(transactionId),
-      token,
-      'EX',
-      QR_TOKEN_TTL_SECONDS,
-    );
-
     const baseUrl = process.env.APP_URL ?? 'http://localhost:3000';
-    return {
-      token,
+    const key = qrTokenKey(transactionId);
+    const link = (t: string) =>
       // What the QR image should encode: a plain link the buyer's camera app
       // can open, which then asks them to confirm once more before anything
       // changes (§8.6 "สแกนแล้วต้องกดยืนยันซ้ำ").
-      url: `${baseUrl}/history/${transactionId}/scan?token=${token}`,
+      `${baseUrl}/history/${transactionId}/scan?token=${t}`;
+
+    // One code per 15 minutes: if a token is still alive, hand back the same one
+    // with the time it has left, so reopening the QR keeps counting down the
+    // original instead of minting a new code every time.
+    const existing = await this.redis.get(key);
+    if (existing) {
+      const ttlMs = await this.redis.pttl(key);
+      if (ttlMs > 0) {
+        return {
+          token: existing,
+          url: link(existing),
+          expiresInSeconds: Math.ceil(ttlMs / 1000),
+        };
+      }
+    }
+
+    const token = randomBytes(32).toString('hex');
+    await this.redis.set(key, token, 'EX', QR_TOKEN_TTL_SECONDS);
+    return {
+      token,
+      url: link(token),
       expiresInSeconds: QR_TOKEN_TTL_SECONDS,
     };
   }
@@ -621,8 +634,11 @@ export class TransactionService {
         'Confirm payment before handing over the item',
       );
     }
+    // §appointment loop fix — the current appointment is the newest card that
+    // has NOT been retired (deleted_at null). Rejecting a proposed change now
+    // retires that card, so a stale Confirmed one can never satisfy this check.
     const appointment = await this.prisma.appointmentCard.findFirst({
-      where: { transactionId: transaction.transactionId },
+      where: { transactionId: transaction.transactionId, deletedAt: null },
       orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
     });
     if (!appointment || appointment.status !== 'Confirmed')
@@ -724,6 +740,7 @@ export class TransactionService {
       const appointment = await this.prisma.appointmentCard.findFirst({
         where: {
           transactionId: transaction.transactionId,
+          deletedAt: null,
           createdAt: { gte: transaction.cancellationRequestedAt ?? new Date() },
         },
         orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
@@ -733,13 +750,18 @@ export class TransactionService {
           'Confirm a new return appointment before handover',
         );
     }
+    // One code per 15 minutes here too — reopening the return QR keeps the same
+    // countdown instead of minting a fresh code every time.
+    const key = `return_qr:${transaction.transactionId}`;
+    const existing = await this.redis.get(key);
+    if (existing) {
+      const ttlMs = await this.redis.pttl(key);
+      if (ttlMs > 0) {
+        return { token: existing, expiresInSeconds: Math.ceil(ttlMs / 1000) };
+      }
+    }
     const token = randomBytes(32).toString('hex');
-    await this.redis.set(
-      `return_qr:${transaction.transactionId}`,
-      token,
-      'EX',
-      QR_TOKEN_TTL_SECONDS,
-    );
+    await this.redis.set(key, token, 'EX', QR_TOKEN_TTL_SECONDS);
     return { token, expiresInSeconds: QR_TOKEN_TTL_SECONDS };
   }
 

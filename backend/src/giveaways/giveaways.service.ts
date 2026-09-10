@@ -593,15 +593,34 @@ export class GiveawaysService {
       });
       throw new ConflictException('เลยกำหนดรับของแล้ว');
     }
+    // One code per 15 minutes: while the current token is still inside its
+    // window, hand back the same one with the seconds it has left, so reopening
+    // the ticket keeps the original countdown instead of minting a new code.
+    const QR_TTL_MS = 15 * 60 * 1000;
+    const now = Date.now();
+    const aliveUntil = ticket.qrIssuedAt
+      ? ticket.qrIssuedAt.getTime() + QR_TTL_MS
+      : 0;
+    if (ticket.qrToken && aliveUntil > now) {
+      return {
+        giveaway_id: this.label('giveaway', giveawayId),
+        ticket_id: this.label('ticket', ticketId),
+        token: ticket.qrToken,
+        expires_in_seconds: Math.ceil((aliveUntil - now) / 1000),
+        expires_at: ticket.giveaway.pickupDeadline,
+      };
+    }
+
     const token = randomUUID();
     await this.prisma.giveawayTicket.update({
       where: { ticketId },
-      data: { qrToken: token, updatedAt: new Date() },
+      data: { qrToken: token, qrIssuedAt: new Date(), updatedAt: new Date() },
     });
     return {
       giveaway_id: this.label('giveaway', giveawayId),
       ticket_id: this.label('ticket', ticketId),
       token,
+      expires_in_seconds: Math.floor(QR_TTL_MS / 1000),
       expires_at: ticket.giveaway.pickupDeadline,
     };
   }
@@ -639,8 +658,15 @@ export class GiveawaysService {
         checked_at: new Date(),
       });
     }
+    const QR_TTL_MS = 15 * 60 * 1000;
+    const fresh = Boolean(
+      ticket.qrIssuedAt && Date.now() - ticket.qrIssuedAt.getTime() < QR_TTL_MS,
+    );
     const valid =
-      Boolean(token) && ticket.qrToken === token && ticket.status === 'Waiting';
+      Boolean(token) &&
+      ticket.qrToken === token &&
+      fresh &&
+      ticket.status === 'Waiting';
     if (valid) {
       await this.prisma.giveawayTicket.update({
         where: { ticketId },
