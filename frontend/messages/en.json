@@ -454,7 +454,7 @@
     "manageRecipients": "Choose recipients",
     "collectionTicket": "Collection ticket",
     "selected": "You were selected",
-    "ticketHint": "Open this QR when you meet the giver. It refreshes automatically for a safer handover.",
+    "ticketHint": "Open this QR when you meet the giver. One code lasts 15 minutes; if it expires, reopen this ticket for a new one.",
     "giverNotes": "Notes from the giver"
   },
   "notifications": {

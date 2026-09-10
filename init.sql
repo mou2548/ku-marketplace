@@ -133,6 +133,11 @@ CREATE TABLE "Appointment_Card" (
     "time" TIME NOT NULL,
     "location" VARCHAR(255) NOT NULL,
     "appointment_status" VARCHAR(20) DEFAULT 'Pending' CHECK("appointment_status" IN ('Pending', 'Confirmed', 'Rejected')),
+    -- §appointment loop fix — set once a newer proposal supersedes this card or
+    -- the other party rejects it. The live card is the newest row with
+    -- deleted_at NULL; handover needs that row Confirmed. Keeps "Another time"
+    -- from re-exposing an older Confirmed card.
+    "deleted_at" TIMESTAMP,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -157,6 +162,8 @@ CREATE TABLE "Giveaway_Ticket" (
     "giveaway_id" INTEGER NOT NULL REFERENCES "Giveaway_Post"("giveaway_id"),
     "receiver_id" INTEGER NOT NULL REFERENCES "User"("user_id"),
     "qr_token" VARCHAR(255) UNIQUE,
+    -- §giveaway QR — when qr_token was minted. One code per 15 minutes.
+    "qr_issued_at" TIMESTAMP,
     "ticket_status" VARCHAR(20) DEFAULT 'Registered' CHECK("ticket_status" IN ('Registered', 'Waiting', 'NotSelected', 'Received', 'Forfeited', 'Expired')),
     "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE ("giveaway_id", "receiver_id")
@@ -247,6 +254,8 @@ CREATE INDEX IF NOT EXISTS "Notification_user_id_created_at_idx" ON "Notificatio
 -- ==========================================
 
 -- 1. User (10 Users)
+-- Every seeded account uses the password: KuDemo123!
+-- (bcrypt hash below, cost 10). Log in with any email, e.g. user1@ku.th.
 INSERT INTO "User" ("email", "first_name_en", "last_name_en", "first_name_th", "last_name_th", "password_hash", "phone_number", "user_status", "email_verified_at", "isAdmin") VALUES
 ('admin1@ku.th', 'Admin', 'One', 'แอดมิน', 'หนึ่ง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0811111111', 'Active', NOW(), TRUE),
 ('admin2@ku.th', 'Admin', 'Two', 'แอดมิน', 'สอง', '$2b$10$nkEpbywQE3uVixi8fzp/me.So1j5nTf7GUvnsPvyXvMfm/B8CQYyi', '0811111112', 'Active', NOW(), TRUE),
@@ -282,23 +291,23 @@ INSERT INTO "Item" ("owner_id", "name", "category", "condition", "description", 
 -- One iPad is reserved by transaction 4; a second remains available for offers.
 UPDATE "Item" SET "quantity" = 2 WHERE "item_id" = 3;
 
--- 3. Item_Image (15 Images - Using picsum.photos for real mock images)
+-- 3. Item_Image (15 Images - curated Unsplash photos matching each item)
 INSERT INTO "Item_Image" ("item_id", "item_image_status", "image_url", "is_primary", "display_order") VALUES
-(1, 'Active', 'https://picsum.photos/seed/item1/600/600', TRUE, 1),
-(2, 'Active', 'https://picsum.photos/seed/item2/600/600', TRUE, 1),
-(3, 'Active', 'https://picsum.photos/seed/item3/600/600', TRUE, 1),
-(3, 'Active', 'https://picsum.photos/seed/item3b/600/600', FALSE, 2),
-(4, 'Active', 'https://picsum.photos/seed/item4/600/600', TRUE, 1),
-(5, 'Active', 'https://picsum.photos/seed/item5/600/600', TRUE, 1),
-(6, 'Active', 'https://picsum.photos/seed/item6/600/600', TRUE, 1),
-(7, 'Active', 'https://picsum.photos/seed/item7/600/600', TRUE, 1),
-(8, 'Active', 'https://picsum.photos/seed/item8/600/600', TRUE, 1),
-(11, 'Active', 'https://picsum.photos/seed/item11/600/600', TRUE, 1),
-(12, 'Active', 'https://picsum.photos/seed/item12/600/600', TRUE, 1),
-(13, 'Active', 'https://picsum.photos/seed/item13/600/600', TRUE, 1),
-(14, 'Active', 'https://picsum.photos/seed/item14/600/600', TRUE, 1),
-(15, 'Active', 'https://picsum.photos/seed/item15/600/600', TRUE, 1),
-(15, 'Active', 'https://picsum.photos/seed/item15b/600/600', FALSE, 2);
+(1, 'Active', 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(2, 'Active', 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(3, 'Active', 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(3, 'Active', 'https://images.unsplash.com/photo-1561154464-82e9adf32764?w=600&h=600&fit=crop&crop=entropy&q=80', FALSE, 2),
+(4, 'Active', 'https://images.unsplash.com/photo-1587145820266-a5951ee6f620?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(5, 'Active', 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(6, 'Active', 'https://images.unsplash.com/photo-1597350593642-08a98ed51a42?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(7, 'Active', 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(8, 'Active', 'https://images.unsplash.com/photo-1601084195907-44baaa49dabd?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(11, 'Active', 'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(12, 'Active', 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(13, 'Active', 'https://images.unsplash.com/photo-1559454403-b8fb88521f11?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(14, 'Active', 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(15, 'Active', 'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=600&h=600&fit=crop&crop=entropy&q=80', TRUE, 1),
+(15, 'Active', 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&h=600&fit=crop&crop=entropy&q=80', FALSE, 2);
 
 -- 4. Post (10 Posts)
 INSERT INTO "Post" ("item_id", "post_type", "post_status", "price", "quantity_total", "quantity_remaining") VALUES
@@ -354,13 +363,19 @@ INSERT INTO "Transaction" ("post_id", "offer_id", "buyer_id", "seller_id", "quan
 (10, NULL, 4, 9, 1, 'Processing', NULL, 'Meetup', 'https://placehold.co/400x600/000000/FFF?text=Slip+TX8', NULL, '2026-09-02 09:00:00', '2026-09-02 09:10:00');
 
 -- 9. Appointment_Card (6 Cards)
-INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time", "location", "appointment_status") VALUES
-(1, 3, '2026-09-05', '12:30:00', 'บาร์ใหม่', 'Confirmed'),
-(3, 5, '2026-09-06', '16:00:00', 'สำนักหอสมุด', 'Confirmed'),
-(4, 6, '2026-09-07', '10:00:00', 'ตึก SC1', 'Pending'),
-(5, 5, '2026-09-05', '13:00:00', 'โรงอาหารกลาง 2', 'Confirmed'),
-(1, 4, '2026-09-04', '11:00:00', 'หน้า มก.', 'Rejected'),
-(8, 9, '2026-09-08', '17:00:00', 'Kasetsart BTS', 'Pending');
+-- created_at is explicit so FE and BE agree on which card is newest even when
+-- two are created close together (tie-break is appointment_id).
+-- Transaction 1: a Confirmed meetup, then one side proposed a change (row 2)
+-- which the other side declined. Both rows are retired (deleted_at set), so the
+-- deal is back at "propose a new time" — it must NOT re-show the old Confirmed
+-- card. This is the regression fixture for the "Another time" loop.
+INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time", "location", "appointment_status", "created_at", "deleted_at") VALUES
+(1, 3, '2026-09-05', '12:30:00', 'บาร์ใหม่', 'Confirmed', '2026-09-01 09:00:00', '2026-09-02 08:00:00'),
+(1, 4, '2026-09-04', '11:00:00', 'หน้า มก.', 'Rejected',  '2026-09-02 08:00:00', '2026-09-02 09:00:00'),
+(3, 5, '2026-09-06', '16:00:00', 'สำนักหอสมุด', 'Confirmed', '2026-09-01 10:00:00', NULL),
+(4, 6, '2026-09-07', '10:00:00', 'ตึก SC1', 'Pending', '2026-09-01 11:00:00', NULL),
+(5, 5, '2026-09-05', '13:00:00', 'โรงอาหารกลาง 2', 'Confirmed', '2026-09-01 12:00:00', NULL),
+(8, 9, '2026-09-08', '17:00:00', 'Kasetsart BTS', 'Pending', '2026-09-01 13:00:00', NULL);
 
 -- 10. Giveaway_Post (6 Giveaways)
 INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "register_deadline", "giveaway_status") VALUES
@@ -383,14 +398,14 @@ INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket
 (5, 5, 'TOK_5_GLASS_LOSE', 'Expired'),
 (6, 4, 'TOK_6_RULER_FORFEITED', 'Forfeited');
 
--- 12. Giveaway_Image (6 Images - Using picsum.photos)
+-- 12. Giveaway_Image (6 Images - curated Unsplash photos matching each giveaway)
 INSERT INTO "Giveaway_Image" ("giveaway_id", "image_status", "image_url", "display_order") VALUES
-(1, 'Active', 'https://picsum.photos/seed/gw1/600/600', 1),
-(2, 'Active', 'https://picsum.photos/seed/gw2/600/600', 1),
-(3, 'Active', 'https://picsum.photos/seed/gw3/600/600', 1),
-(4, 'Active', 'https://picsum.photos/seed/gw4/600/600', 1),
-(5, 'Active', 'https://picsum.photos/seed/gw5/600/600', 1),
-(6, 'Active', 'https://picsum.photos/seed/gw6/600/600', 1);
+(1, 'Active', 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&h=600&fit=crop&crop=entropy&q=80', 1),
+(2, 'Active', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop&crop=entropy&q=80', 1),
+(3, 'Active', 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=600&fit=crop&crop=entropy&q=80', 1),
+(4, 'Active', 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=600&h=600&fit=crop&crop=entropy&q=80', 1),
+(5, 'Active', 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&h=600&fit=crop&crop=entropy&q=80', 1),
+(6, 'Active', 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&h=600&fit=crop&crop=entropy&q=80', 1);
 
 -- 13. Chat_Room (8 Rooms)
 INSERT INTO "Chat_Room" ("transaction_id", "giveaway_id", "chat_room_status") VALUES
@@ -415,7 +430,7 @@ INSERT INTO "Chat_Message" ("room_id", "sender_id", "content", "image_urls") VAL
 (6, 4, 'ลงทะเบียนรับสรุปเรียบร้อยครับ ขอบคุณมากครับ', NULL),
 (6, 3, 'ยินดีครับ เจอกันตามนัดนะ', NULL),
 (7, 7, 'ลุ้นๆ ขอให้สุ่มได้ทีเถอะ', NULL),
-(8, 8, 'เลือกผมหน่อยค้าบบบ อยากได้มากก', '["https://picsum.photos/seed/please/400/400"]'),
+(8, 8, 'เลือกผมหน่อยค้าบบบ อยากได้มากก', '["https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=400&h=400&fit=crop&crop=faces&q=80"]'),
 (4, 6, 'iPad ลดได้อีกไหมครับ?', NULL),
 (4, 4, 'เต็มที่แล้วครับผม ราคานี้เน็ตแล้ว', NULL),
 (5, 5, 'ตุ๊กตาสภาพโอเคไหมครับ', NULL),
