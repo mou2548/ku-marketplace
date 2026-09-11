@@ -48,6 +48,7 @@ export default async function RoomPage({
 
       <div className="flex min-h-0 min-w-0 flex-1">
         <RoomScreen
+          key={detail.summary.room_id}
           summary={detail.summary}
           viewerId={viewer.userId}
           transaction={detail.transaction}

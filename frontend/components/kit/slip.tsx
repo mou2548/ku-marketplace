@@ -97,7 +97,7 @@ export function SlipUploader({
           rel="noreferrer"
           aria-label={t("slip.viewInNewTab")}
           className={cn(
-            "relative block aspect-[3/4] w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
+            "relative block h-[min(16rem,35dvh)] w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
             !preview && !slipUrl && "pointer-events-none",
           )}
         >
@@ -213,7 +213,7 @@ export function SlipReviewer({
         aria-label={zoomed ? "Shrink the slip" : "Enlarge the slip"}
         className={cn(
           "relative block w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
-          zoomed ? "aspect-auto" : "aspect-[3/4]",
+          zoomed ? "h-[min(32rem,60dvh)]" : "h-[min(16rem,35dvh)]",
         )}
       >
         <Image
@@ -221,7 +221,7 @@ export function SlipReviewer({
           alt="Transfer slip from the buyer"
           width={800}
           height={1100}
-          className={cn("w-full", zoomed ? "h-auto" : "h-full object-contain")}
+          className="h-full w-full object-contain"
         />
         <span className="absolute right-2 bottom-2 rounded-pill bg-surface-inverse/80 p-2 text-white">
           <ZoomIn aria-hidden className="size-4" />

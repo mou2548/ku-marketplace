@@ -54,7 +54,8 @@ export default async function AdminLayout({
           <div className="flex h-16 w-full items-center gap-5 px-4 lg:px-8">
             <span className="flex shrink-0 items-center gap-2 font-semibold tracking-[-0.012em]">
               <ShieldCheck aria-hidden className="size-5 text-white" />
-              Admin workspace
+              <span className="sm:hidden">Admin</span>
+              <span className="hidden sm:inline">Admin workspace</span>
             </span>
 
             <AdminNavigation counts={counts} />
@@ -63,10 +64,12 @@ export default async function AdminLayout({
               <ThemeSwitch className="text-white hover:bg-white/10 hover:text-white" />
               <Link
                 href="/feed"
+                aria-label="Switch to user mode"
+                title="Switch to user mode"
                 className="flex min-h-11 items-center gap-2 rounded-control px-2 text-body-sm text-white/80 hover:bg-white/10 hover:text-white sm:px-3"
               >
                 <ArrowLeft aria-hidden className="size-4" />
-                <span className="hidden sm:inline">Marketplace</span>
+                <span>User mode</span>
               </Link>
             </div>
           </div>

@@ -67,6 +67,7 @@ export default async function ChatInboxPage() {
       {first ? (
         <div className="hidden min-h-0 min-w-0 flex-1 xl:flex">
           <RoomScreen
+            key={first.summary.room_id}
             summary={first.summary}
             viewerId={viewer.userId}
             transaction={first.transaction}

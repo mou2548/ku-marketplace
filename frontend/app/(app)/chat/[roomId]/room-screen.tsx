@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
 import {
   ArrowLeft,
@@ -240,6 +240,7 @@ export function RoomScreen({
 }) {
   const t = useTranslations();
   const router = useRouter();
+  const pathname = usePathname();
   const toast = useToast();
   const st = useStatusText();
   const [tracking, setTracking] = useState("");
@@ -369,6 +370,10 @@ export function RoomScreen({
     toast.success(message);
     if (next) {
       router.push(next);
+    } else if (pathname !== `/chat/${summary.room_id}`) {
+      // The inbox preview is selected by queue priority, which changes after
+      // accepting a payment. Keep this conversation instead of picking again.
+      router.replace(`/chat/${summary.room_id}`);
     } else {
       router.refresh();
     }

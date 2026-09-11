@@ -253,15 +253,19 @@ export function ChatThread({
           the deal is waiting on cannot scroll out from under its own toggle.
           Read-only rooms have no composer and so no toggle — the action stays
           open there rather than becoming unreachable. */}
-      {action && (actionOpen || isReadOnly) ? action : null}
+      {action && (actionOpen || isReadOnly) ? (
+        <div className="min-h-0 max-h-[50%] shrink overflow-y-auto overscroll-contain">
+          {action}
+        </div>
+      ) : null}
 
       {isReadOnly ? (
-        <p className="border-t border-line px-4 py-3 text-center text-caption text-ink-muted">
+        <p className="shrink-0 border-t border-line px-4 py-3 text-center text-caption text-ink-muted">
           {readOnlyNotice}
         </p>
       ) : (
         <form
-          className="flex items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="flex shrink-0 items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           onSubmit={(e) => {
             e.preventDefault();
             const value = inputRef.current?.value.trim();

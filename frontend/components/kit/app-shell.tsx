@@ -14,6 +14,7 @@ import {
   Menu,
   Package,
   Plus,
+  ShieldCheck,
   Store,
   User,
 } from "lucide-react";
@@ -83,7 +84,7 @@ function Count({ value }: { value?: number }) {
 export interface AppShellProps {
   children: React.ReactNode;
   badges?: NavBadges;
-  user?: { name: string; avatarUrl?: string | null };
+  user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
 }
 
 export function AppShell({ children, badges = {}, user }: AppShellProps) {
@@ -198,6 +199,17 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
+            {user?.isAdmin && (
+              <Link
+                href="/admin/reports"
+                aria-label="Switch to admin mode"
+                title="Switch to admin mode"
+                className="flex min-h-11 items-center gap-1.5 rounded-control px-2 text-body-sm font-semibold text-ink-brand hover:bg-brand-subtle"
+              >
+                <ShieldCheck aria-hidden className="size-5" />
+                <span>Admin</span>
+              </Link>
+            )}
             <ThemeSwitch />
 
             <Link
