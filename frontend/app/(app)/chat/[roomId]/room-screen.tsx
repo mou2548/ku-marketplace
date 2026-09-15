@@ -29,7 +29,7 @@ import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
 import { ReportDialog } from "@/components/kit/report-dialog";
-import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
+import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -379,6 +379,49 @@ export function RoomScreen({
     }
   }
 
+  /**
+   * Uploading a slip also drops it into the conversation.
+   *
+   * The deal panel is the record, but nobody looks there first: the habit this
+   * app is replacing is "transferred, here you go" followed by the screenshot,
+   * in the chat. Posting it means the other party sees it arrive in the place
+   * they are already reading, and it stays scrollable in the timeline next to
+   * the message that explains it.
+   */
+  // Left to the compiler rather than a useMemo: the deps here are optional
+  // chains off `transaction`, which react-hooks/preserve-manual-memoization
+  // cannot match up, and it flags the hook instead of keeping it.
+  const receipts = new Map<string, string>();
+  if (transaction?.slip_image_url)
+    receipts.set(transaction.slip_image_url, t("slip.paymentSlipOnFile"));
+  if (transaction?.refund_slip_url)
+    receipts.set(transaction.refund_slip_url, t("slip.refundSlip"));
+
+  async function uploadSlip(kind: "payment" | "refund", file: File) {
+    if (!transaction) return;
+    const updated =
+      kind === "payment"
+        ? await submitPaymentSlip(transaction.transaction_id, file)
+        : await submitRefundSlip(transaction.transaction_id, file);
+
+    const url =
+      kind === "payment" ? updated.slip_image_url : updated.refund_slip_url;
+    if (!url) return updated;
+
+    try {
+      const posted = await sendChatMessage(transaction.transaction_id, {
+        image_urls: [url],
+      });
+      setMessages((prev) => [...prev, posted]);
+    } catch {
+      // The transaction already holds the slip and the deal panel renders it,
+      // so the bubble is a convenience and never the record. A chat failure
+      // must not turn a payment that went through into one that reads as
+      // failed.
+    }
+    return updated;
+  }
+
   async function handleSend(text: string) {
     try {
       const sent = transaction
@@ -479,7 +522,7 @@ export function RoomScreen({
       return <ActionCard title="Return and refund">
         <div className="flex flex-col gap-3">
           {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} onUpload={(file) => act(() => submitRefundSlip(transaction.transaction_id, file), "Refund slip uploaded", "Could not upload refund slip")} /> :
+            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => act(() => uploadSlip("refund", file), "Refund slip uploaded", "Could not upload refund slip")} /> :
             transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
@@ -522,9 +565,12 @@ export function RoomScreen({
           <ActionCard title={t("deal.stepUploadSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
+              slipUrl={transaction.slip_image_url}
+              isUploaded={!!transaction.slip_image_url}
+              uploadedAt={transaction.payment_confirmed_by_buyer_at}
               onUpload={(file) =>
                 act(
-                  () => submitPaymentSlip(transaction.transaction_id, file),
+                  () => uploadSlip("payment", file),
                   "Slip uploaded. Waiting on the seller.",
                   "Could not upload the slip",
                 )
@@ -659,9 +705,13 @@ export function RoomScreen({
           <ActionCard title={t("deal.stepRefundSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
+              title={t("slip.refundSlip")}
+              slipUrl={transaction.refund_slip_url}
+              isUploaded={!!transaction.refund_slip_url}
+              uploadedAt={transaction.refund_submitted_at}
               onUpload={(file) =>
                 act(
-                  () => submitRefundSlip(transaction.transaction_id, file),
+                  () => uploadSlip("refund", file),
                   "Refund slip uploaded",
                   "Could not upload the refund slip",
                 )
@@ -980,6 +1030,7 @@ export function RoomScreen({
       <ChatThread
         messages={messages}
         viewerId={viewerId}
+        receipts={receipts}
         senders={senders}
         showSenders={isGroupRoom}
         action={currentAction() ?? sellerQr}
@@ -1067,6 +1118,35 @@ function DealDetails({
             <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
             <CountdownPill deadline={deadline} />
           </div>
+        ) : null}
+
+        {/*
+          The receipt for money that moved off-platform, kept reachable by both
+          parties for the life of the deal.
+
+          The action cards render a slip too, but only while the prompt asks
+          for one and only for whoever's turn it is — so the buyer lost sight
+          of the slip the instant they sent it, and both parties lost it for
+          good once the seller confirmed. Nothing here is gated on turn or on
+          status: Completed, Cancelled and under-review deals all still answer
+          "show me what was transferred".
+        */}
+        {transaction.slip_image_url ? (
+          <SlipViewer
+            slipUrl={transaction.slip_image_url}
+            title={t("slip.paymentSlipOnFile")}
+            amount={transaction.final_amount}
+            uploadedAt={transaction.payment_confirmed_by_buyer_at}
+          />
+        ) : null}
+
+        {transaction.refund_slip_url ? (
+          <SlipViewer
+            slipUrl={transaction.refund_slip_url}
+            title={t("slip.refundSlip")}
+            amount={transaction.final_amount}
+            uploadedAt={transaction.refund_submitted_at}
+          />
         ) : null}
 
         <div className="flex flex-col gap-2 border-t border-line pt-3">
