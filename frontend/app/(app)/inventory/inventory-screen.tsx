@@ -193,13 +193,15 @@ export function InventoryScreen({
                     </div>
 
                     <div className="flex min-w-0 flex-col gap-2 p-3">
-                      <p className="line-clamp-2 min-h-[2.9em] text-body-sm leading-[1.45] font-semibold group-hover:text-ink-brand">
-                        {item.name}
-                      </p>
-                      <div className="flex items-center justify-between gap-2 text-meta text-ink-muted">
-                        <span className="truncate">{item.category}</span>
-                        <span data-numeric className="shrink-0">×{item.quantity}</span>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="line-clamp-2 min-h-[2.9em] flex-1 text-[1.2rem] leading-[1.45] font-semibold group-hover:text-ink-brand">
+                          {item.name}
+                        </p>
+                        <span data-numeric className="shrink-0 text-h3 font-bold text-ink-brand">
+                          ×{item.quantity}
+                        </span>
                       </div>
+                      <span className="truncate text-caption text-ink-muted">{item.category}</span>
                       <span
                         className="w-fit rounded-pill bg-[var(--slot-glow)] px-2 py-0.5 text-meta font-medium text-[var(--slot-edge)]"
                         style={{ "--slot-glow": rarity.glow } as React.CSSProperties}
@@ -209,19 +211,19 @@ export function InventoryScreen({
                       {summary ? (
                         <dl className="grid grid-cols-3 gap-1 border-t border-line pt-2 text-center">
                           <div>
-                            <dt className="text-[0.625rem] text-ink-muted">Posted</dt>
+                            <dt className="text-meta text-ink-muted">Posted</dt>
                             <dd data-numeric className="text-meta font-semibold">
                               {summary.posted_quantity}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-[0.625rem] text-ink-muted">Sold</dt>
+                            <dt className="text-meta text-ink-muted">Sold</dt>
                             <dd data-numeric className="text-meta font-semibold">
                               {summary.sold_quantity}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-[0.625rem] text-ink-muted">Traded</dt>
+                            <dt className="text-meta text-ink-muted">Traded</dt>
                             <dd data-numeric className="text-meta font-semibold">
                               {summary.traded_quantity}
                             </dd>
