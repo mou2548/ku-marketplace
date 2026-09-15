@@ -107,9 +107,19 @@ export function GiveawayBrowser({
                         />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">
-                          {ticket.giveaway.item_name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate font-semibold">
+                            {ticket.giveaway.item_name}
+                          </p>
+                          <span
+                            data-numeric
+                            className="shrink-0 text-meta text-ink-muted"
+                          >
+                            {t("giveaway.queueNumber", {
+                              number: ticket.queue_number,
+                            })}
+                          </span>
+                        </div>
                         <p className="truncate text-caption text-ink-muted">
                           {t("giveaway.collectAt", {
                             location: ticket.giveaway.pickup_location,

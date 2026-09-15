@@ -441,6 +441,7 @@
     "emptyMineTitle": "คุณยังไม่ได้ลงชื่อรับของแจก",
     "emptyMineBody": "ลงชื่อแล้วรอผล หากได้รับเลือก คุณจะได้ตั๋ว QR และอ่านข้อความจากผู้ให้",
     "collectAt": "รับที่ {location}",
+    "queueNumber": "คิวที่ {number}",
     "registered": "ลงชื่อแล้ว {count} คน",
     "methodFirstCome": "มาก่อนได้ก่อน",
     "methodRandom": "สุ่มผู้รับ",

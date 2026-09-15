@@ -72,6 +72,9 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
             <h1 className="text-h1 text-balance">
               {giveaway.item_name}
             </h1>
+            <p data-numeric className="text-body-sm font-medium text-ink-secondary">
+              {t("giveaway.queueNumber", { number: ticket.queue_number })}
+            </p>
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={TICKET_STATUS[ticket.status]} />
               {ticket.status === "Waiting" || ticket.status === "Received" ? (

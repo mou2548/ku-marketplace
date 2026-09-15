@@ -441,6 +441,7 @@
     "emptyMineTitle": "You have not entered any giveaways",
     "emptyMineBody": "Enter a giveaway, then wait for the result. If selected, you will receive a QR ticket and access to the giver’s notes.",
     "collectAt": "Collect at {location}",
+    "queueNumber": "Queue #{number}",
     "registered": "{count, plural, one {# registered} other {# registered}}",
     "methodFirstCome": "First come",
     "methodRandom": "Random draw",
