@@ -16,12 +16,15 @@ import {
   Group,
   Heading,
   Popover,
+  TimeField,
   type DatePickerProps as AriaDatePickerProps,
   type DateValue,
+  type TimeValue,
 } from "react-aria-components";
 
 import { cn } from "@/lib/utils";
 
+import { Button as DoneButton } from "./button";
 import { FieldError, FieldHint, Label } from "./field";
 
 /**
@@ -41,6 +44,14 @@ export interface DatePickerFieldProps<T extends DateValue>
   hint?: string;
   errorMessage?: string;
   className?: string;
+  /**
+   * Show a time editor inside the popover and keep it open through a date
+   * selection, so picking a day doesn't bounce the user out to hunt for the
+   * time segments in the closed field. Only meaningful when `value` carries
+   * a time component (`CalendarDateTime`/`ZonedDateTime`) — leave this off
+   * for a plain `CalendarDate` field, which has no time to set.
+   */
+  showTimeField?: boolean;
 }
 
 export function DatePickerField<T extends DateValue>({
@@ -48,11 +59,13 @@ export function DatePickerField<T extends DateValue>({
   hint,
   errorMessage,
   className,
+  showTimeField = false,
   ...props
 }: DatePickerFieldProps<T>) {
   return (
     <AriaDatePicker
       {...props}
+      shouldCloseOnSelect={showTimeField ? false : undefined}
       className={cn("flex flex-col gap-1.5", className)}
     >
       {label ? <Label>{label}</Label> : null}
@@ -89,51 +102,95 @@ export function DatePickerField<T extends DateValue>({
         )}
       >
         <Dialog className="outline-none">
-          <Calendar className="flex flex-col gap-3">
-            <header className="flex items-center justify-between gap-2">
-              <Button
-                slot="previous"
-                aria-label="Previous month"
-                className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
-              >
-                <ChevronLeft aria-hidden className="size-4" />
-              </Button>
-              <Heading className="text-body font-semibold" />
-              <Button
-                slot="next"
-                aria-label="Next month"
-                className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
-              >
-                <ChevronRight aria-hidden className="size-4" />
-              </Button>
-            </header>
+          {({ close }) => (
+            <div className="flex flex-col gap-3">
+              <Calendar className="flex flex-col gap-3">
+                <header className="flex items-center justify-between gap-2">
+                  <Button
+                    slot="previous"
+                    aria-label="Previous month"
+                    className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
+                  >
+                    <ChevronLeft aria-hidden className="size-4" />
+                  </Button>
+                  <Heading className="text-body font-semibold" />
+                  <Button
+                    slot="next"
+                    aria-label="Next month"
+                    className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
+                  >
+                    <ChevronRight aria-hidden className="size-4" />
+                  </Button>
+                </header>
 
-            <CalendarGrid className="border-collapse">
-              <CalendarGridHeader>
-                {(day) => (
-                  <CalendarHeaderCell className="pb-1 text-meta font-medium text-ink-muted">
-                    {day}
-                  </CalendarHeaderCell>
-                )}
-              </CalendarGridHeader>
-              <CalendarGridBody>
-                {(date) => (
-                  <CalendarCell
-                    date={date}
-                    className={cn(
-                      "touch-target m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
-                      "text-body-sm tabular-nums outline-none",
-                      "data-[hovered]:bg-brand-subtle",
-                      "data-[selected]:bg-brand data-[selected]:font-semibold data-[selected]:text-on-brand",
-                      "data-[outside-month]:text-ink-disabled",
-                      "data-[disabled]:opacity-35",
-                      "data-[unavailable]:line-through data-[unavailable]:opacity-40",
+                <CalendarGrid className="border-collapse">
+                  <CalendarGridHeader>
+                    {(day) => (
+                      <CalendarHeaderCell className="pb-1 text-meta font-medium text-ink-muted">
+                        {day}
+                      </CalendarHeaderCell>
                     )}
-                  />
-                )}
-              </CalendarGridBody>
-            </CalendarGrid>
-          </Calendar>
+                  </CalendarGridHeader>
+                  <CalendarGridBody>
+                    {(date) => (
+                      <CalendarCell
+                        date={date}
+                        className={cn(
+                          "touch-target m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
+                          "text-body-sm tabular-nums outline-none",
+                          "data-[hovered]:bg-brand-subtle",
+                          "data-[selected]:bg-brand data-[selected]:font-semibold data-[selected]:text-on-brand",
+                          "data-[outside-month]:text-ink-disabled",
+                          "data-[disabled]:opacity-35",
+                          "data-[unavailable]:line-through data-[unavailable]:opacity-40",
+                        )}
+                      />
+                    )}
+                  </CalendarGridBody>
+                </CalendarGrid>
+              </Calendar>
+
+              {showTimeField ? (
+                <>
+                  <div className="h-px bg-line" />
+                  <div className="flex items-center justify-between gap-3">
+                    {/* `TimeValue` accepts a full `CalendarDateTime`/`ZonedDateTime`
+                        and only edits its time fields, so this stays bound to the
+                        same value/onChange as the date field above — no separate
+                        state to keep in sync. The cast is safe because this branch
+                        only renders when the caller opted in via `showTimeField`,
+                        which implies `T` carries a time component. */}
+                    <Group className="flex h-11 flex-1 items-center gap-2 rounded-control bg-surface-sunken px-3.5 shadow-sunken">
+                      <TimeField
+                        value={props.value as unknown as TimeValue | null}
+                        onChange={
+                          props.onChange as unknown as (
+                            value: TimeValue | null,
+                          ) => void
+                        }
+                      >
+                        <DateInput className="flex items-center gap-0.5 text-body">
+                          {(segment) => (
+                            <DateSegment
+                              segment={segment}
+                              className={cn(
+                                "rounded-[0.25rem] px-0.5 tabular-nums outline-none",
+                                "data-[focused]:bg-brand data-[focused]:text-on-brand",
+                                "data-[placeholder]:text-ink-disabled",
+                              )}
+                            />
+                          )}
+                        </DateInput>
+                      </TimeField>
+                    </Group>
+                    <DoneButton size="sm" onPress={close}>
+                      Done
+                    </DoneButton>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
         </Dialog>
       </Popover>
     </AriaDatePicker>
