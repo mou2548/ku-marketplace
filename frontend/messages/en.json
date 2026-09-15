@@ -695,6 +695,7 @@
     "moreFromSeller": "More from {seller}",
     "similarListings": "More in {category}",
     "buyNow": "Buy now",
+    "soldOut": "Sold out",
     "confirmPurchase": "Confirm purchase",
     "offerTrade": "Offer a trade",
     "chooseDelivery": "Choose how you will get it",

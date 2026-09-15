@@ -90,7 +90,9 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
       {canBuy ? (
         <OverlayTrigger>
           <Button block size="lg" isDisabled={post.quantity_remaining < 1}>
-            <ShoppingBag className="size-5" />{t("market.buyNow")}</Button>
+            <ShoppingBag className="size-5" />
+            {post.quantity_remaining < 1 ? t("market.soldOut") : t("market.buyNow")}
+          </Button>
 
           <Overlay
             isBusy={busy}

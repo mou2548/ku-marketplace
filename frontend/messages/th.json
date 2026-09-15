@@ -695,6 +695,7 @@
     "moreFromSeller": "สินค้าอื่นจาก {seller}",
     "similarListings": "สินค้าอื่นในหมวด {category}",
     "buyNow": "ซื้อเลย",
+    "soldOut": "สินค้าหมดแล้ว",
     "confirmPurchase": "ยืนยันการซื้อ",
     "offerTrade": "เสนอแลก",
     "chooseDelivery": "เลือกวิธีรับของ",

@@ -274,7 +274,12 @@ export class PostsService {
 
   async findAllPosts() {
     const posts = await this.prisma.post.findMany({
-      where: { deletedAt: null, status: 'Active' },
+      // A sold-out post's DB status column never leaves 'Active' — only
+      // quantityRemaining tracks that (buyPost/acceptOffer decrement it
+      // atomically) — so the public feed has to filter on it directly, or a
+      // fully-sold post lingers here forever, inviting a second buyer to try
+      // (and fail) a purchase that already happened.
+      where: { deletedAt: null, status: 'Active', quantityRemaining: { gt: 0 } },
       include: {
         item: {
           include: {
