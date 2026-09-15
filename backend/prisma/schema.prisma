@@ -20,6 +20,7 @@ model User {
   lastNameTh      String           @map("last_name_th") @db.VarChar(100)
   passwordHash    String           @map("password_hash") @db.VarChar(255)
   phoneNumber     String?          @map("phone_number") @db.VarChar(20)
+  avatarUrl       String?          @map("avatar_url") @db.VarChar(500)
   status          String?          @default("Active") @map("user_status") @db.VarChar(20)
   emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
   isAdmin         Boolean?         @default(false) @map("isAdmin")
