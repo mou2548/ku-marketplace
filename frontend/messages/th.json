@@ -299,11 +299,20 @@
       "cancel-response": {
         "label": "อีกฝ่ายต้องตอบคำขอยกเลิกภายใน 72 ชั่วโมง"
       },
+      "registration-opens": {
+        "label": "เปิดรับลงทะเบียน"
+      },
       "registration-closes": {
         "label": "ปิดรับลงทะเบียน"
       },
       "draw": {
         "label": "ประกาศผลสุ่ม"
+      },
+      "pickup-opens": {
+        "label": "เปิดให้รับของ"
+      },
+      "pickup-closes": {
+        "label": "ปิดรับของ"
       },
       "return-response": {
         "label": "ตอบคำขอคืนสินค้าภายใน 24 ชั่วโมง"

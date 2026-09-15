@@ -212,7 +212,9 @@ export interface GiveawayPost {
   giver_id: number;
   allocation_method: AllocationMethod;
   quantity: number;
+  register_start?: string | null;
   register_deadline?: string | null;
+  pickup_start?: string | null;
   pickup_deadline?: string | null;
   registration_open: boolean;
   remaining_slots: number;
