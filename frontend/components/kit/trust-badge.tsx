@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { BadgeCheck } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -27,14 +28,14 @@ export interface TrustBadgeProps {
 }
 
 const AVATAR_SIZE: Record<NonNullable<TrustBadgeProps["size"]>, string> = {
-  sm: "size-6 text-[0.6875rem]",
-  md: "size-9 text-[0.8125rem]",
+  sm: "size-6 text-meta",
+  md: "size-9 text-caption",
   lg: "size-16 text-[1.25rem]",
 };
 
 const NAME_SIZE: Record<NonNullable<TrustBadgeProps["size"]>, string> = {
-  sm: "text-[0.75rem]",
-  md: "text-[0.875rem]",
+  sm: "text-meta",
+  md: "text-body-sm",
   lg: "text-[1.25rem] leading-[1.3] font-semibold",
 };
 
@@ -47,6 +48,7 @@ export function TrustBadge({
   size = "md",
   className,
 }: TrustBadgeProps) {
+  const t = useTranslations();
   const initials = name.trim().slice(0, 2);
   const meta = [faculty, year ? `Year ${year}` : null].filter(Boolean).join(" · ");
   const stacked = size === "lg";
@@ -93,7 +95,7 @@ export function TrustBadge({
                   stacked && "size-5",
                 )}
               />
-              <span className="sr-only">Verified with a KU email address</span>
+              <span className="sr-only">{t("card.verified")}</span>
             </>
           ) : null}
         </span>
@@ -102,8 +104,8 @@ export function TrustBadge({
             className={cn(
               "truncate text-ink-muted",
               stacked
-                ? "text-[0.875rem] leading-[1.65]"
-                : "text-[0.75rem] leading-[1.4]",
+                ? "text-body-sm"
+                : "text-meta leading-[1.4]",
             )}
           >
             {meta}

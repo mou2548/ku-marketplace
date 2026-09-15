@@ -6,14 +6,21 @@
  * giveaway are the same thing to the database, and the review asked for them to
  * be the same thing to the student too — one inbox, one room, one URL.
  *
- * So this module answers the three questions the inbox needs and the schema
- * does not store directly: what kind of conversation is it, who is it with, and
- * what was said last. All derived; no new endpoint.
+ * There is no "list my chat rooms" endpoint, backend-side or otherwise — a
+ * `Chat_Room` row is only ever created lazily, the first time someone reads or
+ * writes its messages (see `lib/api/chat.ts`/`lib/api/giveaways.ts`). So the
+ * inbox is built the other way around: `rooms-query.ts` starts from "my
+ * transactions" and "my giveaways" (both real, known upfront) and fetches each
+ * one's chat state to learn its `room_id` and last message. This module is the
+ * pure part of that — no I/O, just the shape and the sort.
  */
 
-import type { ChatRoom, ChatSeed } from "@/lib/api/fixtures";
-import type { GiveawayPost, Transaction, UserSummary } from "@/lib/api/types";
-import type { Tone } from "@/lib/status";
+import type {
+  GiveawayPost,
+  Transaction,
+  UserSummary,
+} from "@/lib/api/types";
+import type { TicketStatus, Tone } from "@/lib/status";
 
 export type RoomKind = "Sale" | "Trade" | "Giveaway";
 
@@ -30,92 +37,107 @@ export interface RoomSummary {
   counterparty: UserSummary;
   /** What the conversation is about. */
   subject: string;
+  /** The primary image of the item or giveaway that identifies this room. */
+  subjectImage?: string | null;
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageSenderId?: number;
   /** True when the flow is waiting on the viewer — sorts these to the top. */
   needsYou: boolean;
   href: string;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
+  /** Present when the viewer joined this giveaway rather than created it. */
+  giveawayTicketStatus?: TicketStatus;
 }
 
-/**
- * A trade and a sale are both transactions; the difference is whether an offer
- * created it. That distinction matters to the student — a trade has a second
- * pile of items behind it — so the inbox shows it.
- */
-export function roomKind(
-  room: ChatRoom,
-  transaction?: Transaction,
-): RoomKind {
-  if (room.giveaway_id != null) return "Giveaway";
-  return transaction?.offer_id != null ? "Trade" : "Sale";
+/** A trade and a sale are both transactions; the difference is whether an
+ * offer created it. That distinction matters to the student — a trade has a
+ * second pile of items behind it — so the inbox shows it. */
+export function roomKind(transaction?: Transaction): RoomKind {
+  if (!transaction) return "Giveaway";
+  return transaction.offer_id != null ? "Trade" : "Sale";
 }
 
-export interface BuildRoomsInput {
-  rooms: ChatRoom[];
-  messages: ChatSeed[];
-  transactions: Transaction[];
-  giveaways: GiveawayPost[];
+export interface TransactionRoomSource {
+  transaction: Transaction;
+  roomId: number;
   viewerId: number;
-  /** Whose turn it is, keyed by transaction id. */
-  needsYouByTransaction: Set<number>;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  lastMessageSenderId?: number;
+  /** Whose turn it is — sorts this room to the top of the inbox. */
+  needsYou: boolean;
+}
+
+export interface GiveawayRoomSource {
+  giveaway: GiveawayPost;
+  roomId: number;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  lastMessageSenderId?: number;
+  ticketStatus?: TicketStatus;
 }
 
 export function buildRooms({
-  rooms,
-  messages,
-  transactions,
-  giveaways,
-  viewerId,
-  needsYouByTransaction,
-}: BuildRoomsInput): RoomSummary[] {
-  const summaries: RoomSummary[] = [];
-
-  for (const room of rooms) {
-    const transaction =
-      room.transaction_id != null
-        ? transactions.find((t) => t.transaction_id === room.transaction_id)
-        : undefined;
-    const giveaway =
-      room.giveaway_id != null
-        ? giveaways.find((g) => g.giveaway_id === room.giveaway_id)
-        : undefined;
-
-    // A room the viewer is not part of should not be in their inbox.
-    const isParticipant = transaction
-      ? transaction.buyer_id === viewerId || transaction.seller_id === viewerId
-      : giveaway
-        ? giveaway.giver_id === viewerId
-        : false;
-    if (!isParticipant) continue;
-
-    const counterparty = transaction
-      ? transaction.buyer_id === viewerId
-        ? transaction.seller
-        : transaction.buyer
-      : giveaway!.giver;
-
-    const roomMessages = messages
-      .filter((m) => m.room_id === room.room_id)
-      .sort((a, b) => a.message_id - b.message_id);
-    const last = roomMessages.at(-1);
-
-    summaries.push({
-      room_id: room.room_id,
-      kind: roomKind(room, transaction),
-      counterparty,
-      subject: transaction?.post.item.name ?? giveaway?.item_name ?? "",
-      lastMessage: last?.content,
-      lastMessageAt: last?.created_at,
-      needsYou: transaction
-        ? needsYouByTransaction.has(transaction.transaction_id)
-        : false,
-      href: `/chat/${room.room_id}`,
-      transaction,
-      giveaway,
-    });
-  }
+  transactionRooms,
+  giveawayRooms,
+}: {
+  transactionRooms: TransactionRoomSource[];
+  giveawayRooms: GiveawayRoomSource[];
+}): RoomSummary[] {
+  const summaries: RoomSummary[] = [
+    ...transactionRooms.map(
+      ({
+        transaction,
+        roomId,
+        viewerId,
+        lastMessage,
+        lastMessageAt,
+        lastMessageSenderId,
+        needsYou,
+      }): RoomSummary => ({
+        room_id: roomId,
+        kind: roomKind(transaction),
+        counterparty: transaction.buyer_id === viewerId ? transaction.seller : transaction.buyer,
+        subject: transaction.post.item.name,
+        subjectImage:
+          transaction.post.item.images.find((image) => image.is_primary)?.image_url ??
+          transaction.post.item.images[0]?.image_url ??
+          null,
+        lastMessage,
+        lastMessageAt,
+        lastMessageSenderId,
+        needsYou,
+        href: `/chat/${roomId}`,
+        transaction,
+      }),
+    ),
+    ...giveawayRooms.map(
+      ({
+        giveaway,
+        roomId,
+        lastMessage,
+        lastMessageAt,
+        lastMessageSenderId,
+        ticketStatus,
+      }): RoomSummary => ({
+        room_id: roomId,
+        kind: "Giveaway",
+        counterparty: giveaway.giver,
+        subject: giveaway.item_name,
+        subjectImage: giveaway.images[0]?.image_url ?? null,
+        lastMessage,
+        lastMessageAt,
+        lastMessageSenderId,
+        // A giveaway has no "your turn" concept the way a transaction does.
+        needsYou: false,
+        href: `/chat/${roomId}`,
+        giveaway,
+        giveawayTicketStatus: ticketStatus,
+      }),
+    ),
+  ];
 
   // Rooms waiting on the viewer come first regardless of recency: research R4
   // says whose turn it is outranks when someone last typed.

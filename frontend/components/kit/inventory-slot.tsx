@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import {
   GridList,
@@ -9,6 +10,8 @@ import {
   type GridListProps,
 } from "react-aria-components";
 
+import { PostImage } from "@/components/kit/post-image";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +23,9 @@ import { cn } from "@/lib/utils";
  *   2. the border colour IS the item condition — rarity at a glance
  *
  * Built on react-aria-components' GridList because it gives arrow-key
- * navigation, multi-select, and — with useDragAndDrop — a keyboard drag path
- * for free. CLAUDE.md §6 forbids reaching for the raw HTML5 drag API here:
- * a mouse-only trade bench is not shippable.
+ * navigation and makes each slot a keyboard-operable button (Enter fires its
+ * action), so placing and removing items on the trade bench works without a
+ * pointer — CLAUDE.md §6.
  *
  * Condition is never conveyed by colour alone; it is in the accessible name.
  */
@@ -43,9 +46,9 @@ export function InventoryGrid<T extends object>({
   return (
     <GridList
       {...props}
-      // 3 columns at 360px, opening up on larger screens. Slots stay square.
+      // Two image-led cards on a phone, opening up into a compact catalogue.
       className={cn(
-        "grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6",
+        "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
         className,
       )}
     />
@@ -81,11 +84,13 @@ export function InventorySlot({
   ...props
 }: InventorySlotProps) {
   const rarity = ITEM_CONDITION[item.condition];
+  const rarityLabel = useStatusText().of(rarity).label;
 
   return (
     <GridListItem
       {...props}
-      textValue={`${item.name}, condition ${rarity.label}, quantity ${item.quantity}`}
+      isDisabled={isPlaced || props.isDisabled}
+      textValue={`${item.name}, condition ${rarityLabel}, quantity ${item.quantity}`}
       style={
         {
           "--slot-edge": rarity.edge,
@@ -93,13 +98,17 @@ export function InventorySlot({
         } as React.CSSProperties
       }
       className={cn(
-        "group cursor-grab rounded-slot",
+        "group cursor-pointer rounded-slot",
         "transition-transform duration-[--dur-fast] ease-[--ease-spring]",
         "hover:-translate-y-0.5 data-[pressed]:scale-95",
         "data-[selected]:-translate-y-1 data-[selected]:brightness-105",
-        "data-[dragging]:opacity-40",
         showName ? "flex flex-col gap-1.5" : "relative aspect-square",
-        isPlaced && "pointer-events-none opacity-35 grayscale",
+        // Was pointer-events-none, which blocks a mouse and not a keyboard:
+        // the item stayed focusable and Enter still fired onAction, so a
+        // keyboard user could place an item that was already on the bench.
+        // The GridListItem is disabled instead (see isDisabled below).
+        // 35% also put the item name well under 4.5:1.
+        isPlaced && "opacity-55 grayscale",
         className,
       )}
     >
@@ -115,12 +124,12 @@ export function InventorySlot({
         )}
       >
         {item.image_url ? (
-          <Image
+          <PostImage
             src={item.image_url}
-            alt=""
-            fill
+            alt={item.name}
+            aspectRatio={1}
             sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 16vw"
-            className="rounded-slot object-cover p-1"
+            className="h-full rounded-slot"
           />
         ) : (
           <span
@@ -135,7 +144,7 @@ export function InventorySlot({
           <span
             aria-hidden
             data-numeric
-            className="absolute right-1 bottom-1 rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white"
+            className="absolute right-1 bottom-1 rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-meta font-semibold text-white"
           >
             ×{item.quantity}
           </span>
@@ -156,24 +165,32 @@ export function InventorySlot({
       </span>
 
       {showName ? (
-        <span
-          aria-hidden
-          className="line-clamp-2 px-0.5 text-[0.75rem] leading-[1.4] text-ink-secondary"
-        >
-          {item.name}
+        <span aria-hidden className="flex min-w-0 flex-col gap-0.5 px-0.5">
+          <span className="line-clamp-2 text-body-sm leading-[1.45] font-medium text-ink-secondary group-hover:text-ink-brand">
+            {item.name}
+          </span>
+          <span className="truncate text-meta text-ink-muted">{item.category}</span>
         </span>
       ) : null}
     </GridListItem>
   );
 }
 
-/** An empty well on the trade bench — a place an item can be dropped into. */
+/** An empty well on the trade bench — a placeholder for a not-yet-placed item. */
+/**
+ * A well with nothing in it.
+ *
+ * The plus glyph used to be on every one of these while the whole element was
+ * `aria-hidden` with no handler — so the most repeated affordance on the
+ * inventory screen did nothing, and the real "Add an item" button was a 36px
+ * control in the header. That is a precise answer to "I do not know where to
+ * press next", so the glyph now belongs to `AddItemSlot` alone and a plain
+ * well is visibly not pressable.
+ */
 export function EmptySlot({
-  isDropTarget = false,
   label = "Empty slot",
   className,
 }: {
-  isDropTarget?: boolean;
   label?: string;
   className?: string;
 }) {
@@ -181,20 +198,31 @@ export function EmptySlot({
     <div
       aria-hidden
       className={cn(
-        "grid aspect-square place-items-center rounded-slot",
-        "border-2 border-dashed border-line-default bg-surface-sunken/60",
-        "transition-colors duration-[--dur-fast]",
-        isDropTarget && "border-brand bg-brand-subtle",
+        "aspect-square rounded-slot",
+        "border-2 border-dashed border-line-subtle bg-surface-sunken/40",
         className,
       )}
       title={label}
+    />
+  );
+}
+
+/** The first well in the stash: the real way to add something. */
+export function AddItemSlot({ className }: { className?: string }) {
+  const t = useTranslations();
+  return (
+    <Link
+      href="/inventory/new"
+      className={cn(
+        "group/add flex aspect-square flex-col items-center justify-center gap-1 rounded-slot",
+        "border-2 border-dashed border-line-default bg-surface-sunken/60 text-ink-muted",
+        "transition-colors duration-[--dur-fast]",
+        "hover:border-brand hover:bg-brand-subtle hover:text-ink-brand",
+        className,
+      )}
     >
-      <Plus
-        className={cn(
-          "size-4 text-ink-disabled",
-          isDropTarget && "text-ink-brand",
-        )}
-      />
-    </div>
+      <Plus aria-hidden className="size-5" />
+      <span className="px-1 text-center text-meta leading-tight">{t("inventory.addItem")}</span>
+    </Link>
   );
 }

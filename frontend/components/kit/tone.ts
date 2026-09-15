@@ -15,8 +15,10 @@ export const TONE_WASH: Record<Tone, string> = {
 };
 
 /**
- * **Use this, not `TONE_WASH`, for anything with an edge** — a chip, a pill, a
- * badge, a notice.
+ * **Use this, not `TONE_WASH`, for anything with an edge** — a chip, a
+ * category tag, a notice. For a status badge, use `TONE_SOLID` instead
+ * (`StatusBadge`'s default) — this is the wash fallback for the explicit
+ * `variant="wash"` opt-out and for chips that aren't a `StatusBadge` at all.
  *
  * A wash is a 100-step tint and the page itself is `#f4f7f5`, so a bare wash
  * measured 1.01:1 against the page it sat on: the shape vanished and only the
@@ -52,7 +54,7 @@ export const TONE_SOLID: Record<Tone, string> = {
   neutral: "bg-tone-neutral-solid text-white",
   info: "bg-tone-info-solid text-white",
   success: "bg-tone-success-solid text-white",
-  warning: "bg-tone-warning-solid text-amber-950",
+  warning: "bg-tone-warning-solid text-white",
   danger: "bg-tone-danger-solid text-white",
   trade: "bg-tone-trade-solid text-white",
 };

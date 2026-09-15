@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Scale } from "lucide-react";
+import { ArrowLeft, Scale } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
+import { createAppeal } from "@/lib/actions/appeals";
+import type { ApiError } from "@/lib/api/client";
 
 const MIN_LENGTH = 40;
 
@@ -23,11 +27,15 @@ export default function NewAppealPage() {
 
   async function submit() {
     setBusy(true);
-    // POST /appeals
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show("Appeal submitted. A different admin will review it.");
-    router.push("/account/appeals");
+    try {
+      await createAppeal({ report_id: Number(reportId), reason });
+      toast.success("Appeal submitted. A different admin will review it.");
+      router.push("/account/appeals");
+    } catch (error) {
+      toast.error((error as ApiError).message ?? "Could not submit the appeal.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   /**
@@ -40,7 +48,7 @@ export default function NewAppealPage() {
       <p className="text-overline text-ink-muted uppercase">
         What an admin looks for
       </p>
-      <ul className="flex flex-col gap-3 text-[0.8125rem] leading-[1.6] text-ink-secondary">
+      <ul className="flex flex-col gap-3 text-caption leading-[1.6] text-ink-secondary">
         <li>
           <span className="block font-medium text-ink">
             Evidence that was not seen
@@ -58,7 +66,7 @@ export default function NewAppealPage() {
           What happened when. The chat is timestamped and an admin will check.
         </li>
       </ul>
-      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
+      <p className="border-t border-line pt-3 text-meta leading-[1.6] text-ink-muted">
         Restating the original complaint does not help. One appeal per decision.
       </p>
     </Surface>
@@ -66,16 +74,24 @@ export default function NewAppealPage() {
 
   return (
     <TwoColumn rail={guidance}>
+      <Link
+        href="/account/appeals"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to my appeals
+      </Link>
+
       <h1 className="text-h1">Submit an appeal</h1>
 
-      <Surface shape="card" elevation="flat" className="max-w-xl bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4">
-        <p className="text-[0.875rem] leading-[1.7] text-ink-secondary">
+      <Notice tone="info" className="max-w-xl">
+        <p className="text-body-sm text-ink-secondary">
           A different admin from the one who made the original decision reviews
           your appeal. Say what the decision got wrong and what evidence has not
           been considered yet — restating the original complaint does not help
           them.
         </p>
-      </Surface>
+      </Notice>
 
       <TextInput
         label="Report number"

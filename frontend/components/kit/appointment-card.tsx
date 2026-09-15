@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Calendar, Check, MapPin, X } from "lucide-react";
 
 import { APPOINTMENT_STATUS, type AppointmentStatus } from "@/lib/status";
@@ -54,6 +55,7 @@ export function AppointmentCard({
   onDecline,
   className,
 }: AppointmentCardProps) {
+  const t = useTranslations();
   const when = new Date(scheduledAt);
   const copy = APPOINTMENT_STATUS[status];
 
@@ -77,7 +79,7 @@ export function AppointmentCard({
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
-        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">Meetup</h4>
+        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("appointment.meetup")}</h4>
         <StatusBadge status={copy} size="sm" />
       </div>
 
@@ -85,7 +87,7 @@ export function AppointmentCard({
         <div className="flex items-start gap-2.5">
           <Calendar aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <dt className="sr-only">Date and time</dt>
+            <dt className="sr-only">{t("appointment.dateAndTime")}</dt>
             <dd>
               <time dateTime={scheduledAt} className="font-medium">
                 {when.toLocaleDateString("en-GB", {
@@ -105,7 +107,7 @@ export function AppointmentCard({
         <div className="flex items-start gap-2.5">
           <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <dt className="sr-only">Place</dt>
+            <dt className="sr-only">{t("appointment.place")}</dt>
             <dd className="font-medium">{place}</dd>
           </div>
         </div>
@@ -124,22 +126,21 @@ export function AppointmentCard({
           href={`https://maps.google.com/?q=${encodeURIComponent(coordinates)}`}
           target="_blank"
           rel="noreferrer"
-          className="block px-4 pb-2 text-[0.875rem] font-medium text-ink-brand underline"
-        >
-          Open in Google Maps
-        </a>
+          className="block px-4 pb-2 text-body-sm font-medium text-ink-brand underline"
+        >{t("appointment.openInMaps")}</a>
       ) : null}
 
       {status === "Pending" && awaitingViewer ? (
-        <div className="flex gap-2 p-4 pt-3">
-          <Button variant="primary" block onPress={onAccept}>
-            <Check className="size-4" />
-            Accept
-          </Button>
+        /* Two w-full buttons in a row gave each 144px inside a 296px card at
+           360px, and "Suggest another time" plus its icon needs about 200px.
+           button.tsx sets whitespace-nowrap so it could not wrap, and the
+           Surface is overflow-hidden so the label was cut off rather than
+           scrolled. Stacked below sm:, and the label is shorter. */
+        <div className="flex flex-col-reverse gap-2 p-4 pt-3 sm:flex-row">
           <Button variant="secondary" block onPress={onDecline}>
-            <X className="size-4" />
-            Suggest another time
-          </Button>
+            <X className="size-4" />{t("appointment.anotherTime")}</Button>
+          <Button variant="primary" block onPress={onAccept}>
+            <Check className="size-4" />{t("appointment.accept")}</Button>
         </div>
       ) : null}
     </Surface>

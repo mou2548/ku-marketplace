@@ -58,7 +58,7 @@ export function DatePickerField<T extends DateValue>({
       {label ? <Label>{label}</Label> : null}
 
       <Group className="flex h-12 items-center gap-2 rounded-control bg-surface-sunken px-3.5 shadow-sunken">
-        <DateInput className="flex flex-1 items-center gap-0.5 text-[0.9375rem]">
+        <DateInput className="flex flex-1 items-center gap-0.5 text-body">
           {(segment) => (
             <DateSegment
               segment={segment}
@@ -71,7 +71,7 @@ export function DatePickerField<T extends DateValue>({
           )}
         </DateInput>
         <Button
-          className="grid size-8 shrink-0 place-items-center rounded-chip text-ink-muted data-[hovered]:bg-gray-200"
+          className="touch-target grid size-8 shrink-0 place-items-center rounded-chip text-ink-muted data-[hovered]:bg-gray-200"
           aria-label="Pick a date from the calendar"
         >
           <CalendarDays aria-hidden className="size-4" />
@@ -83,9 +83,9 @@ export function DatePickerField<T extends DateValue>({
 
       <Popover
         className={cn(
-          "rounded-panel bg-surface p-4 shadow-overlay",
-          "data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95",
-          "data-[exiting]:animate-out data-[exiting]:fade-out",
+          "z-[90] rounded-panel bg-surface p-4 shadow-overlay",
+          "data-[entering]:anim-pop-in",
+          "data-[exiting]:anim-fade-out",
         )}
       >
         <Dialog className="outline-none">
@@ -94,15 +94,15 @@ export function DatePickerField<T extends DateValue>({
               <Button
                 slot="previous"
                 aria-label="Previous month"
-                className="grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
+                className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
               >
                 <ChevronLeft aria-hidden className="size-4" />
               </Button>
-              <Heading className="text-[0.9375rem] font-semibold" />
+              <Heading className="text-body font-semibold" />
               <Button
                 slot="next"
                 aria-label="Next month"
-                className="grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
+                className="touch-target grid size-9 place-items-center rounded-control text-ink-secondary data-[hovered]:bg-gray-100"
               >
                 <ChevronRight aria-hidden className="size-4" />
               </Button>
@@ -111,7 +111,7 @@ export function DatePickerField<T extends DateValue>({
             <CalendarGrid className="border-collapse">
               <CalendarGridHeader>
                 {(day) => (
-                  <CalendarHeaderCell className="pb-1 text-[0.75rem] font-medium text-ink-muted">
+                  <CalendarHeaderCell className="pb-1 text-meta font-medium text-ink-muted">
                     {day}
                   </CalendarHeaderCell>
                 )}
@@ -121,8 +121,8 @@ export function DatePickerField<T extends DateValue>({
                   <CalendarCell
                     date={date}
                     className={cn(
-                      "m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
-                      "text-[0.875rem] tabular-nums outline-none",
+                      "touch-target m-0.5 grid size-9 cursor-pointer place-items-center rounded-control",
+                      "text-body-sm tabular-nums outline-none",
                       "data-[hovered]:bg-brand-subtle",
                       "data-[selected]:bg-brand data-[selected]:font-semibold data-[selected]:text-on-brand",
                       "data-[outside-month]:text-ink-disabled",

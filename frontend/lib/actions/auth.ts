@@ -27,14 +27,19 @@ export async function login(
   }
 
   let accessToken: string;
+  let restricted = false;
+  let isAdmin = false;
   try {
-    ({ accessToken } = await authApi.login(email, password));
+    const result = await authApi.login(email, password);
+    accessToken = result.accessToken;
+    restricted = result.user.status === "Suspended" || result.user.status === "Banned";
+    isAdmin = result.user.isAdmin === true;
   } catch (err) {
     return { error: messageFor(err) };
   }
 
   await setSession(accessToken);
-  redirect("/");
+  redirect(restricted ? "/account/appeals" : isAdmin ? "/admin/reports" : "/feed");
 }
 
 export interface RegisterState {
@@ -78,7 +83,7 @@ export async function verifyRegisterOtp(
   }
 
   await setSession(accessToken);
-  redirect("/");
+  redirect("/feed");
 }
 
 export interface ResendState {

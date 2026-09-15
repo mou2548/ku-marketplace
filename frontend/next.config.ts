@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 /**
  * Redirect map from docs/design/ia.md §6.
@@ -11,19 +12,24 @@ import type { NextConfig } from "next";
  * Permanent, because these moves are structural and not coming back.
  */
 const nextConfig: NextConfig = {
+  // Dev server blocks cross-origin requests by default (Next 16). LAN
+  // testing from a phone or another machine hits this — the page loads but
+  // hydration never completes, so nothing is clickable.
+  allowedDevOrigins: ["10.31.223.158"],
   output: "standalone",
   images: {
     remotePatterns: [
-      // Fixtures (lib/api/fixtures.ts, mock data) use picsum.photos.
-      { protocol: "https", hostname: "picsum.photos" },
-      { protocol: "https", hostname: "fastly.picsum.photos" },
-      { protocol: "https", hostname: "upload.wikimedia.org" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-      // The real seed in init.sql stores every photo on this placeholder
-      // host instead — it does not resolve to a real image, so pictures
-      // sourced from real seed data render broken, but at least the page
-      // itself no longer 500s (next/image throws on an unlisted hostname).
+      // Legacy local volumes can still contain the original object-storage
+      // URLs. Older init.sql revisions used deterministic Picsum seeds; the
+      // current one uses curated Unsplash photos that actually match each item.
       { protocol: "https", hostname: "r2.ku-market.com" },
+      { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      // Seeded payment slips and chat attachments use this host.
+      { protocol: "https", hostname: "placehold.co" },
+      // Real uploads land here: POST /uploads/image -> Cloudinary
+      // (item photos, giveaway photos, chat images).
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   async redirects() {
@@ -114,4 +120,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Bilingual, with the locale in a cookie rather than the URL — there is no
+ * `[locale]` segment, so the redirect map above keeps working unchanged.
+ * See lib/i18n/locale.ts.
+ */
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+export default withNextIntl(nextConfig);

@@ -166,6 +166,159 @@ Each epic starts from the user's job, not from the existing file.
 | E7 | Giveaway | method and draw time up front (R7); giver-only chat; rotating ticket that never looks broken (R8) |
 | E8 | History, report, appeal | every status legible (R1); report gated on flow conditions; appeal path |
 
+### Phase 5.1 — Flow clarity and data completeness
+
+This follow-up is complete only when the backend contract, frontend presentation,
+seed/migration path, and every affected diagram branch agree. Visual polish alone
+does not close an item.
+
+#### F1 — Make the item the identity of a chat room
+
+**Problem:** the inbox leads with the counterparty. When the same two people buy,
+sell, or trade more than one item, those rooms are indistinguishable at a glance.
+
+- Keep `RoomSummary.subject` as the canonical room title and add a canonical
+  subject image sourced from the transaction item's primary image (or the giveaway
+  image for giveaway rooms).
+- Change each `RoomList` row to use the item image and item name as its primary
+  image/title. Move the counterparty name to the subtitle beside the Sale, Trade,
+  or Giveaway context.
+- Search both the item name and counterparty name; do not make the improved visual
+  hierarchy reduce findability.
+- Use the existing image fallback and ghost-loading treatment when an item has no
+  working image.
+- Acceptance: two rooms with the same counterparty but different transactions are
+  distinguishable without opening either room, on mobile and desktop.
+
+#### F2 — Show a per-item inventory outcome summary
+
+**Problem:** an inventory row shows current stock but not how many units were
+listed, sold, or exchanged for that specific item.
+
+- Add an authenticated owner-only endpoint,
+  `GET /items/:item_id/history-summary`.
+- Return explicit unit counts, not transaction counts:
+  `listed_quantity`, `sold_quantity`, and `traded_quantity`.
+- Define `sold_quantity` from `Completed` direct-sale transactions and
+  `traded_quantity` from `Completed` offer-backed transactions. The backend query
+  must account for the item on both sides of an exchange, including `Offer_Item`,
+  rather than counting only the post's target item.
+- Derive `listed_quantity` from the item's post quantity history available in the
+  current schema. If historical relisting cannot be represented because `Post.item_id`
+  is unique, document that limitation rather than presenting a lifetime total.
+- Add the summary to the inventory card/detail hierarchy without competing with the
+  current available quantity. Provide loading ghost, zero, and endpoint-error states.
+- Acceptance: a mixed history fixture with a direct sale, an exchange, a pending
+  transaction, and a cancelled transaction counts only completed units in the correct
+  columns.
+
+#### F3 — Make giveaway capacity visible and enforceable
+
+**Problem:** the giveaway UI omits the number of available awards, and allocation
+does not consistently enforce that capacity.
+
+- Reuse the existing database `Giveaway_Post.quantity` column as the single maximum
+  recipient count. Do not add a duplicate capacity column. Add the missing Prisma
+  mapping, request validation, serializers, frontend API type, and create-form field.
+- Add the existing `register_deadline` database column to Prisma and the API contract;
+  stop treating `pickup_deadline` as both registration and collection time.
+- Show capacity and registered/capacity progress on browse cards, detail, create,
+  management, and ticket-relevant screens.
+- Validate capacity as a positive integer and make the create form explain that it
+  means the maximum number of recipients, not the physical count of an item row.
+- Acceptance: the capacity entered during creation is returned unchanged by list and
+  detail endpoints and is visible before a student registers.
+
+#### F4 — Make Random and First Come allocation deterministic at the boundary
+
+**Problem:** Random does not explain or implement the guaranteed-win case, while
+First Come can remain open after every available place has been taken.
+
+- Random: at draw time, if eligible registrations are less than or equal to
+  `quantity`, select all of them without random elimination. If registrations exceed
+  capacity, choose exactly `quantity` unique winners and mark only the remainder as
+  not selected.
+- First Come: allocate a place during registration. When the successful registration
+  fills the final place, atomically close registration immediately even if the
+  registration deadline is later.
+- Enforce the capacity check and ticket creation in one database transaction so two
+  simultaneous joins cannot exceed the limit.
+- Expose `registration_open`, `remaining_slots`, and the relevant deadline/capacity
+  in API responses so the frontend does not reverse-engineer eligibility from labels.
+- Update explanatory copy before registration: Random explicitly says when everyone
+  is guaranteed a place; First Come shows remaining places and closes at zero.
+- Acceptance: cover Random with 0, fewer than, equal to, and more-than-capacity
+  entrants; cover concurrent First Come joins for the final place.
+
+#### F5 — Separate voluntary forfeiture from expiry
+
+**Problem:** `Expired` currently represents both missing the pickup deadline and
+choosing to give up a place, so history cannot explain what happened.
+
+- Add `Forfeited` to the `Giveaway_Ticket.ticket_status` database constraint, Prisma
+  contract, backend serializer, frontend API types, status map, translations, and
+  filters.
+- Migrate only records that can be proven to be voluntary forfeitures. Do not relabel
+  historical `Expired` rows heuristically when the old data has no reliable signal.
+- Change the forfeit endpoint to persist `Forfeited`; deadline processing continues
+  to persist `Expired`, and unselected Random/Manual entrants retain a distinct
+  not-selected representation in the contract.
+- Show distinct plain-language labels and explanations in ticket, giveaway management,
+  history, and notification surfaces. Status must not be communicated by color alone.
+- Acceptance: voluntary forfeit, pickup timeout, and not selected produce three
+  distinguishable API values and three distinguishable UI summaries.
+
+#### F6 — Make the item the identity of an offer
+
+**Problem:** offer cards lead with the proposer, even though the item is the object a
+student is trying to identify.
+
+- Change offer inbox cards to use the target item image/name as the primary visual
+  and header. Move the proposer/counterparty and sent/received direction to the
+  subtitle.
+- Preserve the two trade piles, money direction, status, trust signal, and pending
+  decision affordance; this is a hierarchy change, not a loss of decision context.
+- Apply the same title hierarchy to the offer detail header so list and detail do not
+  rename the object during navigation.
+- Acceptance: multiple offers from one person for different items and multiple offers
+  on one item from different people are distinguishable without opening the cards.
+
+#### F7 — Prove every frontend branch against the flow diagrams
+
+**Problem:** route coverage does not prove that every branch and actor state in the
+flow diagrams is reachable and presented correctly.
+
+- Create `docs/design/flow-coverage-checklist.md` before the next presentation.
+- Give every diagram decision/terminal node one row containing: actor, precondition,
+  backend state/endpoint, frontend route/component, available action, expected next
+  state, loading/empty/error handling, and verification result.
+- Walk the checklist for buyer, seller, trader, giver, recipient, and admin. Include
+  sale vs trade, Meetup vs Shipping, payment/no-payment, cancellation/refund/report/
+  appeal, all three giveaway allocation methods, full/underfilled capacity,
+  forfeiture/expiry/not-selected, and permission-denied branches.
+- Mark a branch `Blocked` when the backend cannot represent it; never mark a visually
+  present but non-functional control as covered.
+- Capture light and dark screenshots at 360, 768, and 1280 for every unique screen
+  state touched by F1–F6, then run keyboard, contrast, lint, type-check, build, and
+  focused backend tests.
+- Acceptance: every diagram branch is `Pass` or has an explicit owner-approved
+  `Blocked` reason; there are no unreviewed rows before presenting.
+
+#### Delivery order and commit boundaries
+
+1. Schema migration and seed compatibility: giveaway capacity/deadline and ticket
+   statuses.
+2. Backend behavior and tests: item history summary, capacity-safe joins/draws, and
+   distinct forfeiture.
+3. Frontend API adapters and status translations.
+4. Chat and offer item-first hierarchy.
+5. Inventory outcome summary and giveaway capacity/allocation UI.
+6. Diagram-to-screen coverage checklist and the Phase 6 quality gate.
+
+Each numbered step is a separate reviewable commit. Database migrations must include
+a forward migration and rollback notes; no development volume reset is part of this
+plan.
+
 ### Phase 6 — Quality gate
 
 | Check | Target |

@@ -18,15 +18,11 @@ Consequences accepted:
   has been given away still reads `Listed` or `Unlisted` in the inventory.
 - Editing the item afterwards does not update the giveaway.
 
-## 2. A giveaway has no capacity
+## 2. Giveaway capacity is explicit
 
-There is no column for how many places a giveaway has. `FirstCome` therefore
-cannot show "3 of 5 taken", which is the one number that method exists to
-communicate, and the giver cannot state up front how many people will be
-chosen.
-
-The UI shows `registered_count` alone, and the allocation-method hint explains
-how places are handed out without promising a number.
+Resolved. `quantity` is the maximum recipient count and the API returns
+participant count, remaining places, and registration-open state. The create,
+browse, detail, and management screens all expose that same value.
 
 ## 3. There is no profile endpoint, so a person is not a destination
 
@@ -44,12 +40,12 @@ readable names matching the seed, because the per-category extra fields
 something known at build time. If the endpoint ever returns a category not in
 that map, it simply gets no extra fields, which is the correct fallback.
 
-## 5. Entrant allocation state is derived, not returned
+## 5. Entrant allocation state is explicit
 
-There is no endpoint that says which entrants were selected. `getEntrants` in
-`lib/api/fixtures.ts` derives it from each entrant's ticket status —
-`Waiting`/`Received`/`Expired` mean the place was theirs, `Not_Selected` means it
-was not. A real client will have to do the same join over the ticket list.
+Resolved by the capacity and ticket-outcome contract. Recipient rows now carry
+both a plain-language outcome and the stored ticket status, while giveaway rows
+carry quantity, participant count, remaining places, and registration-open state.
+The frontend no longer derives winners or queue capacity from timestamps.
 
 ## 6. A chat room has no members
 
@@ -71,14 +67,105 @@ is keyed on the **giveaway**, not the room, so it is only correct while a
 giveaway has at most one room. `RoomScreen` feeds it to `ChatThread` as the
 sender map and renders it in the rail.
 
-Two consequences a real backend should close:
+One consequence closed, one remaining:
 
-1. Message senders can only be named if they happen to be the giver or hold a
-   ticket. Anyone else in the thread falls back to "Unknown member".
-2. `buildRooms` in `lib/rooms.ts` still admits only the giver to a giveaway
-   room, so recipients cannot open the group chat they are in. That is
-   membership logic rather than a missing endpoint, and is deliberately left
-   alone here.
+1. **Closed.** `giveaways.service.ts` now has its own `GET/POST
+   /giveaways/{id}/message` (mirroring `transactions.service.ts`'s chat, same
+   `serializeUserSummary`/7-day-expiry shape), gated by `assertGiveawayMember`
+   — the giver, or anyone who ever held a ticket, not just the giver. Message
+   senders now carry a real `sender` summary. `RoomScreen`'s `onSend`/
+   `onAttach` are wired to this for real (`lib/actions/giveaways.ts`'s
+   `sendGiveawayMessage`/`fetchGiveawayMessages`); posting itself is still
+   giver-only (`giveawayReadOnly` in `room-screen.tsx`), but that's Flow 3's
+   own product rule, not a backend limit.
+2. **Still open.** `buildRooms`'s inputs now come from `lib/api/rooms-query.ts`'s
+   `myGiveaways()`, which admits both the giver and any ticket holder — but it
+   discovers "ticket holder" via `getMyTicket`, which (like
+   `GET /giveaways/{id}/recipients`) only ever sees `Waiting`/`Received`
+   tickets. Someone whose ticket expired or was forfeited drops out of their
+   own inbox, even though `assertGiveawayMember` (any ticket, any status)
+   still lets them open the room by URL. Would need either a
+   status-unfiltered "my tickets" endpoint or dropping the status filter on
+   `recipients` for this specific check.
+
+**Closed too.** The roster (`entrants`) now reads real data —
+`lib/api/giveaways.ts`'s `getEntrants(giveawayId, giveaway)` calls the real
+`GET /giveaways/{id}/recipients` and re-expands its flattened
+`"selected"|"received"` status through the same `deriveTicketStatus`
+pending-draw heuristic `getMyTicket` already used, then folds it down to the
+roster's `Registered | Selected`. `Not_Selected` is unreachable through this
+path (only a real `Expired` raw status produces it, and `getRecipients` drops
+those tickets before they get here) — the roster can still be shorter than a
+giveaway's full history, same limit as `getMyTicket` above.
+
+## 6a. Chat images have no storage-level expiry
+
+§6.2 asks for a 7-day *display* lifetime on chat images, "to control long-term
+storage cost." There is no column anywhere (`Chat_Message.image_urls` is a
+bare `JSONB` array) that marks a row as cleaned up, and adding one would mean
+touching `init.sql`/`schema.prisma`, which is off limits here. What exists
+instead: `transactions.service.ts`'s `serializeMessage` (and
+`giveaways.service.ts`'s `serializeGiveawayMessage`, same logic, duplicated
+rather than shared — matches this codebase's existing per-module convention,
+see `serializeUserSummary`) computes `Date.now() - created_at > 7 days` on
+every read and returns `image_urls: null` plus `images_expired: true` once
+that's true — the row and the underlying Cloudinary asset are both left
+alone. This satisfies the *display* half of §6.2 (`ChatThread` shows a notice
+instead of the image grid) but not the *storage cost* half — nothing ever
+actually deletes the Cloudinary asset, so the stated cost saving doesn't
+happen yet. A real fix needs either a schema field to mark a row as
+reclaimed, or a scheduled job that re-derives the same age check and calls
+Cloudinary's `destroy` on the public id parsed back out of the stored URL (no
+new column needed for that part) — out of scope here.
+
+## 6b. Appointment "pinned" is derived, not stored
+
+`Appointment_Card` has no boolean column for "this is the one pinned to the
+top" — §6.3's pin is computed client-side by `deriveAppointmentView`
+(`lib/appointment.ts`) from the full history `GET
+/transactions/{id}/appointment-cards` already returns: the most recent
+`Confirmed` card is the pin, and it survives a later `Rejected` re-proposal
+(the spec pins a confirmed card "until a new [appointment] replaces it", not
+until one is merely proposed again). A backend that wants to expose this
+directly would need either a `pinned` boolean toggled on confirm/superseded,
+or a dedicated "current appointment" endpoint — neither exists today.
+
+## 6c. There is no "list my chat rooms" endpoint
+
+Nothing anywhere returns "every `Chat_Room` this user is in" — a room is only
+ever created lazily, the first time its messages are read or written (see
+`getOrCreateChatRoom`/`getOrCreateGiveawayChatRoom`). So `getRoomSummaries`
+(`lib/api/rooms-query.ts`) builds the inbox from the other direction: it reads
+"my transactions" (`GET /transactions`, real) and "my giveaways"
+(`getGiveaways()` filtered client-side to giver-or-ticket-holder), then calls
+each one's message endpoint just to learn its `room_id` and last message.
+That's an N+1 fetch — fine at seed-data scale, not something a real inbox at
+scale should keep doing. A dedicated `GET /me/chat-rooms` (or similar) would
+let this collapse into one call; nothing invented here in its place.
+
+## 6d. `Transaction` responses were raw rows, not the documented shape
+
+`transaction.service.ts`'s `findAllForUser`/`findOneForUser` used to return
+the bare Prisma row — no `post`, no `item`, no `buyer`/`seller` summary — so
+nothing that actually needed `lib/api/types.ts`'s `Transaction` shape (chat
+chief among them) could be built from it. Both now `include` the full join
+(post → item → images, offer, buyer, seller) and serialize to the documented
+snake_case shape, including `final_amount` — not a stored column; derived as
+`post.price × quantity` for a straight purchase (`offer_id` null) or the
+offer's `additional_money` for a trade, matching `requiresPayment` in
+`lib/status.ts`. Every other method on that service (`ship`, `confirmDelivery`,
+the cancellation/refund flow, …) still reads through the original
+unincluded `findOneOrThrow` — they only ever touch scalar columns, so they
+were left alone.
+
+One real bug fell out of building this: `schema.prisma`'s `Post.deletedAt`
+(and `posts.service.ts`'s soft-delete queries against it) had no matching
+`deleted_at` column in the live database at all — every query touching `Post`
+failed outright, including this new one. The column now exists on the
+running database (added directly, since `init.sql` is off-limits to edit in
+this pass), but `init.sql` itself was **not** updated — a fresh
+`docker-compose up` from a clean volume will hit the same failure until
+someone adds `"deleted_at" TIMESTAMP` to `Post` there too.
 
 ## 7. Auth has no `/auth/refresh` endpoint
 
@@ -107,72 +194,163 @@ anywhere consumes it. The access token is 15 minutes
 to match that lifetime and simply expires with it. No silent-refresh logic
 exists to write, and there is nothing to build it against.
 
-## 8. Giveaway Allocation System — what `lib/api/giveaways.ts` adapts around
+## 8. Giveaway Allocation System — remaining adapter boundaries
 
-The 9 endpoints in the spec's "Giveaway Allocation System" table are all wired
-now (`giveaway-detail.tsx`, `manage-giveaway.tsx`,
-`giveaway/[giveawayId]/ticket/[ticketId]/ticket-screen.tsx`,
-`post-composer.tsx`'s giveaway branch). Two of them — `POST /giveaways` and
-`POST /giveaways/{id}/join` — used to require `giver_id`/`receiver_id` in the
-body; the backend now reads both from the JWT (`@CurrentUser()`), matching the
-spec's request examples (empty body for `join`, no `giver_id` for `create`).
-What is still adapted around, not fixed, because it would mean inventing a
-backend capability rather than reading one that exists:
+Capacity, registration deadline, pickup deadline, and ticket outcomes are now
+explicit API values. `Registered`, `Waiting`, `NotSelected`, `Received`,
+`Forfeited`, and `Expired` are preserved directly; the frontend no longer uses a
+timestamp heuristic. First Come closes atomically at capacity, and Random selects
+up to the configured quantity (including the under-capacity all-win case).
 
-- **One deadline field, not two.** `GiveawayPost` has `pickup_deadline` only.
-  The UI's "registration closes" countdown and "collect by" date are the same
-  timestamp shown twice — there is no separate signup window and pickup
-  window. `pickup_start_date`/`pickup_end_date` on the frontend `GiveawayPost`
-  type are always `null` from the real API; `post-composer.tsx` still collects
-  a pickup-open/pickup-close range from the giver, but only `closeAt` is ever
-  sent, because there is nowhere to send the rest.
-- **No giver/entrant profile.** Same root cause as §3 — no `GET /users/{id}`.
-  `giveaways.ts`'s `placeholderUser` renders every giver and every entrant as
-  `User #<id>`. The Manual giver's "choose recipients" list (`ManageGiveaway`)
-  is therefore a list of ids and verification badges, not names.
-- **`ticket_status` is `Waiting | Received | Expired`, nothing else.**
-  `Waiting` means "pending the draw" before a Random/Manual giveaway closes
-  and "ready to collect" after — `deriveTicketStatus` in `giveaways.ts` tells
-  them apart using the giveaway's own `status`/`allocation_method`, not the
-  ticket alone. Worse, `Expired` is written for three different real events —
-  lost the draw, forfeited voluntarily, and timed out uncollected (spec
-  §5.4/§5.5 want these as separate, auditable states) — with no field that
-  says which. The best available signal is whether the status changed before
-  or after `pickup_deadline`; `deriveTicketStatus` uses that as a heuristic
-  (`Not_Selected` before, `Expired` after) and forfeited tickets are
-  indistinguishable from lost-the-draw ones under it.
-- **No automatic timeout.** Spec §5.4 says a ticket "changes to timed-out
-  automatically" past the pickup deadline. Nothing server-side does this —
-  `ticket_status` only ever changes on an explicit `select`/`draw`/`forfeit`/
-  `qr/scan` call. A ticket that is never scanned and never forfeited stays
-  `Waiting` forever; the heuristic above only fires once *something* has
-  written `Expired` to that row.
-- **`GET /giveaways/{id}/recipients` only returns live tickets.** Filtered to
-  `Waiting`/`Received` server-side, so a forfeited or expired ticket
-  disappears from it entirely rather than showing up with that status. This
-  is also the endpoint `getMyTicket` and the giveaway ticket route reuse to
-  answer "does the viewer hold a ticket for this giveaway" — once that ticket
-  expires or is forfeited, the answer silently reverts to "no", and the
-  ticket page 404s instead of showing why.
-- **Nobody calls `POST /giveaways/{id}/draw` unless a person does.** The
-  backend does not run the draw when the deadline passes. `giveaway-detail.tsx`
-  now shows the Random giver a "Run the draw" button (not in the spec's
-  screens, but without it a Random giveaway can never resolve); FirstCome has
-  no equivalent because a `Waiting` ticket already *is* the win — `join()`
-  never rejects on capacity, so first-come-first-served currently has no
-  capacity limit either (no column for one).
-- **`GET /giveaways` (list) was added, outside the spec table.** The "Open"
-  tab in `giveaway/page.tsx` (`GiveawayBrowser`) now reads real data via
-  `getGiveaways()` in `lib/api/giveaways.ts` — a newly created giveaway used
-  to be invisible everywhere (the create call succeeded, but nothing linked
-  to it) because this endpoint didn't exist yet and the browse tab still read
-  `lib/api/fixtures.ts`. `giveaways.service.ts`'s `findAll()` returns every
-  giveaway regardless of status, same as `detail()`; the frontend still does
-  the `status === "Active"` filtering for the tab.
-- **"My tickets" still has no endpoint and is still mock.** The "My entries"
-  tab is the one piece of `giveaway/page.tsx` still on `lib/api/fixtures.ts`
-  — there is no reverse lookup from a user to their tickets anywhere in the
-  spec. The standalone ticket route moved from `/giveaway/ticket/[id]` to
-  `/giveaway/[giveawayId]/ticket/[ticketId]` for the same root cause: there
-  is no `GET` for a single ticket by its own id, only by giveaway id via
-  `recipients`, so the route now carries both.
+The remaining gaps are narrower:
+
+- There is no standalone `GET /users/{id}`. Giveaway responses include compact
+  giver/receiver summaries, but the UI cannot link those names to a full public
+  profile or query everything else that person is offering.
+- There is no `GET /giveaway-tickets/me` or single-ticket read endpoint. "My
+  entries", history, and the ticket route rebuild the viewer's ticket by querying
+  the full recipient roster of each giveaway. This is correct but produces a
+  bounded N+1 request pattern.
+- Random allocation still requires the giver to press "Run the draw"; no scheduled
+  worker runs automatically when `register_deadline` passes.
+- Pickup expiry is reconciled when the recipient roster or QR endpoints are read.
+  There is no background worker that updates untouched tickets exactly at the
+  deadline.
+- `GET /giveaways` remains an application endpoint outside the original endpoint
+  table. It returns all statuses; the browser uses the explicit
+  `registration_open` field for its Open tab.
+
+## 9. Report & Moderation (§7) — what adapts around real gaps
+
+`report`/`appeal.service.ts` were already a real, working backend
+implementation before this pass — the frontend was the fixture-driven half.
+Closed in this pass: §7.3's rate limit (Redis, 5/10 min), §7.1's sanctions
+(`User.status` → `Suspended`/`Banned`, reversed automatically when an appeal
+is later approved), a `Post` report confirmed as a violation now actually
+hides the post (and `restore` un-hides it), 3 new `GET /admin/transactions/...`
+routes so an admin can read a Transaction report's chat/appointment evidence
+without being a party to it, and the missing `GET /appeals`/`GET
+/admin/appeals` list routes the frontend needed. None of it touched
+`init.sql`/`schema.prisma` — `Suspended`/`Banned`/`Active`/`Inactive` all
+already existed.
+
+What's still adapted around rather than built:
+
+- **A "temporary" suspension has no stored end date.** There is no column for
+  one (would mean a schema change), so `suspend_temporary` and
+  `suspend_permanent` differ only by which `User.status` value they set
+  (`Suspended` vs `Banned`) — an admin lifts a temporary one manually later.
+  Matches §7.1's "no fixed criteria, case-by-case judgment" framing, but a
+  real deadline-driven unsuspend would need a new column and a scheduled job.
+- **A warning has no record beyond that one report's `resolution_note`.**
+  There is no running "warning count" on `User` — an admin deciding a new
+  case sees that account's own report history via `GET /admin/reports`
+  filtered by eye, not a computed strike count.
+- **Reporting a Post or a User sends a `target_id` from whatever page is
+  already showing that post/user** — `market/[postId]/page.tsx` and the whole
+  `/history` section are still on `fixtures.ts` (a separate, larger gap; see
+  their own screens), so a report filed from there only lands on a *real*
+  target when the fixture's id happens to coincide with a real seeded row.
+  The report submission itself (`POST /reports`) is real; the id feeding it
+  is only as real as the page it was opened from. The transaction-report flow
+  (`/history/[txId]/report`) has the same caveat for the same reason.
+- **No admin `GET /admin/reports/{id}`.** `admin/reports/[reportId]/page.tsx`
+  fetches the full list (`GET /admin/reports`) and finds the one it needs
+  client-side, same as the fixture version did — fine at seed-data scale, an
+  N-report fetch to open one report at real scale.
+- **The evidence panel for a Transaction report is assembled by hand**, not a
+  single endpoint: 3 separate `GET /admin/transactions/...` calls bundled by
+  `lib/api/reports.ts`'s `adminGetTransactionEvidence`. It shows confirmation
+  timestamps, the slip image, appointment cards, and a plain-text chat
+  transcript — not the full interactive `ChatThread` component, since this is
+  a read-only case file, not a conversation.
+- **§7.5.3's table arrived and is wired in `report-form.tsx`'s `REASONS`** —
+  5 reasons, each with an `eligible(transaction)` predicate re-checking the
+  table's own "occurs when" column against the real transaction (a fake-slip
+  report only becomes selectable once `sellerConfirmDeadline` has actually
+  passed, "item not as described" only once `status === "Completed"`, etc.)
+  rather than trusting the reporter to self-select correctly. An ineligible
+  reason is disabled, not hidden, with the precondition shown as the reason
+  it is greyed out. Needed extending `transaction.service.ts`'s
+  `serializeTransaction` (and the frontend `Transaction` type) with the
+  cancellation/refund columns — `cancellation_response`,
+  `cancellation_requested_at`, `refund_slip_url`,
+  `refund_confirmed_by_buyer` — none of which had ever been exposed past the
+  raw Prisma row before, for either of the two "went to Pending Refund"
+  reasons. One precondition is only approximate: "didn't ship or come to pick
+  up" has no dedicated meetup-pickup deadline anywhere in the codebase
+  (`lib/status.ts`'s `deadlineFor` only computes one for `Shipping`), so a
+  stuck `Meetup` transaction in `Processing` is treated as eligible
+  immediately rather than after some specific overdue window — matching how
+  `deadlineFor` already leaves Meetup with no deadline at all (see the report
+  button's own overall `allowed` gate, which is `false` for a stuck Meetup
+  deal today for the same underlying reason — a pre-existing gap, not
+  introduced here).
+
+## Trade terms and the listing description are not stored
+
+Recorded 2026-09-03 while wiring `list-form.tsx` to `POST /posts`
+(UX-REVISION-PLAN.md step 2.0.1).
+
+`CreatePostPayload` is `{ item_id, post_type, price, quantity_total }`. The
+list form also collects **"What do you want in trade"** and **"Listing
+description"** (`list-form.tsx:129-146`), and the endpoint has nowhere to put
+either. Both were being discarded silently by the placeholder that preceded
+this wiring, so nothing regressed — but nothing is saved either.
+
+What the UI does: the two fields stay on screen and are sent nowhere. They are
+not removed, because the brief asked for the sell/trade choice to be explicit
+and "what do you want in trade" is the question a trade-only post exists to
+ask. A post whose trade terms vanish is a worse answer than one that never
+asked, so this needs an owner decision rather than a quiet deletion:
+
+- add the columns to the backend (outside this scope, `CLAUDE.md` 0), or
+- fold both into `Item.description` at publish time, which mixes an item fact
+  with a listing fact and will read wrong on the next listing of the same
+  item, or
+- remove the fields and let the seller say it in chat.
+
+Also noted: a trade-only post has no meaningful asking price, and `price` is
+required. The wiring sends `0` for `TradeOnly`. If the API treats `0` as a
+real price, a trade-only listing may render as "free" somewhere.
+
+## A seller cannot reject a payment slip
+
+Recorded 2026-09-03 while wiring the deal screen's transitions
+(UX-REVISION-PLAN.md step 2.0.5).
+
+`API_Marketplace.pdf`, "Transactions, Fulfillment & Payment", gives the seller
+exactly one slip verb: `POST /transactions/{id}/confirm-payment-received`.
+There is no reject. `SlipReviewer` offers both, and the reject button was a
+placeholder that toasted "Told the buyer the amount does not match" without
+telling anyone anything.
+
+The only contract route out of a bad slip is
+`POST /transactions/{id}/cancel-request`, which is a different act with
+different consequences: it starts a 72h clock, and a rejection by the other
+side flips `dispute_status` to `under_review`. Wiring the reject button to it
+would be inventing product behaviour, so it is not wired.
+
+What the UI does now: the button stays, and says the action is not supported
+yet, pointing at chat or a cancellation request. It asserts nothing false.
+Needs an owner decision:
+
+- route reject to `cancel-request` with a canned reason, or
+- remove the button and leave chat as the channel, or
+- add the endpoint (outside this scope, `CLAUDE.md` 0).
+
+## Chat unread state is local to one browser
+
+Recorded 2026-09-06 while redesigning the conversation list.
+
+The API returns messages and timestamps but has no read receipt, last-read
+timestamp, or unread count. The sidebar therefore records the time a room was
+opened in browser storage and shows an unread dot only when a newer message
+from someone else exists. This is truthful for future messages on that browser,
+but it cannot synchronize read state between devices or recover historical
+read state from before the marker was created.
+
+A cross-device unread badge requires a backend field or endpoint that records
+the viewer's last-read message per room. The frontend must not infer that state
+from transaction workflow ownership (`needsYou`), because whose turn it is and
+whether a message was read are different facts.

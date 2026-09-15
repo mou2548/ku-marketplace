@@ -1,7 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import {
+  CircleCheck,
+  CircleX,
+  Info,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 
 import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -26,6 +32,10 @@ export interface Toast {
 
 interface ToastApi {
   show: (message: string, tone?: Tone) => void;
+  success: (message: string) => void;
+  error: (message: string) => void;
+  warning: (message: string) => void;
+  info: (message: string) => void;
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -41,53 +51,89 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const show = useCallback((message: string, tone: Tone = "success") => {
     const id = Date.now() + Math.random();
-    setToasts((list) => [...list, { id, tone, message }]);
+    setToasts((list) => [
+      ...list.filter((toast) => toast.message !== message),
+      { id, tone, message },
+    ].slice(-3));
     setTimeout(
       () => setToasts((list) => list.filter((t) => t.id !== id)),
       5000,
     );
   }, []);
 
-  const api = useMemo(() => ({ show }), [show]);
+  const api = useMemo(
+    () => ({
+      show,
+      success: (message: string) => show(message, "success"),
+      error: (message: string) => show(message, "danger"),
+      warning: (message: string) => show(message, "warning"),
+      info: (message: string) => show(message, "info"),
+    }),
+    [show],
+  );
 
   return (
     <ToastContext.Provider value={api}>
       {children}
       <div
-        role="status"
-        aria-live="polite"
+        aria-label="Notifications"
         className={cn(
           "pointer-events-none fixed inset-x-0 z-[120] flex flex-col items-center gap-2 px-4",
-          "bottom-[max(0.75rem,env(safe-area-inset-bottom))] lg:bottom-6",
+          "top-20 md:top-auto md:bottom-6",
         )}
       >
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "pointer-events-auto flex w-full max-w-sm items-center gap-2 rounded-card border px-4 py-3",
-              "shadow-floating",
-              "animate-in slide-in-from-bottom-2 fade-in",
-              TONE_CHIP[t.tone],
-            )}
-          >
-            <p className="flex-1 text-[0.875rem] leading-[1.65] font-medium">
-              {t.message}
-            </p>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              pill
-              aria-label="Close"
-              onPress={() =>
-                setToasts((list) => list.filter((x) => x.id !== t.id))
-              }
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
+        {toasts.map((toast) => (
+          <ToastItem
+            key={toast.id}
+            toast={toast}
+            onClose={() =>
+              setToasts((list) => list.filter((item) => item.id !== toast.id))
+            }
+          />
         ))}
       </div>
     </ToastContext.Provider>
+  );
+}
+
+const TOAST_ICON = {
+  neutral: Info,
+  info: Info,
+  success: CircleCheck,
+  warning: TriangleAlert,
+  danger: CircleX,
+  trade: Info,
+} satisfies Record<Tone, typeof Info>;
+
+function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+  const Icon = TOAST_ICON[toast.tone];
+  const urgent = toast.tone === "danger";
+
+  return (
+    <div
+      role={urgent ? "alert" : "status"}
+      aria-live={urgent ? "assertive" : "polite"}
+      className={cn(
+        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-card border px-4 py-3",
+        "shadow-floating",
+        "anim-rise-in [--ku-rise:0.5rem]",
+        TONE_CHIP[toast.tone],
+      )}
+    >
+      <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <p className="min-w-0 flex-1 text-body-sm font-medium break-words">
+        {toast.message}
+      </p>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        pill
+        aria-label="Close notification"
+        className="-m-2 shrink-0"
+        onPress={onClose}
+      >
+        <X className="size-4" />
+      </Button>
+    </div>
   );
 }

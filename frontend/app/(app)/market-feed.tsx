@@ -1,18 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, SlidersHorizontal, Store } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+  Store,
+} from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
 import { MasonryGrid, MasonryItem } from "@/components/kit/masonry-grid";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostCard } from "@/components/kit/post-card";
-import { Surface } from "@/components/kit/surface";
+import { SearchField } from "@/components/kit/search-field";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { ItemCategory, Post } from "@/lib/api/types";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { CATEGORY_OPTIONS } from "@/lib/categories";
 
 /**
  * E2. Three research findings drive this screen:
@@ -22,8 +30,8 @@ import { cn } from "@/lib/utils";
  *    every card and part of what the search box matches.
  *  - **Pinterest-style density** the brief asked for: variable card heights via
  *    CSS multi-column, so the grid looks full rather than gridded.
- *  - **Sell vs Trade must be readable before the tap** — the card chip is
- *    filled green for anything sellable and amber for a pure swap.
+ *  - **Sale vs Trade must be readable before the tap** — the card chip is
+ *    filled with the tone system's success/trade solid (green / teal).
  *
  * Filters live in a sheet on mobile and a rail on desktop; the filter *state*
  * is identical, so nothing is unreachable on a phone.
@@ -31,55 +39,96 @@ import { cn } from "@/lib/utils";
 
 type Segment = "all" | "sell" | "trade";
 
-const SEGMENTS: Array<{ id: Segment; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "sell", label: "Sell" },
-  { id: "trade", label: "Trade" },
+const SEGMENTS: Array<{ id: Segment; labelKey: string }> = [
+  { id: "all", labelKey: "feed.all" },
+  { id: "sell", labelKey: "feed.sale" },
+  { id: "trade", labelKey: "feed.trade" },
 ];
 
 const CONDITIONS: ItemCondition[] = [
   "New",
-  "Very Good",
   "Good",
   "Acceptable",
   "Poor",
 ];
 
+function filterPosts(
+  posts: Post[],
+  segment: Segment,
+  query: string,
+  categories: Set<ItemCategory>,
+  conditions: Set<ItemCondition>,
+) {
+  const q = query.trim().toLowerCase();
+
+  return posts.filter((post) => {
+    if (segment === "sell" && post.post_type === "TradeOnly") return false;
+    if (segment === "trade" && post.post_type === "SellOnly") return false;
+    if (categories.size > 0 && !categories.has(post.item.category)) return false;
+    if (conditions.size > 0 && !conditions.has(post.item.condition)) return false;
+    if (!q) return true;
+
+    return (
+      post.item.course_name?.toLowerCase().includes(q) ||
+      post.item.name.toLowerCase().includes(q) ||
+      post.description?.toLowerCase().includes(q) ||
+      post.wanted_item_offer?.toLowerCase().includes(q)
+    );
+  });
+}
+
 export function MarketFeed({ posts }: { posts: Post[] }) {
+  const t = useTranslations();
+  const st = useStatusText();
   const [segment, setSegment] = useState<Segment>("all");
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<Set<ItemCategory>>(new Set());
   const [conditions, setConditions] = useState<Set<ItemCondition>>(new Set());
+  const [draftCategories, setDraftCategories] = useState<Set<ItemCategory>>(new Set());
+  const [draftConditions, setDraftConditions] = useState<Set<ItemCondition>>(new Set());
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const [filterScroll, setFilterScroll] = useState({ left: false, right: false });
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return posts.filter((post) => {
-      if (segment === "sell" && post.post_type === "TradeOnly") return false;
-      if (segment === "trade" && post.post_type === "SellOnly") return false;
-
-      if (categories.size > 0 && !categories.has(post.item.category)) return false;
-      if (conditions.size > 0 && !conditions.has(post.item.condition)) return false;
-
-      if (!q) return true;
-      // Course code is matched first and exactly the way P1 types it.
-      return (
-        post.item.course_name?.toLowerCase().includes(q) ||
-        post.item.name.toLowerCase().includes(q) ||
-        post.description?.toLowerCase().includes(q) ||
-        post.wanted_item_offer?.toLowerCase().includes(q)
-      );
-    });
+    return filterPosts(posts, segment, query, categories, conditions);
   }, [posts, segment, query, categories, conditions]);
 
-  // Derived from the data, because the seed's category names and the design
-  // document's slugs do not match and the database is the one that is right.
+  const draftResultCount = useMemo(
+    () => filterPosts(posts, segment, query, draftCategories, draftConditions).length,
+    [posts, segment, query, draftCategories, draftConditions],
+  );
+
+  // Show every inventory category, including those without current listings.
+  // Keep additional categories from existing data available for filtering.
   const availableCategories = useMemo(
-    () => [...new Set(posts.map((p) => p.item.category))].sort(),
+    () => [...new Set<string>([...CATEGORY_OPTIONS, ...posts.map((p) => p.item.category)])],
     [posts],
   );
 
   const activeFilters = categories.size + conditions.size;
+
+  useEffect(() => {
+    const bar = filterBarRef.current;
+    if (!bar) return;
+
+    const update = () => {
+      const maxScroll = bar.scrollWidth - bar.clientWidth;
+      setFilterScroll({
+        left: bar.scrollLeft > 4,
+        right: bar.scrollLeft < maxScroll - 4,
+      });
+    };
+
+    update();
+    bar.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+
+    return () => {
+      bar.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [availableCategories]);
 
   function toggle<T>(set: Set<T>, value: T, apply: (next: Set<T>) => void) {
     const next = new Set(set);
@@ -100,10 +149,10 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
       onSelectionChange={(k) => setSegment(k as Segment)}
       className="min-w-0 flex-1"
     >
-      <TabList aria-label="Post type" variant="segment">
+      <TabList aria-label={t("feed.postType")} variant="segment">
         {SEGMENTS.map((s) => (
           <SegmentTab key={s.id} id={s.id}>
-            {s.label}
+            {t(s.labelKey)}
           </SegmentTab>
         ))}
       </TabList>
@@ -116,15 +165,13 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
   const filterControls = (
     <div className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-overline text-ink-muted uppercase">
-          Category
-        </legend>
+        <legend className="mb-1 text-overline text-ink-muted uppercase">{t("feed.category")}</legend>
         <div className="flex flex-wrap gap-1.5">
           {availableCategories.map((cat) => (
             <FilterChip
               key={cat}
-              isActive={categories.has(cat)}
-              onToggle={() => toggle(categories, cat, setCategories)}
+              isActive={draftCategories.has(cat)}
+              onToggle={() => toggle(draftCategories, cat, setDraftCategories)}
             >
               {cat}
             </FilterChip>
@@ -133,121 +180,148 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-overline text-ink-muted uppercase">
-          Condition
-        </legend>
+        <legend className="mb-1 text-overline text-ink-muted uppercase">{t("feed.condition")}</legend>
         <div className="flex flex-wrap gap-1.5">
           {CONDITIONS.map((c) => (
             <FilterChip
               key={c}
-              isActive={conditions.has(c)}
-              onToggle={() => toggle(conditions, c, setConditions)}
-              dotColor={ITEM_CONDITION[c].edge}
+              isActive={draftConditions.has(c)}
+              onToggle={() => toggle(draftConditions, c, setDraftConditions)}
             >
-              {ITEM_CONDITION[c].label}
+              {st.of(ITEM_CONDITION[c]).label}
             </FilterChip>
           ))}
         </div>
       </fieldset>
-
-      {activeFilters > 0 ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onPress={() => {
-            setCategories(new Set());
-            setConditions(new Set());
-          }}
-        >
-          Clear filters
-        </Button>
-      ) : null}
     </div>
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Phone only: post type plus the filter sheet. From `lg` both move into
-          the rail and the search takes the top of the feed column. */}
-      <div className="flex items-center gap-2 lg:hidden">
-        {segmentTabs}
+    <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
+      <header className="flex flex-col gap-1 px-1 pt-1 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <div>
+          <h1 className="text-h1 text-ink text-balance">{t("feed.title")}</h1>
+          <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+            {t("feed.subtitle")}
+          </p>
+        </div>
+        <p className="shrink-0 text-caption text-ink-muted" data-numeric aria-live="polite">
+          {t("feed.resultCount", { count: filtered.length })}
+        </p>
+      </header>
 
-        <OverlayTrigger>
-          <Button variant="secondary" size="icon" aria-label="Filters">
-            <span className="relative">
-              <SlidersHorizontal className="size-5" />
-              {activeFilters > 0 ? (
-                <span
-                  aria-hidden
-                  className="absolute -top-1.5 -right-2 grid size-4 place-items-center rounded-pill bg-brand text-[0.625rem] font-semibold text-on-brand"
-                >
-                  {activeFilters}
-                </span>
-              ) : null}
-            </span>
-          </Button>
-          <Overlay title="Filters" variant="sheet">
-            {filterControls}
-          </Overlay>
-        </OverlayTrigger>
-      </div>
+      <div className="sticky top-[4.25rem] z-[20] -mx-3 flex flex-col gap-3 border-y border-line bg-page px-3 py-3 sm:-mx-4 sm:px-4 lg:-mx-8 lg:px-8">
+        <div className="flex items-center gap-2">
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            label={t("feed.searchLabel")}
+            placeholder={t("feed.searchPlaceholder")}
+            className="min-w-0 flex-1 bg-surface shadow-raised"
+          />
 
-      <div className="flex gap-6">
-        {/* The rail was bare chips on the page background — the exact "lone
-            hairline, no depth" failure CLAUDE.md §3.1 names. It is a panel. */}
-        <aside className="hidden w-64 shrink-0 lg:block xl:w-72">
-          <Surface
-            as="div"
-            shape="panel"
-            fill="plate"
-            noise
-            className="sticky top-20 flex flex-col gap-5 p-4"
+          <OverlayTrigger
+            onOpenChange={(open) => {
+              if (open) {
+                setDraftCategories(new Set(categories));
+                setDraftConditions(new Set(conditions));
+              }
+            }}
           >
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-1 text-overline text-ink-muted uppercase">
-                Showing
-              </legend>
-              {segmentTabs}
-            </fieldset>
+            <Button
+              variant="secondary"
+              size="icon"
+              pill
+              aria-label={t("feed.filters")}
+            >
+              <span className="relative">
+                <SlidersHorizontal className="size-5" />
+                {activeFilters > 0 ? (
+                  <span
+                    aria-hidden
+                    className="absolute -top-2 -right-2 grid min-w-4 place-items-center rounded-pill bg-brand px-1 text-meta font-semibold text-on-brand"
+                  >
+                    {activeFilters}
+                  </span>
+                ) : null}
+              </span>
+            </Button>
+            <Overlay
+              title={t("feed.filters")}
+              size="sm"
+              footer={
+                <>
+                  <Button
+                    variant="ghost"
+                    onPress={() => {
+                      setDraftCategories(new Set());
+                      setDraftConditions(new Set());
+                    }}
+                    isDisabled={draftCategories.size + draftConditions.size === 0}
+                  >
+                    {t("feed.clearFilters")}
+                  </Button>
+                  <Button
+                    slot="close"
+                    onPress={() => {
+                      setCategories(new Set(draftCategories));
+                      setConditions(new Set(draftConditions));
+                    }}
+                  >
+                    {t("feed.showResults", { count: draftResultCount })}
+                  </Button>
+                </>
+              }
+            >
+              {filterControls}
+            </Overlay>
+          </OverlayTrigger>
+        </div>
 
-            {filterControls}
-          </Surface>
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {/* Search leads the feed column and takes its full width — it was a
-              capped bar sitting above the rail, in line with nothing.
-
-              White and raised, not sunken. Inputs are sunken wells everywhere
-              else in the app (components.md §3) and that is right on a white
-              card, but this one sits straight on the page: `--bg-surface-sunken`
-              is #f6f8f7 and the page is #f4f7f5, which is 1.01:1 — the field
-              was invisible. It lifts off the page instead. */}
-          <div className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted"
-            />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search by item name or course code"
-              placeholder="Search by item name or course code, e.g. 01417111"
-              className="h-12 w-full rounded-pill bg-surface pr-4 pl-11 text-[0.9375rem] shadow-raised"
-            />
+        <div className="relative min-w-0">
+          <div
+            ref={filterBarRef}
+            className="flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <div className="shrink-0">{segmentTabs}</div>
+            <span aria-hidden className="h-7 w-px shrink-0 bg-line" />
+            {availableCategories.map((cat) => (
+              <FilterChip
+                key={cat}
+                isActive={categories.has(cat)}
+                onToggle={() => toggle(categories, cat, setCategories)}
+              >
+                {cat}
+              </FilterChip>
+            ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {filterScroll.left ? (
+            <FilterScrollButton
+              direction="left"
+              onPress={() =>
+                filterBarRef.current?.scrollBy({ left: -240, behavior: "smooth" })
+              }
+            />
+          ) : null}
+          {filterScroll.right ? (
+            <FilterScrollButton
+              direction="right"
+              onPress={() =>
+                filterBarRef.current?.scrollBy({ left: 240, behavior: "smooth" })
+              }
+            />
+          ) : null}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
             <EmptyState
               icon={<Store className="size-6" />}
-              title="Nothing matches that search"
-              description="Try removing a filter, or search by course code instead of the book title. People name their posts differently."
+              title={t("feed.emptyTitle")}
+              description={t("feed.emptyBody")}
             />
           ) : (
-            <>
-              <p className="mb-3 text-[0.8125rem] text-ink-muted" data-numeric>
-                {filtered.length} results
-              </p>
               <MasonryGrid columns={{ base: 2, md: 3, lg: 4, xl: 5 }}>
                 {filtered.map((post) => (
                   <MasonryItem key={post.post_id}>
@@ -270,23 +344,55 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
                   </MasonryItem>
                 ))}
               </MasonryGrid>
-            </>
           )}
-        </div>
-      </div>
     </div>
   );
 }
 
+function FilterScrollButton({
+  direction,
+  onPress,
+}: {
+  direction: "left" | "right";
+  onPress: () => void;
+}) {
+  const Icon = direction === "left" ? ChevronLeft : ChevronRight;
+  const label = direction === "left" ? "Show previous filters" : "Show more filters";
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-y-0 flex w-14 items-center",
+        direction === "left"
+          ? "left-0 justify-start bg-gradient-to-r from-page via-page/95 to-transparent"
+          : "right-0 justify-end bg-gradient-to-l from-page via-page/95 to-transparent",
+      )}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onPress}
+        className="pointer-events-auto grid size-9 place-items-center rounded-pill border border-line bg-surface text-ink-secondary shadow-raised transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        <Icon aria-hidden className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The dot used to carry the condition ramp. CLAUDE.md §3.9 confines rarity
+ * colour to inventory and trade, and the feed is neither — a filter row is
+ * chrome, and it was spending the screen's one saturated element on a legend.
+ * The label already names the condition.
+ */
 function FilterChip({
   isActive,
   onToggle,
-  dotColor,
   children,
 }: {
   isActive: boolean;
   onToggle: () => void;
-  dotColor?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -295,25 +401,15 @@ function FilterChip({
       aria-pressed={isActive}
       onClick={onToggle}
       className={cn(
-        "flex min-h-9 items-center gap-1.5 rounded-pill px-3 text-[0.8125rem] font-medium",
+        // Same two fixes as history-list.tsx's filter chip: 44px, and
+        // green-700 rather than green-600 under a 13px label.
+        "flex min-h-11 items-center gap-1.5 rounded-pill px-3.5 text-caption font-medium",
         "transition-colors duration-[--dur-fast]",
         isActive
-          ? "bg-brand text-on-brand shadow-raised"
+          ? "bg-brand-band text-on-brand-strong shadow-raised"
           : "bg-surface-sunken text-ink-secondary shadow-sunken hover:bg-gray-200",
       )}
     >
-      {dotColor ? (
-        <span
-          aria-hidden
-          // The dot is the condition ramp, so it comes in as a property and a
-          // class reads it. Active inverts to the chip's own text colour.
-          style={{ "--slot-edge": dotColor } as React.CSSProperties}
-          className={cn(
-            "size-2 rounded-pill",
-            isActive ? "bg-current" : "bg-[var(--slot-edge)]",
-          )}
-        />
-      ) : null}
       {children}
     </button>
   );

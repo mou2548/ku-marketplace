@@ -9,19 +9,29 @@ export class TokenService {
 
   generateAccessToken(user: TokenUser) {
     return this.jwtService.sign(
-      { userId: user.userId, email: user.email, isAdmin: user.isAdmin ?? false },
+      {
+        userId: user.userId,
+        email: user.email,
+        isAdmin: user.isAdmin ?? false,
+      },
       { secret: process.env.ACCESS_TOKEN_SECRET, expiresIn: '15m' },
     );
   }
 
   generateRefreshToken(user: TokenUser) {
     return this.jwtService.sign(
-      { userId: user.userId, email: user.email, isAdmin: user.isAdmin ?? false },
+      {
+        userId: user.userId,
+        email: user.email,
+        isAdmin: user.isAdmin ?? false,
+      },
       { secret: process.env.REFRESH_TOKEN_SECRET, expiresIn: '7d' },
     );
   }
 
   verifyAccessToken(token: string) {
-    return this.jwtService.verify(token, { secret: process.env.ACCESS_TOKEN_SECRET });
+    return this.jwtService.verify<TokenUser>(token, {
+      secret: process.env.ACCESS_TOKEN_SECRET,
+    });
   }
 }

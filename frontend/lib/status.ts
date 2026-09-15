@@ -25,11 +25,19 @@ export type IconName = string;
 
 export interface StatusPresentation {
   tone: Tone;
-  /** Plain-language sentence shown to the user. Never the enum. */
-  label: string;
+  /**
+   * Message key under `status.` in messages/{en,th}.json — not the words.
+   *
+   * The words used to live here as English literals, which made this file the
+   * one place a bilingual product could not become bilingual: every screen
+   * reads its vocabulary from these tables. The key is deliberately not called
+   * `label`, so a caller that renders it raw is obviously wrong rather than
+   * subtly English-only.
+   */
+  labelKey: string;
   icon: IconName;
-  /** Longer explanation for tooltips and empty states. */
-  hint?: string;
+  /** Longer explanation for tooltips and empty states. Also a key. */
+  hintKey?: string;
 }
 
 /**
@@ -75,36 +83,36 @@ export type TransactionStatus =
 export const TRANSACTION_STATUS: Record<TransactionStatus, StatusPresentation> = {
   Pending: {
     tone: "warning",
-    label: "Awaiting payment",
+    labelKey: "transaction.Pending.label",
     icon: "Wallet",
-    hint: "The buyer has not uploaded a transfer slip yet",
+    hintKey: "transaction.Pending.hint",
   },
   Processing: {
     tone: "info",
-    label: "In progress",
+    labelKey: "transaction.Processing.label",
     icon: "Loader",
-    hint: "Payment confirmed, waiting on handover",
+    hintKey: "transaction.Processing.hint",
   },
   Completed: {
     tone: "success",
-    label: "Completed",
+    labelKey: "transaction.Completed.label",
     icon: "CircleCheck",
-    hint: "The item changed hands successfully",
+    hintKey: "transaction.Completed.hint",
   },
   Cancelled: {
     tone: "danger",
-    label: "Cancelled",
+    labelKey: "transaction.Cancelled.label",
     icon: "CircleX",
   },
   "Pending Refund": {
     tone: "warning",
-    label: "Awaiting refund",
+    labelKey: "transaction.Pending Refund.label",
     icon: "RotateCcw",
-    hint: "Waiting on the seller to transfer the money back",
+    hintKey: "transaction.Pending Refund.hint",
   },
   Refunded: {
     tone: "neutral",
-    label: "Refunded",
+    labelKey: "transaction.Refunded.label",
     icon: "CheckCheck",
   },
 };
@@ -125,27 +133,27 @@ export type OfferStatus =
 export const OFFER_STATUS: Record<OfferStatus, StatusPresentation> = {
   Pending: {
     tone: "warning",
-    label: "Awaiting response",
+    labelKey: "offer.Pending.label",
     icon: "Hourglass",
   },
   Accepted: {
     tone: "success",
-    label: "Accepted",
+    labelKey: "offer.Accepted.label",
     icon: "Handshake",
   },
   Rejected: {
     tone: "danger",
-    label: "Declined",
+    labelKey: "offer.Rejected.label",
     icon: "CircleX",
   },
   Cancelled: {
     tone: "neutral",
-    label: "Offer withdrawn",
+    labelKey: "offer.Cancelled.label",
     icon: "Undo2",
   },
   Withdrawn: {
     tone: "neutral",
-    label: "Offer withdrawn",
+    labelKey: "offer.Withdrawn.label",
     icon: "Undo2",
   },
 };
@@ -159,17 +167,17 @@ export type ItemStatus = "Unlisted" | "Listed" | "Transferred";
 export const ITEM_STATUS: Record<ItemStatus, StatusPresentation> = {
   // The schema's own word. "Not listed" read as a state nobody recognised
   // next to the two the spec actually names.
-  Unlisted: { tone: "neutral", label: "Unlisted", icon: "Package" },
-  Listed: { tone: "info", label: "Listed", icon: "Store" },
-  Transferred: { tone: "success", label: "Handed over", icon: "PackageCheck" },
+  Unlisted: { tone: "neutral", labelKey: "item.Unlisted.label", icon: "Package" },
+  Listed: { tone: "info", labelKey: "item.Listed.label", icon: "Store" },
+  Transferred: { tone: "success", labelKey: "item.Transferred.label", icon: "PackageCheck" },
 };
 
 export type PostType = "SellOnly" | "TradeOnly" | "Both";
 
 export const POST_TYPE: Record<PostType, StatusPresentation> = {
-  SellOnly: { tone: "success", label: "For sale", icon: "Tag" },
-  TradeOnly: { tone: "trade", label: "For trade", icon: "ArrowLeftRight" },
-  Both: { tone: "trade", label: "Sale or trade", icon: "Sparkles" },
+  SellOnly: { tone: "success", labelKey: "postType.SellOnly.label", icon: "Tag" },
+  TradeOnly: { tone: "trade", labelKey: "postType.TradeOnly.label", icon: "ArrowLeftRight" },
+  Both: { tone: "trade", labelKey: "postType.Both.label", icon: "Sparkles" },
 };
 
 /**
@@ -190,7 +198,8 @@ export type ItemCondition =
   | "Poor";
 
 export interface RarityPresentation {
-  label: string;
+  /** Message key under `status.` — see StatusPresentation.labelKey. */
+  labelKey: string;
   /** CSS custom property values consumed by --shadow-rarity. */
   edge: string;
   glow: string;
@@ -199,31 +208,31 @@ export interface RarityPresentation {
 
 export const ITEM_CONDITION: Record<ItemCondition, RarityPresentation> = {
   New: {
-    label: "New",
+    labelKey: "condition.New.label",
     edge: "var(--rarity-new-edge)",
     glow: "var(--rarity-new-glow)",
     fg: "var(--rarity-new-fg)",
   },
   "Very Good": {
-    label: "Very good",
+    labelKey: "condition.Very Good.label",
     edge: "var(--rarity-verygood-edge)",
     glow: "var(--rarity-verygood-glow)",
     fg: "var(--rarity-verygood-fg)",
   },
   Good: {
-    label: "Good",
+    labelKey: "condition.Good.label",
     edge: "var(--rarity-good-edge)",
     glow: "var(--rarity-good-glow)",
     fg: "var(--rarity-good-fg)",
   },
   Acceptable: {
-    label: "Acceptable",
+    labelKey: "condition.Acceptable.label",
     edge: "var(--rarity-acceptable-edge)",
     glow: "var(--rarity-acceptable-glow)",
     fg: "var(--rarity-acceptable-fg)",
   },
   Poor: {
-    label: "Worn",
+    labelKey: "condition.Poor.label",
     edge: "var(--rarity-poor-edge)",
     glow: "var(--rarity-poor-glow)",
     fg: "var(--rarity-poor-fg)",
@@ -239,49 +248,62 @@ export type TicketStatus =
   | "Waiting"
   | "Received"
   | "Not_Selected"
+  | "Forfeited"
   | "Expired";
 
 export const TICKET_STATUS: Record<TicketStatus, StatusPresentation> = {
   Registered: {
     tone: "info",
-    label: "Registered",
+    labelKey: "ticket.Registered.label",
     icon: "TicketCheck",
-    hint: "Waiting for the draw",
+    hintKey: "ticket.Registered.hint",
   },
   Waiting: {
     tone: "warning",
-    label: "Ready to collect",
+    labelKey: "ticket.Waiting.label",
     icon: "QrCode",
-    hint: "Show your QR to the giver within the pickup window",
+    hintKey: "ticket.Waiting.hint",
   },
-  Received: { tone: "success", label: "Collected", icon: "PartyPopper" },
+  Received: { tone: "success", labelKey: "ticket.Received.label", icon: "PartyPopper" },
   // Losing the draw is an outcome the entrant paid attention for, not a no-op.
-  Not_Selected: { tone: "danger", label: "Not selected", icon: "CircleX" },
-  Expired: { tone: "danger", label: "Pickup window closed", icon: "TimerOff" },
+  Not_Selected: { tone: "danger", labelKey: "ticket.Not_Selected.label", icon: "CircleX" },
+  Forfeited: {
+    tone: "neutral",
+    labelKey: "ticket.Forfeited.label",
+    icon: "Undo2",
+    hintKey: "ticket.Forfeited.hint",
+  },
+  Expired: { tone: "danger", labelKey: "ticket.Expired.label", icon: "TimerOff" },
 };
 
 /**
  * The roster view of a ticket, for the giver looking at a list of entrants.
- * Coarser than `TicketStatus` on purpose: Waiting, Received and Expired all
- * collapse to `Selected`, because from the roster's point of view the place
- * was theirs regardless of what they did with it (see `getEntrants`).
+ * Roster-facing outcomes. Waiting and Received collapse to Selected because
+ * both mean a place was allocated; forfeiture and expiry stay distinct.
  */
-export type EntrantStatus = "Registered" | "Selected" | "Not_Selected";
+export type EntrantStatus =
+  | "Registered"
+  | "Selected"
+  | "Not_Selected"
+  | "Forfeited"
+  | "Expired";
 
 export const ENTRANT_STATUS: Record<EntrantStatus, StatusPresentation> = {
   Registered: {
     tone: "info",
-    label: "Registered",
+    labelKey: "entrant.Registered.label",
     icon: "TicketCheck",
-    hint: "In the draw, not chosen yet",
+    hintKey: "entrant.Registered.hint",
   },
   Selected: {
     tone: "success",
-    label: "Chosen",
+    labelKey: "entrant.Selected.label",
     icon: "CircleCheck",
-    hint: "A place is theirs",
+    hintKey: "entrant.Selected.hint",
   },
-  Not_Selected: { tone: "danger", label: "Not selected", icon: "CircleX" },
+  Not_Selected: { tone: "danger", labelKey: "entrant.Not_Selected.label", icon: "CircleX" },
+  Forfeited: { tone: "neutral", labelKey: "entrant.Forfeited.label", icon: "Undo2" },
+  Expired: { tone: "danger", labelKey: "entrant.Expired.label", icon: "TimerOff" },
 };
 
 export type AllocationMethod = "FirstCome" | "Random" | "Manual";
@@ -289,21 +311,21 @@ export type AllocationMethod = "FirstCome" | "Random" | "Manual";
 export const ALLOCATION_METHOD: Record<AllocationMethod, StatusPresentation> = {
   FirstCome: {
     tone: "warning",
-    label: "First come, first served",
+    labelKey: "allocation.FirstCome.label",
     icon: "Zap",
-    hint: "Places are given in the order people register",
+    hintKey: "allocation.FirstCome.hint",
   },
   Random: {
     tone: "info",
-    label: "Random draw",
+    labelKey: "allocation.Random.label",
     icon: "Dices",
-    hint: "Drawn at random when registration closes. Registering early makes no difference.",
+    hintKey: "allocation.Random.hint",
   },
   Manual: {
     tone: "trade",
-    label: "Giver picks",
+    labelKey: "allocation.Manual.label",
     icon: "UserCheck",
-    hint: "The giver chooses recipients from the list of people who registered",
+    hintKey: "allocation.Manual.hint",
   },
 };
 
@@ -321,20 +343,20 @@ export type AppointmentStatus = "Pending" | "Confirmed" | "Rejected";
 export const APPOINTMENT_STATUS: Record<AppointmentStatus, StatusPresentation> = {
   Pending: {
     tone: "warning",
-    label: "Awaiting confirmation",
+    labelKey: "appointment.Pending.label",
     icon: "Hourglass",
-    hint: "The other side has not answered this meetup yet",
+    hintKey: "appointment.Pending.hint",
   },
   Confirmed: {
     tone: "success",
-    label: "Meetup confirmed",
+    labelKey: "appointment.Confirmed.label",
     icon: "CalendarCheck",
   },
   Rejected: {
     tone: "danger",
-    label: "Meetup declined",
+    labelKey: "appointment.Rejected.label",
     icon: "CalendarX",
-    hint: "Propose another time",
+    hintKey: "appointment.Rejected.hint",
   },
 };
 
@@ -348,18 +370,18 @@ export const GIVEAWAY_STATUS: Record<GiveawayStatus, StatusPresentation> = {
   // Open for entries is availability, not an achievement.
   Active: {
     tone: "info",
-    label: "Open for entries",
+    labelKey: "giveaway.Active.label",
     icon: "Gift",
   },
   Closed: {
     tone: "warning",
-    label: "Entries closed",
+    labelKey: "giveaway.Closed.label",
     icon: "Lock",
-    hint: "Recipients have been chosen; collection is still open",
+    hintKey: "giveaway.Closed.hint",
   },
   Completed: {
     tone: "success",
-    label: "Finished",
+    labelKey: "giveaway.Completed.label",
     icon: "CheckCheck",
   },
 };
@@ -371,22 +393,22 @@ export const GIVEAWAY_STATUS: Record<GiveawayStatus, StatusPresentation> = {
 export type UserStatus = "Active" | "Suspended" | "Banned" | "Deleted";
 
 export const USER_STATUS: Record<UserStatus, StatusPresentation> = {
-  Active: { tone: "success", label: "Active", icon: "CircleCheck" },
+  Active: { tone: "success", labelKey: "user.Active.label", icon: "CircleCheck" },
   // An account that cannot be used is a failure state, not a nudge — the same
   // severity the Suspend sanction that caused it already carries.
   Suspended: {
     tone: "danger",
-    label: "Suspended",
+    labelKey: "user.Suspended.label",
     icon: "ShieldAlert",
-    hint: "Access returns automatically when the suspension expires",
+    hintKey: "user.Suspended.hint",
   },
   Banned: {
     tone: "danger",
-    label: "Banned",
+    labelKey: "user.Banned.label",
     icon: "ShieldX",
-    hint: "The email is locked and cannot register again",
+    hintKey: "user.Banned.hint",
   },
-  Deleted: { tone: "neutral", label: "Closed", icon: "Minus" },
+  Deleted: { tone: "neutral", labelKey: "user.Deleted.label", icon: "Minus" },
 };
 
 /** Sanction.type — the penalty an admin records against an account. */
@@ -395,21 +417,21 @@ export type SanctionType = "Warning" | "Suspend" | "Ban";
 export const SANCTION_TYPE: Record<SanctionType, StatusPresentation> = {
   Warning: {
     tone: "warning",
-    label: "Warning",
+    labelKey: "sanction.Warning.label",
     icon: "ShieldAlert",
-    hint: "Recorded on the account; access is unaffected",
+    hintKey: "sanction.Warning.hint",
   },
   Suspend: {
     tone: "danger",
-    label: "Suspension",
+    labelKey: "sanction.Suspend.label",
     icon: "TimerOff",
-    hint: "Access is blocked until the expiry date, then restored",
+    hintKey: "sanction.Suspend.hint",
   },
   Ban: {
     tone: "danger",
-    label: "Permanent ban",
+    labelKey: "sanction.Ban.label",
     icon: "ShieldX",
-    hint: "History is kept and the email is locked against re-registration",
+    hintKey: "sanction.Ban.hint",
   },
 };
 
@@ -423,15 +445,15 @@ export const SANCTION_TYPE: Record<SanctionType, StatusPresentation> = {
 export type SubscriptionStatus = "Active" | "Expired" | "Cancelled";
 
 export const SUBSCRIPTION_STATUS: Record<SubscriptionStatus, StatusPresentation> = {
-  Active: { tone: "success", label: "Active", icon: "Crown" },
+  Active: { tone: "success", labelKey: "subscription.Active.label", icon: "Crown" },
   // Benefits have lapsed and renewing is an action the holder needs to take.
   Expired: {
     tone: "warning",
-    label: "Expired",
+    labelKey: "subscription.Expired.label",
     icon: "TimerOff",
-    hint: "Renew to get the tier benefits back",
+    hintKey: "subscription.Expired.hint",
   },
-  Cancelled: { tone: "neutral", label: "Cancelled", icon: "Minus" },
+  Cancelled: { tone: "neutral", labelKey: "subscription.Cancelled.label", icon: "Minus" },
 };
 
 export type SubscriptionPaymentStatus = "Pending" | "Verified" | "Reject";
@@ -442,16 +464,16 @@ export const SUBSCRIPTION_PAYMENT_STATUS: Record<
 > = {
   Pending: {
     tone: "warning",
-    label: "Slip under review",
+    labelKey: "subscriptionPayment.Pending.label",
     icon: "Hourglass",
-    hint: "An admin is checking your transfer",
+    hintKey: "subscriptionPayment.Pending.hint",
   },
-  Verified: { tone: "success", label: "Payment verified", icon: "CircleCheck" },
+  Verified: { tone: "success", labelKey: "subscriptionPayment.Verified.label", icon: "CircleCheck" },
   Reject: {
     tone: "danger",
-    label: "Slip rejected",
+    labelKey: "subscriptionPayment.Reject.label",
     icon: "CircleX",
-    hint: "The amount did not match; send a new slip",
+    hintKey: "subscriptionPayment.Reject.hint",
   },
 };
 
@@ -466,37 +488,37 @@ export type ReportStatus =
   | "Report_Dismissed";
 
 export const REPORT_STATUS: Record<ReportStatus, StatusPresentation> = {
-  Pending: { tone: "warning", label: "Awaiting review", icon: "Clock" },
+  Pending: { tone: "warning", labelKey: "report.Pending.label", icon: "Clock" },
   Under_Investigation: {
     tone: "info",
-    label: "Under investigation",
+    labelKey: "report.Under_Investigation.label",
     icon: "Search",
   },
   Violation_Confirmed: {
     tone: "danger",
-    label: "Violation confirmed",
+    labelKey: "report.Violation_Confirmed.label",
     icon: "ShieldAlert",
   },
-  Report_Dismissed: { tone: "neutral", label: "Dismissed", icon: "ShieldOff" },
+  Report_Dismissed: { tone: "neutral", labelKey: "report.Report_Dismissed.label", icon: "ShieldOff" },
 };
 
-export type AppealStatus =
-  | "Not_Appealed"
-  | "Appeal_Submitted"
-  | "Appeal_Under_Review"
-  | "Appeal_Upheld"
-  | "Appeal_Rejected";
+/**
+ * Mirrors `Appeal.appeal_status` (`DatabaseSchema.pdf`, init.sql,
+ * `backend/src/common/enums/report.enums.ts`). An earlier pass invented
+ * `Not_Appealed|Appeal_Submitted|Appeal_Under_Review|Appeal_Upheld|
+ * Appeal_Rejected`, which meant a real `Appeal` row could never be passed in
+ * — same mistake, same fix, as `AppointmentStatus` above. There is no
+ * "not appealed" value: an `Appeal` row only exists once one is actually
+ * filed, so that state is the absence of an `Appeal`, not a status a real one
+ * can hold.
+ */
+export type AppealStatus = "Pending" | "Under_Review" | "Approved" | "Rejected";
 
 export const APPEAL_STATUS: Record<AppealStatus, StatusPresentation> = {
-  Not_Appealed: { tone: "neutral", label: "Not appealed", icon: "Minus" },
-  Appeal_Submitted: { tone: "warning", label: "Appeal submitted", icon: "Send" },
-  Appeal_Under_Review: {
-    tone: "info",
-    label: "Appeal under review",
-    icon: "Scale",
-  },
-  Appeal_Upheld: { tone: "success", label: "Appeal upheld", icon: "ShieldCheck" },
-  Appeal_Rejected: { tone: "danger", label: "Appeal rejected", icon: "ShieldX" },
+  Pending: { tone: "warning", labelKey: "appeal.Pending.label", icon: "Send" },
+  Under_Review: { tone: "info", labelKey: "appeal.Under_Review.label", icon: "Scale" },
+  Approved: { tone: "success", labelKey: "appeal.Approved.label", icon: "ShieldCheck" },
+  Rejected: { tone: "danger", labelKey: "appeal.Rejected.label", icon: "ShieldX" },
 };
 
 /* ================================================================== *
@@ -523,10 +545,26 @@ export interface TransactionLike {
 export interface ActorPrompt {
   /** Who the system is waiting on. `null` when the deal is over. */
   actor: Party | null;
-  /** Second person when it is the viewer's turn, third person otherwise. */
-  label: string;
-  /** The action the actor should take, if any. */
-  action?: string;
+  /**
+   * Message key, second person when it is the viewer's turn and third person
+   * otherwise. A key, not the words — see StatusPresentation.labelKey.
+   */
+  labelKey: string;
+  /**
+   * The action the actor should take, if any — set regardless of whether
+   * the actor is the viewer. Callers that only want to render a button for
+   * the viewer's own turn already gate on `actor === viewer` themselves
+   * (or on the tri-state "is it my turn" this implies); this field does not
+   * do that gating itself, so a caller can also use it to know what step is
+   * pending on the *other* side.
+   *
+   * A union, not a string: it was typed `string`, and the deal screen's
+   * switch handled six of the seven values and returned null for the
+   * seventh, so a cash-free trade was told "Your turn: propose a meetup" and
+   * shown no control. A consumer that exhausts this now fails to compile
+   * when a value is added.
+   */
+  action?: PromptAction;
   tone: Tone;
 }
 
@@ -535,6 +573,15 @@ export interface ActorPrompt {
  * second trade branch. Everything downstream of this is different, so it is
  * resolved once, here.
  */
+export type PromptAction =
+  | "propose-appointment"
+  | "upload-slip"
+  | "review-slip"
+  | "enter-tracking"
+  | "confirm-delivery"
+  | "scan-qr"
+  | "refund-slip";
+
 export function requiresPayment(tx: TransactionLike): boolean {
   if (tx.offer_id == null) return true; // a straight purchase always pays
   return (tx.additional_money ?? 0) > 0;
@@ -549,11 +596,11 @@ export function resolveTransactionActor(
     second: string,
     third: string,
     tone: Tone,
-    action?: string,
+    action?: PromptAction,
   ): ActorPrompt => ({
     actor,
-    label: actor === viewer ? second : third,
-    action: actor === viewer ? action : undefined,
+    labelKey: actor === viewer ? second : third,
+    action,
     tone,
   });
 
@@ -561,54 +608,57 @@ export function resolveTransactionActor(
     case "Pending":
       if (!requiresPayment(tx)) {
         return you(
-          "buyer",
-          "Your turn: propose a meetup",
-          "Waiting on the proposer to arrange a meetup",
-          "warning",
-          "propose-appointment",
-        );
+        "buyer",
+        "prompt.scan-qr.you",
+        "prompt.scan-qr.them",
+        "warning",
+        "scan-qr",
+      );
       }
       if (!tx.payment_confirmed_by_buyer_at) {
         return you(
-          "buyer",
-          "Your turn: transfer the money and upload the slip",
-          "Waiting on the buyer to pay and upload a slip",
-          "warning",
-          "upload-slip",
-        );
+        "buyer",
+        "prompt.upload-slip.you",
+        "prompt.upload-slip.them",
+        "warning",
+        "upload-slip",
+      );
       }
       return you(
         "seller",
-        "Your turn: check the slip and confirm payment",
-        "Waiting on the seller to check the slip",
+        "prompt.review-slip.you",
+        "prompt.review-slip.them",
         "warning",
         "review-slip",
       );
 
     case "Processing":
+      if (requiresPayment(tx) && !tx.payment_confirmed_by_seller_at) {
+        return you("seller", "prompt.review-slip.you", "prompt.review-slip.them", "warning", "review-slip");
+      }
       if (tx.delivery_method === "Shipping") {
         if (!tx.tracking_number) {
           return you(
-            "seller",
-            "Your turn: enter the tracking number",
-            "Waiting on the seller to enter a tracking number",
-            "info",
-            "enter-tracking",
-          );
+        "seller",
+        "prompt.enter-tracking.you",
+        "prompt.enter-tracking.them",
+        "info",
+        "enter-tracking",
+      );
         }
         return you(
-          "buyer",
-          "Your turn: confirm once the parcel arrives",
-          "Waiting on the buyer to confirm delivery",
-          "info",
-          "confirm-delivery",
-        );
+        "buyer",
+        "prompt.confirm-delivery.you",
+        "prompt.confirm-delivery.them",
+        "info",
+        "confirm-delivery",
+      );
       }
       // Meetup ends with a scan, and only after both sides have met.
       return you(
         "buyer",
-        "Your turn: scan the seller QR when you collect",
-        "Waiting on the meetup and QR scan",
+        "prompt.scan-qr.you",
+        "prompt.scan-qr.them",
         "info",
         "scan-qr",
       );
@@ -616,18 +666,18 @@ export function resolveTransactionActor(
     case "Pending Refund":
       return you(
         "seller",
-        "Your turn: transfer the refund and upload the slip",
-        "Waiting on the seller to transfer the money back",
+        "prompt.refund-slip.you",
+        "prompt.refund-slip.them",
         "warning",
         "refund-slip",
       );
 
     case "Completed":
-      return { actor: null, label: "This deal is complete", tone: "success" };
+      return { actor: null, labelKey: "prompt.completed.you", tone: "success" };
     case "Cancelled":
-      return { actor: null, label: "This deal was cancelled", tone: "danger" };
+      return { actor: null, labelKey: "prompt.cancelled.you", tone: "danger" };
     case "Refunded":
-      return { actor: null, label: "The refund is complete", tone: "neutral" };
+      return { actor: null, labelKey: "prompt.refunded.you", tone: "neutral" };
   }
 }
 
@@ -644,6 +694,8 @@ export type DeadlineKind =
   | "seller-confirm-payment"
   | "seller-ship"
   | "cancel-response"
+  | "return-response"
+  | "refund-confirmation"
   | "giveaway-pickup"
   | "ticket-rotation";
 
@@ -651,7 +703,8 @@ export interface Deadline {
   kind: DeadlineKind;
   /** Epoch milliseconds. */
   expiresAt: number;
-  label: string;
+  /** Message key under `status.` — see StatusPresentation.labelKey. */
+  labelKey: string;
   /** What becomes available once it passes — usually the report action. */
   onExpiry: "report" | "escalate" | "rotate" | "forfeit";
 }
@@ -661,7 +714,7 @@ export function sellerConfirmDeadline(paidAt: string): Deadline {
   return {
     kind: "seller-confirm-payment",
     expiresAt: new Date(paidAt).getTime() + 24 * HOUR,
-    label: "The seller must confirm payment within 24 hours",
+    labelKey: "deadline.seller-confirm-payment.label",
     onExpiry: "report",
   };
 }
@@ -671,7 +724,7 @@ export function shippingDeadline(estimatedDelivery: string): Deadline {
   return {
     kind: "seller-ship",
     expiresAt: new Date(estimatedDelivery).getTime() + 3 * DAY,
-    label: "Parcel due",
+    labelKey: "deadline.seller-ship.label",
     onExpiry: "report",
   };
 }
@@ -681,7 +734,7 @@ export function cancelResponseDeadline(requestedAt: string): Deadline {
   return {
     kind: "cancel-response",
     expiresAt: new Date(requestedAt).getTime() + 72 * HOUR,
-    label: "The other party must respond to the cancellation within 72 hours",
+    labelKey: "deadline.cancel-response.label",
     onExpiry: "escalate",
   };
 }

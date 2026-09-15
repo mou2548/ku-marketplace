@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
  * to load, at which point `next/image` falls back to showing alt text on a
  * blank box, which reads as a broken page rather than a design.
  *
- * So there are two states here and neither is a hole:
+ * So there are three states here and none is a hole:
+ *   - loading: a quiet image-shaped ghost, without status copy that flashes
  *   - no photo at all: a short branded plate, so the card just gets shorter
  *   - photo that failed: the same plate plus an icon saying so
  *
@@ -35,14 +36,17 @@ export function PostImage({
   priority?: boolean;
   className?: string;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const failed = !!src && failedSrc === src;
+  const loaded = !!src && loadedSrc === src;
   const showPlate = !src || failed;
 
   return (
     <div
       className={cn(
         "relative w-full overflow-hidden",
-        showPlate ? "bg-brand-subtle" : "bg-surface-sunken",
+        "bg-surface-sunken",
         className,
       )}
       // A plate is short on purpose: an empty tall box is the thing we are
@@ -50,26 +54,43 @@ export function PostImage({
       style={{ aspectRatio: showPlate ? "16 / 7" : String(aspectRatio) }}
     >
       {showPlate ? (
-        <span className="texture-grid absolute inset-0 flex items-center justify-center gap-2 text-ink-brand">
+        <span className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted">
           {failed ? (
-            <ImageOff aria-hidden className="size-5 opacity-70" />
+            <ImageOff aria-hidden className="size-5 text-ink-brand opacity-75" />
           ) : (
-            <Package aria-hidden className="size-5 opacity-70" />
+            <Package aria-hidden className="size-5 text-ink-brand opacity-75" />
           )}
-          <span className="text-[0.75rem] font-medium opacity-80">
+          <span className="text-meta font-medium opacity-80">
             {failed ? "Photo unavailable" : "No photo"}
           </span>
         </span>
       ) : (
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          priority={priority}
-          sizes={sizes}
-          className="object-cover"
-          onError={() => setFailed(true)}
-        />
+        <>
+          {!loaded ? (
+            <span
+              aria-hidden
+              className="absolute inset-0 animate-pulse overflow-hidden bg-surface-sunken"
+            >
+              <span className="absolute inset-x-[12%] bottom-[12%] h-[24%] rounded-control bg-line-subtle/70" />
+              <span className="absolute right-[16%] top-[16%] size-[14%] rounded-pill bg-line-default/70" />
+              <span className="absolute -bottom-[8%] -left-[8%] size-[58%] rotate-45 rounded-control bg-line-default/45" />
+              <span className="absolute -bottom-[18%] right-[2%] size-[54%] rotate-45 rounded-control bg-line-subtle/80" />
+            </span>
+          ) : null}
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            priority={priority}
+            sizes={sizes}
+            className={cn(
+              "object-cover transition-opacity duration-[--dur-fast]",
+              loaded ? "opacity-100" : "opacity-0",
+            )}
+            onLoad={() => setLoadedSrc(src)}
+            onError={() => setFailedSrc(src)}
+          />
+        </>
       )}
     </div>
   );

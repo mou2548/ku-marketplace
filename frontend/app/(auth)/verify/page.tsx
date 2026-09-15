@@ -57,7 +57,7 @@ function VerifyForm() {
         <h1 className="text-[1.25rem] leading-[1.3] font-bold">
           Verify your email
         </h1>
-        <p className="text-[0.875rem] leading-[1.65] text-ink-muted">
+        <p className="text-body-sm text-ink-muted">
           We sent a 6-digit code to
           <br />
           <span className="font-semibold text-ink">{email}</span>
@@ -66,14 +66,14 @@ function VerifyForm() {
 
       {/* Identity, confirmed at the moment it is proved rather than claimed. */}
       <div className="flex w-full flex-col gap-1.5 rounded-card bg-surface-sunken p-4 text-left shadow-sunken">
-        <span className="flex items-center gap-1.5 text-[0.75rem] font-semibold text-ink-secondary">
+        <span className="flex items-center gap-1.5 text-meta font-semibold text-ink-secondary">
           <Lock aria-hidden className="size-3.5" />
           Your name on KU Marketplace
         </span>
         <span className="text-[1.125rem] font-semibold text-ink-brand">
           {derivedFirstName(email)}
         </span>
-        <p className="text-[0.75rem] leading-[1.6] text-ink-muted">
+        <p className="text-meta leading-[1.6] text-ink-muted">
           Taken from your institutional email and locked, because it is the
           anchor that stops impersonation. Your Thai name can be edited later.
         </p>
@@ -108,27 +108,27 @@ function VerifyForm() {
           <button
             type="submit"
             disabled={isResending}
-            className="flex items-center gap-1.5 text-[0.875rem] text-ink-muted hover:text-ink disabled:opacity-50"
+            className="flex items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink disabled:opacity-50"
           >
             <RotateCcw aria-hidden className="size-4" />
             {isResending ? "Sending..." : "Send the code again"}
           </button>
         </form>
         {resendState?.resent ? (
-          <p className="text-[0.75rem] font-medium text-ink-brand">
+          <p className="text-meta font-medium text-ink-brand">
             A new code is on its way.
           </p>
         ) : resendState?.error ? (
-          <p role="alert" className="text-[0.75rem] font-medium text-tone-danger-fg">
+          <p role="alert" className="text-meta font-medium text-tone-danger-fg">
             {resendState.error}
           </p>
         ) : null}
-        <p className="text-[0.75rem] text-ink-muted">
+        <p className="text-meta text-ink-muted">
           The code is valid for {OTP_TTL_MINUTES} minutes.
         </p>
         <Link
           href="/login"
-          className="text-[0.875rem] text-ink-muted hover:text-ink"
+          className="text-body-sm text-ink-muted hover:text-ink"
         >
           Start over with a different email
         </Link>

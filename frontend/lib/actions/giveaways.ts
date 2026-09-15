@@ -7,12 +7,14 @@ import {
   forfeitTicket as forfeitTicketApi,
   generateTicketQr as generateTicketQrApi,
   getGiveaway,
+  getGiveawayMessages as getGiveawayMessagesApi,
   joinGiveaway as joinGiveawayApi,
   scanTicketQr as scanTicketQrApi,
   selectRecipients as selectRecipientsApi,
+  sendGiveawayMessage as sendGiveawayMessageApi,
   type CreateGiveawayInput,
 } from "@/lib/api/giveaways";
-import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
+import type { ChatMessage, GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 
 async function requireSession() {
   if (!(await getAccessToken())) throw new Error("Not signed in");
@@ -44,7 +46,10 @@ export async function forfeitTicket(ticketId: number): Promise<void> {
   await forfeitTicketApi(ticketId);
 }
 
-export async function generateTicketQr(giveawayId: number, ticketId: number): Promise<string> {
+export async function generateTicketQr(
+  giveawayId: number,
+  ticketId: number,
+): Promise<{ token: string; expiresInSeconds: number }> {
   await requireSession();
   return generateTicketQrApi(giveawayId, ticketId);
 }
@@ -56,4 +61,18 @@ export async function scanTicketQr(
 ): Promise<boolean> {
   await requireSession();
   return scanTicketQrApi(giveawayId, ticketId, token);
+}
+
+export async function sendGiveawayMessage(
+  giveawayId: number,
+  input: { content?: string; image_urls?: string[] },
+): Promise<ChatMessage> {
+  await requireSession();
+  return sendGiveawayMessageApi(giveawayId, input);
+}
+
+export async function fetchGiveawayMessages(giveawayId: number): Promise<ChatMessage[]> {
+  await requireSession();
+  const { messages } = await getGiveawayMessagesApi(giveawayId);
+  return messages;
 }

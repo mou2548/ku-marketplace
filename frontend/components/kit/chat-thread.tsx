@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronUp, ImagePlus, Send } from "lucide-react";
@@ -28,6 +29,9 @@ export interface ChatMessage {
   sender_id: number;
   content?: string | null;
   image_urls?: string[] | null;
+  /** §6.2 — past the 7-day display lifetime, `image_urls` is null and this
+   * is true; shown as a notice instead of the (no longer sent) image grid. */
+  images_expired?: boolean;
   created_at: string;
 }
 
@@ -101,6 +105,7 @@ export function ChatThread({
   showSenders = false,
   className,
 }: ChatThreadProps) {
+  const t = useTranslations();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -126,7 +131,7 @@ export function ChatThread({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-page/60 px-4 py-4">
         {/* `mt-auto` pins a short conversation to the bottom, against the
             composer, the way every messenger does. Without it a room with
             three messages hangs from the top of a tall column with the gap
@@ -148,7 +153,7 @@ export function ChatThread({
               <div key={m.message_id} className="flex flex-col gap-3">
                 {startsNewDay ? (
                   <div className="flex justify-center py-1">
-                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-[0.75rem] font-medium text-ink-muted">
+                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-meta font-medium text-ink-muted">
                       {dayLabel(m.created_at)}
                     </span>
                   </div>
@@ -171,13 +176,15 @@ export function ChatThread({
                     />
                   ) : null}
 
-                  {m.image_urls?.length ? (
+                  {m.images_expired ? (
+                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">{t("chat.photosExpired")}</p>
+                  ) : m.image_urls?.length ? (
                     <div className="grid grid-cols-2 gap-1.5">
                       {m.image_urls.slice(0, 5).map((url) => (
                         <OverlayTrigger key={url}>
                           <button
                             type="button"
-                            aria-label="View photo full size"
+                            aria-label={t("chat.viewFullSize")}
                             className="block overflow-hidden rounded-control"
                           >
                             <Image
@@ -188,7 +195,11 @@ export function ChatThread({
                               className="aspect-square object-cover shadow-raised"
                             />
                           </button>
-                          <Overlay title="Photo" size="lg">
+                          <Overlay
+                            title={t("chat.photo")}
+                            size="lg"
+                            bodyClassName="px-2 pb-2 sm:px-5 sm:pb-3"
+                          >
                             <div className="flex items-center justify-center">
                               <Image
                                 src={url}
@@ -207,7 +218,7 @@ export function ChatThread({
                   {m.content ? (
                     <p
                       className={cn(
-                        "rounded-card px-3.5 py-2.5 text-[0.9375rem] leading-[1.7]",
+                        "rounded-card px-3.5 py-2.5 text-body",
                         mine
                           ? "rounded-br-chip bg-brand text-on-brand"
                           : "rounded-bl-chip bg-surface text-ink",
@@ -220,7 +231,7 @@ export function ChatThread({
 
                   <time
                     dateTime={m.created_at}
-                    className="px-1 text-[0.75rem] text-ink-muted"
+                    className="px-1 text-meta text-ink-muted"
                   >
                     {new Date(m.created_at).toLocaleTimeString("en-GB", {
                       hour: "2-digit",
@@ -242,15 +253,19 @@ export function ChatThread({
           the deal is waiting on cannot scroll out from under its own toggle.
           Read-only rooms have no composer and so no toggle — the action stays
           open there rather than becoming unreachable. */}
-      {action && (actionOpen || isReadOnly) ? action : null}
+      {action && (actionOpen || isReadOnly) ? (
+        <div className="min-h-0 max-h-[50%] shrink overflow-y-auto overscroll-contain">
+          {action}
+        </div>
+      ) : null}
 
       {isReadOnly ? (
-        <p className="border-t border-line px-4 py-3 text-center text-[0.8125rem] text-ink-muted">
+        <p className="shrink-0 border-t border-line px-4 py-3 text-center text-caption text-ink-muted">
           {readOnlyNotice}
         </p>
       ) : (
         <form
-          className="flex items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="flex shrink-0 items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           onSubmit={(e) => {
             e.preventDefault();
             const value = inputRef.current?.value.trim();
@@ -288,7 +303,7 @@ export function ChatThread({
             variant="ghost"
             size="icon"
             pill
-            aria-label="Attach images, up to 5"
+            aria-label={t("chat.attachImages")}
             onPress={() => fileRef.current?.click()}
           >
             <ImagePlus className="size-5" />
@@ -306,12 +321,12 @@ export function ChatThread({
 
           <input
             ref={inputRef}
-            aria-label="Message"
-            placeholder="Write a message"
-            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-[0.9375rem] shadow-sunken"
+            aria-label={t("chat.message")}
+            placeholder={t("chat.writeMessage")}
+            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-body shadow-sunken"
           />
 
-          <Button type="submit" size="icon" pill aria-label="Send">
+          <Button type="submit" size="icon" pill aria-label={t("chat.send")}>
             <Send className="size-5" />
           </Button>
         </form>
@@ -343,9 +358,11 @@ export function ActionCard({
       className={cn("border-t border-line bg-brand-subtle/30", className)}
       aria-label={title}
     >
-      <h4 className="px-4 pt-3 text-overline text-ink-brand uppercase">
-        {title}
-      </h4>
+      {/* This is the single most important sentence on the deal screen — the
+          thing the viewer has to do next — and it was set at the smallest size
+          in the scale, in caps, with 0.09em tracking. Overline is for a label
+          above a group, not for an instruction. */}
+      <h4 className="px-4 pt-3 text-body font-semibold text-ink">{title}</h4>
       <div className="px-4 pt-2 pb-3">{children}</div>
     </section>
   );

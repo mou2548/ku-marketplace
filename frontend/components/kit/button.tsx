@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 const button = cva(
   [
     "relative inline-flex items-center justify-center gap-2",
+    // The 44px floor on phones. See globals.css, TOUCH TARGETS.
+    "touch-target",
     "font-medium whitespace-nowrap select-none",
     "transition-[transform,background-color,box-shadow] duration-[--dur-fast] ease-[--ease-out]",
     "disabled:pointer-events-none disabled:opacity-45",
@@ -31,24 +33,26 @@ const button = cva(
     variants: {
       variant: {
         primary:
-          "bg-brand text-on-brand shadow-raised hover:bg-brand-hover data-[pressed]:bg-brand-active",
+          "bg-brand [color:var(--on-brand)] shadow-raised hover:bg-brand-hover data-[pressed]:bg-brand-active",
         // No border: `shadow-raised` already ends in a hairline ring, and
         // stacking one on top made a secondary button pixel-identical to a
         // Surface card — which is what made a wide one stop reading as a
         // button at all. Same reason surface.tsx dropped its border.
         secondary:
-          "bg-surface text-ink shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
+          "bg-surface [color:var(--text-primary)] shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
         subtle:
-          "bg-brand-subtle text-ink-brand hover:bg-green-200 data-[pressed]:bg-green-300",
+          "bg-brand-subtle [color:var(--text-brand)] hover:bg-[var(--brand-subtle-hover)] data-[pressed]:bg-[var(--brand-subtle-hover)]",
         ghost:
-          "text-ink-secondary hover:bg-gray-100 hover:text-ink data-[pressed]:bg-gray-200",
+          "[color:var(--text-secondary)] hover:bg-gray-100 hover:[color:var(--text-primary)] data-[pressed]:bg-gray-200",
         danger:
-          "bg-tone-danger-solid text-white shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
+          "bg-tone-danger-solid [color:var(--on-brand-strong)] shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
+        trade:
+          "bg-tone-trade-solid [color:var(--on-brand-strong)] shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
       },
       size: {
-        sm: "h-9 rounded-control px-3 text-[0.875rem]",
-        md: "h-11 rounded-control px-4 text-[0.9375rem]",
-        lg: "h-13 rounded-control px-6 text-[1.0625rem]",
+        sm: "h-9 rounded-control px-3 text-body-sm",
+        md: "h-11 rounded-control px-4 text-body",
+        lg: "h-13 rounded-control px-6 text-body-lg",
         icon: "size-11 rounded-control",
         "icon-sm": "size-9 rounded-control",
       },
@@ -93,7 +97,6 @@ export function Button({
       {...props}
       ref={ref}
       isDisabled={isDisabled || isLoading}
-      // Touch targets stay >=44px on coarse pointers even at size="sm".
       className={cn(button({ variant, size, block, pill }), className)}
     >
       {isLoading ? (

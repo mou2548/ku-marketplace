@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Save } from "lucide-react";
+import { ArrowLeft, Lock, Save } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
@@ -37,11 +39,11 @@ export function EditProfileForm({ profile }: { profile: User }) {
       });
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not save profile");
+      toast.error(err instanceof Error ? err.message : "Could not save profile");
       return;
     }
     setBusy(false);
-    toast.show("Profile saved");
+    toast.success("Profile saved");
     router.push("/account");
   }
 
@@ -59,10 +61,9 @@ export function EditProfileForm({ profile }: { profile: User }) {
           `${firstNameTh} ${lastNameTh}`.trim() ||
           `${profile.first_name_en} ${profile.last_name_en}`
         }
-        faculty="Engineering"
-        year={3}
+        isVerified
       />
-      <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+      <p className="text-caption leading-[1.6] text-ink-muted">
         This is the name and badge shown on your posts, your offers, and every
         chat room you are in.
       </p>
@@ -71,21 +72,29 @@ export function EditProfileForm({ profile }: { profile: User }) {
 
   return (
     <TwoColumn rail={preview}>
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to account
+      </Link>
+
       <h1 className="text-h1">Edit profile</h1>
 
-      <Surface shape="card" elevation="flat" className="flex max-w-3xl gap-3 bg-gray-100 border-l-4 border-l-line-strong p-4">
+      <Notice tone="neutral" className="flex max-w-3xl gap-3">
         <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
         <div className="flex flex-col gap-1">
-          <p className="text-[0.875rem] font-medium">
+          <p className="text-body-sm font-medium">
             {profile.first_name_en} {profile.last_name_en} · {profile.email}
           </p>
-          <p className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+          <p className="text-caption leading-[1.6] text-ink-muted">
             Your English name and email come from the university system and are
             locked. They are what lets another student trust that you are who
             you say you are.
           </p>
         </div>
-      </Surface>
+      </Notice>
 
       <div className="grid max-w-xl gap-4 sm:grid-cols-2">
         <TextInput

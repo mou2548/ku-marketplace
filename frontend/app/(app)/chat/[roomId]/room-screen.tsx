@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
 import {
   ArrowLeft,
@@ -24,13 +25,26 @@ import { Button, LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { DeliveryCard } from "@/components/kit/delivery-card";
-import { TextInput } from "@/components/kit/field";
+import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
+import { ReportDialog } from "@/components/kit/report-dialog";
 import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
+import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import {
+  askToCancel,
+  answerCancellation,
+  confirmRefundReceived,
+  confirmItemArrived,
+  confirmSlip,
+  createHandoverToken,
+  saveTracking,
+  submitPaymentSlip,
+  submitRefundSlip,
+} from "@/lib/actions/transactions";
 import { TONE_CHIP } from "@/components/kit/tone";
 import {
   buildSteps,
@@ -38,35 +52,70 @@ import {
   type Step,
 } from "@/components/kit/transaction-stepper";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import type { AppointmentSeed, Entrant } from "@/lib/api/fixtures";
-import type { GiveawayPost, Transaction, UserSummary } from "@/lib/api/types";
+import {
+  fetchAppointmentCards,
+  fetchChatHistory,
+  proposeAppointment,
+  respondToAppointment,
+  sendChatMessage,
+  uploadChatImage,
+} from "@/lib/actions/chat";
+import { useStatusText } from "@/lib/i18n/status-text";
+import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
+import { ApiError } from "@/lib/api/client";
+import type {
+  AppointmentCardData,
+  ChatMessage,
+  Entrant,
+  GiveawayPost,
+  Transaction,
+  UserSummary,
+} from "@/lib/api/types";
+import { deriveAppointmentView } from "@/lib/appointment";
+import { useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
 import {
   ALLOCATION_METHOD,
   canReport,
   ENTRANT_STATUS,
-  requiresPayment,
   resolveTransactionActor,
   TRANSACTION_STATUS,
   type ActorPrompt,
   type Deadline,
   type Party,
 } from "@/lib/status";
+import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
 
 /** Past this many, the rail sends the giver to the manage screen instead. */
 const ROSTER_LIMIT = 5;
 
-interface Message {
-  message_id: number;
-  sender_id: number;
-  content: string;
-  created_at: string;
-}
+/** No realtime transport exists — a short poll keeps the thread from going
+ * stale instead. See lib/use-polling.ts. */
+const CHAT_POLL_INTERVAL_MS = 5000;
+
+/** §7.5.2 — the system-provided reasons for a user report. */
+const USER_REPORT_REASONS = [
+  {
+    id: "rude-or-threatening",
+    label: "Rude or threatening behavior in chat",
+    description: "Insults, threats, or hostile messages",
+  },
+  {
+    id: "spam-or-disturbance",
+    label: "Spam or disturbance",
+    description: "Repeated unwanted messages",
+  },
+  {
+    id: "impersonation",
+    label: "Impersonating someone else",
+    description: "This is not who they claim to be",
+  },
+];
 
 /** "Mon 10 Aug, 13:00 · สำนักหอสมุด มก." — the pinned one-liner. */
-function appointmentLabel(appointment: AppointmentSeed): string {
+function appointmentLabel(appointment: AppointmentCardData): string {
   const at = new Date(`${appointment.date}T${appointment.time}+07:00`);
   const when = at.toLocaleString("en-GB", {
     weekday: "short",
@@ -88,6 +137,8 @@ function ProposeMeetup({
   onPlaceChange,
   when,
   onWhenChange,
+  time,
+  onTimeChange,
   isBusy,
   onPropose,
 }: {
@@ -95,32 +146,47 @@ function ProposeMeetup({
   onPlaceChange: (value: string) => void;
   when: DateValue | null;
   onWhenChange: (value: DateValue | null) => void;
+  time: string;
+  onTimeChange: (value: string) => void;
   isBusy: boolean;
   onPropose: () => void;
 }) {
+  const t = useTranslations();
   const tz = getLocalTimeZone();
 
   return (
     <Surface shape="card" className="flex flex-col gap-3 p-4">
-      <p className="text-[0.875rem] leading-[1.6] text-ink-secondary">
+      <p className="text-body-sm leading-[1.6] text-ink-secondary">
         Agree a time and place. The other side confirms it, and both of you see
         the same card from then on.
       </p>
 
-      <DatePickerField
-        label="Date"
-        value={when}
-        onChange={onWhenChange}
-        minValue={today(tz)}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <DatePickerField
+          label={t("deal.date")}
+          value={when}
+          onChange={onWhenChange}
+          minValue={today(tz)}
+        />
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-body-sm font-medium text-ink-secondary">{t("deal.time")}</span>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => onTimeChange(e.target.value)}
+            className={cn(controlBase, "h-12 px-3.5 text-body")}
+          />
+        </label>
+      </div>
 
       <TextInput
-        label="Where"
+        label={t("deal.where")}
         value={place}
         onChange={onPlaceChange}
         icon={<MapPin className="size-4" />}
-        placeholder="e.g. สำนักหอสมุด มก. (หน้าประตูทางเข้าหลัก)"
-        hint="Somewhere public and busy on campus"
+        placeholder={t("deal.wherePlaceholder")}
+        hint={t("deal.whereHint")}
       />
 
       <Button
@@ -129,9 +195,7 @@ function ProposeMeetup({
         isLoading={isBusy}
         onPress={onPropose}
       >
-        <CalendarPlus className="size-4" />
-        Propose this meetup
-      </Button>
+        <CalendarPlus className="size-4" />{t("deal.proposeMeetup")}</Button>
     </Surface>
   );
 }
@@ -154,29 +218,68 @@ export function RoomScreen({
   viewerId,
   transaction,
   giveaway,
-  appointment,
+  appointment: initialAppointment,
   entrants,
-  messages,
+  messages: initialMessages,
 }: {
   summary: RoomSummary;
   viewerId: number;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
-  /** The Appointment_Card row for this deal, when one has been proposed. */
-  appointment?: AppointmentSeed;
+  /**
+   * The card currently worth showing for this deal — the most recent
+   * `Pending` proposal if one is awaiting a reply, else the pinned
+   * `Confirmed` card, else `undefined`. `lib/api/chat.ts`'s
+   * `deriveAppointmentView` computes this from the full history; there is no
+   * single "current appointment" row in the backend.
+   */
+  appointment?: AppointmentCardData;
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
-  messages: Message[];
+  messages: ChatMessage[];
 }) {
+  const t = useTranslations();
   const router = useRouter();
+  const pathname = usePathname();
   const toast = useToast();
+  const st = useStatusText();
   const [tracking, setTracking] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [place, setPlace] = useState("");
   const [when, setWhen] = useState<DateValue | null>(null);
+  const [time, setTime] = useState("12:00");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
-  /** The deal strip's disclosure — everything the desktop rail used to hold. */
-  const [detailOpen, setDetailOpen] = useState(false);
+  const appointmentPinRef = useRef<HTMLDivElement>(null);
+  /**
+   * The deal strip's disclosure — everything the desktop rail used to hold.
+   *
+   * Open when the next move is the viewer's. A closed accordion is a
+   * reasonable default for a deal you are waiting on; it is the wrong one for
+   * a deal that is waiting on you.
+   */
+  const [detailToggled, setDetailToggled] = useState<boolean | null>(null);
+
+  // Real messages refresh on a poll (no realtime transport exists) — for
+  // either a transaction room or a giveaway group room. Appointments are a
+  // transaction-only concept.
+  const [messages, setMessages] = useState(initialMessages);
+  const [appointment, setAppointment] = useState(initialAppointment);
+
+  usePolling(() => {
+    if (transaction) {
+      const transactionId = transaction.transaction_id;
+      fetchChatHistory(transactionId).then(setMessages).catch(() => {});
+      fetchAppointmentCards(transactionId)
+        .then((cards) => {
+          const { pinned, pending } = deriveAppointmentView(cards);
+          setAppointment(pending ?? pinned);
+        })
+        .catch(() => {});
+    } else if (giveaway) {
+      fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
+    }
+  }, CHAT_POLL_INTERVAL_MS);
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -193,7 +296,26 @@ export function RoomScreen({
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
   const isYourTurn = prompt?.actor === viewer;
-  const reportable = canReport(deadline ? [deadline] : []);
+  /* Null means nobody has touched it, so the deal decides: open when the next
+     move is yours. Once opened or closed by hand, that choice sticks. */
+  const detailOpen = detailToggled ?? isYourTurn;
+  const now = useNow();
+  // §QR refresh loop — QrTicket schedules its own re-issue (every `periodMs`).
+  // Passing a fresh inline `() => createHandoverToken(id)` on every render made
+  // its effect re-run each second (this screen re-renders on `useNow` and the
+  // chat poll), so it fetched a new token constantly. A stable callback keyed
+  // only on the transaction id lets the timer actually wait.
+  const txIdForHandover = transaction?.transaction_id ?? null;
+  const requestHandoverToken = useCallback(() => {
+    if (txIdForHandover == null) {
+      throw new Error("This room has no transaction");
+    }
+    return createHandoverToken(txIdForHandover);
+  }, [txIdForHandover]);
+  const missedMeetup = appointment?.status === "Confirmed" &&
+    new Date(`${appointment.date}T${appointment.time}+07:00`).getTime() <= now &&
+    transaction && !["Completed", "Cancelled", "Refunded"].includes(transaction.status);
+  const reportable = canReport(deadline ? [deadline] : [], now) || Boolean(missedMeetup);
 
   // Flow 3: only the giver may type in a giveaway room.
   const giveawayReadOnly = !!giveaway && giveaway.giver_id !== viewerId;
@@ -221,31 +343,199 @@ export function RoomScreen({
       transaction.post.item.images[0]?.image_url)
     : giveaway?.images[0]?.image_url;
 
-  async function act(message: string, next?: string) {
+  /**
+   * Every transition on this screen goes through here. It used to be a 400ms
+   * timer that toasted success, which is why the stepper — derived from the
+   * transaction's timestamp columns — could never advance.
+   *
+   * `router.refresh()` re-runs the server component that fetched the
+   * transaction, so the stepper, the prompt and the pinned card all move on
+   * the answer rather than on the toast.
+   */
+  async function act(
+    call: () => Promise<unknown>,
+    message: string,
+    failure: string,
+    next?: string,
+  ) {
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      await call();
+    } catch (err) {
+      setBusy(false);
+      toast.error(err instanceof Error ? err.message : failure);
+      return;
+    }
     setBusy(false);
-    toast.show(message);
-    if (next) router.push(next);
+    toast.success(message);
+    if (next) {
+      router.push(next);
+    } else if (pathname !== `/chat/${summary.room_id}`) {
+      // The inbox preview is selected by queue priority, which changes after
+      // accepting a payment. Keep this conversation instead of picking again.
+      router.replace(`/chat/${summary.room_id}`);
+    } else {
+      router.refresh();
+    }
+  }
+
+  async function handleSend(text: string) {
+    try {
+      const sent = transaction
+        ? await sendChatMessage(transaction.transaction_id, { content: text })
+        : giveaway
+          ? await sendGiveawayMessage(giveaway.giveaway_id, { content: text })
+          : undefined;
+      if (sent) setMessages((prev) => [...prev, sent]);
+    } catch (error) {
+      toast.error((error as ApiError).message ?? "Could not send the message.");
+    }
+  }
+
+  /** §6.1 — up to 5 images per message; extra selections are dropped rather
+   * than rejected outright, since the picker has no way to un-select some. */
+  async function handleAttach(files: FileList) {
+    if (!transaction && !giveaway) return;
+    const selected = Array.from(files).slice(0, 5);
+    if (files.length > 5) toast.warning(t("deal.photoLimit"));
+
+    setBusy(true);
+    try {
+      const image_urls: string[] = [];
+      for (const file of selected) {
+        const formData = new FormData();
+        formData.append("file", file);
+        image_urls.push(await uploadChatImage(formData));
+      }
+      const sent = transaction
+        ? await sendChatMessage(transaction.transaction_id, { image_urls })
+        : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
+      setMessages((prev) => [...prev, sent]);
+    } catch (error) {
+      toast.error((error as ApiError).message ?? "Could not send the photos.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePropose() {
+    if (!transaction || !when) return;
+    setBusy(true);
+    try {
+      const created = await proposeAppointment(transaction.transaction_id, {
+        date: when.toString(),
+        time,
+        location: place,
+      });
+      setAppointment(created);
+      setPlace("");
+      toast.success(t("deal.meetupProposed"));
+    } catch (error) {
+      toast.error((error as ApiError).message ?? "Could not propose a meetup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAppointmentResponse(response: "confirm" | "reject") {
+    if (!appointment) return;
+    setBusy(true);
+    try {
+      const updated = await respondToAppointment(appointment.appointment_id, response);
+      // §appointment loop fix — a declined card is retired server-side, so the
+      // poll below clears `appointment`. Open the pin now so the propose-a-new-
+      // time form is the next thing the user sees, not a gap.
+      if (response === "reject") {
+        setAppointment(undefined);
+        setPinOpen(true);
+      } else {
+        setAppointment(updated);
+      }
+      toast.success(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
+    } catch (error) {
+      toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function currentAction(): React.ReactNode {
-    if (!transaction || !isYourTurn) return null;
+    if (!transaction) return null;
+    if (transaction.cancellation_response === "Pending") {
+      const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+      return <ActionCard title="Cancellation / return request">
+        <p>{transaction.cancellation_reason}</p>
+        {transaction.cancellation_requested_by !== myId ? <div className="flex gap-3">
+          <Button isLoading={busy} onPress={() => act(() => answerCancellation(transaction.transaction_id, "accept"), "Request accepted", "Could not respond")}>Accept</Button>
+          <Button variant="danger" isLoading={busy} onPress={() => act(() => answerCancellation(transaction.transaction_id, "reject"), "Sent for review", "Could not respond")}>Reject</Button>
+        </div> : <p>Waiting for the other party to respond.</p>}
+      </ActionCard>;
+    }
+    if (transaction.active_report_id && transaction.cancellation_response === "Rejected") {
+      return <ActionCard title="Under review"><p>Wait for the administrator to review this request.</p></ActionCard>;
+    }
+    if (transaction.status === "Pending Refund" || (transaction.status === "Cancelled" && transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer)) {
+      const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+      return <ActionCard title="Return and refund">
+        <div className="flex flex-col gap-3">
+          {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
+            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} onUpload={(file) => act(() => submitRefundSlip(transaction.transaction_id, file), "Refund slip uploaded", "Could not upload refund slip")} /> :
+            transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
+          ) : null}
+          {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
+            transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
+            <QrTicket once onGenerate={requestHandoverToken} ariaLabel="Item return QR" caption="One code per 15 minutes. Show it only when both parties are ready to return the goods." />
+          ) : null}
+        </div>
+      </ActionCard>;
+    }
+    if (!isYourTurn) return null;
 
     switch (prompt?.action) {
+      case "propose-appointment":
+        // `lib/status.ts` emits this for a cash-free trade, and this switch
+        // used to fall through to `default: return null`. The prompt said
+        // "Your turn: propose a meetup" and the screen offered nothing —
+        // the form for it lives in the appointment pin, which starts closed.
+        return (
+          <ActionCard title={t("deal.stepArrangeMeetup")}>
+            <div className="flex flex-col gap-3">
+              <p className="text-body text-ink-secondary">
+                There is no money in this trade, so the next thing to settle is
+                where and when you swap.
+              </p>
+              <Button
+                block
+                onPress={() => {
+                  setPinOpen(true);
+                  appointmentPinRef.current?.scrollIntoView({
+                    block: "nearest",
+                  });
+                }}
+              >
+                <CalendarClock className="size-4" />{t("deal.proposeTimeAndPlace")}</Button>
+            </div>
+          </ActionCard>
+        );
       case "upload-slip":
         return (
-          <ActionCard title="Your step - pay and upload the slip">
+          <ActionCard title={t("deal.stepUploadSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
-              onUpload={async () => act("Slip uploaded. Waiting on the seller.")}
+              onUpload={(file) =>
+                act(
+                  () => submitPaymentSlip(transaction.transaction_id, file),
+                  "Slip uploaded. Waiting on the seller.",
+                  "Could not upload the slip",
+                )
+              }
             />
           </ActionCard>
         );
       case "review-slip":
         return transaction.slip_image_url &&
           transaction.payment_confirmed_by_buyer_at ? (
-          <ActionCard title="Your step - check the slip">
+          <ActionCard title={t("deal.stepCheckSlip")}>
             <SlipReviewer
               slipUrl={transaction.slip_image_url}
               amount={transaction.final_amount}
@@ -255,89 +545,182 @@ export function RoomScreen({
               }}
               uploadedAt={transaction.payment_confirmed_by_buyer_at}
               isBusy={busy}
-              onConfirm={() => act("Payment confirmed")}
-              onReject={() => act("Told the buyer the amount does not match")}
+              onConfirm={() =>
+                act(
+                  () => confirmSlip(transaction.transaction_id),
+                  "Payment confirmed",
+                  "Could not confirm the payment",
+                )
+              }
+              // There is no reject endpoint. `API_Marketplace.pdf` gives the
+              // seller `confirm-payment-received` and nothing else; the only
+              // contract route out of a bad slip is a cancellation request,
+              // and routing this button there is a product decision nobody has
+              // taken. Until then it says so rather than reporting a rejection
+              // that never reached the buyer. See docs/design/api-gaps.md.
+              onReject={() =>
+                toast.warning(
+                  "Rejecting a slip is not supported yet. Ask the buyer in chat, or request a cancellation.",
+                )
+              }
             />
           </ActionCard>
         ) : null;
       case "enter-tracking":
         return (
-          <ActionCard title="Your step - enter the tracking number">
+          <ActionCard title={t("deal.stepEnterTracking")}>
             <div className="flex flex-col gap-3">
               <TextInput
-                label="Tracking number"
+                label={t("deal.trackingNumber")}
                 value={tracking}
                 onChange={setTracking}
-                placeholder="TH123456789KE"
+                placeholder={t("deal.trackingPlaceholder")}
                 icon={<Truck className="size-4" />}
-                hint="The buyer sees this the moment you save it"
+                hint={t("deal.trackingHint")}
               />
+              <TextInput label="Estimated delivery date" type="date" value={deliveryDate} onChange={setDeliveryDate} isRequired />
               <Button
                 block
-                isDisabled={!tracking.trim()}
+                isDisabled={!tracking.trim() || !deliveryDate}
                 isLoading={busy}
-                onPress={() => act("Tracking number saved")}
-              >
-                Save and notify the buyer
-              </Button>
+                onPress={() =>
+                  act(
+                    () => saveTracking(transaction.transaction_id, tracking.trim(), deliveryDate),
+                    "Tracking number saved",
+                    "Could not save the tracking number",
+                  )
+                }
+              >{t("deal.saveAndNotify")}</Button>
             </div>
           </ActionCard>
         );
       case "confirm-delivery":
         return (
-          <ActionCard title="Your step - confirm the item arrived">
+          <ActionCard title={t("deal.stepConfirmArrived")}>
             <div className="flex flex-col gap-3">
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 Did the parcel arrive and match what was agreed? Confirm to close
                 this deal.
               </p>
-              <Button block isLoading={busy} onPress={() => act("Deal closed")}>
-                Confirm the item arrived
-              </Button>
+              <Button
+                block
+                isLoading={busy}
+                onPress={() =>
+                  act(
+                    () => confirmItemArrived(transaction.transaction_id),
+                    "Deal closed",
+                    "Could not confirm the delivery",
+                  )
+                }
+              >{t("deal.confirmArrived")}</Button>
             </div>
           </ActionCard>
         );
       case "scan-qr":
+        // §appointment loop fix — the handover cannot happen until the current
+        // meetup is Confirmed. If it is not (no card yet, or a proposed change
+        // was just declined), send the buyer to the appointment pin instead of
+        // a scanner that the backend will reject.
+        if (appointment?.status !== "Confirmed") {
+          return (
+            <ActionCard title={t("deal.stepArrangeMeetup")}>
+              <div className="flex flex-col gap-3">
+                <p className="text-body text-ink-secondary">
+                  Agree and confirm a meetup time before the handover QR opens.
+                </p>
+                <Button
+                  block
+                  onPress={() => {
+                    setPinOpen(true);
+                    appointmentPinRef.current?.scrollIntoView({
+                      block: "nearest",
+                    });
+                  }}
+                >
+                  <CalendarClock className="size-4" />
+                  {t("deal.proposeTimeAndPlace")}
+                </Button>
+              </div>
+            </ActionCard>
+          );
+        }
         return (
-          <ActionCard title="Your step - scan the QR at handover">
+          <ActionCard title={t("deal.stepScanQr")}>
             <LinkButton
               block
               size="lg"
               href={`/history/${transaction.transaction_id}/scan`}
             >
-              <ScanLine className="size-5" />
-              Open the scanner
-            </LinkButton>
+              <ScanLine className="size-5" />{t("deal.openScanner")}</LinkButton>
           </ActionCard>
         );
       case "refund-slip":
         return (
-          <ActionCard title="Your step - refund and upload the slip">
+          <ActionCard title={t("deal.stepRefundSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
-              onUpload={async () => act("Refund slip uploaded")}
+              onUpload={(file) =>
+                act(
+                  () => submitRefundSlip(transaction.transaction_id, file),
+                  "Refund slip uploaded",
+                  "Could not upload the refund slip",
+                )
+              }
             />
           </ActionCard>
         );
-      default:
+      case undefined:
         return null;
+      default: {
+        // Exhaustive: adding a PromptAction without a case here is a compile
+        // error, not a screen that renders nothing on someone's turn.
+        const unhandled: never = prompt!.action;
+        return unhandled;
+      }
     }
   }
 
+  /**
+   * The QR opens here, not on its own route.
+   *
+   * The owner's second complaint about these screens was that the appointment,
+   * the QR and the slip live in different places — and they did: a collapsed
+   * pin, a bottom bar, and two separate pages. The slip and the appointment
+   * were already on this screen. This was the one that navigated away from the
+   * deal in order to complete it.
+   *
+   * The buyer's scanner stays a route: it owns a camera stream, and a sheet is
+   * the wrong container for that.
+   */
   const sellerQr =
     transaction &&
     transaction.delivery_method === "Meetup" &&
-    transaction.status === "Processing" &&
+    (transaction.status === "Processing" || (transaction.status === "Pending" && transaction.offer_id != null && !transaction.additional_money)) &&
+    !transaction.cancellation_response &&
+    // §appointment loop fix — the backend refuses a handover QR unless the
+    // current appointment is Confirmed, so do not offer the button until it is.
+    // Otherwise declining a proposed change ("Another time") left this button
+    // live and pressing it threw a 500 through the server action.
+    appointment?.status === "Confirmed" &&
     viewer === "seller" ? (
-      <ActionCard title="Let the buyer scan">
-        <LinkButton
-          block
-          size="lg"
-          href={`/history/${transaction.transaction_id}/qr`}
-        >
-          <QrCode className="size-5" />
-          Open QR
-        </LinkButton>
+      <ActionCard title={t("deal.letBuyerScan")}>
+        <OverlayTrigger>
+          <Button block size="lg">
+            <QrCode className="size-5" />{t("deal.showQr")}</Button>
+          <Overlay
+            title={t("deal.letBuyerScanTitle")}
+            description={t("deal.letBuyerScanBody")}
+            size="sm"
+          >
+            <div className="flex justify-center py-2">
+              <QrTicket
+                once
+                onGenerate={requestHandoverToken}
+                ariaLabel={`QR code for handing over ${transaction.post.item.name}`}
+              />
+            </div>
+          </Overlay>
+        </OverlayTrigger>
       </ActionCard>
     ) : null;
 
@@ -349,8 +732,8 @@ export function RoomScreen({
       <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
         <Link
           href="/chat"
-          aria-label="Back to conversations"
-          className="grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
+          aria-label={t("deal.backToConversations")}
+          className="touch-target grid size-9 shrink-0 place-items-center rounded-pill text-ink-secondary hover:bg-gray-100 xl:hidden"
         >
           <ArrowLeft aria-hidden className="size-5" />
         </Link>
@@ -366,16 +749,33 @@ export function RoomScreen({
             size="sm"
           />
           {isGroupRoom ? (
-            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
-              Giver
-            </span>
+            <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">{t("chat.giver")}</span>
           ) : null}
+
+          {/* §7.5.2 — rude/threatening behavior, spam, or impersonation "in
+              chat" is the spec's own framing for a User report, so the
+              trigger lives right where that happens. */}
+          <ReportDialog
+            reportType="User"
+            targetId={summary.counterparty.user_id}
+            reasons={USER_REPORT_REASONS}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                pill
+                aria-label={`Report ${summary.counterparty.name}`}
+              >
+                <Flag className="size-3.5" />
+              </Button>
+            }
+          />
         </span>
 
         <span className="ml-auto flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              "shrink-0 rounded-chip border px-1.5 py-0.5 text-[0.6875rem] font-semibold",
+              "shrink-0 rounded-chip border px-1.5 py-0.5 text-meta font-semibold",
               TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
             )}
           >
@@ -387,12 +787,12 @@ export function RoomScreen({
           {subjectHref ? (
             <Link
               href={subjectHref}
-              className="min-w-0 truncate text-[0.8125rem] text-ink-brand hover:underline"
+              className="min-w-0 truncate text-caption text-ink-brand hover:underline"
             >
               {summary.subject}
             </Link>
           ) : (
-            <span className="min-w-0 truncate text-[0.8125rem] text-ink-muted">
+            <span className="min-w-0 truncate text-caption text-ink-muted">
               {summary.subject}
             </span>
           )}
@@ -405,7 +805,7 @@ export function RoomScreen({
     <div className="shrink-0 border-b border-line">
       <button
         type="button"
-        onClick={() => setDetailOpen((v) => !v)}
+        onClick={() => setDetailToggled(!detailOpen)}
         aria-expanded={detailOpen}
         className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
       >
@@ -414,29 +814,37 @@ export function RoomScreen({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.875rem] font-semibold">
+          <span className="block truncate text-body-sm font-semibold">
             {summary.subject}
           </span>
-          <span className="block truncate text-[0.75rem] text-ink-muted">
-            {transaction
-              ? `${transaction.delivery_method === "Meetup" ? "Meetup" : "Shipping"}${
-                  requiresPayment(transaction)
-                    ? ` · ฿${transaction.final_amount.toLocaleString("en-GB")}`
-                    : " · trade, no money"
-                }`
+          {/* PRODUCT.md principle 1: "whose turn is it — always answer,
+              always first." resolveTransactionActor already produces exactly
+              that sentence, in second person, and it was rendered inside
+              DealDetails inside this accordion — which starts closed. What
+              was visible instead was the delivery method and the amount:
+              two facts the viewer already knows.
+
+              The owner named not knowing whose turn it is twice, once as a
+              fear and once as the worst thing about these screens. It is the
+              most-supported finding in the project and the answer was one
+              disclosure away. */}
+          <span
+            className={cn(
+              "block truncate text-caption",
+              isYourTurn ? "font-semibold text-ink" : "text-ink-muted",
+            )}
+          >
+            {prompt
+              ? st.key(prompt.labelKey)
               : giveaway
                 ? `Collect at ${giveaway.pickup_location}`
                 : null}
           </span>
         </span>
 
-        {transaction ? (
-          <StatusBadge
-            status={TRANSACTION_STATUS[transaction.status]}
-            size="sm"
-            iconOnly
-          />
-        ) : null}
+        {/* Was iconOnly, so the deal's state reached the collapsed strip as a
+            wordless coloured dot. The sentence above says it in words now, so
+            the badge is redundant here and stays in DealDetails. */}
 
         <ChevronDown
           aria-hidden
@@ -461,7 +869,13 @@ export function RoomScreen({
               deadline={deadline}
               reportable={reportable}
               busy={busy}
-              onAct={act}
+              onCancel={(reason) =>
+                act(
+                  () => askToCancel(transaction.transaction_id, reason),
+                  "Cancellation requested",
+                  "Could not send the cancellation request",
+                )
+              }
             />
           ) : null}
 
@@ -482,9 +896,10 @@ export function RoomScreen({
           was showing information that does not exist. */}
       {transaction && viewer ? (
         <div
+          ref={appointmentPinRef}
           className={cn(
             "border-b border-line",
-            transaction.delivery_method === "Meetup"
+            (transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund")
               ? "bg-tone-success-bg/60"
               : "bg-tone-info-bg/60",
           )}
@@ -493,9 +908,9 @@ export function RoomScreen({
             type="button"
             onClick={() => setPinOpen((v) => !v)}
             aria-expanded={pinOpen}
-            className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-[0.8125rem]"
+            className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-caption"
           >
-            {transaction.delivery_method === "Meetup" ? (
+            {(transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund") ? (
               <>
                 <CalendarClock
                   aria-hidden
@@ -527,18 +942,21 @@ export function RoomScreen({
 
           {pinOpen ? (
             <div className="px-4 pb-4">
-              {transaction.delivery_method !== "Meetup" ? (
+              {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment ? (
+                <div className="flex flex-col gap-3">
                 <AppointmentCard
                   status={appointment.status}
                   scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
                   place={appointment.location}
                   // Only the side that did not propose it can answer it.
                   awaitingViewer={appointment.proposed_by !== viewerId}
-                  onAccept={() => act("Meetup confirmed")}
-                  onDecline={() => act("Asked for another time")}
+                  onAccept={() => handleAppointmentResponse("confirm")}
+                  onDecline={() => handleAppointmentResponse("reject")}
                 />
+                <ProposeMeetup place={place} onPlaceChange={setPlace} when={when} onWhenChange={setWhen} time={time} onTimeChange={setTime} isBusy={busy} onPropose={handlePropose} />
+                </div>
               ) : (
                 /* Flow 1 puts the appointment after the payment is confirmed
                    and before the QR scan, and the API has a card to create.
@@ -548,8 +966,10 @@ export function RoomScreen({
                   onPlaceChange={setPlace}
                   when={when}
                   onWhenChange={setWhen}
+                  time={time}
+                  onTimeChange={setTime}
                   isBusy={busy}
-                  onPropose={() => act("Meetup proposed. Waiting on a reply.")}
+                  onPropose={handlePropose}
                 />
               )}
             </div>
@@ -565,7 +985,8 @@ export function RoomScreen({
         action={currentAction() ?? sellerQr}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-        onSend={async () => toast.show("Message sent")}
+        onSend={handleSend}
+        onAttach={handleAttach}
       />
     </div>
   );
@@ -590,11 +1011,11 @@ function DealDetails({
   deadline,
   reportable,
   busy,
-  onAct,
+  onCancel,
 }: {
   transaction: Transaction;
   viewer: Party;
-  appointment?: AppointmentSeed;
+  appointment?: AppointmentCardData;
   counterpartyName: string;
   prompt?: ActorPrompt;
   steps: Step[];
@@ -602,8 +1023,15 @@ function DealDetails({
   deadline?: Deadline;
   reportable: boolean;
   busy: boolean;
-  onAct: (message: string) => void;
+  onCancel: (reason: string) => void;
 }) {
+  const t = useTranslations();
+  const st = useStatusText();
+  // The reason was collected by an input bound to nothing and thrown away. A
+  // rejected cancellation flips dispute_status to under_review immediately, so
+  // this text is the only context the admin who picks it up will have.
+  const [cancelReason, setCancelReason] = useState("");
+
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
       <div className="flex flex-col gap-3">
@@ -624,11 +1052,11 @@ function DealDetails({
         {prompt ? (
           <p
             className={cn(
-              "rounded-control border px-3 py-2 text-[0.875rem] font-medium",
+              "rounded-control border px-3 py-2 text-body-sm font-medium",
               TONE_CHIP[prompt.tone],
             )}
           >
-            {prompt.label}
+            {st.key(prompt.labelKey)}
           </p>
         ) : null}
 
@@ -636,7 +1064,7 @@ function DealDetails({
           <DeliveryCard transaction={transaction} viewer={viewer} />
         ) : deadline ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-[0.75rem] text-ink-muted">{deadline.label}</p>
+            <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
             <CountdownPill deadline={deadline} />
           </div>
         ) : null}
@@ -648,40 +1076,37 @@ function DealDetails({
               size="sm"
               href={`/history/${transaction.transaction_id}/report`}
             >
-              <Flag className="size-4" />
-              Report a problem
-            </LinkButton>
+              <Flag className="size-4" />{t("deal.reportProblem")}</LinkButton>
           ) : null}
 
           {transaction.status === "Pending" ||
-          transaction.status === "Processing" ? (
+          transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by) ? (
             <OverlayTrigger>
               <Button variant="ghost" size="sm">
-                <XCircle className="size-4" />
-                Request cancellation
-              </Button>
+                <XCircle className="size-4" />{transaction.status === "Completed" ? "Request return (within 7 days)" : t("deal.requestCancellation")}</Button>
               <Overlay
-                title="Request to cancel this deal"
-                description="The other side has 72 hours to respond. If they do not, it goes to an admin."
+                isBusy={busy}
+                title={transaction.status === "Completed" ? "Request a return" : t("deal.cancelTitle")}
+                description={transaction.status === "Completed" ? "Explain the reason. The other party must respond before goods or money are returned." : t("deal.cancelBody")}
                 footer={
                   <>
-                    <Button variant="ghost" slot="close">
-                      Keep the deal
-                    </Button>
+                    <Button variant="ghost" slot="close">{t("deal.keepDeal")}</Button>
                     <Button
                       variant="danger"
                       isLoading={busy}
-                      onPress={() => onAct("Cancellation requested")}
-                    >
-                      Send cancellation request
-                    </Button>
+                      isDisabled={!cancelReason.trim()}
+                      onPress={() => onCancel(cancelReason.trim())}
+                    >{t("deal.sendCancelRequest")}</Button>
                   </>
                 }
               >
                 <TextInput
-                  label="Reason"
-                  placeholder="e.g. I can no longer make the meetup"
-                  hint="A reason helps a lot. If the other side rejects it, this is the context an admin will see."
+                  label={t("deal.reason")}
+                  value={cancelReason}
+                  onChange={setCancelReason}
+                  isRequired
+                  placeholder={t("deal.reasonPlaceholder")}
+                  hint={t("deal.reasonHint")}
                 />
               </Overlay>
             </OverlayTrigger>
@@ -692,8 +1117,8 @@ function DealDetails({
       {/* A bare column of dots does not announce what it is measuring. */}
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-overline text-ink-muted uppercase">Deal progress</p>
-          <p data-numeric className="text-[0.75rem] text-ink-muted">
+          <p className="text-overline text-ink-muted uppercase">{t("deal.progress")}</p>
+          <p data-numeric className="text-meta text-ink-muted">
             Step {currentStepNumber} of {steps.length}
           </p>
         </div>
@@ -719,6 +1144,7 @@ function GiveawayDetails({
   entrants?: Entrant[];
   viewerId: number;
 }) {
+  const t = useTranslations();
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
       <div className="flex flex-col gap-2">
@@ -733,7 +1159,7 @@ function GiveawayDetails({
           size="sm"
           className="w-fit"
         />
-        <p className="flex items-start gap-2 text-[0.8125rem] leading-[1.6] text-ink-muted">
+        <p className="flex items-start gap-2 text-caption leading-[1.6] text-ink-muted">
           <MapPin aria-hidden className="mt-0.5 size-3.5 shrink-0" />
           Collect at {giveaway.pickup_location}
         </p>
@@ -746,18 +1172,14 @@ function GiveawayDetails({
             size="sm"
             className="w-fit"
             href={`/giveaway/${giveaway.giveaway_id}/manage`}
-          >
-            Choose recipients
-          </LinkButton>
+          >{t("chat.chooseRecipients")}</LinkButton>
         ) : (
           <LinkButton
             variant="secondary"
             size="sm"
             className="w-fit"
             href={`/giveaway/${giveaway.giveaway_id}`}
-          >
-            Open the giveaway
-          </LinkButton>
+          >{t("chat.openGiveaway")}</LinkButton>
         )}
       </div>
 
@@ -765,7 +1187,7 @@ function GiveawayDetails({
           in the one kind of room that holds more than two people. */}
       {entrants?.length ? (
         <div className="flex flex-col gap-2">
-          <p className="text-overline text-ink-muted uppercase">In this room</p>
+          <p className="text-overline text-ink-muted uppercase">{t("chat.inThisRoom")}</p>
 
           <span className="flex items-center gap-2">
             <TrustBadge
@@ -774,9 +1196,7 @@ function GiveawayDetails({
               isVerified={giveaway.giver.isVerified}
               avatarUrl={giveaway.giver.avatar_url}
             />
-            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink-secondary">
-              Giver
-            </span>
+            <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">{t("chat.giver")}</span>
           </span>
 
           <ul className="flex flex-col gap-2">
@@ -800,7 +1220,7 @@ function GiveawayDetails({
           {entrants.length > ROSTER_LIMIT ? (
             <Link
               href={`/giveaway/${giveaway.giveaway_id}/manage`}
-              className="text-[0.8125rem] font-medium text-ink-brand hover:underline"
+              className="text-caption font-medium text-ink-brand hover:underline"
             >
               {entrants.length - ROSTER_LIMIT} more
             </Link>

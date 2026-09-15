@@ -37,7 +37,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (typeof body === 'string') {
         message = body;
       } else if (body && typeof body === 'object' && 'message' in body) {
-        const m = (body as { message: unknown }).message;
+        const m = body.message;
         message = Array.isArray(m) ? m.join(', ') : String(m);
       }
     }
@@ -45,7 +45,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (!isHttpException) {
       // Unexpected (non-HttpException) errors: log the real stack server-side,
       // never leak internals to the client.
-      this.logger.error(exception instanceof Error ? exception.stack : exception);
+      this.logger.error(
+        exception instanceof Error ? exception.stack : exception,
+      );
     }
 
     res.status(statusCode).json({

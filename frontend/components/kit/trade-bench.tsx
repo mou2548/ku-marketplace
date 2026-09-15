@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
-import { useDragAndDrop } from "react-aria-components";
+import { useTranslations } from "next-intl";
+import { ArrowDownLeft, ArrowUpRight, Coins, PackageOpen, X } from "lucide-react";
 
 import type { InventoryItem } from "./inventory-slot";
 import { EmptySlot, InventoryGrid, InventorySlot } from "./inventory-slot";
@@ -22,11 +21,14 @@ import { cn } from "@/lib/utils";
  *
  * Layout: side-by-side on desktop, stacked on mobile — 360px cannot fit two
  * stacks abreast. The cash field stays in the middle, on the seam, so the
- * comparison survives the geometry change (docs/design/ia.md §5).
+ * comparison survives the geometry change (docs/design/ia.md §5). The slots
+ * carry the game DNA; their containers stay quiet enough for product photos
+ * and the trade direction to remain the visual hierarchy.
  *
- * Drag-and-drop comes from react-aria-components, which ships a keyboard path
- * (focus an item, Enter to lift, arrow to the target, Enter to drop). A
- * mouse-only bench would fail CLAUDE.md §6.
+ * Items move by clicking: tap one in your inventory to place it on the bench,
+ * tap it on the bench to take it back. GridList makes each slot a keyboard
+ * button (Enter to act), so the whole bench works without a pointer — CLAUDE.md
+ * §6.
  *
  * The sides are named for the viewer, not for the proposer. They used to be
  * `offered`/`wanted`, which meant something different depending on which side
@@ -34,12 +36,8 @@ import { cn } from "@/lib/utils";
  * so the same trade drew in two different arrangements.
  */
 
-const DRAG_TYPE = "application/x-ku-item";
-
 export interface TradeBenchProps {
-  /** Items still in the viewer's inventory, available to drag on. */
-  inventory: InventoryItem[];
-  /** What leaves the viewer. The editable, droppable side. */
+  /** What leaves the viewer. The editable side. */
   youGive: InventoryItem[];
   onYouGiveChange: (next: InventoryItem[]) => void;
   /** What comes to the viewer. Read-only — it is the other side's stack. */
@@ -63,7 +61,6 @@ const OVERLINE =
   "text-overline text-ink-muted uppercase";
 
 export function TradeBench({
-  inventory,
   youGive,
   onYouGiveChange,
   youGet,
@@ -71,45 +68,11 @@ export function TradeBench({
   onAdditionalMoneyChange,
   moneyDirection,
   counterpartyName,
-  minSlots = 4,
+  minSlots = 3,
   isReadOnly = false,
   className,
 }: TradeBenchProps) {
-  const offeredIds = useMemo(
-    () => new Set(youGive.map((i) => i.item_id)),
-    [youGive],
-  );
-
-  const byId = useMemo(() => {
-    const map = new Map<number, InventoryItem>();
-    for (const item of [...inventory, ...youGive]) map.set(item.item_id, item);
-    return map;
-  }, [inventory, youGive]);
-
-  /** The bench accepts items and adds them to the offer. */
-  const { dragAndDropHooks: benchHooks } = useDragAndDrop({
-    acceptedDragTypes: [DRAG_TYPE],
-    isDisabled: isReadOnly,
-    getDropOperation: () => "move",
-    onRootDrop: async (event) => {
-      const dropped = await Promise.all(
-        event.items
-          .filter((item) => item.kind === "text")
-          .map(async (item) => Number(await item.getText(DRAG_TYPE))),
-      );
-      const additions = dropped
-        .map((id) => byId.get(id))
-        .filter((item): item is InventoryItem => !!item && !offeredIds.has(item.item_id));
-      if (additions.length) onYouGiveChange([...youGive, ...additions]);
-    },
-    // Lifting an item back off the bench returns it to the inventory.
-    getItems: (keys) =>
-      [...keys].map((key) => ({
-        [DRAG_TYPE]: String(key),
-        "text/plain": byId.get(Number(key))?.name ?? "",
-      })),
-  });
-
+  const t = useTranslations();
   const remove = (id: number) =>
     onYouGiveChange(youGive.filter((i) => i.item_id !== id));
 
@@ -117,7 +80,12 @@ export function TradeBench({
   const youPay = moneyDirection === "you-pay";
 
   return (
-    <div className={cn("flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4", className)}>
+    <div
+      className={cn(
+        "grid gap-3 lg:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] lg:items-stretch lg:gap-4",
+        className,
+      )}
+    >
       {/* ---- What you receive ---- *
        * First, on both axes. The question anyone opens an offer with is what
        * is in it for them, and on a phone the top of the column is the answer
@@ -125,43 +93,53 @@ export function TradeBench({
       <Surface
         as="section"
         shape="panel"
-        fill="plate"
-        noise
-        className="flex-1 p-4"
-        aria-label="What you receive"
+        className="overflow-hidden p-0"
+        aria-label={t("offer.whatYouReceive")}
       >
-        <header className="mb-3 border-b-2 border-tone-success-border pb-2.5">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="flex items-center gap-1.5 text-[1.125rem] leading-[1.4] font-semibold">
-              <ArrowDownLeft
-                aria-hidden
-                className="size-[1.125rem] shrink-0 text-tone-success-fg"
-              />
-              You get
-            </h3>
-            <span data-numeric className="text-[0.8125rem] text-ink-muted">
-              {youGet.length} {youGet.length === 1 ? "item" : "items"}
-            </span>
-          </div>
-          <p className={cn("mt-1", OVERLINE)}>
-            {counterpartyName ? `From ${counterpartyName}` : "From them"}
-          </p>
-        </header>
+        <div aria-hidden className="h-1 bg-tone-success-solid" />
+        <div className="p-4">
+          <header className="mb-4">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="flex items-center gap-1.5 text-[1.125rem] leading-[1.4] font-semibold">
+                <ArrowDownLeft
+                  aria-hidden
+                  className="size-[1.125rem] shrink-0 text-tone-success-fg"
+                />
+                {t("offer.youGet")}
+              </h3>
+              <span data-numeric className="text-caption text-ink-muted">
+                {t("offer.itemCount", { count: youGet.length })}
+              </span>
+            </div>
+            <p className={cn("mt-1", OVERLINE)}>
+              {counterpartyName
+                ? t("offer.fromPerson", { name: counterpartyName })
+                : t("offer.fromThem")}
+            </p>
+          </header>
 
-        <InventoryGrid
-          aria-label="Items coming to you"
-          items={youGet}
-          selectionMode="none"
-          className="grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"
-        >
-          {(item: InventoryItem) => (
-            <InventorySlot id={item.item_id} item={item} showName />
-          )}
-        </InventoryGrid>
+          <InventoryGrid
+            aria-label={t("offer.itemsComing")}
+            items={youGet}
+            selectionMode="none"
+            className="grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"
+          >
+            {(item: InventoryItem) => (
+              <InventorySlot id={item.item_id} item={item} showName />
+            )}
+          </InventoryGrid>
+
+          {youGet.length === 0 ? (
+            <div className="flex min-h-16 items-center justify-center gap-2 rounded-control bg-surface-sunken text-body-sm text-ink-muted">
+              <PackageOpen aria-hidden className="size-4" />
+              <span>No item</span>
+            </div>
+          ) : null}
+        </div>
       </Surface>
 
       {/* ---- The seam: cash gap + direction ---- */}
-      <div className="flex shrink-0 flex-row items-center gap-3 lg:w-56 lg:flex-col lg:justify-center">
+      <div className="flex shrink-0 flex-row items-center gap-3 rounded-card bg-tone-trade-bg/55 p-3 lg:flex-col lg:justify-center lg:text-center">
         {/* A bidirectional arrow sat here and stated no direction at all. The
             seam now says which way the cash travels in words, because that is
             the half of the trade the two item piles cannot show. */}
@@ -169,12 +147,16 @@ export function TradeBench({
           aria-hidden
           className={cn(
             "grid size-11 shrink-0 place-items-center rounded-pill shadow-raised",
-            youPay
+            isReadOnly && additionalMoney === 0
+              ? "bg-surface text-ink-muted"
+              : youPay
               ? "bg-tone-warning-bg text-tone-warning-fg"
               : "bg-tone-success-bg text-tone-success-fg",
           )}
         >
-          {youPay ? (
+          {isReadOnly && additionalMoney === 0 ? (
+            <Coins className="size-5" />
+          ) : youPay ? (
             <ArrowUpRight className="size-5" />
           ) : (
             <ArrowDownLeft className="size-5" />
@@ -182,9 +164,13 @@ export function TradeBench({
         </span>
 
         {additionalMoney > 0 ? (
-          <p className="hidden text-center text-[0.8125rem] leading-[1.5] text-ink-secondary lg:block">
+          <p className="hidden text-center text-caption leading-[1.5] text-ink-secondary lg:block">
             <span className="font-semibold text-ink">
-              {youPay ? "You add" : `${counterpartyName ?? "They"} add${counterpartyName ? "s" : ""}`}
+              {youPay
+                ? t("offer.youAdd")
+                : counterpartyName
+                  ? t("offer.personAdds", { name: counterpartyName })
+                  : t("offer.theyAdd")}
             </span>{" "}
             <span data-numeric>฿{additionalMoney.toLocaleString()}</span>
           </p>
@@ -193,82 +179,115 @@ export function TradeBench({
         {/* Whose money it is, said out loud. The proposer always puts up the
             cash, so on a received offer this is money arriving — labelling it
             "Add cash" told the wrong half of the trade to pay. */}
-        <TextInput
-          aria-label={
-            youPay
-              ? "Extra cash you add, in baht"
-              : "Extra cash they add, in baht"
-          }
-          label={youPay ? "You add" : "They add"}
-          value={additionalMoney ? String(additionalMoney) : ""}
-          onChange={(v) => onAdditionalMoneyChange(Number(v.replace(/\D/g, "")) || 0)}
-          isReadOnly={isReadOnly}
-          inputMode="numeric"
-          placeholder="0"
-          icon={<Coins className="size-4" />}
-          suffix={<span className="text-[0.8125rem]">THB</span>}
-          className="flex-1 lg:w-full"
-        />
+        {isReadOnly && additionalMoney === 0 ? (
+          <div className="min-w-0 flex-1 lg:text-center">
+            <p className="text-caption font-semibold text-ink-secondary">
+              Cash
+            </p>
+            <p className="mt-0.5 text-meta text-ink-muted">No cash added</p>
+          </div>
+        ) : (
+          <TextInput
+            aria-label={
+              youPay ? t("offer.yourExtraCash") : t("offer.theirExtraCash")
+            }
+            label={youPay ? t("offer.youAdd") : t("offer.theyAdd")}
+            value={additionalMoney ? String(additionalMoney) : ""}
+            onChange={(v) =>
+              onAdditionalMoneyChange(Number(v.replace(/\D/g, "")) || 0)
+            }
+            isReadOnly={isReadOnly}
+            inputMode="numeric"
+            placeholder="0"
+            icon={<Coins className="size-4" />}
+            suffix={<span className="text-caption">{t("listing.thb")}</span>}
+            className="flex-1 lg:w-full"
+          />
+        )}
       </div>
 
       {/* ---- What leaves you ---- */}
       <Surface
         as="section"
         shape="panel"
-        fill="plate"
-        noise
-        className="flex-1 p-4"
-        aria-label="Your side of the trade"
+        className="overflow-hidden p-0"
+        aria-label={t("offer.yourSide")}
       >
-        <header className="mb-3 border-b-2 border-tone-neutral-border pb-2.5">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="flex items-center gap-1.5 text-[1.125rem] leading-[1.4] font-semibold">
-              <ArrowUpRight
-                aria-hidden
-                className="size-[1.125rem] shrink-0 text-ink-muted"
+        <div aria-hidden className="h-1 bg-tone-trade-solid" />
+        <div className="p-4">
+          <header className="mb-4">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="flex items-center gap-1.5 text-[1.125rem] leading-[1.4] font-semibold">
+                <ArrowUpRight
+                  aria-hidden
+                  className="size-[1.125rem] shrink-0 text-ink-muted"
+                />
+                {t("offer.youGive")}
+              </h3>
+              <span data-numeric className="text-caption text-ink-muted">
+                {t("offer.itemCount", { count: youGive.length })}
+              </span>
+            </div>
+            <p className={cn("mt-1", OVERLINE)}>
+              {counterpartyName
+                ? t("offer.toPerson", { name: counterpartyName })
+                : t("offer.toThem")}
+            </p>
+          </header>
+
+          <InventoryGrid
+            aria-label={t("offer.onTable")}
+            items={youGive}
+            selectionMode="none"
+            renderEmptyState={() => null}
+            className="grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"
+          >
+            {(item: InventoryItem) => (
+              <InventorySlot
+                id={item.item_id}
+                item={item}
+                showName
+                onAction={isReadOnly ? undefined : () => remove(item.item_id)}
+                badge={
+                  /* Tapping the item removed it, with no X, no confirmation,
+                   and a slot identical to the read-only ones opposite. The
+                   only hint was a 13px line at the bottom of the panel. The
+                   tap still works; it is just no longer the only way to find
+                   out that it does. */
+                  isReadOnly ? undefined : (
+                    <span
+                      aria-hidden
+                      className="touch-target grid size-6 place-items-center rounded-pill bg-surface-inverse/80 text-white"
+                    >
+                      <X className="size-3.5" />
+                    </span>
+                  )
+                }
               />
-              You give
-            </h3>
-            <span data-numeric className="text-[0.8125rem] text-ink-muted">
-              {youGive.length} {youGive.length === 1 ? "item" : "items"}
-            </span>
-          </div>
-          <p className={cn("mt-1", OVERLINE)}>
-            {counterpartyName ? `To ${counterpartyName}` : "To them"}
-          </p>
-        </header>
+            )}
+          </InventoryGrid>
 
-        <InventoryGrid
-          aria-label="Items on the trade table"
-          items={youGive}
-          dragAndDropHooks={benchHooks}
-          selectionMode="none"
-          renderEmptyState={() => null}
-          className="grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4"
-        >
-          {(item: InventoryItem) => (
-            <InventorySlot
-              id={item.item_id}
-              item={item}
-              showName
-              onAction={isReadOnly ? undefined : () => remove(item.item_id)}
-            />
-          )}
-        </InventoryGrid>
+          {isReadOnly && youGive.length === 0 ? (
+            <div className="flex min-h-16 items-center justify-center gap-2 rounded-control bg-surface-sunken text-body-sm text-ink-muted">
+              <PackageOpen aria-hidden className="size-4" />
+              <span>No item</span>
+            </div>
+          ) : null}
 
-        {emptyWells > 0 ? (
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {Array.from({ length: emptyWells }, (_, i) => (
-              <EmptySlot key={i} label="Drag an item here" />
-            ))}
-          </div>
-        ) : null}
+          {emptyWells > 0 ? (
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              {Array.from({ length: emptyWells }, (_, i) => (
+                <EmptySlot key={i} label={t("inventory.emptySlot")} />
+              ))}
+            </div>
+          ) : null}
 
-        {!isReadOnly ? (
-          <p className="mt-3 text-[0.8125rem] leading-[1.5] text-ink-muted">
-            Drag items from your inventory, or focus an item and press Enter to move it with the arrow keys
-          </p>
-        ) : null}
+          {!isReadOnly && youGive.length > 0 ? (
+            <p className="mt-3 text-caption leading-[1.5] text-ink-muted">
+              {t("offer.tapToRemove")}
+            </p>
+          ) : null}
+        </div>
       </Surface>
     </div>
   );
@@ -276,8 +295,8 @@ export function TradeBench({
 
 /**
  * The proposer's inventory panel. Kept separate from TradeBench so a page can
- * place it wherever the layout needs — a sheet on mobile, a rail on desktop —
- * while sharing the same drag session.
+ * place it wherever the layout needs — a sheet on mobile, a rail on desktop.
+ * Tapping an item hands it to `onAdd`, which places it on the bench.
  */
 export function TradeSourcePanel({
   inventory,
@@ -290,31 +309,46 @@ export function TradeSourcePanel({
   onAdd: (item: InventoryItem) => void;
   className?: string;
 }) {
-  const { dragAndDropHooks } = useDragAndDrop({
-    getItems: (keys) =>
-      [...keys].map((key) => ({ [DRAG_TYPE]: String(key) })),
-  });
-
+  const t = useTranslations();
   return (
-    <Surface as="section" shape="panel" className={cn("p-4", className)}>
-      <h3 className="mb-3 text-[1.125rem] leading-[1.4] font-semibold">
-        My inventory
-      </h3>
-      <InventoryGrid
-        aria-label="My inventory"
-        items={inventory}
-        dragAndDropHooks={dragAndDropHooks}
-        selectionMode="multiple"
-      >
-        {(item: InventoryItem) => (
-          <InventorySlot
-            id={item.item_id}
-            item={item}
-            isPlaced={offeredIds.has(item.item_id)}
-            onAction={() => onAdd(item)}
-          />
-        )}
-      </InventoryGrid>
+    <Surface
+      as="section"
+      shape="panel"
+      className={cn("overflow-hidden p-0", className)}
+    >
+      <div className="flex items-start gap-3 bg-brand-subtle/55 px-4 py-3.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-surface text-ink-brand shadow-flat">
+          <PackageOpen aria-hidden className="size-4" />
+        </span>
+        <div>
+          <h3 className="text-[1.125rem] leading-[1.4] font-semibold">
+            {t("offer.myInventory")}
+          </h3>
+          {/* This line used to live at the bottom of the "You give" panel, 13px
+          and muted, pointing at a stash that was below the fold. An
+          instruction belongs where the tap starts. */}
+          <p className="mt-0.5 text-caption text-ink-muted">
+            {t("offer.tapToPlace")}
+          </p>
+        </div>
+      </div>
+      <div className="p-4">
+        <InventoryGrid
+          aria-label={t("offer.myInventory")}
+          items={inventory}
+          selectionMode="none"
+        >
+          {(item: InventoryItem) => (
+            <InventorySlot
+              id={item.item_id}
+              item={item}
+              isPlaced={offeredIds.has(item.item_id)}
+              showName
+              onAction={() => onAdd(item)}
+            />
+          )}
+        </InventoryGrid>
+      </div>
     </Surface>
   );
 }

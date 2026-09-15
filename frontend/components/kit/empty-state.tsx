@@ -33,7 +33,7 @@ export function EmptyState({
       elevation="flat"
       fill="none"
       className={cn(
-        "texture-grid flex flex-col items-center gap-3 px-6 py-12 text-center",
+        "texture-grid mx-auto flex w-full max-w-2xl flex-col items-center gap-3 px-6 py-12 text-center",
         className,
       )}
     >
@@ -43,7 +43,7 @@ export function EmptyState({
         </span>
       ) : null}
       <h3 className="text-[1.125rem] leading-[1.4] font-semibold">{title}</h3>
-      <p className="max-w-sm text-[0.875rem] leading-[1.65] text-ink-muted">
+      <p className="max-w-sm text-body-sm text-ink-muted">
         {description}
       </p>
       {action ? <div className="pt-1">{action}</div> : null}

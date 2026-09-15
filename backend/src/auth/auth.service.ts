@@ -27,7 +27,9 @@ export class AuthService {
   ) {}
 
   async requestRegisterOtp(payload: RequestOtpPayload) {
-    const existing = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
     if (existing) {
       throw new ConflictException('อีเมลนี้เคยลงทะเบียนแล้ว');
     }
@@ -74,6 +76,9 @@ export class AuthService {
         firstNameTh: '',
         lastNameTh: '',
         emailVerifiedAt: new Date(),
+        subscriptions: {
+          create: { tier: 'Free', status: 'Active', startDate: new Date() },
+        },
       },
       select: {
         userId: true,
@@ -81,10 +86,6 @@ export class AuthService {
         firstNameEn: true,
         isAdmin: true,
       },
-    });
-
-    await this.prisma.subscription.create({
-      data: { userId: user.userId, tier: 'Free', status: 'Active', startDate: new Date() },
     });
 
     const accessToken = this.tokenService.generateAccessToken(user);
@@ -97,28 +98,31 @@ export class AuthService {
    * Login ด้วย email + password ตรงๆ สำหรับ user ที่สมัคร (verify OTP) ไปแล้ว
    */
   async login(payload: LoginPayload) {
-    const user = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
     if (!user) {
       throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
-    const passwordMatches = await bcrypt.compare(payload.password, user.passwordHash);
+    const passwordMatches = await bcrypt.compare(
+      payload.password,
+      user.passwordHash,
+    );
     if (!passwordMatches) {
       throw new UnauthorizedException('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
-    // §users/me DELETE — บัญชีที่ soft-delete ตัวเองไปแล้ว (status: Deleted) หรือถูก
-    // แอดมิน Suspended/Banned ต้อง login ไม่ได้อีก ไม่งั้น DELETE /users/me จะไม่มี
-    // ความหมายอะไรเลย (ลบแล้วแต่ยังใช้งานได้ปกติ)
-    if (user.status !== 'Active') {
-      throw new UnauthorizedException(
-        user.status === 'Deleted'
-          ? 'บัญชีนี้ถูกลบไปแล้ว'
-          : 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อแอดมิน',
-      );
+    // Restricted accounts can sign in to appeal; JwtAuthGuard blocks marketplace actions.
+    if (!['Active', 'Suspended', 'Banned'].includes(user.status ?? '')) {
+      throw new UnauthorizedException('บัญชีนี้ถูกลบไปแล้ว');
     }
 
-    const tokenUser = { userId: user.userId, email: user.email, isAdmin: user.isAdmin };
+    const tokenUser = {
+      userId: user.userId,
+      email: user.email,
+      isAdmin: user.isAdmin,
+    };
     const accessToken = this.tokenService.generateAccessToken(tokenUser);
     const refreshToken = this.tokenService.generateRefreshToken(tokenUser);
 
@@ -127,6 +131,7 @@ export class AuthService {
         userId: user.userId,
         email: user.email,
         firstNameEn: user.firstNameEn,
+        status: user.status,
         isAdmin: user.isAdmin,
       },
       accessToken,
@@ -140,7 +145,9 @@ export class AuthService {
    * ลงทะเบียนไว้บ้าง (email enumeration)
    */
   async forgotPassword(payload: ForgotPasswordPayload) {
-    const user = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
     if (user && user.status === 'Active') {
       const otp = await this.otpService.createPasswordResetOtp(payload.email);
       await this.mailService.sendPasswordResetOtp(payload.email, otp);
@@ -149,12 +156,17 @@ export class AuthService {
   }
 
   async resetPassword(payload: ResetPasswordPayload) {
-    const otpValid = await this.otpService.verifyPasswordResetOtp(payload.email, payload.otp);
+    const otpValid = await this.otpService.verifyPasswordResetOtp(
+      payload.email,
+      payload.otp,
+    );
     if (!otpValid) {
       throw new BadRequestException('OTP ไม่ถูกต้องหรือหมดอายุแล้ว');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
     if (!user) {
       // ไม่ควรเกิดขึ้นจริง (OTP ถูก issue จาก forgotPassword ที่เช็ค user มาก่อนแล้ว)
       // แต่กันไว้เผื่อ user ถูกลบไประหว่างที่ OTP ยังไม่หมดอายุ

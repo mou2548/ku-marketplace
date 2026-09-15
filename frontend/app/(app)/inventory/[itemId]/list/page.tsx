@@ -1,9 +1,10 @@
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getMyItems } from "@/lib/api/fixtures";
+import { getMyItems } from "@/lib/api/items";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
@@ -21,6 +22,8 @@ export default async function ListItemPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
+  const tStatus = await getTranslations("status");
+  const t = await getTranslations();
   const { itemId } = await params;
   const items = await getMyItems();
   const item = items.find((i) => i.item_id === Number(itemId));
@@ -33,55 +36,61 @@ export default async function ListItemPage({
    * cannot see is the one thing this screen must not ask for.
    */
   const preview = (
-    <Surface shape="card" className="flex flex-col gap-3 p-5">
-      <p className="text-overline text-ink-muted uppercase">
-        What you are listing
-      </p>
-
-      <span
-        className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
-        style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
-      >
+    <Surface shape="panel" className="mx-auto flex w-full max-w-md flex-col overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
         <PostImage
           src={item.images.find((i) => i.is_primary)?.image_url}
-          alt=""
+          alt={item.name}
           aspectRatio={4 / 3}
           sizes="320px"
+          className="h-full"
         />
-      </span>
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-1 bg-[var(--slot-edge)]"
+          style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
+        />
+      </div>
 
-      <p className="font-semibold">{item.name}</p>
+      <div className="flex flex-col gap-3 p-5">
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("inventory.whatListing")}
+        </p>
+        <p className="text-h3">{item.name}</p>
 
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+        <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Category</dt>
+          <dt className="text-ink-muted">{t("inventory.category")}</dt>
           <dd>{item.category}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Condition</dt>
-          <dd
-            style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
-            className="text-[var(--slot-edge)]"
-          >
-            {rarity.label}
-          </dd>
+          <dt className="text-ink-muted">{t("inventory.condition")}</dt>
+          {/* tokens.md §5 bans rarity as free-floating coloured text: it is
+              a rim on a slot or a chip, never a tinted word in a spec list. */}
+          <dd>{tStatus(rarity.labelKey)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Quantity</dt>
+          <dt className="text-ink-muted">{t("inventory.quantity")}</dt>
           <dd data-numeric>{item.quantity}</dd>
         </div>
-      </dl>
+        </dl>
 
-      {item.description ? (
-        <p className="border-t border-line pt-3 text-[0.8125rem] leading-[1.6] text-ink-muted">
-          {item.description}
-        </p>
-      ) : null}
+        {item.description ? (
+          <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
+            {item.description}
+          </p>
+        ) : null}
+      </div>
     </Surface>
   );
 
   return (
-    <TwoColumn rail={preview}>
+    <TwoColumn
+      rail={<div className="hidden lg:block">{preview}</div>}
+      railSide="left"
+      columns="22rem minmax(0,1fr)"
+      className="gap-8"
+    >
       <ListItemForm item={item} />
     </TwoColumn>
   );

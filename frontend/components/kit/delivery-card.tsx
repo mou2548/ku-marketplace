@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Check, Copy, PackageCheck, Truck } from "lucide-react";
 
@@ -7,8 +8,9 @@ import type { Transaction } from "@/lib/api/types";
 import { shippingDeadline } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
+import { Notice } from "@/components/patterns/notice";
+
 import { CountdownPill } from "./countdown-pill";
-import { Surface } from "./surface";
 
 /**
  * What a shipping deal has instead of a meetup.
@@ -30,6 +32,7 @@ export function DeliveryCard({
   compact?: boolean;
   className?: string;
 }) {
+  const t = useTranslations();
   const [copied, setCopied] = useState(false);
   const tracking = transaction.tracking_number;
   const eta = transaction.estimated_delivery_date;
@@ -69,12 +72,9 @@ export function DeliveryCard({
   }
 
   return (
-    <Surface
-      shape="card"
-      elevation="flat"
-      className={cn("flex flex-col gap-3 bg-tone-info-bg border-l-4 border-l-tone-info-solid p-4", className)}
+    <Notice tone="info" className={cn("flex flex-col gap-3", className)}
     >
-      <p className="flex items-center gap-2 text-[0.9375rem] font-semibold text-tone-info-fg">
+      <p className="flex items-center gap-2 text-body font-semibold text-tone-info-fg">
         {tracking ? (
           <PackageCheck aria-hidden className="size-4 shrink-0" />
         ) : (
@@ -87,15 +87,15 @@ export function DeliveryCard({
         <div className="flex items-center gap-2">
           <span
             data-numeric
-            className="min-w-0 flex-1 truncate rounded-control bg-surface px-3 py-2 text-[0.875rem] font-medium shadow-sunken"
+            className="min-w-0 flex-1 truncate rounded-control bg-surface px-3 py-2 text-body-sm font-medium shadow-sunken"
           >
             {tracking}
           </span>
           <button
             type="button"
             onClick={copy}
-            aria-label="Copy the tracking number"
-            className="grid size-9 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary shadow-raised hover:text-ink"
+            aria-label={t("delivery.copyTracking")}
+            className="touch-target grid size-9 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary shadow-raised hover:text-ink"
           >
             {copied ? (
               <Check aria-hidden className="size-4 text-brand" />
@@ -110,18 +110,16 @@ export function DeliveryCard({
           than as a surprise when the report button appears. */}
       {eta ? (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[0.75rem] text-ink-muted">
-            You can report a problem after this
-          </p>
+          <p className="text-meta text-ink-muted">{t("delivery.reportAfter")}</p>
           <CountdownPill deadline={shippingDeadline(eta)} />
         </div>
       ) : null}
 
-      <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
+      <p className="text-caption leading-[1.6] text-ink-secondary">
         {viewer === "buyer"
           ? "Confirm once it arrives and matches what was agreed. That closes the deal."
           : "The buyer confirms when it arrives. Nothing else is needed from you."}
       </p>
-    </Surface>
+    </Notice>
   );
 }

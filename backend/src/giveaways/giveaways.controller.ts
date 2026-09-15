@@ -15,6 +15,7 @@ import type {
   ForfeitPayload,
   ScanQrPayload,
   SelectRecipientsPayload,
+  SendGiveawayMessagePayload,
 } from './giveaways.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
@@ -58,16 +59,24 @@ export class GiveawaysController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('จับฉลากสำเร็จ')
-  draw(@Param('id') id: string) {
-    return this.giveawaysService.draw(id);
+  draw(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.giveawaysService.draw(id, user.userId);
   }
 
   @Post('giveaways/:id/select')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('เลือกผู้ชนะสำเร็จ')
-  select(@Param('id') id: string, @Body() body: SelectRecipientsPayload) {
-    return this.giveawaysService.select(id, body.receiver_ids ?? []);
+  select(
+    @Param('id') id: string,
+    @Body() body: SelectRecipientsPayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.select(
+      id,
+      body.receiver_ids ?? [],
+      user.userId,
+    );
   }
 
   @Get('giveaways/:id/recipients')
@@ -83,15 +92,24 @@ export class GiveawaysController {
   forfeit(
     @Param('recipient_id') recipientId: string,
     @Body() body: ForfeitPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.giveawaysService.forfeit(recipientId, body.confirm === true);
+    return this.giveawaysService.forfeit(
+      recipientId,
+      body.confirm === true,
+      user.userId,
+    );
   }
 
   @Post('giveaways/:id/tickets/:ticket_id/qr/generate')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('สร้าง QR สำเร็จ')
-  qrGenerate(@Param('id') id: string, @Param('ticket_id') ticketId: string) {
-    return this.giveawaysService.qrGenerate(id, ticketId);
+  qrGenerate(
+    @Param('id') id: string,
+    @Param('ticket_id') ticketId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.qrGenerate(id, ticketId, user.userId);
   }
 
   @Post('giveaways/:id/tickets/:ticket_id/qr/scan')
@@ -101,8 +119,34 @@ export class GiveawaysController {
     @Param('id') id: string,
     @Param('ticket_id') ticketId: string,
     @Body() body: ScanQrPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.giveawaysService.qrScan(id, ticketId, body.token);
+    return this.giveawaysService.qrScan(id, ticketId, body.token, user.userId);
+  }
+
+  /**
+   * §6, extended — the giver plus every entrant read/write here, unlike a
+   * transaction's 1:1 room. See `assertGiveawayMember` in the service.
+   */
+  @Get('giveaways/:id/message')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ดึงข้อความสำเร็จ')
+  getGiveawayMessages(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.getGiveawayMessages(id, user.userId);
+  }
+
+  @Post('giveaways/:id/message')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ส่งข้อความสำเร็จ')
+  sendGiveawayMessage(
+    @Param('id') id: string,
+    @Body() body: SendGiveawayMessagePayload,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.sendGiveawayMessage(id, body, user.userId);
   }
 
   @Post('giveaways/:id/tickets/:ticket_id/qr/confirm')
@@ -113,7 +157,13 @@ export class GiveawaysController {
     @Param('id') id: string,
     @Param('ticket_id') ticketId: string,
     @Body() body: ConfirmQrPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.giveawaysService.qrConfirm(id, ticketId, body.token);
+    return this.giveawaysService.qrConfirm(
+      id,
+      ticketId,
+      body.token,
+      user.userId,
+    );
   }
 }

@@ -1,4 +1,5 @@
-import { getMyItems, getPosts } from "@/lib/api/fixtures";
+import { getMyItems } from "@/lib/api/items";
+import { listPosts } from "@/lib/api/posts";
 
 import { PostComposer } from "./post-composer";
 
@@ -29,7 +30,7 @@ export default async function PostPage({
   const [{ type }, items, posts] = await Promise.all([
     searchParams,
     getMyItems(),
-    getPosts(),
+    listPosts(),
   ]);
   const listedItemIds = new Set(posts.map((p) => p.item_id));
 

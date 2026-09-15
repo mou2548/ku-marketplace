@@ -1,4 +1,10 @@
-import { getMyTickets, getTransactions, VIEWER_ID } from "@/lib/api/fixtures";
+import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+
+import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
+import { getCurrentUserId } from "@/lib/api/session";
+import { getTransactions } from "@/lib/api/transactions";
+import type { GiveawayTicket } from "@/lib/api/types";
 
 import { HistoryList } from "./history-list";
 
@@ -20,16 +26,41 @@ import { HistoryList } from "./history-list";
 export const metadata = { title: "History - KU Marketplace" };
 
 export default async function DealsPage() {
-  const [transactions, tickets] = await Promise.all([
+  const viewerId = await getCurrentUserId();
+  if (!viewerId) redirect("/login");
+  const locale = await getLocale();
+  const dateFormatter = new Intl.DateTimeFormat(
+    locale === "th" ? "th-TH" : "en-GB",
+    { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" },
+  );
+
+  const [transactions, giveaways] = await Promise.all([
     getTransactions(),
-    getMyTickets(),
+    getGiveaways(),
   ]);
+
+  // There is no "my tickets" endpoint — check each giveaway for the viewer's
+  // ticket. The full roster keeps forfeited, expired, and not-selected history
+  // visible instead of silently dropping those outcomes.
+  const tickets = (
+    await Promise.all(
+      giveaways.map((giveaway) =>
+        getMyTicket(giveaway.giveaway_id, giveaway, viewerId).catch(
+          () => undefined,
+        ),
+      ),
+    )
+  ).filter((ticket): ticket is GiveawayTicket => ticket !== undefined);
 
   return (
     <HistoryList
-      transactions={transactions}
+      transactions={transactions.map((transaction) => ({
+        ...transaction,
+        // Reuse the server's text during hydration; browser ICU data can differ.
+        created_date_label: dateFormatter.format(new Date(transaction.created_at)),
+      }))}
       tickets={tickets}
-      viewerId={VIEWER_ID}
+      viewerId={viewerId}
     />
   );
 }

@@ -48,3 +48,19 @@ next-env.d.ts
 /picforgen
 color.png
 /UI_Marketplace (1)
+
+# UX/UI revision pass (2026) — working documents, deliberately kept local.
+# See docs/UX-REVISION-PLAN.md. None of these are committed.
+/PRODUCT.md
+/DESIGN.md
+/.impeccable/
+/docs/UX-REVISION-PLAN.md
+/docs/ux/research-2026.md
+/docs/ux/owner-interview.md
+/docs/design/register.md
+/docs/design/audit-2026.md
+/docs/design/revision-brief.md
+/docs/design/review-2026.md
+/docs/design/next-plan.md
+
+!.env.local.example

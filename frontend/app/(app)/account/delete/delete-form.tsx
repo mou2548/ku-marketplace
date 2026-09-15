@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
-import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { deleteAccount } from "@/lib/actions/account";
 
@@ -33,28 +34,32 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
       await deleteAccount();
     } catch (err) {
       setBusy(false);
-      toast.show(err instanceof Error ? err.message : "Could not close account");
+      toast.error(err instanceof Error ? err.message : "Could not close account");
       return;
     }
     setBusy(false);
-    toast.show("Account closed");
+    toast.success("Account closed");
     router.push("/login");
   }
 
   return (
     <>
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to account
+      </Link>
+
       <h1 className="text-h1">Close your account</h1>
 
-      <Surface
-        shape="card"
-        elevation="flat"
-        className="flex max-w-xl gap-3 bg-tone-danger-bg border-l-4 border-l-tone-danger-solid p-4"
-      >
+      <Notice tone="danger" className="flex max-w-xl gap-3">
         <AlertTriangle
           aria-hidden
           className="mt-0.5 size-5 shrink-0 text-tone-danger-fg"
         />
-        <div className="flex flex-col gap-2 text-[0.875rem] leading-[1.7] text-ink-secondary">
+        <div className="flex flex-col gap-2 text-body-sm text-ink-secondary">
           <p className="font-semibold text-tone-danger-fg">
             This cannot be undone.
           </p>
@@ -71,10 +76,10 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
             </li>
           </ul>
         </div>
-      </Surface>
+      </Notice>
 
       {blocked > 0 ? (
-        <p className="max-w-xl rounded-control bg-tone-warning-bg p-3 text-[0.875rem] leading-[1.7] text-tone-warning-fg">
+        <p className="max-w-xl rounded-control bg-tone-warning-bg p-3 text-body-sm text-tone-warning-fg">
           You have {blocked} deal{blocked === 1 ? "" : "s"} still in progress.
           Finish or cancel {blocked === 1 ? "it" : "them"} before closing the
           account.

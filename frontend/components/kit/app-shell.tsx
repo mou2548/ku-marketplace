@@ -1,6 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,6 +14,7 @@ import {
   Menu,
   Package,
   Plus,
+  ShieldCheck,
   Store,
   User,
 } from "lucide-react";
@@ -19,24 +22,14 @@ import {
 import { cn } from "@/lib/utils";
 
 import { Button, LinkButton } from "./button";
+import { ThemeSwitch } from "@/components/patterns/theme-switch";
+
 import { Drawer, DrawerTrigger } from "./drawer";
 
 /**
- * The app shell (docs/design/ia.md §4).
- *
- * Revised 2026-08-07 after a design review on the built product. Three things
- * were wrong and are fixed here:
- *
- *  1. **The brand was invisible.** A first fix made the bar solid green; the
- *     team preferred white. So the bar is white with green type and a green
- *     hairline, and the brand still leads because the wordmark, the links, the
- *     active pill, and the outlined Post button are all green. The colour now
- *     comes from what is *on* the bar rather than the bar itself.
- *  2. **The links were crammed left** with a long dead gap before the actions.
- *     Nav is centred in its own flexible column now.
- *  3. **Chat had no entry point.** Messages were folded into Deals (decision
- *     D1) with nothing left behind, so anyone who used the old site could not
- *     find them. Chat is back as its own item pointing at the deal list.
+ * White/black consumer chrome with KU green reserved for identity, active
+ * navigation, and state. The logo already contains "KU", so the adjacent
+ * wordmark deliberately says only "Marketplace".
  */
 
 export interface NavBadges {
@@ -47,25 +40,33 @@ export interface NavBadges {
 
 interface NavEntry {
   href: string;
-  label: string;
+  /** Message key under `nav.`. */
+  labelKey: string;
   icon: typeof Store;
   badge?: keyof NavBadges;
+  /**
+   * On the phone tab bar. Five at most — past that the targets get too narrow
+   * to hit and the bar stops reading as a set of places. Giveaway is the one
+   * that stays in the drawer: it is the secondary job in PRODUCT.md, and the
+   * drawer still lists everything.
+   */
+  onTabBar?: true;
 }
 
 const NAV: NavEntry[] = [
-  { href: "/", label: "Market", icon: Store },
-  { href: "/offers", label: "Offers", icon: Handshake, badge: "offers" },
+  { href: "/feed", labelKey: "nav.market", icon: Store, onTabBar: true },
+  { href: "/offers", labelKey: "nav.offers", icon: Handshake, badge: "offers", onTabBar: true },
   // The route keeps its name; the label does not. The screen has been a record
   // of past deals since chat moved out of it, and "Deals" next to "Offers" —
   // with the same icon — read as two doors into the same room.
-  { href: "/history", label: "History", icon: History, badge: "deals" },
-  { href: "/chat", label: "Chat", icon: MessagesSquare },
-  { href: "/inventory", label: "Inventory", icon: Package },
-  { href: "/giveaway", label: "Giveaway", icon: Gift },
+  { href: "/history", labelKey: "nav.history", icon: History, badge: "deals", onTabBar: true },
+  { href: "/chat", labelKey: "nav.chat", icon: MessagesSquare, onTabBar: true },
+  { href: "/inventory", labelKey: "nav.inventory", icon: Package, onTabBar: true },
+  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift },
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return pathname.startsWith(href);
 }
 
 function Count({ value }: { value?: number }) {
@@ -73,7 +74,7 @@ function Count({ value }: { value?: number }) {
   return (
     <span
       data-numeric
-      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-[0.6875rem] font-semibold text-white"
+      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold text-white"
     >
       {value > 99 ? "99+" : value}
     </span>
@@ -83,10 +84,11 @@ function Count({ value }: { value?: number }) {
 export interface AppShellProps {
   children: React.ReactNode;
   badges?: NavBadges;
-  user?: { name: string; avatarUrl?: string | null };
+  user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
 }
 
 export function AppShell({ children, badges = {}, user }: AppShellProps) {
+  const t = useTranslations();
   const pathname = usePathname() ?? "";
   /**
    * The drawer has to be told to close.
@@ -106,17 +108,21 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
    * on the bottom edge. Every other route keeps the padded, growing column.
    */
   const isChat = pathname === "/chat" || pathname.startsWith("/chat/");
+  /* A room owns the bottom edge — its composer sits there. The chat list is a
+     list like any other and keeps the bar. */
+  const isChatRoom = pathname.startsWith("/chat/");
+  const showTabBar = !isChatRoom;
 
   return (
     <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>
-      <header className="sticky top-0 z-[50] w-full border-b border-green-200 bg-surface text-ink-brand shadow-flat">
-        <div className="flex h-16 w-full items-center gap-6 px-4 lg:px-8">
+      <header className="sticky top-0 z-[50] w-full border-b border-line bg-surface text-ink-brand">
+        <div className="flex h-[4.25rem] w-full items-center gap-3 px-3 sm:px-4 lg:gap-5 lg:px-8">
           <DrawerTrigger isOpen={menuOpen} onOpenChange={setMenuOpen}>
             <Button
               variant="ghost"
               size="icon-sm"
               pill
-              aria-label="Open menu"
+              aria-label={t("nav.openMenu")}
               className="text-ink-brand hover:bg-brand-subtle md:hidden"
             >
               <Menu className="size-5" />
@@ -133,10 +139,23 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           </DrawerTrigger>
 
           <Link
-            href="/"
-            className="shrink-0 text-[1.0625rem] leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
+            href="/feed"
+            aria-label={t("nav.brand")}
+            className="group flex shrink-0 items-center gap-2.5 rounded-control outline-none"
           >
-            KU Marketplace
+            <span className="grid size-10 place-items-center overflow-hidden rounded-control bg-white shadow-flat">
+              <Image
+                src="/images/ku-logo.png"
+                alt=""
+                width={32}
+                height={32}
+                className="size-8 object-contain"
+                priority
+              />
+            </span>
+            <span className="hidden text-body-lg leading-[1.2] font-bold tracking-[-0.018em] text-ink-brand sm:block">
+              Marketplace
+            </span>
           </Link>
 
           {/* Centred and spread, rather than crammed against the wordmark.
@@ -144,78 +163,75 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               browser window that is not maximised on a 1280 laptop had no nav
               at all. Measured on the built page, not guessed. */}
           <nav
-            aria-label="Main"
+            aria-label={t("nav.main")}
             className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex"
           >
-            {NAV.map(({ href, label, icon: Icon, badge }) => {
+            {NAV.map(({ href, labelKey, icon: Icon, badge }) => {
               const active = isActive(pathname, href);
               return (
                 <Link
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  title={label}
+                  title={t(labelKey)}
                   className={cn(
-                    "flex min-h-10 items-center gap-1.5 rounded-pill px-3 text-[0.9375rem] lg:px-4",
+                    "relative flex min-h-10 items-center gap-1.5 px-3 text-body-sm lg:px-4",
                     "transition-colors duration-[--dur-fast]",
                     active
-                      ? "bg-brand-subtle font-semibold text-ink-brand"
-                      : "text-ink-secondary hover:bg-green-50 hover:text-ink-brand",
+                      ? "font-semibold text-ink-brand"
+                      : "text-ink-secondary hover:text-ink-brand",
                   )}
                 >
                   {/* Between 768 and 1024 there is room for icons but not
                       words, which beats hiding the navigation entirely. */}
                   <Icon aria-hidden className="size-5 lg:hidden" />
-                  <span className="hidden lg:inline">{label}</span>
+                  <span className="hidden lg:inline">{t(labelKey)}</span>
                   <Count value={badge ? badges[badge] : undefined} />
+                  {active ? (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-3 -bottom-[0.9rem] h-0.5 rounded-pill bg-brand lg:inset-x-4"
+                    />
+                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-            {/* Tinted rather than filled: a solid green button next to green
-                links made the bar read as two competing calls to action.
-                `subtle` is that tint and is already what the avatar chip two
-                places along uses, so the cluster is one family — this used to
-                ask for `secondary` and then override its fill, shadow and
-                border, which matched no variant in the system. `pill` because
-                every one of its neighbours is round. */}
-            <LinkButton
-              variant="subtle"
-              size="sm"
-              pill
-              href="/post"
-              className="hidden md:inline-flex"
-            >
-              <Plus className="size-4" />
-              Post
-            </LinkButton>
+            {user?.isAdmin && (
+              <Link
+                href="/admin/reports"
+                aria-label="Switch to admin mode"
+                title="Switch to admin mode"
+                className="flex min-h-11 items-center gap-1.5 rounded-control px-2 text-body-sm font-semibold text-ink-brand hover:bg-brand-subtle"
+              >
+                <ShieldCheck aria-hidden className="size-5" />
+                <span>Admin</span>
+              </Link>
+            )}
+            <ThemeSwitch />
 
             <Link
               href="/notifications"
-              aria-label="Notifications"
-              className="grid size-9 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
+              aria-label={t("nav.notifications")}
+              className="touch-target grid size-10 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
             >
               <Bell className="size-5" />
             </Link>
 
             <Link
               href="/account"
-              aria-label="Account"
+              aria-label={t("nav.account")}
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
               className={cn(
-                "grid size-9 place-items-center rounded-pill text-[0.75rem] font-semibold transition-colors",
+                "touch-target grid size-10 place-items-center rounded-pill transition-colors",
                 isActive(pathname, "/account")
                   ? "bg-brand text-on-brand"
-                  : "bg-brand-subtle text-ink-brand hover:bg-green-200",
+                  : "bg-brand-subtle text-ink-brand hover:bg-[var(--brand-subtle-hover)]",
               )}
             >
-              {user?.name ? (
-                user.name.slice(0, 2)
-              ) : (
-                <User aria-hidden className="size-4" />
-              )}
+              <User aria-hidden className="size-4" />
             </Link>
           </div>
         </div>
@@ -232,11 +248,56 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           "w-full flex-1",
           isChat
             ? "min-h-0 overflow-hidden"
-            : "px-4 py-5 pb-12 lg:px-8 lg:py-7",
+            : "px-3 py-4 pb-12 sm:px-4 lg:px-8 lg:py-6",
+          /* Clear the fixed bar, plus the home indicator under it. */
+          showTabBar && !isChat && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12",
         )}
       >
         {children}
       </main>
+
+      {/* CLAUDE.md §5 specifies a bottom tab bar on mobile and the app did not
+          have one: below 768px the only navigation was a hamburger, so every
+          move between the five places a deal lives cost two taps and a
+          disclosure. The drawer stays for everything else. */}
+      {showTabBar ? (
+        <nav
+          aria-label={t("nav.main")}
+          className="fixed inset-x-0 bottom-0 z-[50] border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(18_43_29_/_0.06)] md:hidden"
+        >
+          <ul className="flex items-stretch">
+            {NAV.filter((entry) => entry.onTabBar).map(
+              ({ href, labelKey, icon: Icon, badge }) => {
+                const active = isActive(pathname, href);
+                return (
+                  <li key={href} className="flex-1">
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1",
+                        "transition-colors duration-[--dur-fast]",
+                        active ? "font-semibold text-ink-brand" : "text-ink-muted",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "relative rounded-pill px-3 py-1 transition-colors",
+                          active && "bg-brand-subtle",
+                        )}
+                      >
+                        <Icon aria-hidden className="size-5" />
+                        <Count value={badge ? badges[badge] : undefined} />
+                      </span>
+                      <span className="text-meta leading-none">{t(labelKey)}</span>
+                    </Link>
+                  </li>
+                );
+              },
+            )}
+          </ul>
+        </nav>
+      ) : null}
     </div>
   );
 }
@@ -252,15 +313,14 @@ function MobileMenu({
   user?: { name: string };
   onNavigate: () => void;
 }) {
+  const t = useTranslations();
   return (
     <div className="flex h-full flex-col gap-3">
       <LinkButton href="/post" block size="lg" onClick={onNavigate}>
-        <Plus className="size-5" />
-        Post an item
-      </LinkButton>
+        <Plus className="size-5" />{t("nav.postAnItem")}</LinkButton>
 
-      <nav aria-label="Main" className="flex flex-col gap-0.5">
-        {NAV.map(({ href, label, icon: Icon, badge }) => {
+      <nav aria-label={t("nav.main")} className="flex flex-col gap-0.5">
+        {NAV.map(({ href, labelKey, icon: Icon, badge }) => {
           const active = isActive(pathname, href);
           const count = badge ? badges[badge] : undefined;
 
@@ -271,7 +331,7 @@ function MobileMenu({
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem]",
+                "flex min-h-12 items-center gap-3 rounded-control px-3 text-body",
                 "transition-colors duration-[--dur-fast]",
                 active
                   ? "bg-brand-subtle font-semibold text-ink-brand"
@@ -279,12 +339,12 @@ function MobileMenu({
               )}
             >
               <Icon aria-hidden className="size-5 shrink-0" />
-              {label}
+              {t(labelKey)}
               <span className="ml-auto">
                 <Count value={count} />
               </span>
               {count ? (
-                <span className="sr-only">{count} items need your attention</span>
+                <span className="sr-only">{t("nav.needsYou", { count })}</span>
               ) : null}
             </Link>
           );
@@ -295,19 +355,17 @@ function MobileMenu({
         <Link
           href="/notifications"
           onClick={onNavigate}
-          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem] text-ink-secondary hover:bg-gray-100"
+          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
-          <Bell aria-hidden className="size-5" />
-          Notifications
-        </Link>
+          <Bell aria-hidden className="size-5" />{t("nav.notifications")}</Link>
         <Link
           href="/account"
           onClick={onNavigate}
-          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-[0.9375rem] text-ink-secondary hover:bg-gray-100"
+          className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
           <span
             aria-hidden
-            className="grid size-6 place-items-center rounded-pill bg-brand-subtle text-[0.6875rem] font-semibold text-ink-brand"
+            className="grid size-6 place-items-center rounded-pill bg-brand-subtle text-meta font-semibold text-ink-brand"
           >
             {user?.name?.slice(0, 2) ?? "?"}
           </span>

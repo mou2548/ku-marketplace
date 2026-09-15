@@ -1,9 +1,13 @@
+import { redirect } from "next/navigation";
+
 import { RoomList } from "@/components/kit/room-list";
 import { EmptyState } from "@/components/kit/empty-state";
 import { MessagesSquare } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
-import { VIEWER_ID } from "@/lib/api/fixtures";
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe } from "@/lib/api/users";
 
 import { RoomScreen } from "./[roomId]/room-screen";
 
@@ -22,19 +26,27 @@ export const metadata = { title: "Chat - KU Marketplace" };
  * Below `xl` it stays the plain list. That is the same breakpoint
  * `/chat/[roomId]` uses to show or hide the list beside a room, and on a phone
  * the inbox has to be the thing you land on.
+ *
+ * Built from real transactions/giveaways now (`rooms-query.ts`), so — same as
+ * `/chat/[roomId]` — it needs to know who is actually asking.
  */
 export default async function ChatInboxPage() {
-  const rooms = await getRoomSummaries();
+  const t = await getTranslations();
+  if (!(await getAccessToken())) redirect("/login");
+  const viewer = await getMe().catch(() => undefined);
+  if (!viewer) redirect("/login");
+
+  const rooms = await getRoomSummaries(viewer.userId);
   const first = rooms[0]
-    ? await getRoomDetail(rooms[0].room_id, rooms)
+    ? await getRoomDetail(rooms[0].room_id, viewer.userId, rooms)
     : undefined;
 
   if (rooms.length === 0) {
     return (
       <EmptyState
         icon={<MessagesSquare className="size-6" />}
-        title="No conversations yet"
-        description="A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+        title={t("chat.noConversations")}
+        description={t("chat.emptyBody")}
       />
     );
   }
@@ -45,7 +57,8 @@ export default async function ChatInboxPage() {
         <RoomList
           rooms={rooms}
           activeRoomId={first?.summary.room_id}
-          heading="Chat"
+          viewerId={viewer.userId}
+          heading={t("nav.chat")}
         />
       </div>
 
@@ -54,8 +67,9 @@ export default async function ChatInboxPage() {
       {first ? (
         <div className="hidden min-h-0 min-w-0 flex-1 xl:flex">
           <RoomScreen
+            key={first.summary.room_id}
             summary={first.summary}
-            viewerId={VIEWER_ID}
+            viewerId={viewer.userId}
             transaction={first.transaction}
             giveaway={first.giveaway}
             appointment={first.appointment}

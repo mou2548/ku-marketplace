@@ -62,7 +62,7 @@ export function SelectField<T extends object>({
         className={cn(
           "flex h-12 w-full items-center justify-between gap-2 px-3.5",
           "rounded-control bg-surface-sunken shadow-sunken",
-          "text-left text-[0.9375rem] text-ink",
+          "text-left text-body text-ink",
           "data-[disabled]:opacity-50",
         )}
       >
@@ -74,10 +74,10 @@ export function SelectField<T extends object>({
 
       <Popover
         className={cn(
-          "w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
+          "z-[90] w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
           "max-h-64",
-          "data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95",
-          "data-[exiting]:animate-out data-[exiting]:fade-out",
+          "data-[entering]:anim-pop-in",
+          "data-[exiting]:anim-fade-out",
         )}
       >
         <ListBox items={items} className="outline-none">
@@ -98,7 +98,7 @@ export function SelectOption({
       {...props}
       className={cn(
         "flex cursor-pointer items-center justify-between gap-2 rounded-chip px-3 py-2.5",
-        "text-[0.9375rem] outline-none",
+        "text-body outline-none",
         "data-[focused]:bg-brand-subtle data-[focused]:text-ink-brand",
         "data-[selected]:font-semibold",
         className,
@@ -127,7 +127,7 @@ export function Checkbox({
     <AriaCheckbox
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-center gap-2.5 text-[0.9375rem]",
+        "group flex min-h-11 cursor-pointer items-center gap-2.5 text-body",
         className,
       )}
     >
@@ -200,7 +200,7 @@ export function Radio({
     <AriaRadio
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-start gap-2.5 text-[0.9375rem]",
+        "group flex min-h-11 cursor-pointer items-start gap-2.5 text-body",
         // With a description the whole row becomes a pressable card — the shape
         // the giveaway allocation picker needs, where each option must explain
         // itself (research R7).
@@ -225,7 +225,7 @@ export function Radio({
           <span className="flex flex-col gap-0.5">
             <span className={cn(isSelected && "font-medium")}>{children}</span>
             {description ? (
-              <span className="text-[0.8125rem] leading-[1.5] text-ink-muted">
+              <span className="text-caption leading-[1.5] text-ink-muted">
                 {description}
               </span>
             ) : null}
@@ -247,7 +247,7 @@ export function Switch({
     <AriaSwitch
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[0.9375rem]",
+        "group flex min-h-11 cursor-pointer items-center justify-between gap-3 text-body",
         className,
       )}
     >

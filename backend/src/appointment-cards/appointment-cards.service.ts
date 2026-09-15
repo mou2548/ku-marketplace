@@ -15,23 +15,74 @@ export class AppointmentCardsService {
     private readonly transactionService: TransactionService,
   ) {}
 
+  private serializeUserSummary(user: {
+    userId: number;
+    firstNameEn: string;
+    lastNameEn: string;
+    emailVerifiedAt: Date | null;
+  }) {
+    return {
+      user_id: user.userId,
+      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      isVerified: user.emailVerifiedAt !== null,
+    };
+  }
+
+  private serializeAppointment(appointment: {
+    appointmentId: number;
+    transactionId: number;
+    proposedBy: number;
+    date: Date;
+    time: Date;
+    location: string;
+    status: string | null;
+    deletedAt: Date | null;
+    createdAt: Date | null;
+    proposer: {
+      userId: number;
+      firstNameEn: string;
+      lastNameEn: string;
+      emailVerifiedAt: Date | null;
+    };
+  }) {
+    return {
+      appointment_id: appointment.appointmentId,
+      transaction_id: appointment.transactionId,
+      proposed_by: appointment.proposedBy,
+      proposer: this.serializeUserSummary(appointment.proposer),
+      date: appointment.date,
+      time: appointment.time,
+      location: appointment.location,
+      status: appointment.status,
+      // §appointment loop fix — a retired card (superseded or rejected) is no
+      // longer the current appointment. The frontend derives "current" as the
+      // newest card with deleted_at null, mirroring assertHandoverReady.
+      deleted_at: appointment.deletedAt,
+      created_at: appointment.createdAt,
+    };
+  }
+
   /** รายการนัดหมายทั้งหมดของธุรกรรมที่ user เป็นคู่กรณี (ผู้ซื้อหรือผู้ขาย) */
   async findAllForUser(userId: number) {
-    return this.prisma.appointmentCard.findMany({
+    const appointments = await this.prisma.appointmentCard.findMany({
       where: {
         transaction: {
           OR: [{ buyerId: userId }, { sellerId: userId }],
         },
       },
+      include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
+    return appointments.map((appointment) =>
+      this.serializeAppointment(appointment),
+    );
   }
 
   /** นัดหมายเดียว — เช็คสิทธิ์ว่า user เป็นคู่กรณีของธุรกรรมนี้จริง */
   async findOneForUser(appointmentId: number, userId: number) {
     const appointment = await this.prisma.appointmentCard.findUnique({
       where: { appointmentId },
-      include: { transaction: true },
+      include: { transaction: true, proposer: true },
     });
 
     if (!appointment) {
@@ -53,37 +104,72 @@ export class AppointmentCardsService {
     respondAppointmentDto: RespondAppointmentDto,
     userId: number,
   ) {
-    const appointment = await this.findOneForUser(appointmentId, userId);
-    const { transaction } = appointment;
-
-    if (appointment.proposedBy === userId) {
-      throw new BadRequestException(
-        'The user who proposed this appointment cannot respond to it',
-      );
-    }
-
-    if (appointment.status !== 'Pending') {
-      throw new BadRequestException(
-        `Appointment ${appointmentId} has already been answered (status: ${appointment.status})`,
-      );
-    }
-
-    const statusMap: Record<string, string> = {
-      confirm: 'Confirmed',
-      reject: 'Rejected',
-    };
-
-    const newStatus = statusMap[respondAppointmentDto.response];
-
-    if (!newStatus) {
-      throw new BadRequestException(
-        `Invalid response: ${respondAppointmentDto.response}. Response must be 'confirm' or 'reject'.`,
-      );
-    }
-
-    return this.prisma.appointmentCard.update({
-      where: { appointmentId },
-      data: { status: newStatus },
+    const original = await this.findOneForUser(appointmentId, userId);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${original.transactionId} FOR UPDATE`;
+      const appointment = await tx.appointmentCard.findUniqueOrThrow({
+        where: { appointmentId },
+        include: { transaction: true },
+      });
+      const latest = await tx.appointmentCard.findFirst({
+        where: { transactionId: appointment.transactionId, deletedAt: null },
+        orderBy: [{ createdAt: 'desc' }, { appointmentId: 'desc' }],
+      });
+      if (appointment.proposedBy === userId)
+        throw new BadRequestException(
+          'The proposer cannot respond to their own appointment',
+        );
+      if (
+        appointment.status !== 'Pending' ||
+        latest?.appointmentId !== appointmentId
+      )
+        throw new BadRequestException(
+          'This appointment is already answered or superseded',
+        );
+      const transaction = appointment.transaction;
+      const returning =
+        transaction.status === 'Pending Refund' &&
+        transaction.itemReceivedConfirmedByBuyerAt &&
+        !transaction.itemReturnConfirmedAt;
+      if (
+        !returning &&
+        (!['Pending', 'Processing'].includes(transaction.status ?? '') ||
+          transaction.cancellationResponse === 'Pending' ||
+          transaction.activeReportId)
+      )
+        throw new BadRequestException(
+          'This transaction cannot arrange a handover now',
+        );
+      const status =
+        respondAppointmentDto.response === 'confirm'
+          ? 'Confirmed'
+          : respondAppointmentDto.response === 'reject'
+            ? 'Rejected'
+            : null;
+      if (!status)
+        throw new BadRequestException('Invalid appointment response');
+      const updated = await tx.appointmentCard.update({
+        where: { appointmentId },
+        // §appointment loop fix — declining ("Another time") retires this card
+        // too, so the current appointment falls to nothing and the deal goes
+        // back to proposing a time, never back to an older Confirmed card.
+        data: {
+          status,
+          ...(status === 'Rejected' ? { deletedAt: new Date() } : {}),
+        },
+        include: { proposer: true },
+      });
+      await tx.notification.create({
+        data: {
+          userId: appointment.proposedBy,
+          eventKey: `appointment:${appointmentId}:responded`,
+          title:
+            status === 'Confirmed' ? 'Meetup confirmed' : 'Meetup declined',
+          body: `${appointment.date.toISOString().slice(0, 10)} at ${appointment.time.toISOString().slice(11, 16)}, ${appointment.location}.`,
+          href: `/history/${appointment.transactionId}`,
+        },
+      });
+      return this.serializeAppointment(updated);
     });
   }
 
@@ -95,6 +181,9 @@ export class AppointmentCardsService {
    */
   async generateQr(appointmentId: number, userId: number) {
     const appointment = await this.findOneForUser(appointmentId, userId);
-    return this.transactionService.generateQr(appointment.transactionId, userId);
+    return this.transactionService.generateQr(
+      appointment.transactionId,
+      userId,
+    );
   }
 }

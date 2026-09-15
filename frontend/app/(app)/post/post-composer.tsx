@@ -14,6 +14,7 @@ import {
   Plus,
   Sparkles,
   Store,
+  Users,
 } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
@@ -23,13 +24,18 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/i18n/status-text";
 import { createGiveaway } from "@/lib/actions/giveaways";
+import { publishListing } from "@/lib/actions/posts";
 import type { ApiError } from "@/lib/api/client";
+import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
 import {
   ALLOCATION_METHOD,
   ITEM_CONDITION,
+  ITEM_STATUS,
   POST_TYPE,
   type AllocationMethod,
   type PostType,
@@ -79,6 +85,7 @@ export function PostComposer({
   listedItemIds: number[];
   initialKind?: ListingKind;
 }) {
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const tz = getLocalTimeZone();
@@ -93,11 +100,9 @@ export function PostComposer({
 
   // Giveaway terms.
   const [place, setPlace] = useState("");
+  const [giveawayQuantity, setGiveawayQuantity] = useState("1");
   const [method, setMethod] = useState<AllocationMethod>("Random");
   const [closeAt, setCloseAt] = useState<DateValue | null>(
-    today(tz).add({ days: 2 }),
-  );
-  const [pickupFrom, setPickupFrom] = useState<DateValue | null>(
     today(tz).add({ days: 2 }),
   );
   const [pickupTo, setPickupTo] = useState<DateValue | null>(
@@ -113,7 +118,10 @@ export function PostComposer({
   const canPublish =
     picked.size > 0 &&
     (isGiveaway
-      ? place.trim().length > 0 && !!closeAt
+      ? place.trim().length > 0 &&
+        Number(giveawayQuantity) > 0 &&
+        !!closeAt &&
+        !!pickupTo
       : !wantsPrice || Number(price) > 0);
 
   function toggle(id: number) {
@@ -132,9 +140,8 @@ export function PostComposer({
       // POST /giveaways, once per selected item. A giveaway carries the
       // item's name, description and primary image across because the
       // giveaway table has no item_id to point at (docs/design/api-gaps.md
-      // §1). `pickupFrom`/`pickupTo` have nowhere to go — the backend has one
-      // deadline field, not a signup window and a separate pickup window
-      // (api-gaps.md §8) — so only `closeAt` is sent.
+      // §1). Capacity and the separate registration/pickup deadlines are sent
+      // explicitly. Collection has one final deadline in the API.
       const pickedItems = items.filter((i) => picked.has(i.item_id));
       try {
         const created = [];
@@ -143,15 +150,21 @@ export function PostComposer({
           created.push(
             await createGiveaway({
               item_name: item.name,
+              quantity: Number(giveawayQuantity),
               description: description || item.description || undefined,
               pickup_location: place,
               allocation_method: method,
-              pickup_deadline: closeAt ? closeAt.toDate(tz).toISOString() : undefined,
+              register_deadline: closeAt
+                ? closeAt.toDate(tz).toISOString()
+                : undefined,
+              pickup_deadline: pickupTo
+                ? pickupTo.toDate(tz).toISOString()
+                : undefined,
               images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
             }),
           );
         }
-        toast.show(
+        toast.success(
           created.length === 1
             ? "Giveaway posted. Registration is open."
             : `Posted ${created.length} giveaways. Registration is open.`,
@@ -162,28 +175,46 @@ export function PostComposer({
         // redundant round trip through the list.
         router.push(created.length === 1 ? `/giveaway/${created[0].giveaway_id}` : "/giveaway");
       } catch (error) {
-        toast.show((error as ApiError).message ?? "Could not post the giveaway.");
+        toast.error((error as ApiError).message ?? "Could not post the giveaway.");
       } finally {
         setBusy(false);
       }
       return;
     }
 
-    // POST /posts is not wired yet — out of scope for the giveaway work this
-    // composer was touched for.
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show(
-      picked.size === 1
-        ? "Listed. It is live in the market now."
-        : `Listed ${picked.size} items. They are live in the market now.`,
-    );
-    router.push("/");
+    const pickedItems = items.filter((item) => picked.has(item.item_id));
+    try {
+      const created = await Promise.all(
+        pickedItems.map((item) =>
+          publishListing({
+            item_id: item.item_id,
+            post_type: kind,
+            price: wantsPrice ? Number(price) : 0,
+            quantity_total: item.quantity,
+          }),
+        ),
+      );
+
+      toast.success(
+        created.length === 1
+          ? "Listed. It is live in the market now."
+          : `Listed ${created.length} items. They are live in the market now.`,
+      );
+      router.push(
+        created.length === 1
+          ? `/market/${wireIdToNumber(created[0].post_id)}`
+          : "/feed",
+      );
+    } catch (error) {
+      toast.error((error as ApiError).message ?? "Could not publish the listing.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (items.length === 0) {
     return (
-      <div className="flex w-full max-w-2xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <Surface
           shape="card"
           elevation="flat"
@@ -193,7 +224,7 @@ export function PostComposer({
           <span className="grid size-12 place-items-center rounded-pill bg-brand-subtle text-ink-brand">
             <Package aria-hidden className="size-5" />
           </span>
-          <p className="max-w-sm text-[0.9375rem] leading-[1.7] text-ink-muted">
+          <p className="max-w-sm text-body text-ink-muted">
             You have nothing in your inventory yet. Add an item and you can list
             it from here straight away.
           </p>
@@ -220,7 +251,7 @@ export function PostComposer({
         </h2>
         <Link
           href="/inventory/new"
-          className="flex items-center gap-1 text-[0.875rem] font-medium text-ink-brand hover:underline"
+          className="flex items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
         >
           <Plus aria-hidden className="size-4" />
           Add
@@ -228,14 +259,10 @@ export function PostComposer({
       </div>
 
       {unlisted.length === 0 ? (
-        <Surface
-          shape="card"
-          elevation="flat"
-          className="bg-brand-subtle border-l-4 border-l-brand p-4 text-[0.875rem] leading-[1.7] text-ink-secondary"
-        >
+        <Notice tone="brand" className="text-body-sm text-ink-secondary">
           Everything you own is already on the market. Add a new item to list
           something else.
-        </Surface>
+        </Notice>
       ) : (
         // `min-w-0` on each item: a grid track defaults to `min-width:auto`,
         // so without it the row cannot shrink below its content and the page
@@ -254,7 +281,7 @@ export function PostComposer({
       )}
 
       {alreadyListed.length > 0 ? (
-        <details className="text-[0.8125rem] text-ink-muted">
+        <details className="text-caption text-ink-muted">
           <summary className="cursor-pointer">
             {alreadyListed.length} already on the market
           </summary>
@@ -263,7 +290,7 @@ export function PostComposer({
               <li key={item.item_id} className="flex items-center gap-2">
                 <span className="truncate">{item.name}</span>
                 <StatusBadge
-                  status={POST_TYPE.SellOnly}
+                  status={ITEM_STATUS.Listed}
                   size="sm"
                   iconOnly
                   className="shrink-0"
@@ -279,9 +306,9 @@ export function PostComposer({
   const publishBar = (
     <Surface
       shape="card"
-      className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 p-3"
+      className="sticky action-bar-bottom z-[20] mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 p-3"
     >
-      <p className="min-w-0 flex-1 text-[0.875rem]">
+      <p className="min-w-0 flex-1 text-body-sm">
         {picked.size === 0 ? (
           <span className="text-ink-muted">Pick at least one item</span>
         ) : (
@@ -316,7 +343,7 @@ export function PostComposer({
     <div className="flex flex-col gap-5">
       <header className="flex max-w-prose flex-col gap-1">
         <h1 className="text-h1">Post to the market</h1>
-        <p className="text-[0.9375rem] leading-[1.7] text-ink-muted">
+        <p className="text-body text-ink-muted">
           Pick what you want to list, set the terms once, publish. Selling,
           trading and giving away all start here.
         </p>
@@ -341,13 +368,13 @@ export function PostComposer({
                 <span
                   aria-hidden
                   data-numeric
-                  className="grid size-6 shrink-0 place-items-center rounded-pill bg-gray-100 text-[0.75rem] font-semibold text-ink-muted"
+                  className="grid size-6 shrink-0 place-items-center rounded-pill bg-gray-100 text-meta font-semibold text-ink-muted"
                 >
                   {i + 1}
                 </span>
                 <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="text-[0.9375rem] font-medium">{label}</span>
-                  <span className="text-[0.8125rem] leading-[1.6] text-ink-muted">
+                  <span className="text-body font-medium">{label}</span>
+                  <span className="text-caption leading-[1.6] text-ink-muted">
                     {detail}
                   </span>
                 </span>
@@ -368,13 +395,13 @@ export function PostComposer({
             <Radio value="SellOnly" description="Cash only, no trades">
               <span className="flex items-center gap-2">
                 <Store aria-hidden className="size-4" />
-                {POST_TYPE.SellOnly.label}
+                {st.of(POST_TYPE.SellOnly).label}
               </span>
             </Radio>
             <Radio value="TradeOnly" description="Trades only, not for sale">
               <span className="flex items-center gap-2">
                 <ArrowLeftRight aria-hidden className="size-4" />
-                {POST_TYPE.TradeOnly.label}
+                {st.of(POST_TYPE.TradeOnly).label}
               </span>
             </Radio>
             <Radio
@@ -383,7 +410,7 @@ export function PostComposer({
             >
               <span className="flex items-center gap-2">
                 <Sparkles aria-hidden className="size-4" />
-                {POST_TYPE.Both.label}
+                {st.of(POST_TYPE.Both).label}
               </span>
             </Radio>
             <Radio
@@ -408,6 +435,18 @@ export function PostComposer({
                 placeholder="e.g. Outside Engineering Building 1"
               />
 
+              <TextInput
+                label="Maximum recipients"
+                value={giveawayQuantity}
+                onChange={(value) =>
+                  setGiveawayQuantity(value.replace(/\D/g, ""))
+                }
+                inputMode="numeric"
+                isRequired
+                icon={<Users className="size-4" />}
+                hint="The number of people who can receive this giveaway"
+              />
+
               {/* Radio cards, not a dropdown: the three options carry three
                   different social contracts and the giver is choosing on
                   behalf of everyone who will register (research R7). */}
@@ -418,20 +457,20 @@ export function PostComposer({
                 variant="card"
                 hint="This is shown on the post before anyone registers"
               >
-                <Radio value="Random" description={ALLOCATION_METHOD.Random.hint}>
-                  {ALLOCATION_METHOD.Random.label}
+                <Radio value="Random" description={st.of(ALLOCATION_METHOD.Random).hint}>
+                  {st.of(ALLOCATION_METHOD.Random).label}
                 </Radio>
                 <Radio
                   value="FirstCome"
-                  description={ALLOCATION_METHOD.FirstCome.hint}
+                  description={st.of(ALLOCATION_METHOD.FirstCome).hint}
                 >
-                  {ALLOCATION_METHOD.FirstCome.label}
+                  {st.of(ALLOCATION_METHOD.FirstCome).label}
                 </Radio>
                 <Radio
                   value="Manual"
                   description="You come back and pick recipients yourself. The other two are handled for you."
                 >
-                  {ALLOCATION_METHOD.Manual.label}
+                  {st.of(ALLOCATION_METHOD.Manual).label}
                 </Radio>
               </RadioGroupField>
 
@@ -443,22 +482,15 @@ export function PostComposer({
                 hint="At this point recipients are chosen by the method above and a chat room opens for them"
               />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <DatePickerField
-                  label="Pickup opens"
-                  value={pickupFrom}
-                  onChange={setPickupFrom}
-                  minValue={closeAt ?? today(tz)}
-                />
-                <DatePickerField
-                  label="Pickup closes"
-                  value={pickupTo}
-                  onChange={setPickupTo}
-                  minValue={pickupFrom ?? today(tz)}
-                />
-              </div>
+              <DatePickerField
+                label="Pickup deadline"
+                value={pickupTo}
+                onChange={setPickupTo}
+                minValue={closeAt?.add({ days: 1 }) ?? today(tz)}
+                hint="Selected recipients must collect by this date"
+              />
 
-              <p className="rounded-control bg-tone-warning-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-warning-fg">
+              <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
                 Recipients who do not collect within this window lose their
                 ticket automatically.
               </p>
@@ -473,7 +505,7 @@ export function PostComposer({
               inputMode="numeric"
               isRequired
               icon={<Coins className="size-4" />}
-              suffix={<span className="text-[0.8125rem]">THB</span>}
+              suffix={<span className="text-caption">THB</span>}
               hint={
                 picked.size > 1
                   ? "This price applies to every item you selected. List them separately if they should differ."
@@ -521,6 +553,7 @@ function ItemPick({
   isPicked: boolean;
   onToggle: () => void;
 }) {
+  const st = useStatusText();
   const rarity = ITEM_CONDITION[item.condition];
   const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
 
@@ -554,24 +587,27 @@ function ItemPick({
         </span>
 
         <span
-          className="block w-14 shrink-0 overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
+          className="block size-14 shrink-0 overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
           style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
         >
-          <PostImage src={primary?.image_url} alt="" aspectRatio={1} sizes="56px" />
+          <PostImage
+            src={primary?.image_url}
+            alt=""
+            aspectRatio={1}
+            sizes="56px"
+            className="h-full"
+          />
         </span>
 
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-[0.9375rem] font-semibold">
+          <span className="truncate text-body font-semibold">
             {item.name}
           </span>
-          <span className="truncate text-[0.8125rem] text-ink-muted">
+          <span className="truncate text-caption text-ink-muted">
             {item.category}
             <span aria-hidden> · </span>
-            <span
-              style={{ "--slot-edge": rarity.fg } as React.CSSProperties}
-              className="text-[var(--slot-edge)]"
-            >
-              {rarity.label}
+            <span className="font-medium text-ink-secondary">
+              {st.of(rarity).label}
             </span>
           </span>
         </span>

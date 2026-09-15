@@ -80,7 +80,7 @@ export function OtpInput({
       </label>
 
       {errorMessage ? (
-        <p role="alert" className="text-[0.8125rem] font-medium text-tone-danger-fg">
+        <p role="alert" className="text-caption font-medium text-tone-danger-fg">
           {errorMessage}
         </p>
       ) : null}

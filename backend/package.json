@@ -18,7 +18,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "predev": "node -e \"if(!process.version.startsWith('v20')) { console.error('⚠️  ต้องใช้ Node 20 (เช็คด้วย node -v)'); process.exit(1); }\""
+    "predev": "node -e \"if(!process.version.startsWith('v20')) { console.error('\u26a0\ufe0f  \u0e15\u0e49\u0e2d\u0e07\u0e43\u0e0a\u0e49 Node 20 (\u0e40\u0e0a\u0e47\u0e04\u0e14\u0e49\u0e27\u0e22 node -v)'); process.exit(1); }\"",
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -26,7 +28,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/platform-express": "^11.0.1",
-    "@nestjs/schedule": "^12.0.1",
+    "@nestjs/schedule": "5.0.1",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.0",
     "bcryptjs": "^3.0.3",
@@ -91,6 +93,6 @@
     "testEnvironment": "node"
   },
   "engines": {
-    "node": ">=20.0.0 <21.0.0"
+    "node": ">=20.19.0 <21.0.0"
   }
 }

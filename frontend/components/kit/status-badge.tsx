@@ -1,3 +1,4 @@
+import { useStatusText } from "@/lib/i18n/status-text";
 import type { StatusPresentation } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,8 @@ export interface StatusBadgeProps {
   /**
    * `auto` fills a danger badge and washes everything else — see below.
    * The explicit variants override that for the rare case a screen needs one.
+   * That comment was accurate before the behaviour drifted away from it; it
+   * describes the code again.
    */
   variant?: "auto" | "wash" | "solid";
   size?: "sm" | "md";
@@ -25,19 +28,30 @@ export interface StatusBadgeProps {
 }
 
 /**
- * Every tone used to paint as a wash, so a cancelled deal and a completed one
+ * Danger fills; every other tone washes.
+ *
+ * The history of this line is worth keeping, because both previous answers
+ * were reactions to a real defect and both overshot.
+ *
+ * First every tone was a bare wash, so a cancelled deal and a completed one
  * were the same weight of pastel and severity did not survive a glance down a
- * list. A failure now takes the solid fill and everything else keeps the wash,
- * which leaves exactly one loud thing on a screen: the thing that went wrong.
+ * list. Worse, a bare wash measured 1.01:1 against the page and the pill
+ * vanished, leaving floating coloured text — a WCAG 1.4.11 failure on the
+ * component's own boundary.
  *
- * `--tone-danger-solid` is rose-500; white on it is ~5.3:1, so the 13px label
- * still clears AA.
+ * The fix for that was to fill every tone. That solved the contrast problem
+ * and created a louder one: `StatusBadge` renders in 20 files, the inventory
+ * grid paints one per slot across up to 18 slots, and a history row carries
+ * three. `register.md` §2 budgets one saturated fill per screen. This is the
+ * single largest source of the "garish" reading the 2026 brief is reacting to.
  *
- * A wash carries the tone's border. Without one it measured 1.01:1 against the
- * page behind it — the pill disappeared and left floating coloured text, which
- * is what "the badge is the same colour as the background" meant. There is no
- * `outline` variant any more: it was wash plus border, which is now what wash
- * is, and nothing ever called it.
+ * `TONE_CHIP` was the answer all along and it already existed: a wash plus a
+ * border plus AA-safe text, which is how `tokens.md` §5 specified a tone from
+ * the beginning. It cannot fail the boundary check the bare wash failed.
+ *
+ * So: danger stays solid, because a cancelled or reported deal is the one
+ * status that should stop a scanning eye. Everything else is a chip, and
+ * `solid` remains available for the rare screen that has a reason.
  */
 function resolveVariant(
   variant: NonNullable<StatusBadgeProps["variant"]>,
@@ -54,7 +68,8 @@ export function StatusBadge({
   iconOnly = false,
   className,
 }: StatusBadgeProps) {
-  const { tone, label, icon, hint } = status;
+  const { tone, icon } = status;
+  const { label, hint } = useStatusText().of(status);
   const paint = resolveVariant(variant, tone);
 
   return (
@@ -63,8 +78,8 @@ export function StatusBadge({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-pill font-medium whitespace-nowrap",
         size === "sm"
-          ? "h-6 px-2 text-[0.75rem]"
-          : "h-7 px-2.5 text-[0.8125rem]",
+          ? "h-6 px-2 text-meta"
+          : "h-7 px-2.5 text-caption",
         iconOnly && (size === "sm" ? "w-6 justify-center px-0" : "w-7 justify-center px-0"),
         paint === "wash" && cn("border", TONE_CHIP[tone]),
         paint === "solid" && TONE_SOLID[tone],
