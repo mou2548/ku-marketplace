@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
+import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
 import {
   ArrowLeft,
   CalendarClock,
@@ -79,6 +79,7 @@ import {
   ALLOCATION_METHOD,
   canReport,
   ENTRANT_STATUS,
+  requiresPayment,
   resolveTransactionActor,
   TRANSACTION_STATUS,
   type ActorPrompt,
@@ -141,6 +142,8 @@ function ProposeMeetup({
   onTimeChange,
   isBusy,
   onPropose,
+  submitLabel,
+  onDiscard,
 }: {
   place: string;
   onPlaceChange: (value: string) => void;
@@ -150,6 +153,11 @@ function ProposeMeetup({
   onTimeChange: (value: string) => void;
   isBusy: boolean;
   onPropose: () => void;
+  /** Defaults to "Propose this meetup" — "Resend" when editing an existing card. */
+  submitLabel?: string;
+  /** Present only when editing an existing card — closes the form without
+   * calling the API, leaving the card on screen untouched. */
+  onDiscard?: () => void;
 }) {
   const t = useTranslations();
   const tz = getLocalTimeZone();
@@ -189,13 +197,20 @@ function ProposeMeetup({
         hint={t("deal.whereHint")}
       />
 
-      <Button
-        block
-        isDisabled={!when || place.trim().length === 0}
-        isLoading={isBusy}
-        onPress={onPropose}
-      >
-        <CalendarPlus className="size-4" />{t("deal.proposeMeetup")}</Button>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row">
+        {onDiscard ? (
+          <Button variant="secondary" block isDisabled={isBusy} onPress={onDiscard}>
+            {t("deal.discardChanges")}
+          </Button>
+        ) : null}
+        <Button
+          block
+          isDisabled={!when || place.trim().length === 0}
+          isLoading={isBusy}
+          onPress={onPropose}
+        >
+          <CalendarPlus className="size-4" />{submitLabel ?? t("deal.proposeMeetup")}</Button>
+      </div>
     </Surface>
   );
 }
@@ -250,6 +265,10 @@ export function RoomScreen({
   const [time, setTime] = useState("12:00");
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  /** Toggles the pin between showing the current AppointmentCard and showing
+   * the pre-filled edit form for it — never both, which is what used to make
+   * an edited appointment look like it had split into two cards. */
+  const [editingAppointment, setEditingAppointment] = useState(false);
   const appointmentPinRef = useRef<HTMLDivElement>(null);
   /**
    * The deal strip's disclosure — everything the desktop rail used to hold.
@@ -295,6 +314,16 @@ export function RoomScreen({
   // Every step done means the deal is finished, not that it is back at step 1.
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
+  // Flow 1: a meetup cannot be arranged ahead of payment. `uploadPaymentSlip`
+  // (backend) is what moves status Pending -> Processing, so still-Pending
+  // means the buyer has not paid yet on a deal that needs payment at all —
+  // the backend now rejects `createAppointment` for exactly this case, this
+  // just keeps the pin from offering a form that would only 400.
+  const meetupBlockedOnPayment =
+    !!transaction &&
+    transaction.delivery_method === "Meetup" &&
+    transaction.status === "Pending" &&
+    requiresPayment(transaction);
   const isYourTurn = prompt?.actor === viewer;
   /* Null means nobody has touched it, so the deal decides: open when the next
      move is yours. Once opened or closed by hand, that choice sticks. */
@@ -429,6 +458,7 @@ export function RoomScreen({
       });
       setAppointment(created);
       setPlace("");
+      setEditingAppointment(false);
       toast.success(t("deal.meetupProposed"));
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not propose a meetup.");
@@ -437,21 +467,30 @@ export function RoomScreen({
     }
   }
 
-  async function handleAppointmentResponse(response: "confirm" | "reject") {
+  /** Pencil icon on the card, or "Edit" in the awaiting side's action row —
+   * pre-fills the form from the card currently on screen so the resend below
+   * replaces it in place instead of ever showing alongside it. */
+  function startEditingAppointment() {
+    if (!appointment) return;
+    setPlace(appointment.location);
+    setWhen(parseDate(appointment.date));
+    setTime(appointment.time.slice(0, 5));
+    setEditingAppointment(true);
+  }
+
+  /** No API call — the card already on screen is untouched local state, so
+   * it simply reappears exactly as it was. */
+  function cancelEditingAppointment() {
+    setEditingAppointment(false);
+  }
+
+  async function handleAppointmentResponse(response: "confirm") {
     if (!appointment) return;
     setBusy(true);
     try {
       const updated = await respondToAppointment(appointment.appointment_id, response);
-      // §appointment loop fix — a declined card is retired server-side, so the
-      // poll below clears `appointment`. Open the pin now so the propose-a-new-
-      // time form is the next thing the user sees, not a gap.
-      if (response === "reject") {
-        setAppointment(undefined);
-        setPinOpen(true);
-      } else {
-        setAppointment(updated);
-      }
-      toast.success(response === "confirm" ? "Meetup confirmed" : "Asked for another time");
+      setAppointment(updated);
+      toast.success("Meetup confirmed");
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
     } finally {
@@ -922,7 +961,9 @@ export function RoomScreen({
                 <span className="min-w-0 flex-1 truncate font-medium text-tone-success-fg">
                   {appointment
                     ? `Meetup · ${appointmentLabel(appointment)}`
-                    : "No time agreed yet"}
+                    : meetupBlockedOnPayment
+                      ? t("deal.meetupWaitingOnPayment")
+                      : "No time agreed yet"}
                 </span>
               </>
             ) : (
@@ -944,8 +985,22 @@ export function RoomScreen({
             <div className="px-4 pb-4">
               {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
+              ) : appointment && editingAppointment ? (
+                // Pre-filled from the card it replaces — "Resend" updates that
+                // same card in place, "Discard" brings it back untouched.
+                <ProposeMeetup
+                  place={place}
+                  onPlaceChange={setPlace}
+                  when={when}
+                  onWhenChange={setWhen}
+                  time={time}
+                  onTimeChange={setTime}
+                  isBusy={busy}
+                  onPropose={handlePropose}
+                  submitLabel={t("deal.resendMeetup")}
+                  onDiscard={cancelEditingAppointment}
+                />
               ) : appointment ? (
-                <div className="flex flex-col gap-3">
                 <AppointmentCard
                   status={appointment.status}
                   scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
@@ -953,10 +1008,12 @@ export function RoomScreen({
                   // Only the side that did not propose it can answer it.
                   awaitingViewer={appointment.proposed_by !== viewerId}
                   onAccept={() => handleAppointmentResponse("confirm")}
-                  onDecline={() => handleAppointmentResponse("reject")}
+                  onEdit={startEditingAppointment}
                 />
-                <ProposeMeetup place={place} onPlaceChange={setPlace} when={when} onWhenChange={setWhen} time={time} onTimeChange={setTime} isBusy={busy} onPropose={handlePropose} />
-                </div>
+              ) : meetupBlockedOnPayment ? (
+                <p className="rounded-control border border-line bg-surface px-3.5 py-2.5 text-body-sm text-ink-secondary">
+                  {t("deal.meetupPaymentNotice")}
+                </p>
               ) : (
                 /* Flow 1 puts the appointment after the payment is confirmed
                    and before the QR scan, and the API has a card to create.

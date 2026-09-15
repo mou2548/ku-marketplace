@@ -357,6 +357,8 @@
   },
   "deal": {
     "proposeMeetup": "เสนอนัดนี้",
+    "resendMeetup": "ส่งใหม่",
+    "discardChanges": "ยกเลิกการแก้ไข",
     "proposeTimeAndPlace": "นัดวันเวลาและสถานที่",
     "date": "วันที่",
     "time": "เวลา",
@@ -364,6 +366,8 @@
     "wherePlaceholder": "เช่น สำนักหอสมุด มก. (หน้าประตูทางเข้าหลัก)",
     "whereHint": "เลือกที่ที่คนพลุกพล่านในมหาลัย",
     "meetupProposed": "ส่งคำขอนัดแล้ว รออีกฝ่ายตอบ",
+    "meetupWaitingOnPayment": "รอการชำระเงิน",
+    "meetupPaymentNotice": "ต้องชำระเงินก่อน — นัดวันเวลาและสถานที่ได้เมื่ออัปโหลดสลิปแล้ว",
     "stepArrangeMeetup": "ถึงตาคุณ — นัดวันเวลาและสถานที่",
     "stepUploadSlip": "ถึงตาคุณ — โอนเงินแล้วอัปโหลดสลิป",
     "stepCheckSlip": "ถึงตาคุณ — ตรวจสลิป",
@@ -519,7 +523,7 @@
     "dateAndTime": "วันและเวลา",
     "place": "สถานที่",
     "openInMaps": "เปิดใน Google Maps",
-    "anotherTime": "ขอเวลาอื่น",
+    "edit": "แก้ไข",
     "accept": "ตอบรับ"
   },
   "slip": {
