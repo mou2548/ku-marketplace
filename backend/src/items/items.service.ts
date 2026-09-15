@@ -148,7 +148,7 @@ export class ItemsService {
             transactions: {
               some: {
                 status: {
-                  in: ['Pending', 'Processing', 'Pending Refund', 'Completed'],
+                  in: ['Pending', 'Processing', 'Pending Refund'],
                 },
               },
             },
