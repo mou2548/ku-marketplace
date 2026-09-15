@@ -277,6 +277,7 @@ export class GiveawaysService {
         data: {
           giveawayId,
           receiverId,
+          queueNumber: participantCount + 1,
           status:
             giveaway.allocationMethod === 'FirstCome'
               ? 'Waiting'
@@ -306,6 +307,7 @@ export class GiveawaysService {
     ticketId: number;
     giveawayId: number;
     receiverId: number;
+    queueNumber: number;
     status: string | null;
     updatedAt: Date | null;
     receiver: {
@@ -320,6 +322,7 @@ export class GiveawaysService {
       giveaway_id: this.label('giveaway', ticket.giveawayId),
       receiver_id: ticket.receiverId,
       receiver: this.serializeUserSummary(ticket.receiver),
+      queue_number: ticket.queueNumber,
       status: ticket.status,
       updated_at: ticket.updatedAt,
     };
@@ -490,6 +493,7 @@ export class GiveawaysService {
     ticket: {
       ticketId: number;
       receiverId: number;
+      queueNumber: number;
       status: string | null;
       receiver: {
         userId: number;
@@ -514,6 +518,7 @@ export class GiveawaysService {
       receiver_id: ticket.receiverId,
       receiver: this.serializeUserSummary(ticket.receiver),
       ticket_id: this.label('ticket', ticket.ticketId),
+      queue_number: ticket.queueNumber,
       status: outcomeByStatus[status] ?? status.toLowerCase(),
       ticket_status: status,
     };

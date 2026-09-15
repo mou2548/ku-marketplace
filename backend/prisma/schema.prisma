@@ -195,19 +195,25 @@ model GiveawayImage {
 }
 
 model GiveawayTicket {
-  ticketId   Int          @id @default(autoincrement()) @map("ticket_id")
-  giveawayId Int          @map("giveaway_id")
-  receiverId Int          @map("receiver_id")
-  qrToken    String?      @unique @map("qr_token") @db.VarChar(255)
+  ticketId    Int          @id @default(autoincrement()) @map("ticket_id")
+  giveawayId  Int          @map("giveaway_id")
+  receiverId  Int          @map("receiver_id")
+  qrToken     String?      @unique @map("qr_token") @db.VarChar(255)
   // §giveaway QR — when the current qrToken was minted. One code per 15 minutes:
   // qrGenerate reuses the token while this is < 15 min old.
-  qrIssuedAt DateTime?    @map("qr_issued_at") @db.Timestamp(6)
-  status     String?      @default("Registered") @map("ticket_status") @db.VarChar(20)
-  updatedAt  DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
-  giveaway   GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
-  receiver   User         @relation(fields: [receiverId], references: [userId])
+  qrIssuedAt  DateTime?    @map("qr_issued_at") @db.Timestamp(6)
+  status      String?      @default("Registered") @map("ticket_status") @db.VarChar(20)
+  // §giveaway queue number — this receiver's 1-based join order within this
+  // giveaway (ticketId is a DB-wide sequence shared by every giveaway, so it
+  // cannot be shown to entrants as their queue position). Assigned once in
+  // join(), under the same row lock used to enforce capacity.
+  queueNumber Int          @map("queue_number")
+  updatedAt   DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
+  giveaway    GiveawayPost @relation(fields: [giveawayId], references: [giveawayId])
+  receiver    User         @relation(fields: [receiverId], references: [userId])
 
   @@unique([giveawayId, receiverId])
+  @@unique([giveawayId, queueNumber])
   @@map("Giveaway_Ticket")
 }
 

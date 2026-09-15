@@ -165,8 +165,11 @@ CREATE TABLE "Giveaway_Ticket" (
     -- §giveaway QR — when qr_token was minted. One code per 15 minutes.
     "qr_issued_at" TIMESTAMP,
     "ticket_status" VARCHAR(20) DEFAULT 'Registered' CHECK("ticket_status" IN ('Registered', 'Waiting', 'NotSelected', 'Received', 'Forfeited', 'Expired')),
+    -- §giveaway queue number — 1-based join order within this giveaway_id.
+    "queue_number" INTEGER NOT NULL,
     "updated_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE ("giveaway_id", "receiver_id")
+    UNIQUE ("giveaway_id", "receiver_id"),
+    UNIQUE ("giveaway_id", "queue_number")
 );
 
 -- 12. Giveaway_Image Table
@@ -387,16 +390,16 @@ INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_loc
 ('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Closed');
 
 -- 11. Giveaway_Ticket (9 Tickets)
-INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status") VALUES
-(1, 4, 'TOK_1_PHY_A', 'Waiting'),
-(1, 5, 'TOK_1_PHY_B', 'Waiting'),
-(1, 6, 'TOK_1_PHY_C', 'Waiting'),
-(2, 7, 'TOK_2_SHIRT', 'Registered'),
-(3, 8, 'TOK_3_TOEIC_A', 'Registered'),
-(4, 3, 'TOK_4_CABLE', 'Expired'),
-(5, 4, 'TOK_5_GLASS', 'Received'),
-(5, 5, 'TOK_5_GLASS_LOSE', 'Expired'),
-(6, 4, 'TOK_6_RULER_FORFEITED', 'Forfeited');
+INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status", "queue_number") VALUES
+(1, 4, 'TOK_1_PHY_A', 'Waiting', 1),
+(1, 5, 'TOK_1_PHY_B', 'Waiting', 2),
+(1, 6, 'TOK_1_PHY_C', 'Waiting', 3),
+(2, 7, 'TOK_2_SHIRT', 'Registered', 1),
+(3, 8, 'TOK_3_TOEIC_A', 'Registered', 1),
+(4, 3, 'TOK_4_CABLE', 'Expired', 1),
+(5, 4, 'TOK_5_GLASS', 'Received', 1),
+(5, 5, 'TOK_5_GLASS_LOSE', 'Expired', 2),
+(6, 4, 'TOK_6_RULER_FORFEITED', 'Forfeited', 1);
 
 -- 12. Giveaway_Image (6 Images - curated Unsplash photos matching each giveaway)
 INSERT INTO "Giveaway_Image" ("giveaway_id", "image_status", "image_url", "display_order") VALUES
