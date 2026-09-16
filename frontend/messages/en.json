@@ -545,7 +545,20 @@
     "amountDue": "Amount due",
     "amountWrong": "Amount is wrong",
     "confirmReceived": "Confirm payment received",
-    "viewInNewTab": "View the full slip in a new tab"
+    "transferSlip": "Transfer slip",
+    "viewFullscreen": "View the slip full screen",
+    "previewHint": "Check the amount and the reference read clearly. You cannot replace the slip after sending it.",
+    "confirmSend": "Send this slip",
+    "change": "Choose another",
+    "retry": "Try sending again",
+    "sent": "Slip sent",
+    "uploadedAt": "Uploaded",
+    "uploadedByBuyerAt": "Buyer uploaded",
+    "errorNotImage": "The file must be an image",
+    "errorTooLarge": "The file is larger than 5 MB",
+    "errorUploadFailed": "Upload failed. The slip is still here, try sending it again.",
+    "refundSlip": "Refund slip",
+    "paymentSlipOnFile": "Payment slip"
   },
   "delivery": {
     "reportAfter": "You can report a problem after this",
@@ -803,5 +816,12 @@
     "placeholder": "Describe what happened",
     "hint": "Optional. Add details that can help an admin review your report.",
     "error": "Could not submit the report."
+  },
+  "photo": {
+    "close": "Close",
+    "hint": "Pinch to zoom, swipe down to close",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit"
   }
 }
