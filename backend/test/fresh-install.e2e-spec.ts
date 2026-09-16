@@ -826,7 +826,12 @@ describe('Fresh clone database', () => {
         quantity: 1,
         allocationMethod: 'Random',
         registerDeadline: new Date(Date.now() - 1000),
-        tickets: { create: [{ receiverId: 4 }, { receiverId: 5 }] },
+        tickets: {
+          create: [
+            { receiverId: 4, queueNumber: 1 },
+            { receiverId: 5, queueNumber: 2 },
+          ],
+        },
       },
     });
     await Promise.all([
@@ -858,7 +863,9 @@ describe('Fresh clone database', () => {
         quantity: 1,
         allocationMethod: 'Manual',
         pickupDeadline: new Date(Date.now() + 24 * 3600000),
-        tickets: { create: [{ receiverId: 4, status: 'Waiting' }] },
+        tickets: {
+          create: [{ receiverId: 4, status: 'Waiting', queueNumber: 1 }],
+        },
       },
       include: { tickets: true },
     });

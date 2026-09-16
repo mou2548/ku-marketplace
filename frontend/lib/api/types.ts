@@ -228,6 +228,7 @@ export interface GiveawayTicket {
   ticket_id: number;
   giveaway_id: number;
   receiver_id: number;
+  queue_number: number;
   status: TicketStatus;
   updated_at: string;
   created_at: string;
