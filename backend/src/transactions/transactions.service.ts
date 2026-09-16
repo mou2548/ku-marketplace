@@ -213,6 +213,29 @@ export class TransactionsService {
           'This transaction cannot arrange a handover now',
         );
       }
+      // A meetup cannot be arranged ahead of payment: `uploadPaymentSlip`
+      // (transaction.service.ts) is what moves status Pending -> Processing,
+      // so still-Pending means the buyer has not paid yet on a deal that
+      // needs payment at all. Mirrors `paymentRequired` in
+      // transaction.service.ts — inlined here since this service does not
+      // depend on that one.
+      if (!returning && transaction.status === 'Pending') {
+        const paymentRequired =
+          transaction.offerId === null
+            ? true
+            : Number(
+                (
+                  await tx.offer.findUnique({
+                    where: { offerId: transaction.offerId },
+                  })
+                )?.additionalMoney ?? 0,
+              ) > 0;
+        if (paymentRequired) {
+          throw new BadRequestException(
+            'Upload and confirm the payment slip before arranging a meetup',
+          );
+        }
+      }
       const { date, time, location } = createAppointmentDto;
       const previous = await tx.appointmentCard.findFirst({
         where: { transactionId, deletedAt: null },

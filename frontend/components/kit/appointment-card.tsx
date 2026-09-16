@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Calendar, Check, MapPin, X } from "lucide-react";
+import { Calendar, Check, MapPin, Pencil } from "lucide-react";
 
 import { APPOINTMENT_STATUS, type AppointmentStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,13 @@ export interface AppointmentCardProps {
   /** True when the viewer is the one who must answer. */
   awaitingViewer?: boolean;
   onAccept?: () => void;
-  onDecline?: () => void;
+  /**
+   * Opens the pre-filled edit form in place of this card so a change can be
+   * resent — see room-screen.tsx. Rendered as a pencil icon in the header,
+   * and (for the awaiting side on a Pending card) as the row's secondary
+   * action instead of a bare reject.
+   */
+  onEdit?: () => void;
   className?: string;
 }
 
@@ -52,7 +58,7 @@ export function AppointmentCard({
   mapsApiKey,
   awaitingViewer = false,
   onAccept,
-  onDecline,
+  onEdit,
   className,
 }: AppointmentCardProps) {
   const t = useTranslations();
@@ -80,7 +86,25 @@ export function AppointmentCard({
     >
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("appointment.meetup")}</h4>
-        <StatusBadge status={copy} size="sm" />
+        <span className="flex items-center gap-1.5">
+          <StatusBadge status={copy} size="sm" />
+          {/* The awaiting side already gets an "Edit" button in the action
+              row below — showing the pencil here too would just duplicate
+              it, so this is for the other cases: the proposer touching up
+              their own still-Pending card, or either side rescheduling a
+              Confirmed one. */}
+          {onEdit && !(status === "Pending" && awaitingViewer) ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              pill
+              aria-label={t("appointment.edit")}
+              onPress={onEdit}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          ) : null}
+        </span>
       </div>
 
       <dl className="flex flex-col gap-2.5 p-4">
@@ -137,8 +161,8 @@ export function AppointmentCard({
            Surface is overflow-hidden so the label was cut off rather than
            scrolled. Stacked below sm:, and the label is shorter. */
         <div className="flex flex-col-reverse gap-2 p-4 pt-3 sm:flex-row">
-          <Button variant="secondary" block onPress={onDecline}>
-            <X className="size-4" />{t("appointment.anotherTime")}</Button>
+          <Button variant="secondary" block onPress={onEdit}>
+            <Pencil className="size-4" />{t("appointment.edit")}</Button>
           <Button variant="primary" block onPress={onAccept}>
             <Check className="size-4" />{t("appointment.accept")}</Button>
         </div>

@@ -384,6 +384,8 @@
   },
   "deal": {
     "proposeMeetup": "Propose this meetup",
+    "resendMeetup": "Resend",
+    "discardChanges": "Discard changes",
     "proposeTimeAndPlace": "Propose a time and place",
     "date": "Date",
     "time": "Time",
@@ -391,6 +393,8 @@
     "wherePlaceholder": "e.g. สำนักหอสมุด มก. (หน้าประตูทางเข้าหลัก)",
     "whereHint": "Somewhere public and busy on campus",
     "meetupProposed": "Meetup proposed. Waiting on a reply.",
+    "meetupWaitingOnPayment": "Waiting on payment",
+    "meetupPaymentNotice": "Complete payment first — the meetup can be arranged once the slip is uploaded.",
     "stepArrangeMeetup": "Your step - arrange the meetup",
     "stepUploadSlip": "Your step - pay and upload the slip",
     "stepCheckSlip": "Your step - check the slip",
@@ -550,7 +554,7 @@
     "dateAndTime": "Date and time",
     "place": "Place",
     "openInMaps": "Open in Google Maps",
-    "anotherTime": "Another time",
+    "edit": "Edit",
     "accept": "Accept"
   },
   "slip": {
