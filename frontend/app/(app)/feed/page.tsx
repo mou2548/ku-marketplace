@@ -1,4 +1,5 @@
 import { listPosts } from "@/lib/api/posts";
+import { parseFeedParams, type RawSearchParams } from "@/lib/feed-filters";
 
 import { MarketFeed } from "../market-feed";
 
@@ -10,12 +11,21 @@ import { MarketFeed } from "../market-feed";
 export const dynamic = "force-dynamic";
 
 /** The product feed shown immediately after authentication. */
-export default async function FeedPage() {
-  const posts = await listPosts();
+export default async function FeedPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
+  const [posts, params] = await Promise.all([listPosts(), searchParams]);
+
+  // Filtering itself is client-side over the full list, but the *initial* state
+  // is read here so a shared link renders filtered on the server rather than
+  // flashing the unfiltered feed and correcting itself after hydration.
+  const { filters, sort } = parseFeedParams(params);
 
   return (
     <div className="flex flex-col gap-5">
-      <MarketFeed posts={posts} />
+      <MarketFeed posts={posts} initialFilters={filters} initialSort={sort} />
     </div>
   );
 }
