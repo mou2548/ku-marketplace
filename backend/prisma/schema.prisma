@@ -24,6 +24,8 @@ model User {
   emailVerifiedAt DateTime?        @map("email_verified_at") @db.Timestamp(6)
   isAdmin         Boolean?         @default(false) @map("isAdmin")
   createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  following       UserFollow[] @relation("UserFollowing")
+  followers       UserFollow[] @relation("UserFollowers")
   notifications   Notification[]
   items           Item[]
   offers          Offer[]
@@ -368,4 +370,17 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   @@index([userId, createdAt])
   @@map("Notification")
+}
+
+model UserFollow {
+  followerId Int @map("follower_id")
+  followedId Int @map("followed_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  follower User @relation("UserFollowing", fields: [followerId], references: [userId])
+  followed User @relation("UserFollowers", fields: [followedId], references: [userId])
+
+  @@id([followerId, followedId])
+  @@index([followedId, createdAt])
+  @@index([followerId, createdAt, followedId])
+  @@map("User_Follow")
 }

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { publicListing } from './public-listing';
 import {
   MEMBERSHIP_CONFIG,
   type MembershipTier,
@@ -55,7 +56,7 @@ export class PostsService {
     return `${prefix}_${String(value).padStart(3, '0')}`;
   }
 
-  private serializePost(post: {
+  serializePost(post: {
     postId: number;
     itemId: number;
     postType: string;
@@ -87,6 +88,7 @@ export class PostsService {
         userId: number;
         firstNameEn: string;
         lastNameEn: string;
+        emailVerifiedAt?: Date | null;
       } | null;
     };
   }) {
@@ -136,9 +138,7 @@ export class PostsService {
               .filter(Boolean)
               .join(' ')
               .trim(),
-            // Every account is a verified @ku.th address (research T1); the
-            // schema has no separate verification flag.
-            isVerified: true,
+            isVerified: Boolean(owner.emailVerifiedAt),
           }
         : null,
     };
@@ -274,7 +274,7 @@ export class PostsService {
 
   async findAllPosts() {
     const posts = await this.prisma.post.findMany({
-      where: { deletedAt: null, status: 'Active' },
+      where: publicListing(),
       include: {
         item: {
           include: {
@@ -283,7 +283,7 @@ export class PostsService {
               orderBy: { displayOrder: 'asc' },
             },
             owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true },
+              select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
             },
           },
         },
@@ -297,8 +297,7 @@ export class PostsService {
     const post = await this.prisma.post.findUnique({
       where: {
         postId: this.id(postId, 'post'),
-        deletedAt: null,
-        status: 'Active',
+        AND: publicListing(),
       },
       include: {
         item: {
@@ -308,7 +307,7 @@ export class PostsService {
               orderBy: { displayOrder: 'asc' },
             },
             owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true },
+              select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
             },
           },
         },
@@ -401,7 +400,7 @@ export class PostsService {
 
     const transaction = await this.prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
-        where: { postId: id, deletedAt: null },
+        where: { postId: id, AND: publicListing() },
         include: {
           item: {
             include: {
@@ -410,7 +409,7 @@ export class PostsService {
                 orderBy: { displayOrder: 'asc' },
               },
               owner: {
-                select: { userId: true, firstNameEn: true, lastNameEn: true },
+                select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
               },
             },
           },
@@ -446,6 +445,7 @@ export class PostsService {
           deletedAt: null,
           status: 'Active',
           quantityRemaining: { gte: quantity },
+          AND: publicListing(),
         },
         data: { quantityRemaining: { decrement: quantity } },
       });
@@ -501,7 +501,7 @@ export class PostsService {
               orderBy: { displayOrder: 'asc' },
             },
             owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true },
+              select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true, status: true },
             },
           },
         },
@@ -512,6 +512,7 @@ export class PostsService {
       throw new ConflictException('โพสต์นี้รองรับการซื้อเท่านั้น');
     }
     if (
+      post.item.owner.status !== 'Active' ||
       post.status !== 'Active' ||
       post.quantityRemaining < 1 ||
       post.item.deletedAt ||
@@ -638,6 +639,10 @@ export class PostsService {
         include: { post: { include: { item: true } }, items: true },
       });
       if (!offer) throw new NotFoundException('ไม่พบ offer');
+      if (!await tx.post.count({ where: { postId: postPk, AND: publicListing() } }))
+        throw new ConflictException('Post is unavailable');
+      if (!await tx.user.count({ where: { userId: offer.proposerId, status: 'Active' } }))
+        throw new ConflictException('Proposer unavailable');
       if (offer.status !== 'Pending')
         throw new ConflictException('offer นี้ไม่ได้อยู่ในสถานะ Pending');
       if (!['TradeOnly', 'Both'].includes(offer.post.postType)) {
@@ -788,7 +793,7 @@ export class PostsService {
           orderBy: { displayOrder: 'asc' },
         },
         owner: {
-          select: { userId: true, firstNameEn: true, lastNameEn: true },
+          select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
         },
       },
     } as const;
@@ -799,7 +804,7 @@ export class PostsService {
       },
       include: {
         proposer: {
-          select: { userId: true, firstNameEn: true, lastNameEn: true },
+          select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
         },
         items: { include: { item: includeItem } },
         post: { include: { item: includeItem } },

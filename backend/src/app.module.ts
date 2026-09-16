@@ -19,6 +19,7 @@ import { TransactionsController } from './transactions/transactions.controller';
 import { TransactionsService } from './transactions/transactions.service';
 import { AdminTransactionEvidenceController } from './transactions/admin-transaction-evidence.controller';
 import { AppointmentCardsModule } from './appointment-cards/appointment-cards.module';
+import { SellersModule } from './sellers/sellers.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     AppointmentCardsModule,
     CloudinaryModule,
     UsersModule,
+    SellersModule,
   ],
   controllers: [
     AppController,

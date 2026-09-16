@@ -13,8 +13,15 @@ Explicitly off limits:
 
 - `backend/` — do not read for guidance, do not modify, do not "fix"
 - `init.sql`, `docker-compose.yml`, `README.md` at the repo root
-- the repository root `.gitignore` (there is none; do not create one)
-- any `.claude/` directory or `CLAUDE.md` outside this folder
+- any `CLAUDE.md` outside this folder
+
+Two exceptions, both deliberate:
+
+- **The repository root `.gitignore`** may be created and edited. It exists, and
+  `.claude/` is listed in it.
+- **The repository root `.claude/`** holds the installed design skills, agents, and
+  hooks. It is git-ignored, never committed, and never pushed. Do not edit it as part
+  of design work; installing or updating a skill there is its own task.
 
 The API contract is fixed. **The frontend adapts to the backend, never the reverse.**
 If a screen needs data the API does not return, note the gap in
@@ -66,6 +73,17 @@ Everything in `components/ui/` is hand-written on top of `react-aria-components`
 
 ## 3. Design principles
 
+The audience is a KU student in 2026 on a phone. The register is **modern, calm, and
+easy to read: quiet colour, generous space, and hierarchy carried by type and
+structure rather than by saturation.** Nothing on screen should shout.
+
+**Where game DNA applies.** The game-inventory metaphor is confined to the two
+surfaces whose mental model actually needs it — **inventory** and **trade/offer**.
+There it stays: slots, rarity-coloured borders, drag to place, texture on the panel.
+Everywhere else — feed, post, transaction, chat, giveaway, account, membership,
+admin, auth — the surface is quiet and modern, and rarity colour, panel texture, and
+game framing must not appear.
+
 The old UI failed because it was *flat*, not because it was wrong. Every screen must
 earn its depth. These are non-negotiable:
 
@@ -73,8 +91,8 @@ earn its depth. These are non-negotiable:
    lone hairline border, to separate a surface from its background.
 2. **Radius rhythm.** Radii differ by role: cards `20px`, inventory slots `10px`,
    buttons `12px`, pills fully round. One radius everywhere reads as a template.
-3. **Texture on key surfaces.** 2% noise on game panels, faded grid on heroes,
-   gradient plates on beveled edges. Never on body text backgrounds.
+3. **Texture is rationed.** 2% noise on the inventory and trade panels only. Never on
+   body text backgrounds, and never on a surface outside those two.
 4. **Green-tinted neutrals.** Grays carry a trace of the brand hue. Pure `#808080`
    grays are banned.
 5. **Type carries hierarchy.** Prompt at display sizes with negative tracking and
@@ -83,9 +101,13 @@ earn its depth. These are non-negotiable:
    animates without a state change. Respect `prefers-reduced-motion`.
 7. **No empty emptiness.** Every zero-state gets an illustration, a sentence
    explaining why it is empty, and one clear action.
-8. **Game DNA, modern execution.** The inventory and trade surfaces read as a game
-   inventory — slots, rarity-colored borders, drag to place — rendered cleanly and
-   with real depth, not as retro pixel skeuomorphism.
+8. **Game DNA, modern execution — inventory and trade only.** Those two surfaces read
+   as a game inventory: slots, rarity-coloured borders, drag to place, rendered
+   cleanly and with real depth, not as retro pixel skeuomorphism. No other screen
+   borrows the vocabulary.
+9. **Quiet by default.** Saturated fills are reserved for a single primary action per
+   screen and for genuine danger. Status, category, and metadata are carried by
+   plain language, weight, and a lucide icon before they are carried by colour.
 
 ---
 
@@ -190,3 +212,29 @@ as check marks and coloured squares in tables and headings — write "done" or
 6. **When the context budget runs low, stop and say so.** Do not rush to finish a
    phase with the remaining tokens; the user decides whether to continue.
 7. Work one phase at a time. Report what changed at the end of each.
+8. **Use the installed design skills. Do not work from memory when a skill covers
+   the task.** They are installed deliberately and each owns a different job:
+
+   | Skill | Use it for |
+   |---|---|
+   | `impeccable` | The design workflow itself: `critique`, `audit`, `polish`, `quieter`, `distill`, `layout`, `typeset`, `clarify`, `harden`, `adapt`, `document`. This is the default driver for any screen-level pass. |
+   | `ui-ux-pro-max` (and its `design`, `design-system`, `brand`, `ui-styling` siblings) | Its searchable local database — styles, palettes, font pairings, chart types, per-stack patterns — when choosing or justifying a visual decision. |
+   | `frontend-design` | Aesthetic direction when a surface risks reading as a template. |
+   | `senior-frontend` | React 19 / Next.js 16 / Tailwind 4 implementation questions and bundle work. |
+   | `dataviz` | Any chart, meter, or stat tile. |
+   | `code-review` | Before each phase is called done. |
+
+   Name the skill you used in the phase report. If none applies, say so rather
+   than skipping silently.
+
+**Impeccable setup.** `PRODUCT.md` lives at `frontend/PRODUCT.md`, and the skill is
+installed at the repository root. `context.mjs` therefore only resolves this project
+correctly when a target inside `frontend/` is passed:
+
+```
+node ../.claude/skills/impeccable/scripts/context.mjs --target frontend/app/<route>/page.tsx
+```
+
+Run it from the repository root, once per session, and always with `--target`.
+Without the flag it reports `NO_PRODUCT_MD` and will try to re-run the init
+interview the user has already sat through.

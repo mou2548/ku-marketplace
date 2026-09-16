@@ -9,6 +9,8 @@ import {
   Scale,
   ShieldCheck,
   Trash2,
+  Users,
+  Store,
 } from "lucide-react";
 
 import { Surface } from "@/components/kit/surface";
@@ -67,6 +69,8 @@ export default async function AccountPage() {
 
   /** Shown at every width. */
   const rows = [
+    { href: `/sellers/${me.userId}`, label: t("seller.publicProfile"), icon: Store, iconClass: "bg-brand-subtle text-ink-brand" },
+    { href: "/account/following", label: t("seller.directory"), icon: Users, iconClass: "bg-brand-subtle text-ink-brand" },
     {
       href: "/account/membership",
       label: t("account.membership"),

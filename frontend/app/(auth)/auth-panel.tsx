@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
  * The visual design of this screen is deliberately unchanged — it is the one
  * part of the product the team asked to keep (docs/PLAN.md §3).
  */
-export function AuthPanel() {
+export function AuthPanel({ returnTo }: { returnTo?: string }) {
   const [mode, setMode] = useState<"login" | "register">("login");
 
   return (
@@ -94,7 +94,7 @@ export function AuthPanel() {
             />
           </div>
 
-          {mode === "login" ? <LoginForm /> : <RegisterForm />}
+          {mode === "login" ? <LoginForm returnTo={returnTo} /> : <RegisterForm />}
         </div>
       </div>
     </div>
@@ -128,11 +128,12 @@ function ModeTab({
   );
 }
 
-function LoginForm() {
+function LoginForm({ returnTo }: { returnTo?: string }) {
   const [state, formAction, isPending] = useActionState(login, undefined);
 
   return (
     <form action={formAction} className="flex w-full max-w-lg flex-col gap-6">
+      <input type="hidden" name="returnTo" value={returnTo ?? ""} />
       <TextInput
         name="email"
         label="KU email"

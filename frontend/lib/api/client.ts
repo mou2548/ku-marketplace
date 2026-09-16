@@ -23,10 +23,11 @@
  * `fetch` writes its own multipart boundary).
  */
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(
-  /\/+$/,
-  "",
-);
+const BASE = (
+  (typeof window === "undefined" ? process.env.API_URL : undefined) ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:4000"
+).replace(/\/+$/, "");
 
 /** Where the browser keeps the JWT after login. */
 export const TOKEN_KEY = "access_token";
@@ -112,7 +113,10 @@ function isBinaryBody(body: unknown): body is BodyInit {
   );
 }
 
-export async function apiFetch<T>(path: string, init: FetchInit = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init: FetchInit = {},
+): Promise<T> {
   const { token, method = "GET", body, headers: initHeaders, ...rest } = init;
   const bearer = token ?? clientToken();
 
@@ -126,13 +130,15 @@ export async function apiFetch<T>(path: string, init: FetchInit = {}): Promise<T
     outBody = undefined;
   } else if (typeof body === "string") {
     outBody = body;
-    if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    if (!headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
   } else if (isBinaryBody(body)) {
     // FormData &c. — let `fetch` set its own Content-Type (multipart boundary).
     outBody = body;
   } else {
     outBody = JSON.stringify(body);
-    if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    if (!headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
   }
 
   const res = await fetch(`${BASE}${path}`, {

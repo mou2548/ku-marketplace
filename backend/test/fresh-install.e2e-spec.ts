@@ -1220,11 +1220,24 @@ describe('Fresh clone database', () => {
     delete process.env.RESEND_API_KEY;
     let app: import('@nestjs/common').INestApplication | undefined;
     try {
+      const sessionRecords = new Map<string, string>();
       const module = await Test.createTestingModule({ imports: [AppModule] })
         .overrideProvider(PrismaService)
         .useValue(prisma)
         .overrideProvider(RedisService)
-        .useValue({ disconnect: jest.fn() })
+        .useValue({
+          disconnect: jest.fn(),
+          set: jest.fn((key: string, value: string) => {
+            sessionRecords.set(key, value);
+            return Promise.resolve('OK');
+          }),
+          get: jest.fn((key: string) =>
+            Promise.resolve(sessionRecords.get(key) ?? null),
+          ),
+          del: jest.fn((key: string) =>
+            Promise.resolve(Number(sessionRecords.delete(key))),
+          ),
+        })
         .compile();
       app = module.createNestApplication();
       app.useGlobalInterceptors(new ResponseInterceptor(app.get(Reflector)));

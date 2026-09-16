@@ -326,6 +326,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
                 {filtered.map((post) => (
                   <MasonryItem key={post.post_id}>
                     <PostCard
+                      hoverEffects={false}
                       postId={post.post_id}
                       name={post.item.name}
                       price={post.price}
@@ -336,6 +337,7 @@ export function MarketFeed({ posts }: { posts: Post[] }) {
                       courseName={post.item.course_name}
                       wantedItemOffer={post.wanted_item_offer}
                       seller={{
+                        user_id: post.seller.user_id,
                         name: post.seller.name,
                         isVerified: post.seller.isVerified,
                         faculty: post.seller.faculty,

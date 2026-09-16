@@ -1,3 +1,5 @@
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import { UsePipes } from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
 import {
@@ -22,6 +24,15 @@ import {
   ResetPasswordDto,
 } from './dto/auth.dto';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
+
+class RefreshDto extends createZodDto(
+  z.object({ refreshToken: z.string().min(1).max(4096) }),
+) {}
+class LogoutDto extends createZodDto(
+  z
+    .object({ refreshToken: z.string().min(1).max(4096).optional() })
+    .default({}),
+) {}
 
 const REFRESH_TOKEN_COOKIE = 'refreshToken';
 
@@ -53,12 +64,13 @@ export class AuthController {
     @Body() dto: VerifyOtpDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, accessToken, refreshToken } =
+    const { user, accessToken, refreshToken, sessionExpiresAt } =
       await this.authService.verifyRegisterOtp(dto.email, dto.otp);
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, cookieOptions);
 
-    return { user, accessToken };
+    res.setHeader('Cache-Control', 'no-store');
+    return { user, accessToken, refreshToken, sessionExpiresAt };
   }
 
   @Post('otp/resend')
@@ -72,24 +84,36 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, accessToken, refreshToken } =
+    const { user, accessToken, refreshToken, sessionExpiresAt } =
       await this.authService.login(dto);
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, cookieOptions);
 
-    return { user, accessToken };
+    res.setHeader('Cache-Control', 'no-store');
+    return { user, accessToken, refreshToken, sessionExpiresAt };
   }
 
-  /**
-   * §logout — ระบบ auth นี้เป็น stateless JWT ล้วน ไม่มี refresh-token store/blacklist
-   * ฝั่ง server (ไม่มีตาราง RefreshToken ใน DB) เพราะงั้น "logout" ที่ทำได้จริงคือ
-   * เคลียร์ cookie ฝั่ง client เท่านั้น — access token เดิมที่ client อาจถืออยู่นอก
-   * cookie (เช่นเก็บใน memory ของ frontend) จะยังใช้งานได้จนกว่าจะหมดอายุเอง (15 นาที)
-   * ถ้าต้องการ revoke ทันทีจริงๆ ต้องเพิ่ม token blacklist ใน Redis ซึ่งเป็นคนละงานกับที่คุยกันไว้
-   */
+  @Post('refresh')
+  async refresh(
+    @Body() dto: RefreshDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refresh(dto.refreshToken);
+    res.setHeader('Cache-Control', 'no-store');
+    res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
+      ...cookieOptions,
+      maxAge: Math.max(0, tokens.sessionExpiresAt * 1000 - Date.now()),
+    });
+    return tokens;
+  }
+
   @Post('logout')
-  @ResponseMessage('ออกจากระบบสำเร็จ')
-  logout(@Res({ passthrough: true }) res: Response) {
+  @ResponseMessage('Signed out successfully')
+  async logout(
+    @Body() dto: LogoutDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(dto.refreshToken);
     res.clearCookie(REFRESH_TOKEN_COOKIE, cookieOptions);
     return {};
   }

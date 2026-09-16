@@ -2,12 +2,12 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
-import { ITEM_CONDITION, type ItemCondition, type PostType } from "@/lib/status";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { type ItemCondition, type PostType } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
 import { ListingTypeBadge } from "./listing-type-badge";
+import { ItemConditionBadge } from "./item-condition-badge";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -33,8 +33,14 @@ export interface PostCardProps {
   description?: string | null;
   courseName?: string | null;
   wantedItemOffer?: string | null;
-  seller: { name: string; isVerified?: boolean; faculty?: string | null };
+  seller: {
+    user_id: number;
+    name: string;
+    isVerified?: boolean;
+    faculty?: string | null;
+  };
   className?: string;
+  hoverEffects?: boolean;
 }
 
 export function PostCard({
@@ -50,17 +56,19 @@ export function PostCard({
   wantedItemOffer,
   seller,
   className,
+  hoverEffects = true,
 }: PostCardProps) {
-  const st = useStatusText();
-  const rarity = ITEM_CONDITION[condition];
   const t = useTranslations();
   const showsPrice = postType !== "TradeOnly";
 
   return (
-    <article className={cn("group/pin break-inside-avoid", className)}>
+    <article className={cn("break-inside-avoid", className)}>
       <Link
         href={`/market/${postId}`}
-        className="block rounded-card outline-none"
+        className={cn(
+          "block rounded-card focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand",
+          hoverEffects && "group/pin",
+        )}
       >
         <div className="relative overflow-hidden rounded-card bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/pin:-translate-y-0.5 group-hover/pin:shadow-floating group-focus-visible/pin:shadow-floating">
           <PostImage
@@ -88,6 +96,8 @@ export function PostCard({
             {name}
           </h3>
 
+          <ItemConditionBadge condition={condition} />
+
           {courseName ? (
             <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-surface-sunken px-2 py-0.5 text-meta font-medium text-ink-secondary">
               <BookOpen aria-hidden className="size-3" />
@@ -106,28 +116,35 @@ export function PostCard({
               on a card that only needed one. */}
           {postType !== "SellOnly" && wantedItemOffer ? (
             <p className="flex items-start gap-1.5 text-meta leading-[1.5] text-ink-muted">
-              <ArrowLeftRight aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+              <ArrowLeftRight
+                aria-hidden
+                className="mt-0.5 size-3.5 shrink-0"
+              />
               <span className="line-clamp-2">
-                <span className="font-medium text-ink-secondary">{t("card.wants")}</span>{" "}
+                <span className="font-medium text-ink-secondary">
+                  {t("card.wants")}
+                </span>{" "}
                 {wantedItemOffer}
               </span>
             </p>
           ) : null}
-
-          <div className="mt-0.5 flex items-center justify-between gap-2">
-            <TrustBadge
-              name={seller.name}
-              isVerified={seller.isVerified}
-              faculty={seller.faculty}
-              size="sm"
-              className="min-w-0"
-            />
-            <span className="shrink-0 text-meta font-medium text-ink-muted">
-              {st.of(rarity).label}
-            </span>
-          </div>
         </div>
       </Link>
+      <div className="flex min-h-11 items-center justify-between gap-2 px-1 pb-1">
+        <Link
+          href={`/sellers/${seller.user_id}`}
+          aria-label={t("seller.openProfile", { name: seller.name })}
+          className="flex min-h-11 min-w-0 flex-1 items-center rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <TrustBadge
+            name={seller.name}
+            isVerified={seller.isVerified}
+            faculty={seller.faculty}
+            size="sm"
+            className="min-w-0"
+          />
+        </Link>
+      </div>
     </article>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { ImageOff, Package } from "lucide-react";
 
@@ -36,6 +37,7 @@ export function PostImage({
   priority?: boolean;
   className?: string;
 }) {
+  const t = useTranslations("card");
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const failed = !!src && failedSrc === src;
@@ -61,7 +63,7 @@ export function PostImage({
             <Package aria-hidden className="size-5 text-ink-brand opacity-75" />
           )}
           <span className="text-meta font-medium opacity-80">
-            {failed ? "Photo unavailable" : "No photo"}
+            {t(failed ? "photoUnavailable" : "noPhoto")}
           </span>
         </span>
       ) : (

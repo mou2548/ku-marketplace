@@ -1,32 +1,36 @@
 import { cookies } from "next/headers";
 
-/**
- * Holds the backend's `accessToken` — nothing else. The backend also sets a
- * `refreshToken` httpOnly cookie on login/verify, but there is no
- * `/auth/refresh` endpoint anywhere in the merged backend to spend it against
- * (confirmed by reading every controller), so it is never relayed or stored
- * here. The session simply expires when the access token does; there is no
- * silent-refresh path to build against an endpoint that doesn't exist.
- */
-const SESSION_COOKIE = "session";
+import {
+  SESSION_COOKIE,
+  REFRESH_COOKIE,
+  SESSION_COOKIE_OPTIONS,
+  accessCookieAge,
+  type SessionTokens,
+} from "../session-cookies";
 
-/** Matches the backend's real access token lifetime (`token.service.ts`). */
-const ACCESS_TOKEN_MAX_AGE_SECONDS = 15 * 60;
-
-export async function setSession(accessToken: string) {
+export async function setSession(
+  accessToken: string,
+  tokens: Omit<SessionTokens, "accessToken">,
+) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
-    path: "/",
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: accessCookieAge(accessToken),
   });
+  cookieStore.set(REFRESH_COOKIE, tokens.refreshToken, {
+    ...SESSION_COOKIE_OPTIONS,
+    expires: new Date(tokens.sessionExpiresAt * 1000),
+  });
+}
+
+export async function getRefreshToken(): Promise<string | undefined> {
+  return (await cookies()).get(REFRESH_COOKIE)?.value;
 }
 
 export async function clearSession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(REFRESH_COOKIE);
 }
 
 export async function getAccessToken(): Promise<string | undefined> {

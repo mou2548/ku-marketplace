@@ -4,6 +4,7 @@ import { Prompt } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "@/lib/i18n/locale";
 import "./globals.css";
+import { SessionNotice } from "@/components/patterns/session-notice";
 
 /**
  * Prompt covers Thai and Latin in one family, which matters here: the UI mixes
@@ -32,7 +33,8 @@ export default async function RootLayout({
      and tells a screen reader which voice to use. It was hardcoded to "en"
      while the product already rendered Thai. */
   const [locale, cookieStore] = await Promise.all([getLocale(), cookies()]);
-  const theme = cookieStore.get("ku-theme")?.value === "dark" ? "dark" : "light";
+  const theme =
+    cookieStore.get("ku-theme")?.value === "dark" ? "dark" : "light";
 
   return (
     <html
@@ -48,7 +50,14 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <SessionNotice
+            signedIn={
+              cookieStore.has("session") || cookieStore.has("ku-refresh")
+            }
+          />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );
