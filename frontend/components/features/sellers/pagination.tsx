@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 
 export async function SellerPagination({
   pathname,
@@ -12,7 +12,7 @@ export async function SellerPagination({
   page: number;
   totalPages: number;
 }) {
-  const t = await getTranslations("seller");
+  const t = await getCopy("seller");
   if (totalPages < 2 && page === 1) return null;
   const href = (value: number) => {
     const params = new URLSearchParams(query);

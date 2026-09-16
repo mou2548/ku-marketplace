@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck } from "lucide-react";
@@ -47,7 +47,7 @@ const POST_REPORT_REASONS = [
  * fold on a phone.
  */
 export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
-  const t = useTranslations();
+  const t = getCopy();
   const router = useRouter();
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");

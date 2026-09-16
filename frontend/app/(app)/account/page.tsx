@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 import { redirect } from "next/navigation";
 import {
   ChevronRight,
@@ -35,7 +35,7 @@ export const metadata = { title: "Account - KU Marketplace" };
  * Everything else here is settings, and settings are a list.
  */
 export default async function AccountPage() {
-  const t = await getTranslations();
+  const t = await getCopy();
   if (!(await getAccessToken())) {
     redirect("/login");
   }

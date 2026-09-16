@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Prompt } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "@/lib/i18n/locale";
 import "./globals.css";
 import { SessionNotice } from "@/components/patterns/session-notice";
 
 /**
- * Prompt covers Thai and Latin in one family, which matters here: the UI mixes
- * them in the same line constantly (a Thai label next to a course code next to
- * a price). Two families would mean two vertical rhythms in the same sentence.
+ * Prompt covers Thai and Latin in one family, which matters here: English UI and
+ * user-authored Thai listings can share the same line without mixing font families.
  */
 const prompt = Prompt({
   variable: "--font-prompt",
@@ -29,16 +26,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  /* `lang` is real, not decorative: it drives Thai line breaking and hyphenation
-     and tells a screen reader which voice to use. It was hardcoded to "en"
-     while the product already rendered Thai. */
-  const [locale, cookieStore] = await Promise.all([getLocale(), cookies()]);
+  const cookieStore = await cookies();
   const theme =
     cookieStore.get("ku-theme")?.value === "dark" ? "dark" : "light";
 
   return (
     <html
-      lang={locale}
+      lang="en"
       data-theme={theme}
       suppressHydrationWarning
       className={`${prompt.variable} h-full antialiased`}
@@ -50,14 +44,10 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
-        <NextIntlClientProvider>
-          <SessionNotice
-            signedIn={
-              cookieStore.has("session") || cookieStore.has("ku-refresh")
-            }
-          />
-          {children}
-        </NextIntlClientProvider>
+        <SessionNotice
+          signedIn={cookieStore.has("session") || cookieStore.has("ku-refresh")}
+        />
+        {children}
       </body>
     </html>
   );

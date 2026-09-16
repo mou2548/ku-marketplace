@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDateTime } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -60,7 +63,7 @@ import {
   sendChatMessage,
   uploadChatImage,
 } from "@/lib/actions/chat";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { markRoomActive } from "@/lib/chat-activity";
 import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
 import { ApiError } from "@/lib/api/client";
@@ -116,16 +119,10 @@ const USER_REPORT_REASONS = [
   },
 ];
 
-/** "Mon 10 Aug, 13:00 · สำนักหอสมุด มก." — the pinned one-liner. */
+/** Day-first date, local marketplace time and the agreed location. */
 function appointmentLabel(appointment: AppointmentCardData): string {
   const at = new Date(`${appointment.date}T${appointment.time}+07:00`);
-  const when = at.toLocaleString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const when = formatDateTime(at);
   return `${when} · ${appointment.location}`;
 }
 
@@ -160,7 +157,7 @@ function ProposeMeetup({
    * calling the API, leaving the card on screen untouched. */
   onDiscard?: () => void;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const tz = getLocalTimeZone();
 
   return (
@@ -254,7 +251,7 @@ export function RoomScreen({
   entrants?: Entrant[];
   messages: ChatMessage[];
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
@@ -951,7 +948,7 @@ export function RoomScreen({
       </button>
 
       {detailOpen ? (
-        <div className="border-t border-line bg-surface-sunken/40 px-4 py-4">
+        <div className="max-h-[24dvh] overflow-y-auto overscroll-contain border-t border-line bg-surface-sunken/40 px-4 py-4">
           {transaction && viewer ? (
             <DealDetails
               transaction={transaction}
@@ -993,7 +990,7 @@ export function RoomScreen({
         <div
           ref={appointmentPinRef}
           className={cn(
-            "border-b border-line",
+            "shrink-0 border-b border-line",
             (transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund")
               ? "bg-tone-success-bg/60"
               : "bg-tone-info-bg/60",
@@ -1038,7 +1035,7 @@ export function RoomScreen({
           </button>
 
           {pinOpen ? (
-            <div className="px-4 pb-4">
+            <div className="max-h-[20dvh] overflow-y-auto overscroll-contain px-4 pb-4">
               {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment && editingAppointment ? (
@@ -1139,7 +1136,7 @@ function DealDetails({
   busy: boolean;
   onCancel: (reason: string) => void;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   // The reason was collected by an input bound to nothing and thrown away. A
   // rejected cancellation flips dispute_status to under_review immediately, so
@@ -1287,7 +1284,7 @@ function GiveawayDetails({
   entrants?: Entrant[];
   viewerId: number;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
       <div className="flex flex-col gap-2">

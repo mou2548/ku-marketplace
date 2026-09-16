@@ -1,8 +1,8 @@
 "use client";
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { Button } from "@/components/kit/button";
 export function SellerError({ reset }: { reset: () => void }) {
-  const t = useTranslations("seller");
+  const t = getCopy("seller");
   return (
     <div
       role="alert"

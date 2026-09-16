@@ -1,6 +1,9 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { MessagesSquare } from "lucide-react";
@@ -102,7 +105,7 @@ export function RoomList({
   heading?: string;
   className?: string;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const [filter, setFilter] = useState<"all" | RoomKind>("all");
   const [sort, setSort] = useState<RoomSortMode>("recent");
   const [query, setQuery] = useState("");
@@ -294,8 +297,7 @@ function RoomRow({
   isUnread: boolean;
   onOpen: () => void;
 }) {
-  const t = useTranslations();
-  const locale = useLocale();
+  const t = getCopy();
   const tone = ROOM_KIND_TONE[room.kind];
   const status = room.transaction
     ? TRANSACTION_STATUS[room.transaction.status]
@@ -359,13 +361,7 @@ function RoomRow({
                   : "text-ink-muted",
               )}
             >
-              {new Date(room.lastMessageAt).toLocaleDateString(
-                locale === "th" ? "th-TH" : "en-GB",
-                {
-                  day: "numeric",
-                  month: "short",
-                },
-              )}
+              {formatDate(new Date(room.lastMessageAt))}
             </time>
           ) : null}
           {isUnread ? (

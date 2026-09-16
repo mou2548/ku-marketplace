@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
@@ -58,7 +58,7 @@ export function PostCard({
   className,
   hoverEffects = true,
 }: PostCardProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const showsPrice = postType !== "TradeOnly";
 
   return (

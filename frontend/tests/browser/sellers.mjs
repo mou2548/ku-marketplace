@@ -10,7 +10,7 @@ const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE ?? "playwright"
 );
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const screenshots = resolve(
+const screenshots = process.env.SELLER_SCREENSHOT_DIR ?? resolve(
   root,
   "frontend/docs/verification-evidence/sellers",
 );
@@ -170,13 +170,13 @@ const server = http.createServer(async (req, res) => {
     activePage = page;
     const errors = [];
     page.on("pageerror", (err) => errors.push(err.message));
-    for (const language of ["en", "th"])
+    for (const browserLocale of ["en", "th"])
       for (const theme of ["light", "dark"])
         for (const width of [360, 768, 1280]) {
           await context.addCookies([
             {
               name: "ku-locale",
-              value: language,
+              value: browserLocale,
               url: "http://localhost:4108",
             },
           ]);
@@ -189,14 +189,15 @@ const server = http.createServer(async (req, res) => {
           await page
             .getByRole("heading", { name: "Somchai Marketplace", exact: true })
             .waitFor();
+          assert.equal(await page.locator("html").getAttribute("lang"), "en");
           assert.equal(
             await page.evaluate(
               () => document.documentElement.scrollWidth <= window.innerWidth,
             ),
             true,
-            `${language}/${theme}/${width} overflow`,
+            `${browserLocale}/${theme}/${width} overflow`,
           );
-          if (language === "th" && width !== 768)
+          if (browserLocale === "en" && width !== 768)
             await page.screenshot({
               path: `${screenshots}/seller-${theme}-${width}.png`,
               fullPage: true,
@@ -267,12 +268,11 @@ const server = http.createServer(async (req, res) => {
       .click();
     await page.waitForURL("**/sellers/42");
     await page.goto("http://localhost:4108/feed");
-    await page
-      .locator("article")
-      .first()
-      .locator('a[href="/market/1"]')
-      .click();
-    await page.waitForURL("**/market/1");
+    const productLink = page.locator("article").first().locator('a[href^="/market/"]');
+    const productPath = await productLink.getAttribute("href");
+    assert.ok(productPath);
+    await productLink.click();
+    await page.waitForURL(`**${productPath}`);
     await page.goto("http://localhost:4108/sellers/42");
     await page.getByRole("link", { name: "Follow", exact: true }).click();
     await page.waitForURL("**/login?returnTo=*");
@@ -412,7 +412,7 @@ const server = http.createServer(async (req, res) => {
     await page.getByRole("heading", { name: "Seller unavailable" }).waitFor();
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: feed seller-name/avatar navigation and independent product links; follow-button appearance; 12 responsive/language/theme profiles; login return; persisted follow; directory/unfollow; mutation failure/retry; report dialog; filters/reset; pagination; unknown follow state; owner; unavailable seller; no browser exceptions.",
+      "PASS: feed seller-name/avatar navigation and independent product links; follow-button appearance; 12 responsive/legacy-cookie/theme profiles; login return; persisted follow; directory/unfollow; mutation failure/retry; report dialog; filters/reset; pagination; unknown follow state; owner; unavailable seller; no browser exceptions.",
     );
   } catch (err) {
     console.error("Fixture following state:", following);

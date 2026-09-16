@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
@@ -95,12 +98,7 @@ function dayLabel(iso: string): string {
   if (key === dayKey(new Date().toISOString())) return "Today";
   if (key === dayKey(new Date(Date.now() - 86_400_000).toISOString()))
     return "Yesterday";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    timeZone: "Asia/Bangkok",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return formatDate(new Date(iso));
 }
 
 /**
@@ -112,7 +110,7 @@ function dayLabel(iso: string): string {
  * names what it is, and opens the same full-screen viewer as everything else.
  */
 function ReceiptBubble({ url, label }: { url: string; label: string }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <PhotoViewerTrigger>
       <button
@@ -151,7 +149,7 @@ export function ChatThread({
   showSenders = false,
   className,
 }: ChatThreadProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -294,7 +292,7 @@ export function ChatThread({
           Read-only rooms have no composer and so no toggle — the action stays
           open there rather than becoming unreachable. */}
       {action && (actionOpen || isReadOnly) ? (
-        <div className="min-h-0 max-h-[50%] shrink overflow-y-auto overscroll-contain">
+        <div className="min-h-0 max-h-[75%] shrink-0 overflow-y-auto overscroll-contain">
           {action}
         </div>
       ) : null}

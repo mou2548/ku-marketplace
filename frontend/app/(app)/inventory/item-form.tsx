@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,7 @@ import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { ItemPayload } from "@/lib/api/items";
@@ -78,7 +78,7 @@ export function ItemForm({
   mode: "create" | "edit";
   item?: Item;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();

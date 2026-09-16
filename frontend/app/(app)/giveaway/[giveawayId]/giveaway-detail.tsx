@@ -1,6 +1,9 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +17,7 @@ import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { ProductGallery } from "@/components/market/product-gallery";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
@@ -38,8 +41,7 @@ export function GiveawayDetail({
   ticket?: GiveawayTicket;
   isGiver: boolean;
 }) {
-  const t = useTranslations();
-  const locale = useLocale();
+  const t = getCopy();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
@@ -101,10 +103,7 @@ export function GiveawayDetail({
   }
 
   const pickupBy = giveaway.pickup_deadline
-    ? new Date(giveaway.pickup_deadline).toLocaleDateString(
-        locale === "th" ? "th-TH" : "en-GB",
-        { day: "numeric", month: "short" },
-      )
+    ? formatDate(new Date(giveaway.pickup_deadline))
     : null;
 
   async function join() {

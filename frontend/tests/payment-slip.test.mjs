@@ -155,14 +155,11 @@ test('the slip stays readable to both parties after the turn that produced it', 
   assert.ok(!/transaction\.status ===[^;]*SlipViewer/s.test(body), 'nor on status');
 });
 
-test('both locales carry every slip string', () => {
-  const en = JSON.parse(fs.readFileSync('messages/en.json', 'utf8')).slip;
-  const th = JSON.parse(fs.readFileSync('messages/th.json', 'utf8')).slip;
-  assert.deepEqual(Object.keys(en).sort(), Object.keys(th).sort());
-
+test('English copy includes every slip label', () => {
+  const copy = fs.readFileSync('lib/copy.ts', 'utf8');
   const used = new Set([...slipSource.matchAll(/t\("slip\.(\w+)"\)/g)].map((m) => m[1]));
   for (const key of ['uploadedAt', 'uploadedByBuyerAt']) used.add(key);
-  for (const key of used) assert.ok(key in en, `missing translation slip.${key}`);
+  for (const key of used) assert.ok(copy.includes(`"slip.${key}":`), `missing copy slip.${key}`);
 });
 
 /** Runs room-screen's slip upload against stubbed actions, nothing mounted. */

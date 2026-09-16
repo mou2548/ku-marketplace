@@ -50,7 +50,7 @@ export function AdminNavigation({ counts }: { counts: AdminQueueCounts }) {
             >
               <Icon aria-hidden className="size-4" />
               {label}
-              {count > 0 ? <QueueCount count={count} /> : null}
+              {count > 0 ? <QueueDot count={count} /> : null}
             </Link>
           );
         })}
@@ -76,9 +76,10 @@ export function AdminNavigation({ counts }: { counts: AdminQueueCounts }) {
               <span className="relative">
                 <Icon aria-hidden className="size-5" />
                 {count > 0 ? (
-                  <span className="absolute -top-2 -right-3">
-                    <QueueCount count={count} />
-                  </span>
+                  <QueueDot
+                    count={count}
+                    className="absolute -top-0.5 -right-1.5 ring-2 ring-surface"
+                  />
                 ) : null}
               </span>
               <span className="max-w-full truncate px-1">{label}</span>
@@ -90,13 +91,18 @@ export function AdminNavigation({ counts }: { counts: AdminQueueCounts }) {
   );
 }
 
-function QueueCount({ count }: { count: number }) {
+/**
+ * A dot, not a number — same reason as the consumer nav: the queue link only
+ * has to say that the queue is not empty. The count stays for screen readers.
+ */
+function QueueDot({ count, className }: { count: number; className?: string }) {
   return (
-    <span
-      data-numeric
-      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold text-white"
-    >
-      {count}
-    </span>
+    <>
+      <span
+        aria-hidden
+        className={cn("size-2 shrink-0 rounded-pill bg-tone-danger-solid", className)}
+      />
+      <span className="sr-only">{count} waiting</span>
+    </>
   );
 }

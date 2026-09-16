@@ -1,4 +1,5 @@
-import { getTranslations } from "next-intl/server";
+import { formatDate } from "@/lib/date-format";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Box, Package, ShieldCheck, Sparkles } from "lucide-react";
@@ -27,8 +28,8 @@ export default async function PostDetailPage({
 }: {
   params: Promise<{ postId: string }>;
 }) {
-  const tStatus = await getTranslations("status");
-  const t = await getTranslations();
+  const tStatus = await getCopy("status");
+  const t = await getCopy();
   const { postId } = await params;
   const post = await getPost(Number(postId)).catch(() => undefined);
   if (!post) notFound();
@@ -52,11 +53,7 @@ export default async function PostDetailPage({
   if (post.item.warranty_expiry) {
     specs.push([
       t("market.warrantyUntil"),
-      new Date(post.item.warranty_expiry).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
+      formatDate(new Date(post.item.warranty_expiry)),
     ]);
   }
 

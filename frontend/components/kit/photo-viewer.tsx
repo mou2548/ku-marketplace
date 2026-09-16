@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button as AriaButton,
@@ -68,7 +68,7 @@ function PhotoStage({
   caption?: string;
   close: () => void;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 

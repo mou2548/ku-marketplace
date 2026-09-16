@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDateTime } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { Calendar, Check, MapPin, Pencil } from "lucide-react";
 
 import { APPOINTMENT_STATUS, type AppointmentStatus } from "@/lib/status";
@@ -61,7 +64,7 @@ export function AppointmentCard({
   onEdit,
   className,
 }: AppointmentCardProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const when = new Date(scheduledAt);
   const copy = APPOINTMENT_STATUS[status];
 
@@ -114,15 +117,7 @@ export function AppointmentCard({
             <dt className="sr-only">{t("appointment.dateAndTime")}</dt>
             <dd>
               <time dateTime={scheduledAt} className="font-medium">
-                {when.toLocaleDateString("en-GB", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                })}{" "}
-                {when.toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDateTime(when)}
               </time>
             </dd>
           </div>

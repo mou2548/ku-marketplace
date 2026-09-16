@@ -1,16 +1,16 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, Gift, Handshake, ShieldAlert, Wallet } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
-import { Surface } from "@/components/kit/surface";
-import { TONE_CHIP, TONE_RAIL_LEFT } from "@/components/kit/tone";
 import type { Notification } from "@/lib/api/notifications";
-import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import { usePolling } from "@/lib/use-polling";
 
@@ -19,13 +19,6 @@ const ICON: Record<Notification["kind"], typeof Bell> = {
   offer: Handshake,
   giveaway: Gift,
   moderation: ShieldAlert,
-};
-
-const KIND_TONE: Record<Notification["kind"], Tone> = {
-  deal: "success",
-  offer: "trade",
-  giveaway: "warning",
-  moderation: "danger",
 };
 
 /** Fixed order so the rail does not reshuffle as notifications arrive. */
@@ -56,7 +49,6 @@ type Filter = "all" | Notification["kind"];
 function groupByDay(
   items: Notification[],
   labels: { today: string; yesterday: string },
-  locale: string,
 ): Array<[string, Notification[]]> {
   const dayKey = (iso: string) => new Date(iso).toDateString();
   const today = new Date().toDateString();
@@ -67,11 +59,7 @@ function groupByDay(
       ? labels.today
       : key === yesterday
         ? labels.yesterday
-        : new Date(key).toLocaleDateString(locale === "th" ? "th-TH" : "en-GB", {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-          });
+        : formatDate(new Date(key));
 
   const buckets = new Map<string, Notification[]>();
   for (const n of items) {
@@ -88,8 +76,7 @@ export function NotificationsScreen({
 }: {
   notifications: Notification[];
 }) {
-  const t = useTranslations();
-  const locale = useLocale();
+  const t = getCopy();
   const router = useRouter();
   usePolling(() => {
     if (document.visibilityState === "visible") router.refresh();
@@ -117,16 +104,10 @@ export function NotificationsScreen({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-overline font-semibold text-ink-brand uppercase">
-            {t("notifications.activity")}
-          </p>
-          <h1 className="mt-1 text-h1">{t("notifications.title")}</h1>
-          <p className="mt-1 text-body-sm text-ink-muted">
-            {t("notifications.subtitle")}
-          </p>
-        </div>
+      {/* A log needs a name and a count, not a masthead. The overline and the
+          subtitle described a list that describes itself. */}
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-h2">{t("notifications.title")}</h1>
         {counts.unread.all > 0 ? (
           <span
             data-numeric
@@ -171,81 +152,62 @@ export function NotificationsScreen({
               today: t("notifications.today"),
               yesterday: t("notifications.yesterday"),
             },
-            locale,
           ).map(([day, items]) => (
-            <section key={day} className="flex flex-col gap-2">
+            <section key={day} className="flex flex-col gap-1">
               <h2 className="text-overline text-ink-muted uppercase">{day}</h2>
-              <ul className="flex flex-col gap-2">
-          {items.map((n) => {
-            const Icon = ICON[n.kind];
-            const tone = KIND_TONE[n.kind];
-            return (
-              <li key={n.notification_id}>
-                <Link href={n.href}>
-                  <Surface
-                    as="div"
-                    shape="card"
-                    elevation={n.read ? "flat" : "raised"}
-                    interactive
-                    className={cn(
-                      "flex items-start gap-3 border-l-2 p-4 transition-opacity",
-                      !n.read
-                        ? cn("bg-surface", TONE_RAIL_LEFT[tone])
-                        : "border-l-transparent bg-surface-sunken/40 opacity-75 hover:opacity-100",
-                    )}
-                  >
-                    <span
+              <ul className="flex flex-col divide-y divide-line border-t border-line">
+              {items.map((n) => {
+                const Icon = ICON[n.kind];
+                return (
+                  <li key={n.notification_id}>
+                    <Link
+                      href={n.href}
                       className={cn(
-                        "grid size-9 shrink-0 place-items-center rounded-pill",
-                        n.read
-                          ? "border border-line bg-gray-100 text-ink-muted"
-                          : cn("border", TONE_CHIP[tone]),
+                        "-mx-2 flex items-start gap-3 rounded-control px-2 py-3",
+                        "transition-colors duration-[--dur-fast] hover:bg-surface-sunken",
                       )}
                     >
-                      <Icon aria-hidden className="size-4" />
-                    </span>
-
-                    <div className="min-w-0 flex-1">
-                      <p
+                      <Icon
+                        aria-hidden
                         className={cn(
-                          "text-body",
-                          n.read
-                            ? "font-medium text-ink-secondary"
-                            : "font-semibold text-ink",
+                          "mt-0.5 size-4 shrink-0",
+                          n.read ? "text-ink-muted" : "text-ink-secondary",
                         )}
-                      >
-                        {n.title}
-                      </p>
-                      <p className="text-body-sm text-ink-muted">
-                        {n.body}
-                      </p>
-                    </div>
+                      />
 
-                    <div className="flex shrink-0 items-center gap-2">
-                      {!n.read ? (
-                        <>
-                          <span
-                            aria-hidden
-                            className="size-2 rounded-pill bg-brand shadow-[0_0_0_3px_var(--color-brand-subtle)]"
-                          />
-                          <span className="sr-only">Unread</span>
-                        </>
-                      ) : null}
-                      <time
-                        dateTime={n.created_at}
-                        className="text-meta text-ink-muted"
-                      >
-                        {new Date(n.created_at).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        })}
-                      </time>
-                    </div>
-                  </Surface>
-                </Link>
-              </li>
-            );
-          })}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            "text-body",
+                            n.read ? "text-ink-secondary" : "font-semibold text-ink",
+                          )}
+                        >
+                          {n.title}
+                        </p>
+                        <p className="text-body-sm text-ink-muted">{n.body}</p>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                        <time
+                          dateTime={n.created_at}
+                          className="text-meta text-ink-muted"
+                        >
+                          {formatDate(new Date(n.created_at))}
+                        </time>
+                        {!n.read ? (
+                          <>
+                            <span
+                              aria-hidden
+                              className="size-1.5 rounded-pill bg-tone-danger-solid"
+                            />
+                            <span className="sr-only">Unread</span>
+                          </>
+                        ) : null}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
               </ul>
             </section>
           ))}
@@ -283,20 +245,14 @@ function FilterTab({
     >
       <span>{label}</span>
 
-      {/* Unread is the number worth acting on. Repeating unread and total as
-          adjacent bare numbers made the tabs look like duplicate counters. */}
+      {/* Only the fact that something is unread. The total sat next to it as a
+          second bare number and the tabs read as a row of counters. */}
       {unread > 0 ? (
         <span
-          data-numeric
-          className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold text-white"
-        >
-          {unread}
-        </span>
-      ) : (
-        <span data-numeric className="text-meta text-ink-muted">
-          {total}
-        </span>
-      )}
+          aria-hidden
+          className="size-1.5 shrink-0 rounded-pill bg-tone-danger-solid"
+        />
+      ) : null}
       {unread > 0 ? (
         <span className="sr-only">
           , {unread} unread out of {total}

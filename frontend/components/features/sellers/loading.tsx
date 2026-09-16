@@ -1,6 +1,6 @@
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 export async function SellerLoading() {
-  const t = await getTranslations("seller");
+  const t = await getCopy("seller");
   return (
     <div role="status" className="space-y-6">
       <span className="sr-only">{t("loading")}</span>

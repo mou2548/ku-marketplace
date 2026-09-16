@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 import { ArrowLeft, Users } from "lucide-react";
 import { getAccessToken } from "@/lib/api/session";
 import { getFollowing } from "@/lib/api/sellers";
@@ -20,7 +20,7 @@ export default async function FollowingPage({
 }) {
   const token = await getAccessToken();
   if (!token) redirect("/login");
-  const t = await getTranslations("seller");
+  const t = await getCopy("seller");
   const raw = (await searchParams).page ?? "1";
   const page = /^[1-9]\d{0,4}$/.test(raw) ? Number(raw) : 1;
   const result = await getFollowing(token, page);

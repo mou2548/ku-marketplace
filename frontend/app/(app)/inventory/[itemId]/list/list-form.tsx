@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { publishListing } from "@/lib/actions/posts";
 import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item } from "@/lib/api/types";
@@ -25,7 +25,7 @@ import { POST_TYPE, type PostType } from "@/lib/status";
  * trade-only post is a question with no right answer.
  */
 export function ListItemForm({ item }: { item: Item }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { Flag, Share2, UserPlus, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/kit/button";
@@ -35,7 +35,7 @@ export function FollowButton({
   directory?: boolean;
   appearance?: "default" | "profile";
 }) {
-  const t = useTranslations("seller");
+  const t = getCopy("seller");
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -129,7 +129,7 @@ export function SellerActions({
   sellerId: number;
   report: boolean;
 }) {
-  const t = useTranslations("seller");
+  const t = getCopy("seller");
   const [feedback, setFeedback] = useState("");
   return (
     <div className="flex flex-wrap items-center gap-2">

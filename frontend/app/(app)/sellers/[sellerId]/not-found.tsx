@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 export default async function SellerNotFound() {
-  const t = await getTranslations("seller");
+  const t = await getCopy("seller");
   return (
     <section className="space-y-4 py-12 text-center">
       <h1 className="text-h1">{t("unavailable")}</h1>

@@ -1,6 +1,7 @@
+import { formatDate } from "@/lib/date-format";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 import {
   ArrowLeft,
   Package,
@@ -41,9 +42,8 @@ export default async function SellerPage({
   const { sellerId } = await params;
   if (!/^[1-9]\d*$/.test(sellerId) || Number(sellerId) > 2147483647) notFound();
   const id = Number(sellerId);
-  const [t, locale, raw, token, viewerId] = await Promise.all([
-    getTranslations("seller"),
-    getLocale(),
+  const [t, raw, token, viewerId] = await Promise.all([
+    getCopy("seller"),
     searchParams,
     getAccessToken(),
     getCurrentUserId(),
@@ -171,7 +171,7 @@ export default async function SellerPage({
                 />
                 <dt>{t("productsLabel")}</dt>
                 <dd className="font-semibold text-ink-brand">
-                  {profile.active_listing_count.toLocaleString(locale)}
+                  {profile.active_listing_count.toLocaleString("en-GB")}
                 </dd>
               </div>
               <div className="flex items-center gap-3 text-body-sm">
@@ -179,7 +179,7 @@ export default async function SellerPage({
                 <dt>{t("followersLabel")}</dt>
                 <dd className="font-semibold text-ink-brand">
                   <span aria-hidden>
-                    {profile.follower_count.toLocaleString(locale)}
+                    {profile.follower_count.toLocaleString("en-GB")}
                   </span>
                   <span className="sr-only">
                     {t("followers", { count: profile.follower_count })}
@@ -194,10 +194,7 @@ export default async function SellerPage({
                   />
                   <dt>{t("joinedLabel")}</dt>
                   <dd className="text-ink-brand">
-                    {new Intl.DateTimeFormat(locale, {
-                      month: "long",
-                      year: "numeric",
-                    }).format(new Date(profile.member_since))}
+                    {formatDate(new Date(profile.member_since))}
                   </dd>
                 </div>
               ) : null}

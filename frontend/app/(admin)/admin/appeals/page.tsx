@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/date-format";
 import { Scale } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
@@ -57,10 +58,7 @@ export default async function AdminAppealsPage() {
                     dateTime={a.created_at}
                     className="text-caption text-ink-muted"
                   >
-                    {new Date(a.created_at).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {formatDate(new Date(a.created_at))}
                   </time>
                 </div>
                 <StatusBadge status={APPEAL_STATUS[a.status]} size="sm" />

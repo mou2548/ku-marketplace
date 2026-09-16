@@ -1,4 +1,5 @@
-import { getTranslations } from "next-intl/server";
+import { formatDateTime, formatDate } from "@/lib/date-format";
+import { getCopy } from "@/lib/copy";
 import { redirect } from "next/navigation";
 import { Scale } from "lucide-react";
 
@@ -23,7 +24,7 @@ const APPEAL_FLOW: AppealStatus[] = ["Pending", "Under_Review", "Approved", "Rej
  * state are a first-class screen rather than an email thread.
  */
 export default async function MyAppealsPage() {
-  const tStatus = await getTranslations("status");
+  const tStatus = await getCopy("status");
   if (!(await getAccessToken())) redirect("/login");
   const [appeals, eligible] = await Promise.all([getMyAppeals(), getEligibleAppeals()]);
 
@@ -79,7 +80,7 @@ export default async function MyAppealsPage() {
         <Surface key={report.report_id} shape="card" className="flex flex-col gap-2 p-4">
           <h2 className="font-semibold">Report #{report.report_id}: {report.reason_category}</h2>
           <p>{report.resolution_note}</p>
-          <p className="text-caption text-ink-muted">Appeal by {new Date(report.deadline).toLocaleString("en-GB")}. Use this report number in the appeal form.</p>
+          <p className="text-caption text-ink-muted">Appeal by {formatDateTime(new Date(report.deadline))}. Use this report number in the appeal form.</p>
           <LinkButton href="/account/appeals/new" variant="secondary">Appeal this decision</LinkButton>
         </Surface>
       ))}
@@ -96,10 +97,7 @@ export default async function MyAppealsPage() {
                     className="text-caption text-ink-muted"
                   >
                     Submitted{" "}
-                    {new Date(a.created_at).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {formatDate(new Date(a.created_at))}
                   </time>
                 </div>
                 <StatusBadge status={APPEAL_STATUS[a.status]} size="sm" />

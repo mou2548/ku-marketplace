@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Gift, MapPin } from "lucide-react";
@@ -21,7 +24,7 @@ import type { GiveawayTicket } from "@/lib/api/types";
 import { TICKET_STATUS } from "@/lib/status";
 
 export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
-  const t = useTranslations();
+  const t = getCopy();
   const { giveaway } = ticket;
   const router = useRouter();
   const toast = useToast();
@@ -46,10 +49,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
   }
 
   const pickupBy = giveaway.pickup_deadline
-    ? new Date(giveaway.pickup_deadline).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-      })
+    ? formatDate(new Date(giveaway.pickup_deadline))
     : null;
 
   return (

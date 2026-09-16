@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useState } from "react";
 import { Check, Copy, PackageCheck, Truck } from "lucide-react";
 
@@ -32,16 +35,13 @@ export function DeliveryCard({
   compact?: boolean;
   className?: string;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const [copied, setCopied] = useState(false);
   const tracking = transaction.tracking_number;
   const eta = transaction.estimated_delivery_date;
 
   const etaLabel = eta
-    ? new Date(eta).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-      })
+    ? formatDate(new Date(eta))
     : null;
 
   const headline = !tracking

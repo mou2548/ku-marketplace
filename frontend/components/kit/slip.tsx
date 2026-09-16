@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDateTime } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button as AriaButton } from "react-aria-components";
@@ -97,7 +100,7 @@ function SlipFrame({
   size?: "card" | "tall";
   className?: string;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <PhotoViewerTrigger>
       <AriaButton
@@ -127,17 +130,12 @@ function UploadedAt({
   at: string;
   labelKey: "slip.uploadedAt" | "slip.uploadedByBuyerAt";
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <p className="mt-3 text-caption leading-[1.5] text-ink-muted">
       {t(labelKey)}{" "}
       <time dateTime={at}>
-        {new Date(at).toLocaleString("en-GB", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
+        {formatDateTime(new Date(at))}
       </time>
     </p>
   );
@@ -168,7 +166,7 @@ export function SlipViewer({
   embedded = false,
   className,
 }: SlipViewerProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const heading = title ?? t("slip.transferSlip");
 
   return (
@@ -178,10 +176,10 @@ export function SlipViewer({
       fill={embedded ? "none" : "surface"}
       className={cn(embedded ? "p-0" : "p-4", className)}
     >
-      <header className="mb-3 flex items-baseline justify-between gap-2">
+      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-body font-semibold">{heading}</h4>
         {amount !== undefined ? (
-          <span data-numeric className="text-body-lg font-semibold">
+          <span data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
             {formatAmount(amount)}
           </span>
         ) : null}
@@ -227,7 +225,7 @@ export function SlipUploader({
   embedded = false,
   className,
 }: SlipUploaderProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const inputRef = useRef<HTMLInputElement>(null);
   /**
    * Picking a file used to send it. There was no beat between the two, so the
@@ -302,9 +300,9 @@ export function SlipUploader({
       fill={embedded ? "none" : "surface"}
       className={cn(embedded ? "p-0" : "p-4", className)}
     >
-      <header className="mb-3 flex items-baseline justify-between gap-2">
+      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{heading}</h4>
-        <span data-numeric className="text-body-lg font-semibold">
+        <span data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
           {formatAmount(amount)}
         </span>
       </header>
@@ -314,15 +312,17 @@ export function SlipUploader({
           type="button"
           onClick={choose}
           className={cn(
-            "flex w-full flex-col items-center gap-2 rounded-control px-4 py-10",
+            "flex w-full min-w-0 flex-col items-center gap-2 rounded-control px-4 py-6 sm:flex-row sm:gap-3 sm:py-4 sm:text-left",
             "border-2 border-dashed border-line-default bg-surface-sunken",
             "text-ink-muted transition-colors duration-[--dur-fast]",
             "hover:border-brand hover:bg-brand-subtle hover:text-ink-brand",
           )}
         >
-          <ImagePlus aria-hidden className="size-7" />
-          <span className="text-body font-medium">{t("slip.choose")}</span>
-          <span className="text-caption">{t("slip.formats")}</span>
+          <ImagePlus aria-hidden className="size-7 shrink-0" />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="text-body font-medium">{t("slip.choose")}</span>
+            <span className="text-caption">{t("slip.formats")}</span>
+          </span>
         </button>
       ) : displayed ? (
         <SlipFrame
@@ -425,7 +425,7 @@ export function SlipReviewer({
   isBusy = false,
   className,
 }: SlipReviewerProps) {
-  const t = useTranslations();
+  const t = getCopy();
 
   return (
     <Surface shape="card" className={cn("p-4", className)}>
@@ -443,7 +443,7 @@ export function SlipReviewer({
 
       <dl className="mt-3 flex items-baseline justify-between text-body-sm">
         <dt className="text-ink-muted">{t("slip.amountDue")}</dt>
-        <dd data-numeric className="text-body-lg font-semibold">
+        <dd data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
           {formatAmount(amount)}
         </dd>
       </dl>

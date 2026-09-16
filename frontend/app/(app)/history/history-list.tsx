@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Handshake, MessagesSquare, Store } from "lucide-react";
@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
 import { deadlineFor } from "@/lib/inbox";
 import {
@@ -66,7 +66,7 @@ export function HistoryList({
   tickets: GiveawayTicket[];
   viewerId: number;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const [lens, setLens] = useState<Lens>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -235,7 +235,7 @@ const ACTION_CTA: Record<PromptAction | "none", string> = {
 };
 
 function DealRow({ tx, viewerId }: { tx: HistoryTransaction; viewerId: number }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const viewer = tx.buyer_id === viewerId ? "buyer" : "seller";
   const prompt = resolveTransactionActor(tx, viewer);

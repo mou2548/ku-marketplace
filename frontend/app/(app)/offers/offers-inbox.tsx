@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { ArrowLeftRight, ChevronRight, Inbox } from "lucide-react";
 
@@ -33,7 +33,7 @@ export function OffersInbox({
   offers: Offer[];
   viewerId: number;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const sent = offers.filter((o) => o.proposer_id === viewerId);
   const received = offers.filter((o) => o.post.seller.user_id === viewerId);
 
@@ -98,7 +98,7 @@ function OfferList({
   emptyTitle: string;
   emptyDescription: string;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   if (offers.length === 0) {
     return (
       <EmptyState

@@ -24,13 +24,15 @@ Resolved. `quantity` is the maximum recipient count and the API returns
 participant count, remaining places, and registration-open state. The create,
 browse, detail, and management screens all expose that same value.
 
-## 3. There is no profile endpoint, so a person is not a destination
+## 3. Public seller profiles and following
 
-`GET /users/{id}` does not exist, and neither does anything that returns a
-public profile. Every name in the app — a seller, a proposer, a giver — is
-therefore text or a `TrustBadge`, never a link, and "what else is this person
-selling?" cannot be answered. The trust signals a name would carry are shown
-inline instead: verified badge, faculty, year.
+Resolved by the seller-profile delivery. `GET /sellers/:sellerId` exposes a public
+allowlist, `/sellers/:sellerId/posts` provides scoped pagination, and authenticated
+`/users/me/following` routes persist follow state. Product detail and Account link
+to `/sellers/:sellerId`; the private directory is `/account/following`.
+Verification comes from `emailVerifiedAt`. Faculty/year, uploaded avatars, shop
+banners and biography editing remain outside the available public data.
+See [delivery and API details](seller-profile-delivery.md).
 
 ## 4. The category list is hardcoded
 
@@ -167,7 +169,7 @@ this pass), but `init.sql` itself was **not** updated — a fresh
 `docker-compose up` from a clean volume will hit the same failure until
 someone adds `"deleted_at" TIMESTAMP` to `Post` there too.
 
-## 7. Auth has no `/auth/refresh` endpoint
+## 7. Auth session renewal (resolved)
 
 A later backend pass (`origin/backend/main` commit `b232f58`) added everything
 §7 used to list as missing: `POST /auth/otp/resend`, `POST /auth/logout`,
@@ -187,12 +189,11 @@ here so nobody tries to "fix" them back:
   OTP mechanism as registration, on its own Redis namespace. `app/(auth)/reset`
   reads `?email=` now, not `?token=`.
 
-What's still genuinely missing: **no `POST /auth/refresh`**, despite `login`
-and `otp/verify` both setting a `refreshToken` httpOnly cookie — nothing
-anywhere consumes it. The access token is 15 minutes
-(`token.service.ts`); the frontend session cookie (`lib/api/session.ts`) is set
-to match that lifetime and simply expires with it. No silent-refresh logic
-exists to write, and there is nothing to build it against.
+`POST /auth/refresh` now rotates a Redis-backed session family. Access tokens
+remain valid for 15 minutes, and the absolute session lifetime is seven days
+from login. Next.js Proxy renews before page rendering and Server Actions and
+forwards refreshed cookies to both the current request and the browser.
+See [session renewal](../session-renewal.md) for the contract and failure behavior.
 
 ## 8. Giveaway Allocation System — remaining adapter boundaries
 

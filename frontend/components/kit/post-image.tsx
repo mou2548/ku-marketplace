@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import Image from "next/image";
 import { ImageOff, Package } from "lucide-react";
 
@@ -37,7 +37,7 @@ export function PostImage({
   priority?: boolean;
   className?: string;
 }) {
-  const t = useTranslations("card");
+  const t = getCopy("card");
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const failed = !!src && failedSrc === src;

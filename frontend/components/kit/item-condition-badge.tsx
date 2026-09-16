@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export function ItemConditionBadge({
 }: {
   condition: ItemCondition;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
 
   return (
     <span

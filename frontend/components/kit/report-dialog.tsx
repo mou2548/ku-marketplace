@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { CircleCheck, Flag } from "lucide-react";
 
 import { createReport } from "@/lib/actions/reports";
@@ -37,7 +37,7 @@ export function ReportDialog({
   reasons: ReportReasonOption[];
   trigger: React.ReactNode;
 }) {
-  const t = useTranslations("reportDialog");
+  const t = getCopy("reportDialog");
   const [reason, setReason] = useState(reasons[0]?.id ?? "");
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);

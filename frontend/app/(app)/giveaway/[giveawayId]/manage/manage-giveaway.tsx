@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
@@ -44,7 +44,7 @@ export function ManageGiveaway({
   giveaway: GiveawayPost;
   entrants: RecipientRow[];
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const router = useRouter();
   const toast = useToast();
   const [picked, setPicked] = useState<Set<number>>(new Set());

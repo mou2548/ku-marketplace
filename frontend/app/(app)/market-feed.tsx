@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
@@ -22,8 +22,8 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostCard } from "@/components/kit/post-card";
 import { SearchField } from "@/components/kit/search-field";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
-import { useCategoryLabel } from "@/lib/i18n/category-text";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useCategoryLabel } from "@/lib/category-text";
+import { useStatusText } from "@/lib/status-text";
 import type { ItemCategory, Post } from "@/lib/api/types";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -71,7 +71,7 @@ export function MarketFeed({
   initialFilters: FeedFilters;
   initialSort: SortKey;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const categoryLabel = useCategoryLabel();
   const [filters, setFilters] = useState<FeedFilters>(initialFilters);
@@ -529,7 +529,7 @@ function parsePriceInput(value: string) {
 }
 
 function priceLabel(
-  t: ReturnType<typeof useTranslations>,
+  t: ReturnType<typeof getCopy>,
   { minPrice, maxPrice }: FeedFilters,
 ) {
   if (minPrice !== null && maxPrice !== null) {

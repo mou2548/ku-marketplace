@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -50,7 +50,7 @@ export function OfferReview({
   offer: Offer;
   viewerId: number;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);

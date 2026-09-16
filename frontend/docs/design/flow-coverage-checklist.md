@@ -1,5 +1,9 @@
 # Flow coverage checklist
 
+Historical snapshot from 2026-09-06. Later fixes and current execution evidence
+are recorded in [verification-report.md](../verification-report.md); old Blocked
+entries below do not describe the current implementation.
+
 Checked against `fornewdesign/flow1.png` through `flow4.png` on 2026-09-06.
 This is the presentation gate for Phase 5.1 F7. A route existing is not enough:
 each row must finish as `Pass` or as an owner-approved `Blocked` item.

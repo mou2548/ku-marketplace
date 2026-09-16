@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import {
@@ -11,7 +11,7 @@ import {
 } from "react-aria-components";
 
 import { PostImage } from "@/components/kit/post-image";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
@@ -209,7 +209,7 @@ export function EmptySlot({
 
 /** The first well in the stash: the real way to add something. */
 export function AddItemSlot({ className }: { className?: string }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <Link
       href="/inventory/new"

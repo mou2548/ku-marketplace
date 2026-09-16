@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { Gift, MapPin, Plus, Users } from "lucide-react";
 
@@ -15,7 +15,7 @@ import { Surface } from "@/components/kit/surface";
 import { TabCount, TabList, TabPanel, Tabs, UnderlineTab } from "@/components/kit/tabs";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TONE_CHIP } from "@/components/kit/tone";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, TICKET_STATUS, type Deadline } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
@@ -28,7 +28,7 @@ export function GiveawayBrowser({
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   // "Open" has to mean open. Closed and Completed rows are still reachable
   // from a ticket or a chat room; they are not something to browse and enter.
   const open = giveaways.filter((g) => g.registration_open);
@@ -150,7 +150,7 @@ export function GiveawayBrowser({
 }
 
 function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
   const image = giveaway.images[0]?.image_url;

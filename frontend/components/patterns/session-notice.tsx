@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale } from "next-intl";
 
 /** Keep the mounted form intact; reauthenticate in another tab and resume. */
 export function SessionNotice({ signedIn }: { signedIn: boolean }) {
   const [expired, setExpired] = useState(false);
-  const locale = useLocale();
   useEffect(() => {
     if (!signedIn) return;
     let stopped = false;
@@ -41,9 +39,7 @@ export function SessionNotice({ signedIn }: { signedIn: boolean }) {
       className="fixed inset-x-0 top-0 z-[150] bg-surface p-4 text-ink shadow-floating"
     >
       <p>
-        {locale === "th"
-          ? "เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแท็บใหม่ แล้วกลับมาทำรายการต่อในหน้านี้"
-          : "Your session expired. Sign in in a new tab, then return here to continue."}
+        Your session expired. Sign in in a new tab, then return here to continue.
       </p>
       <a
         href="/login"
@@ -51,7 +47,7 @@ export function SessionNotice({ signedIn }: { signedIn: boolean }) {
         rel="noopener noreferrer"
         className="inline-flex min-h-11 items-center font-semibold underline"
       >
-        {locale === "th" ? "เข้าสู่ระบบในแท็บใหม่" : "Sign in in a new tab"}
+        Sign in in a new tab
       </a>
     </div>
   );
