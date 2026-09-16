@@ -752,14 +752,17 @@
     "soldOut": "Sold out",
     "confirmPurchase": "Confirm purchase",
     "offerTrade": "Offer a trade",
-    "chooseDelivery": "Choose how you will get it",
-    "chooseDeliveryBody": "This cannot be changed later. The steps after this differ depending on what you pick.",
+    "chooseDelivery": "Delivery method",
+    "chooseDeliveryBody": "This cannot be changed after confirming.",
     "deliveryMethod": "Delivery method",
     "meetup": "Meetup",
     "shipping": "Shipping",
-    "meetupBody": "Meet on campus, inspect before paying, finish by scanning the seller QR",
+    "meetupBody": "Upload your payment slip, arrange a meetup, then scan the seller QR to complete.",
     "shippingBody": "Pay first, upload a slip, the seller confirms and posts it with a tracking number",
-    "reportPost": "Report this post"
+    "reportPost": "Report this post",
+    "meetupCaption": "Arrange a time and place with the seller.",
+    "shippingCaption": "Have the seller send it to your address.",
+    "directPaymentNotice": "Confirm first, then arrange payment in chat. You pay the seller directly; the platform does not hold funds."
   },
   "seller": {
     "profile": "Seller profile",
