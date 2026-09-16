@@ -696,6 +696,7 @@ export type DeadlineKind =
   | "cancel-response"
   | "return-response"
   | "refund-confirmation"
+  | "giveaway-registration"
   | "giveaway-pickup"
   | "ticket-rotation";
 

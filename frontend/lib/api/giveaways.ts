@@ -65,8 +65,10 @@ interface RawGiveaway {
   giver?: RawUserSummary;
   allocation_method: string;
   quantity: number;
-  pickup_deadline: string | null;
+  register_start: string | null;
   register_deadline: string | null;
+  pickup_start: string | null;
+  pickup_deadline: string | null;
   participant_count: number;
   remaining_slots: number;
   registration_open: boolean;
@@ -137,7 +139,9 @@ function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
     giver_id: raw.giver_id,
     allocation_method: toAllocationMethod(raw.allocation_method),
     quantity: raw.quantity,
+    register_start: raw.register_start,
     register_deadline: raw.register_deadline,
+    pickup_start: raw.pickup_start,
     pickup_deadline: raw.pickup_deadline,
     registration_open: raw.registration_open,
     remaining_slots: raw.remaining_slots,
@@ -214,7 +218,9 @@ export interface CreateGiveawayInput {
   description?: string;
   pickup_location: string;
   allocation_method: AllocationMethod;
+  register_start?: string;
   register_deadline?: string;
+  pickup_start?: string;
   pickup_deadline?: string;
   images?: { image_url: string; display_order: number }[];
 }

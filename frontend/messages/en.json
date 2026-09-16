@@ -299,11 +299,20 @@
       "cancel-response": {
         "label": "The other party must respond to the cancellation within 72 hours"
       },
+      "registration-opens": {
+        "label": "Registration opens"
+      },
       "registration-closes": {
         "label": "Registration closes"
       },
       "draw": {
         "label": "Draw"
+      },
+      "pickup-opens": {
+        "label": "Pickup opens"
+      },
+      "pickup-closes": {
+        "label": "Pickup deadline"
       },
       "return-response": {
         "label": "Respond to the return request within 24 hours"
