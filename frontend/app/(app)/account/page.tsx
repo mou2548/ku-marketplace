@@ -13,8 +13,8 @@ import {
   Store,
 } from "lucide-react";
 
+import { AvatarUploader } from "@/components/kit/avatar-uploader";
 import { Surface } from "@/components/kit/surface";
-import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { logout } from "@/lib/actions/auth";
 import { getMembership } from "@/lib/api/membership";
@@ -50,15 +50,15 @@ export default async function AccountPage() {
   const displayName =
     [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
 
-  // faculty / year / avatar are not on `GET /users/me` (docs/design/api-gaps.md
-  // §3). Every account is a verified `@ku.th` address, so `isVerified` is a
-  // fact, not a guess.
+  // faculty / year are not on `GET /users/me` (docs/design/api-gaps.md §3).
+  // Every account is a verified `@ku.th` address, so `isVerified` is a fact,
+  // not a guess.
   const viewer = {
     name: displayName,
     isVerified: true,
     faculty: null as string | null,
     year: null as number | null,
-    avatar_url: null as string | null,
+    avatar_url: profile.avatar_url ?? null,
   };
 
   const completed = transactions.filter(
@@ -105,8 +105,7 @@ export default async function AccountPage() {
         {t("account.yourProfile")}
       </p>
 
-      <TrustBadge
-        size="lg"
+      <AvatarUploader
         name={viewer.name}
         isVerified={viewer.isVerified}
         faculty={viewer.faculty}

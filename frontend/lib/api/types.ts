@@ -39,6 +39,7 @@ export interface User {
   first_name_th: string;
   last_name_th: string;
   phone_number?: string | null;
+  avatar_url?: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   email_verified_at?: string | null;
   isAdmin: boolean;
