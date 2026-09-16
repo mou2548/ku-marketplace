@@ -5,17 +5,32 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { MessagesSquare } from "lucide-react";
 
-import type { RoomKind, RoomSummary } from "@/lib/rooms";
-import { ROOM_KIND_TONE } from "@/lib/rooms";
+import type { RoomKind, RoomSortMode, RoomSummary } from "@/lib/rooms";
+import { ROOM_KIND_TONE, sortRooms } from "@/lib/rooms";
+import { fetchRoomSummaries } from "@/lib/actions/chat";
+import {
+  getChatActivitySnapshot,
+  getServerChatActivitySnapshot,
+  parseActivity,
+  subscribeChatActivity,
+} from "@/lib/chat-activity";
 import { ENTRANT_STATUS, TICKET_STATUS, TRANSACTION_STATUS } from "@/lib/status";
+import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
 
+import { SelectField, SelectOption } from "./choice";
 import { EmptyState } from "./empty-state";
 import { PostImage } from "./post-image";
 import { SearchField } from "./search-field";
 import { StatusBadge } from "./status-badge";
 import { TabList, Tabs, UnderlineTab } from "./tabs";
 import { TONE_DOT, TONE_TEXT } from "./tone";
+
+/** The list is lighter to keep fresh than an open thread, so it polls slower
+ * than the room's own 5s. Enough that a reply surfaces without a reload. */
+const ROOM_LIST_POLL_INTERVAL_MS = 10000;
+
+const SORT_MODES: RoomSortMode[] = ["recent", "name", "counterparty"];
 
 const READ_MARKERS_KEY = "ku-marketplace:chat-read-at";
 const READ_MARKERS_EVENT = "ku-marketplace:chat-read-at-change";
@@ -89,7 +104,27 @@ export function RoomList({
 }) {
   const t = useTranslations();
   const [filter, setFilter] = useState<"all" | RoomKind>("all");
+  const [sort, setSort] = useState<RoomSortMode>("recent");
   const [query, setQuery] = useState("");
+
+  // The list arrives sorted from the server, but the inbox has to stay live: no
+  // realtime transport exists (lib/use-polling.ts), so it polls the same action
+  // the server render used and re-sorts, which floats the latest reply up. The
+  // server value is the base — a navigation that re-renders with fresh props
+  // must win over a stale poll, hence the resync on prop identity.
+  const [liveRooms, setLiveRooms] = useState(rooms);
+  // Resync to the server value when a re-render brings a fresh one (a
+  // navigation), the recommended "reset state on prop change" pattern — done
+  // during render, not in an effect. A poll in between still wins until then.
+  const [serverRooms, setServerRooms] = useState(rooms);
+  if (rooms !== serverRooms) {
+    setServerRooms(rooms);
+    setLiveRooms(rooms);
+  }
+  usePolling(() => {
+    fetchRoomSummaries(viewerId).then(setLiveRooms).catch(() => {});
+  }, ROOM_LIST_POLL_INTERVAL_MS);
+
   const readMarkersSnapshot = useSyncExternalStore(
     subscribeToReadMarkers,
     getReadMarkersSnapshot,
@@ -99,12 +134,42 @@ export function RoomList({
     () => parseReadMarkers(readMarkersSnapshot),
     [readMarkersSnapshot],
   );
+  const activitySnapshot = useSyncExternalStore(
+    subscribeChatActivity,
+    getChatActivitySnapshot,
+    getServerChatActivitySnapshot,
+  );
 
   useEffect(() => {
     if (activeRoomId !== undefined) markRoomRead(activeRoomId);
   }, [activeRoomId]);
 
-  const byKind = filter === "all" ? rooms : rooms.filter((r) => r.kind === filter);
+  // A room the viewer just messaged floats to the top at once, not on the next
+  // poll: `markRoomActive` stamps it (lib/chat-activity.ts) and here that stamp
+  // overrides `lastMessageAt` whenever it is newer, so recency-based sorting
+  // lifts it immediately. The poll then replaces it with the real timestamp.
+  const activity = useMemo(
+    () => parseActivity(activitySnapshot),
+    [activitySnapshot],
+  );
+  const withActivity = useMemo(
+    () =>
+      liveRooms.map((room) => {
+        const stamped = activity[String(room.room_id)];
+        if (!stamped) return room;
+        const current = room.lastMessageAt ? Date.parse(room.lastMessageAt) : 0;
+        return stamped > current
+          ? { ...room, lastMessageAt: new Date(stamped).toISOString() }
+          : room;
+      }),
+    [liveRooms, activity],
+  );
+  const ordered = useMemo(
+    () => sortRooms(withActivity, sort),
+    [withActivity, sort],
+  );
+  const byKind =
+    filter === "all" ? ordered : ordered.filter((r) => r.kind === filter);
   const q = query.trim().toLowerCase();
   const shown = q
     ? byKind.filter(
@@ -137,17 +202,49 @@ export function RoomList({
           className="mb-3"
         />
 
-        <Tabs
-          selectedKey={filter}
-          onSelectionChange={(k) => setFilter(k as "all" | RoomKind)}
-        >
-          <TabList aria-label={t("chat.conversationType")} variant="underline">
-            <UnderlineTab id="all">{t("history.all")}</UnderlineTab>
-            <UnderlineTab id="Sale">{t("chat.sale")}</UnderlineTab>
-            <UnderlineTab id="Trade">{t("chat.trade")}</UnderlineTab>
-            <UnderlineTab id="Giveaway">{t("chat.giveaway")}</UnderlineTab>
-          </TabList>
-        </Tabs>
+        {/* Filter tabs and the sort control share one bar: the tabs grow and
+            scroll on a narrow screen, the sort select keeps its width on the
+            right so it never gets pushed off. */}
+        <div className="mb-3 flex items-end gap-3">
+          <Tabs
+            selectedKey={filter}
+            onSelectionChange={(k) => setFilter(k as "all" | RoomKind)}
+            className="min-w-0 flex-1"
+          >
+            {/* Fixed, non-scrolling bar: the four tabs share the width evenly
+                (flex-1) and the row never scrolls sideways, so it stays put
+                instead of sliding on a narrow column. */}
+            <TabList
+              aria-label={t("chat.conversationType")}
+              variant="underline"
+              className="w-full gap-1 overflow-x-clip"
+            >
+              {(["all", "Sale", "Trade", "Giveaway"] as const).map((id) => (
+                <UnderlineTab
+                  key={id}
+                  id={id}
+                  className="flex-1 justify-center whitespace-nowrap px-1 text-caption"
+                >
+                  {id === "all" ? t("history.all") : t(`chat.${id.toLowerCase()}`)}
+                </UnderlineTab>
+              ))}
+            </TabList>
+          </Tabs>
+
+          <SelectField
+            aria-label={t("chat.sortBy")}
+            selectedKey={sort}
+            onSelectionChange={(k) => setSort(k as RoomSortMode)}
+            size="sm"
+            className="w-[4.5rem] shrink-0"
+          >
+            {SORT_MODES.map((mode) => (
+              <SelectOption key={mode} id={mode}>
+                {t(`chat.sort_${mode}`)}
+              </SelectOption>
+            ))}
+          </SelectField>
+        </div>
       </div>
 
       {shown.length === 0 ? (

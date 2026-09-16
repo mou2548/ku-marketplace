@@ -8,11 +8,24 @@ import {
   respondAppointment as respondAppointmentApi,
   sendMessage as sendMessageApi,
 } from "@/lib/api/chat";
+import { getRoomSummaries } from "@/lib/api/rooms-query";
 import { authHeader, getAccessToken } from "@/lib/api/session";
 import type { AppointmentCardData, ChatMessage } from "@/lib/api/types";
+import type { RoomSummary } from "@/lib/rooms";
 
 async function requireSession() {
   if (!(await getAccessToken())) throw new Error("Not signed in");
+}
+
+/**
+ * The inbox, refetched from the client so the room list can float the latest
+ * reply to the top without a full navigation. No realtime transport exists
+ * (see `lib/use-polling.ts`), so `RoomList` polls this the same way an open
+ * room polls its own thread.
+ */
+export async function fetchRoomSummaries(viewerId: number): Promise<RoomSummary[]> {
+  await requireSession();
+  return getRoomSummaries(viewerId);
 }
 
 export async function fetchChatHistory(transactionId: number): Promise<ChatMessage[]> {

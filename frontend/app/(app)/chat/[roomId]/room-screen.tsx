@@ -61,6 +61,7 @@ import {
   uploadChatImage,
 } from "@/lib/actions/chat";
 import { useStatusText } from "@/lib/i18n/status-text";
+import { markRoomActive } from "@/lib/chat-activity";
 import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
 import { ApiError } from "@/lib/api/client";
 import type {
@@ -386,7 +387,11 @@ export function RoomScreen({
         : giveaway
           ? await sendGiveawayMessage(giveaway.giveaway_id, { content: text })
           : undefined;
-      if (sent) setMessages((prev) => [...prev, sent]);
+      if (sent) {
+        setMessages((prev) => [...prev, sent]);
+        // Float this room to the top of the inbox now, not on the next poll.
+        markRoomActive(summary.room_id);
+      }
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not send the message.");
     }
@@ -411,6 +416,7 @@ export function RoomScreen({
         ? await sendChatMessage(transaction.transaction_id, { image_urls })
         : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
       setMessages((prev) => [...prev, sent]);
+      markRoomActive(summary.room_id);
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not send the photos.");
     } finally {

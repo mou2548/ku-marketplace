@@ -79,6 +79,43 @@ export interface GiveawayRoomSource {
   ticketStatus?: TicketStatus;
 }
 
+/**
+ * How the inbox is ordered. `recent` is the default and the one the real-time
+ * refresh relies on: whoever last typed floats to the top. `name` and
+ * `counterparty` are the student-chosen alternatives (item name, other person).
+ */
+export type RoomSortMode = "recent" | "name" | "counterparty";
+
+function byRecency(a: RoomSummary, b: RoomSummary): number {
+  const at = a.lastMessageAt ? Date.parse(a.lastMessageAt) : 0;
+  const bt = b.lastMessageAt ? Date.parse(b.lastMessageAt) : 0;
+  return bt - at;
+}
+
+/**
+ * Orders rooms for display. `recent` is pure recency — whoever interacted last
+ * sits on top, the way a messaging inbox (Instagram, Messenger) behaves: a new
+ * message, incoming or outgoing, floats its room to the very top with nothing
+ * pinned above it. `name` and `counterparty` reorder alphabetically and fall
+ * back to recency to break ties, so the latest reply still rises within them.
+ *
+ * ("Your turn" is not a sort key — it stays a per-row badge, `RoomRow`'s
+ * `needsYou` chip — because an inbox that reshuffles by whose turn it is stops
+ * matching the "newest on top" rule the student expects from every chat app.)
+ */
+export function sortRooms(rooms: RoomSummary[], mode: RoomSortMode): RoomSummary[] {
+  const within =
+    mode === "name"
+      ? (a: RoomSummary, b: RoomSummary) =>
+          a.subject.localeCompare(b.subject) || byRecency(a, b)
+      : mode === "counterparty"
+        ? (a: RoomSummary, b: RoomSummary) =>
+            a.counterparty.name.localeCompare(b.counterparty.name) || byRecency(a, b)
+        : byRecency;
+
+  return [...rooms].sort(within);
+}
+
 export function buildRooms({
   transactionRooms,
   giveawayRooms,
@@ -139,12 +176,7 @@ export function buildRooms({
     ),
   ];
 
-  // Rooms waiting on the viewer come first regardless of recency: research R4
-  // says whose turn it is outranks when someone last typed.
-  return summaries.sort((a, b) => {
-    if (a.needsYou !== b.needsYou) return a.needsYou ? -1 : 1;
-    const at = a.lastMessageAt ? Date.parse(a.lastMessageAt) : 0;
-    const bt = b.lastMessageAt ? Date.parse(b.lastMessageAt) : 0;
-    return bt - at;
-  });
+  // Default order: most recent on top. `sortRooms` owns the rule so the server
+  // render and the client's live re-sort never disagree.
+  return sortRooms(summaries, "recent");
 }
