@@ -49,7 +49,7 @@ cd ../backend && npm install
 ### 4. รัน Database (Postgres ผ่าน Docker)
 
 ```bash
-docker compose up -d postgres
+docker compose up -d 
 ```
 
 เช็คว่ารันอยู่:
