@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { Gift, MapPin, Plus, Users } from "lucide-react";
 
@@ -15,9 +15,10 @@ import { Surface } from "@/components/kit/surface";
 import { TabCount, TabList, TabPanel, Tabs, UnderlineTab } from "@/components/kit/tabs";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TONE_CHIP } from "@/components/kit/tone";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
-import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
+import { ALLOCATION_METHOD, TICKET_STATUS, type Deadline } from "@/lib/status";
+import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
 export function GiveawayBrowser({
@@ -27,7 +28,7 @@ export function GiveawayBrowser({
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   // "Open" has to mean open. Closed and Completed rows are still reachable
   // from a ticket or a chat room; they are not something to browse and enter.
   const open = giveaways.filter((g) => g.registration_open);
@@ -107,9 +108,19 @@ export function GiveawayBrowser({
                         />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">
-                          {ticket.giveaway.item_name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate font-semibold">
+                            {ticket.giveaway.item_name}
+                          </p>
+                          <span
+                            data-numeric
+                            className="shrink-0 text-meta text-ink-muted"
+                          >
+                            {t("giveaway.queueNumber", {
+                              number: ticket.queue_number,
+                            })}
+                          </span>
+                        </div>
                         <p className="truncate text-caption text-ink-muted">
                           {t("giveaway.collectAt", {
                             location: ticket.giveaway.pickup_location,
@@ -139,10 +150,44 @@ export function GiveawayBrowser({
 }
 
 function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
   const image = giveaway.images[0]?.image_url;
+
+  const now = useNow(30_000);
+  const known = now !== UNKNOWN_TIME;
+  const registerStartMs = giveaway.register_start
+    ? Date.parse(giveaway.register_start)
+    : null;
+  const registerEndMs = giveaway.register_deadline
+    ? Date.parse(giveaway.register_deadline)
+    : null;
+
+  // Before it opens, count down to opening; once open, count down to close.
+  let registrationCountdown: { deadline: Deadline; expiredLabel: string } | null =
+    null;
+  if (known && registerStartMs && now < registerStartMs) {
+    registrationCountdown = {
+      deadline: {
+        kind: "giveaway-registration",
+        expiresAt: registerStartMs,
+        labelKey: "deadline.registration-opens.label",
+        onExpiry: "forfeit",
+      },
+      expiredLabel: "Registration open",
+    };
+  } else if (registerEndMs) {
+    registrationCountdown = {
+      deadline: {
+        kind: "giveaway-registration",
+        expiresAt: registerEndMs,
+        labelKey: "deadline.registration-closes.label",
+        onExpiry: "forfeit",
+      },
+      expiredLabel: "Registration closed",
+    };
+  }
 
   return (
     <article className="group/drop break-inside-avoid">
@@ -188,15 +233,10 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
           </p>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-            {giveaway.register_deadline ? (
+            {registrationCountdown ? (
               <CountdownPill
-                deadline={{
-                  kind: "giveaway-pickup",
-                  expiresAt: Date.parse(giveaway.register_deadline),
-                  labelKey: "deadline.registration-closes.label",
-                  onExpiry: "forfeit",
-                }}
-                expiredLabel="Registration closed"
+                deadline={registrationCountdown.deadline}
+                expiredLabel={registrationCountdown.expiredLabel}
               />
             ) : null}
             <span

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 import { redirect } from "next/navigation";
 import {
   ChevronRight,
@@ -9,10 +9,12 @@ import {
   Scale,
   ShieldCheck,
   Trash2,
+  Users,
+  Store,
 } from "lucide-react";
 
+import { AvatarUploader } from "@/components/kit/avatar-uploader";
 import { Surface } from "@/components/kit/surface";
-import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { logout } from "@/lib/actions/auth";
 import { getMembership } from "@/lib/api/membership";
@@ -33,7 +35,7 @@ export const metadata = { title: "Account - KU Marketplace" };
  * Everything else here is settings, and settings are a list.
  */
 export default async function AccountPage() {
-  const t = await getTranslations();
+  const t = await getCopy();
   if (!(await getAccessToken())) {
     redirect("/login");
   }
@@ -48,15 +50,15 @@ export default async function AccountPage() {
   const displayName =
     [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
 
-  // faculty / year / avatar are not on `GET /users/me` (docs/design/api-gaps.md
-  // §3). Every account is a verified `@ku.th` address, so `isVerified` is a
-  // fact, not a guess.
+  // faculty / year are not on `GET /users/me` (docs/design/api-gaps.md §3).
+  // Every account is a verified `@ku.th` address, so `isVerified` is a fact,
+  // not a guess.
   const viewer = {
     name: displayName,
     isVerified: true,
     faculty: null as string | null,
     year: null as number | null,
-    avatar_url: null as string | null,
+    avatar_url: profile.avatar_url ?? null,
   };
 
   const completed = transactions.filter(
@@ -67,6 +69,8 @@ export default async function AccountPage() {
 
   /** Shown at every width. */
   const rows = [
+    { href: `/sellers/${me.userId}`, label: t("seller.publicProfile"), icon: Store, iconClass: "bg-brand-subtle text-ink-brand" },
+    { href: "/account/following", label: t("seller.directory"), icon: Users, iconClass: "bg-brand-subtle text-ink-brand" },
     {
       href: "/account/membership",
       label: t("account.membership"),
@@ -101,8 +105,7 @@ export default async function AccountPage() {
         {t("account.yourProfile")}
       </p>
 
-      <TrustBadge
-        size="lg"
+      <AvatarUploader
         name={viewer.name}
         isVerified={viewer.isVerified}
         faculty={viewer.faculty}

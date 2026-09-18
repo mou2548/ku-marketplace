@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useEffect, useRef, useState } from "react";
 import { CameraOff, ScanLine } from "lucide-react";
 
@@ -46,7 +46,7 @@ export function QrScanner({
   hint = "Point the camera at the other person's QR code",
   className,
 }: QrScannerProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"idle" | "running" | "denied" | "unsupported">(
     "idle",

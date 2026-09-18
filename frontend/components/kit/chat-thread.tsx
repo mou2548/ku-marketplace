@@ -1,16 +1,19 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronUp, ImagePlus, Send } from "lucide-react";
+import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
 
 import type { UserSummary } from "@/lib/api/types";
 import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
-import { Overlay, OverlayTrigger } from "./overlay";
+import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
 import { TONE_RAIL_LEFT } from "./tone";
 import { TrustBadge } from "./trust-badge";
 
@@ -58,6 +61,17 @@ export interface ChatThreadProps {
    * that is not yours otherwise collapses into the same anonymous grey.
    */
   showSenders?: boolean;
+  /**
+   * Image URLs that are a receipt for this deal rather than a snapshot someone
+   * attached — keyed by URL, valued with what to call it.
+   *
+   * A payment slip is posted into the thread when it is uploaded, because that
+   * is where people look for it: the Thai habit is "transferred, here you go"
+   * followed by the screenshot. But a slip is evidence and an ordinary photo is
+   * not, so it must not look like one. Bubbles listed here get a label and the
+   * slip's own proportions instead of a square crop.
+   */
+  receipts?: Map<string, string>;
   className?: string;
 }
 
@@ -84,12 +98,41 @@ function dayLabel(iso: string): string {
   if (key === dayKey(new Date().toISOString())) return "Today";
   if (key === dayKey(new Date(Date.now() - 86_400_000).toISOString()))
     return "Yesterday";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    timeZone: "Asia/Bangkok",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return formatDate(new Date(iso));
+}
+
+/**
+ * A slip in the thread, told apart from a snapshot.
+ *
+ * Square-cropping a bank screenshot is the worst possible thumbnail for it: the
+ * crop lands on the middle of the receipt and cuts off both the amount at the
+ * top and the reference at the bottom. This keeps the slip's own proportions,
+ * names what it is, and opens the same full-screen viewer as everything else.
+ */
+function ReceiptBubble({ url, label }: { url: string; label: string }) {
+  const t = getCopy();
+  return (
+    <PhotoViewerTrigger>
+      <button
+        type="button"
+        aria-label={t("chat.viewFullSize")}
+        className="block w-[min(15rem,60vw)] overflow-hidden rounded-card bg-surface shadow-raised"
+      >
+        <span className="flex items-center gap-1.5 px-3 py-2 text-meta font-semibold text-ink-brand">
+          <ReceiptText aria-hidden className="size-3.5" />
+          {label}
+        </span>
+        <Image
+          src={url}
+          alt=""
+          width={480}
+          height={640}
+          className="max-h-64 w-full bg-surface-sunken object-contain"
+        />
+      </button>
+      <PhotoViewer src={url} alt={label} title={label} />
+    </PhotoViewerTrigger>
+  );
 }
 
 export function ChatThread({
@@ -97,6 +140,7 @@ export function ChatThread({
   viewerId,
   action,
   systemCards = [],
+  receipts,
   onSend,
   onAttach,
   isReadOnly = false,
@@ -105,7 +149,7 @@ export function ChatThread({
   showSenders = false,
   className,
 }: ChatThreadProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -148,6 +192,12 @@ export function ChatThread({
             const startsNewDay =
               i === 0 ||
               dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
+            // A receipt is posted on its own, one image and no text. A photo
+            // that merely happens to repeat the URL inside a longer message
+            // stays an ordinary attachment.
+            const only = m.image_urls?.length === 1 ? m.image_urls[0] : undefined;
+            const label = only ? receipts?.get(only) : undefined;
+            const receipt = only && label ? { url: only, label } : undefined;
 
             return (
               <div key={m.message_id} className="flex flex-col gap-3">
@@ -178,10 +228,12 @@ export function ChatThread({
 
                   {m.images_expired ? (
                     <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">{t("chat.photosExpired")}</p>
+                  ) : receipt ? (
+                    <ReceiptBubble url={receipt.url} label={receipt.label} />
                   ) : m.image_urls?.length ? (
                     <div className="grid grid-cols-2 gap-1.5">
                       {m.image_urls.slice(0, 5).map((url) => (
-                        <OverlayTrigger key={url}>
+                        <PhotoViewerTrigger key={url}>
                           <button
                             type="button"
                             aria-label={t("chat.viewFullSize")}
@@ -195,22 +247,8 @@ export function ChatThread({
                               className="aspect-square object-cover shadow-raised"
                             />
                           </button>
-                          <Overlay
-                            title={t("chat.photo")}
-                            size="lg"
-                            bodyClassName="px-2 pb-2 sm:px-5 sm:pb-3"
-                          >
-                            <div className="flex items-center justify-center">
-                              <Image
-                                src={url}
-                                alt=""
-                                width={960}
-                                height={960}
-                                className="max-h-[75dvh] w-full rounded-control object-contain"
-                              />
-                            </div>
-                          </Overlay>
-                        </OverlayTrigger>
+                          <PhotoViewer src={url} alt="" title={t("chat.photo")} />
+                        </PhotoViewerTrigger>
                       ))}
                     </div>
                   ) : null}
@@ -254,7 +292,7 @@ export function ChatThread({
           Read-only rooms have no composer and so no toggle — the action stays
           open there rather than becoming unreachable. */}
       {action && (actionOpen || isReadOnly) ? (
-        <div className="min-h-0 max-h-[50%] shrink overflow-y-auto overscroll-contain">
+        <div className="min-h-0 max-h-[75%] shrink-0 overflow-y-auto overscroll-contain">
           {action}
         </div>
       ) : null}

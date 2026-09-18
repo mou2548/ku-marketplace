@@ -39,7 +39,13 @@ export class JwtAuthGuard implements CanActivate {
       const payload = this.tokenService.verifyAccessToken(token);
       const user = await this.prisma.user.findUnique({
         where: { userId: payload.userId },
-        select: { userId: true, email: true, status: true, isAdmin: true },
+        select: {
+          userId: true,
+          email: true,
+          status: true,
+          isAdmin: true,
+          passwordHash: true,
+        },
       });
       const restricted =
         user?.status === 'Suspended' || user?.status === 'Banned';
@@ -51,14 +57,24 @@ export class JwtAuthGuard implements CanActivate {
         );
       if (!user || (user.status !== 'Active' && !mayAppeal))
         throw new UnauthorizedException('Account is not active');
+      if (payload.sid)
+        await this.tokenService.assertSession(payload.sid, user.passwordHash);
       req.user = {
         userId: user.userId,
         email: user.email,
         isAdmin: user.isAdmin ?? false,
       };
       return true;
-    } catch {
-      throw new UnauthorizedException('Invalid token');
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      if (error instanceof Error && error.name === 'TokenExpiredError')
+        throw new UnauthorizedException('Access token expired');
+      if (
+        error instanceof Error &&
+        ['JsonWebTokenError', 'NotBeforeError'].includes(error.name)
+      )
+        throw new UnauthorizedException('Invalid token');
+      throw error;
     }
   }
 }

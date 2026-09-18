@@ -65,8 +65,10 @@ interface RawGiveaway {
   giver?: RawUserSummary;
   allocation_method: string;
   quantity: number;
-  pickup_deadline: string | null;
+  register_start: string | null;
   register_deadline: string | null;
+  pickup_start: string | null;
+  pickup_deadline: string | null;
   participant_count: number;
   remaining_slots: number;
   registration_open: boolean;
@@ -81,6 +83,7 @@ interface RawTicket {
   giveaway_id: string;
   receiver_id: number;
   receiver?: RawUserSummary;
+  queue_number: number;
   status: string | null;
   updated_at: string | null;
 }
@@ -90,6 +93,7 @@ interface RawRecipient {
   receiver_id: number;
   receiver?: RawUserSummary;
   ticket_id: string;
+  queue_number: number;
   status:
     | "registered"
     | "selected"
@@ -135,7 +139,9 @@ function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
     giver_id: raw.giver_id,
     allocation_method: toAllocationMethod(raw.allocation_method),
     quantity: raw.quantity,
+    register_start: raw.register_start,
     register_deadline: raw.register_deadline,
+    pickup_start: raw.pickup_start,
     pickup_deadline: raw.pickup_deadline,
     registration_open: raw.registration_open,
     remaining_slots: raw.remaining_slots,
@@ -171,6 +177,7 @@ function toGiveawayTicket(raw: RawTicket, giveaway: GiveawayPost): GiveawayTicke
     ticket_id: numFromLabel(raw.ticket_id),
     giveaway_id: giveaway.giveaway_id,
     receiver_id: raw.receiver_id,
+    queue_number: raw.queue_number,
     status: toTicketStatus(raw.status),
     updated_at: raw.updated_at ?? giveaway.created_at,
     created_at: raw.updated_at ?? giveaway.created_at,
@@ -182,6 +189,7 @@ export interface RecipientRow {
   recipient_id: number;
   receiver_id: number;
   ticket_id: number;
+  queue_number: number;
   user: UserSummary;
   status: RawRecipient["status"];
   ticket_status: TicketStatus;
@@ -192,6 +200,7 @@ function toRecipientRow(raw: RawRecipient): RecipientRow {
     recipient_id: numFromLabel(raw.recipient_id),
     receiver_id: raw.receiver_id,
     ticket_id: numFromLabel(raw.ticket_id),
+    queue_number: raw.queue_number,
     user: toUserSummary(raw.receiver, raw.receiver_id),
     status: raw.status,
     ticket_status: toTicketStatus(raw.ticket_status),
@@ -209,7 +218,9 @@ export interface CreateGiveawayInput {
   description?: string;
   pickup_location: string;
   allocation_method: AllocationMethod;
+  register_start?: string;
   register_deadline?: string;
+  pickup_start?: string;
   pickup_deadline?: string;
   images?: { image_url: string; display_order: number }[];
 }
@@ -306,6 +317,7 @@ export async function getMyTicket(
     ticket_id: mine.ticket_id,
     giveaway_id: giveaway.giveaway_id,
     receiver_id: mine.receiver_id,
+    queue_number: mine.queue_number,
     status: mine.ticket_status,
     updated_at: giveaway.created_at,
     created_at: giveaway.created_at,

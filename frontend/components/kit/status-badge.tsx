@@ -1,4 +1,4 @@
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import type { StatusPresentation } from "@/lib/status";
 import { cn } from "@/lib/utils";
 

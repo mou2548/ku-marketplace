@@ -15,6 +15,7 @@ export interface Profile {
   firstNameTh: string;
   lastNameTh: string;
   phoneNumber: string | null;
+  avatarUrl: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   emailVerifiedAt: string | null;
   isAdmin: boolean;
@@ -28,6 +29,7 @@ export interface UpdateProfilePayload {
   first_name_th?: string;
   last_name_th?: string;
   phone_number?: string;
+  avatar_url?: string;
 }
 
 async function authedInit(): Promise<RequestInit> {
@@ -66,6 +68,7 @@ export function toUser(profile: Profile): User {
     first_name_th: profile.firstNameTh,
     last_name_th: profile.lastNameTh,
     phone_number: profile.phoneNumber,
+    avatar_url: profile.avatarUrl,
     status: profile.status,
     email_verified_at: profile.emailVerifiedAt,
     isAdmin: profile.isAdmin,

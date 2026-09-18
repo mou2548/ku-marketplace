@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { formatDateTime } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,7 +32,7 @@ import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
 import { ReportDialog } from "@/components/kit/report-dialog";
-import { SlipReviewer, SlipUploader } from "@/components/kit/slip";
+import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -60,7 +63,8 @@ import {
   sendChatMessage,
   uploadChatImage,
 } from "@/lib/actions/chat";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
+import { markRoomActive } from "@/lib/chat-activity";
 import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
 import { ApiError } from "@/lib/api/client";
 import type {
@@ -115,16 +119,10 @@ const USER_REPORT_REASONS = [
   },
 ];
 
-/** "Mon 10 Aug, 13:00 · สำนักหอสมุด มก." — the pinned one-liner. */
+/** Day-first date, local marketplace time and the agreed location. */
 function appointmentLabel(appointment: AppointmentCardData): string {
   const at = new Date(`${appointment.date}T${appointment.time}+07:00`);
-  const when = at.toLocaleString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const when = formatDateTime(at);
   return `${when} · ${appointment.location}`;
 }
 
@@ -159,7 +157,7 @@ function ProposeMeetup({
    * calling the API, leaving the card on screen untouched. */
   onDiscard?: () => void;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const tz = getLocalTimeZone();
 
   return (
@@ -253,7 +251,7 @@ export function RoomScreen({
   entrants?: Entrant[];
   messages: ChatMessage[];
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
@@ -408,6 +406,49 @@ export function RoomScreen({
     }
   }
 
+  /**
+   * Uploading a slip also drops it into the conversation.
+   *
+   * The deal panel is the record, but nobody looks there first: the habit this
+   * app is replacing is "transferred, here you go" followed by the screenshot,
+   * in the chat. Posting it means the other party sees it arrive in the place
+   * they are already reading, and it stays scrollable in the timeline next to
+   * the message that explains it.
+   */
+  // Left to the compiler rather than a useMemo: the deps here are optional
+  // chains off `transaction`, which react-hooks/preserve-manual-memoization
+  // cannot match up, and it flags the hook instead of keeping it.
+  const receipts = new Map<string, string>();
+  if (transaction?.slip_image_url)
+    receipts.set(transaction.slip_image_url, t("slip.paymentSlipOnFile"));
+  if (transaction?.refund_slip_url)
+    receipts.set(transaction.refund_slip_url, t("slip.refundSlip"));
+
+  async function uploadSlip(kind: "payment" | "refund", file: File) {
+    if (!transaction) return;
+    const updated =
+      kind === "payment"
+        ? await submitPaymentSlip(transaction.transaction_id, file)
+        : await submitRefundSlip(transaction.transaction_id, file);
+
+    const url =
+      kind === "payment" ? updated.slip_image_url : updated.refund_slip_url;
+    if (!url) return updated;
+
+    try {
+      const posted = await sendChatMessage(transaction.transaction_id, {
+        image_urls: [url],
+      });
+      setMessages((prev) => [...prev, posted]);
+    } catch {
+      // The transaction already holds the slip and the deal panel renders it,
+      // so the bubble is a convenience and never the record. A chat failure
+      // must not turn a payment that went through into one that reads as
+      // failed.
+    }
+    return updated;
+  }
+
   async function handleSend(text: string) {
     try {
       const sent = transaction
@@ -415,7 +456,11 @@ export function RoomScreen({
         : giveaway
           ? await sendGiveawayMessage(giveaway.giveaway_id, { content: text })
           : undefined;
-      if (sent) setMessages((prev) => [...prev, sent]);
+      if (sent) {
+        setMessages((prev) => [...prev, sent]);
+        // Float this room to the top of the inbox now, not on the next poll.
+        markRoomActive(summary.room_id);
+      }
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not send the message.");
     }
@@ -440,6 +485,7 @@ export function RoomScreen({
         ? await sendChatMessage(transaction.transaction_id, { image_urls })
         : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
       setMessages((prev) => [...prev, sent]);
+      markRoomActive(summary.room_id);
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not send the photos.");
     } finally {
@@ -518,7 +564,7 @@ export function RoomScreen({
       return <ActionCard title="Return and refund">
         <div className="flex flex-col gap-3">
           {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} onUpload={(file) => act(() => submitRefundSlip(transaction.transaction_id, file), "Refund slip uploaded", "Could not upload refund slip")} /> :
+            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => act(() => uploadSlip("refund", file), "Refund slip uploaded", "Could not upload refund slip")} /> :
             transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
@@ -561,9 +607,12 @@ export function RoomScreen({
           <ActionCard title={t("deal.stepUploadSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
+              slipUrl={transaction.slip_image_url}
+              isUploaded={!!transaction.slip_image_url}
+              uploadedAt={transaction.payment_confirmed_by_buyer_at}
               onUpload={(file) =>
                 act(
-                  () => submitPaymentSlip(transaction.transaction_id, file),
+                  () => uploadSlip("payment", file),
                   "Slip uploaded. Waiting on the seller.",
                   "Could not upload the slip",
                 )
@@ -698,9 +747,13 @@ export function RoomScreen({
           <ActionCard title={t("deal.stepRefundSlip")}>
             <SlipUploader
               amount={transaction.final_amount}
+              title={t("slip.refundSlip")}
+              slipUrl={transaction.refund_slip_url}
+              isUploaded={!!transaction.refund_slip_url}
+              uploadedAt={transaction.refund_submitted_at}
               onUpload={(file) =>
                 act(
-                  () => submitRefundSlip(transaction.transaction_id, file),
+                  () => uploadSlip("refund", file),
                   "Refund slip uploaded",
                   "Could not upload the refund slip",
                 )
@@ -895,7 +948,7 @@ export function RoomScreen({
       </button>
 
       {detailOpen ? (
-        <div className="border-t border-line bg-surface-sunken/40 px-4 py-4">
+        <div className="max-h-[24dvh] overflow-y-auto overscroll-contain border-t border-line bg-surface-sunken/40 px-4 py-4">
           {transaction && viewer ? (
             <DealDetails
               transaction={transaction}
@@ -937,7 +990,7 @@ export function RoomScreen({
         <div
           ref={appointmentPinRef}
           className={cn(
-            "border-b border-line",
+            "shrink-0 border-b border-line",
             (transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund")
               ? "bg-tone-success-bg/60"
               : "bg-tone-info-bg/60",
@@ -982,7 +1035,7 @@ export function RoomScreen({
           </button>
 
           {pinOpen ? (
-            <div className="px-4 pb-4">
+            <div className="max-h-[20dvh] overflow-y-auto overscroll-contain px-4 pb-4">
               {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment && editingAppointment ? (
@@ -1037,6 +1090,7 @@ export function RoomScreen({
       <ChatThread
         messages={messages}
         viewerId={viewerId}
+        receipts={receipts}
         senders={senders}
         showSenders={isGroupRoom}
         action={currentAction() ?? sellerQr}
@@ -1082,7 +1136,7 @@ function DealDetails({
   busy: boolean;
   onCancel: (reason: string) => void;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const st = useStatusText();
   // The reason was collected by an input bound to nothing and thrown away. A
   // rejected cancellation flips dispute_status to under_review immediately, so
@@ -1124,6 +1178,35 @@ function DealDetails({
             <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
             <CountdownPill deadline={deadline} />
           </div>
+        ) : null}
+
+        {/*
+          The receipt for money that moved off-platform, kept reachable by both
+          parties for the life of the deal.
+
+          The action cards render a slip too, but only while the prompt asks
+          for one and only for whoever's turn it is — so the buyer lost sight
+          of the slip the instant they sent it, and both parties lost it for
+          good once the seller confirmed. Nothing here is gated on turn or on
+          status: Completed, Cancelled and under-review deals all still answer
+          "show me what was transferred".
+        */}
+        {transaction.slip_image_url ? (
+          <SlipViewer
+            slipUrl={transaction.slip_image_url}
+            title={t("slip.paymentSlipOnFile")}
+            amount={transaction.final_amount}
+            uploadedAt={transaction.payment_confirmed_by_buyer_at}
+          />
+        ) : null}
+
+        {transaction.refund_slip_url ? (
+          <SlipViewer
+            slipUrl={transaction.refund_slip_url}
+            title={t("slip.refundSlip")}
+            amount={transaction.final_amount}
+            uploadedAt={transaction.refund_submitted_at}
+          />
         ) : null}
 
         <div className="flex flex-col gap-2 border-t border-line pt-3">
@@ -1201,7 +1284,7 @@ function GiveawayDetails({
   entrants?: Entrant[];
   viewerId: number;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
       <div className="flex flex-col gap-2">

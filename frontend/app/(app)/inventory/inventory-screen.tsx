@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GridListItem, type Selection } from "react-aria-components";
@@ -14,7 +14,7 @@ import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import type { Item, ItemHistorySummary } from "@/lib/api/types";
 import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
 
@@ -33,7 +33,7 @@ export function InventoryScreen({
   listedItemIds: number[];
   summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const statusText = useStatusText();
   const router = useRouter();
   const toast = useToast();

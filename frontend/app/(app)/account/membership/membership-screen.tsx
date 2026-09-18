@@ -1,6 +1,9 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown } from "lucide-react";
@@ -71,8 +74,7 @@ function perksOf(tier: MembershipTier): string[] {
 const ALL_PERKS = TIERS.flatMap((t) => t.adds);
 
 export function MembershipScreen({ membership }: { membership: Membership }) {
-  const t = useTranslations();
-  const locale = useLocale();
+  const t = getCopy();
   const router = useRouter();
   const toast = useToast();
   const [selected, setSelected] = useState<MembershipTier>("Gold");
@@ -104,14 +106,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           <p className="text-caption leading-[1.6] text-ink-muted">
             Valid until{" "}
             <span data-numeric className="font-medium text-ink-secondary">
-              {new Date(membership.expires_at).toLocaleDateString(
-                locale === "th" ? "th-TH" : "en-GB",
-                {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                },
-              )}
+              {formatDate(new Date(membership.expires_at))}
             </span>
           </p>
         ) : (

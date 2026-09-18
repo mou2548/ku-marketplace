@@ -20,8 +20,10 @@ export interface CreateGiveawayPayload {
   description?: string;
   pickup_location?: string;
   allocation_method?: string;
-  pickup_deadline?: string;
+  register_start?: string;
   register_deadline?: string;
+  pickup_start?: string;
+  pickup_deadline?: string;
   images?: GiveawayImage[];
 }
 
@@ -98,24 +100,56 @@ export class GiveawaysService {
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new BadRequestException('quantity ต้องเป็นจำนวนเต็มที่มากกว่า 0');
     }
-    const pickupDeadline = payload.pickup_deadline
-      ? new Date(payload.pickup_deadline)
+    const registerStart = payload.register_start
+      ? new Date(payload.register_start)
       : null;
     const registerDeadline = payload.register_deadline
       ? new Date(payload.register_deadline)
+      : null;
+    const pickupStart = payload.pickup_start
+      ? new Date(payload.pickup_start)
+      : null;
+    const pickupDeadline = payload.pickup_deadline
+      ? new Date(payload.pickup_deadline)
       : null;
     if (payload.allocation_method !== 'FirstCome' && !registerDeadline) {
       throw new BadRequestException(
         'A registration deadline is required for Random and Manual giveaways',
       );
     }
-    if (pickupDeadline && Number.isNaN(pickupDeadline.getTime())) {
-      throw new BadRequestException('pickup_deadline ไม่ถูกต้อง');
+    if (registerStart && Number.isNaN(registerStart.getTime())) {
+      throw new BadRequestException('register_start ไม่ถูกต้อง');
     }
     if (registerDeadline && Number.isNaN(registerDeadline.getTime())) {
       throw new BadRequestException('register_deadline ไม่ถูกต้อง');
     }
+    if (pickupStart && Number.isNaN(pickupStart.getTime())) {
+      throw new BadRequestException('pickup_start ไม่ถูกต้อง');
+    }
+    if (pickupDeadline && Number.isNaN(pickupDeadline.getTime())) {
+      throw new BadRequestException('pickup_deadline ไม่ถูกต้อง');
+    }
     if (
+      registerStart &&
+      registerDeadline &&
+      registerStart >= registerDeadline
+    ) {
+      throw new BadRequestException(
+        'register_start ต้องอยู่ก่อน register_deadline',
+      );
+    }
+    if (pickupStart && pickupDeadline && pickupStart >= pickupDeadline) {
+      throw new BadRequestException(
+        'pickup_start ต้องอยู่ก่อน pickup_deadline',
+      );
+    }
+    if (registerDeadline && pickupStart && registerDeadline > pickupStart) {
+      throw new BadRequestException(
+        'register_deadline ต้องอยู่ก่อนหรือพร้อมกับ pickup_start',
+      );
+    }
+    if (
+      !pickupStart &&
       pickupDeadline &&
       registerDeadline &&
       registerDeadline >= pickupDeadline
@@ -133,8 +167,10 @@ export class GiveawaysService {
         description: payload.description,
         pickupLocation: payload.pickup_location,
         allocationMethod: payload.allocation_method,
-        pickupDeadline,
+        registerStart,
         registerDeadline,
+        pickupStart,
+        pickupDeadline,
         images: {
           create: (payload.images ?? []).map((image) => ({
             imageUrl: image.image_url,
@@ -159,8 +195,10 @@ export class GiveawaysService {
       giverId: number;
       allocationMethod: string;
       quantity: number;
-      pickupDeadline: Date | null;
+      registerStart: Date | null;
       registerDeadline: Date | null;
+      pickupStart: Date | null;
+      pickupDeadline: Date | null;
       status: string | null;
       createdAt: Date | null;
       images: { imageUrl: string; displayOrder: number | null }[];
@@ -182,12 +220,15 @@ export class GiveawaysService {
       giver: this.serializeUserSummary(giveaway.giver),
       allocation_method: giveaway.allocationMethod,
       quantity: giveaway.quantity,
-      pickup_deadline: giveaway.pickupDeadline,
+      register_start: giveaway.registerStart,
       register_deadline: giveaway.registerDeadline,
+      pickup_start: giveaway.pickupStart,
+      pickup_deadline: giveaway.pickupDeadline,
       participant_count: participantCount,
       remaining_slots: Math.max(giveaway.quantity - participantCount, 0),
       registration_open:
         giveaway.status === 'Active' &&
+        (!giveaway.registerStart || giveaway.registerStart <= new Date()) &&
         (!giveaway.registerDeadline ||
           giveaway.registerDeadline > new Date()) &&
         (giveaway.allocationMethod !== 'FirstCome' ||
@@ -262,6 +303,9 @@ export class GiveawaysService {
       ) {
         throw new ConflictException('กิจกรรมนี้ปิดรับแล้ว');
       }
+      if (giveaway.registerStart && giveaway.registerStart > new Date()) {
+        throw new ConflictException('ยังไม่ถึงเวลาลงทะเบียน');
+      }
       if (!(await tx.user.findUnique({ where: { userId: receiverId } }))) {
         throw new NotFoundException('ไม่พบผู้รับ');
       }
@@ -284,6 +328,7 @@ export class GiveawaysService {
         data: {
           giveawayId,
           receiverId,
+          queueNumber: participantCount + 1,
           status:
             giveaway.allocationMethod === 'FirstCome'
               ? 'Waiting'
@@ -313,6 +358,7 @@ export class GiveawaysService {
     ticketId: number;
     giveawayId: number;
     receiverId: number;
+    queueNumber: number;
     status: string | null;
     updatedAt: Date | null;
     receiver: {
@@ -327,6 +373,7 @@ export class GiveawaysService {
       giveaway_id: this.label('giveaway', ticket.giveawayId),
       receiver_id: ticket.receiverId,
       receiver: this.serializeUserSummary(ticket.receiver),
+      queue_number: ticket.queueNumber,
       status: ticket.status,
       updated_at: ticket.updatedAt,
     };
@@ -497,6 +544,7 @@ export class GiveawaysService {
     ticket: {
       ticketId: number;
       receiverId: number;
+      queueNumber: number;
       status: string | null;
       receiver: {
         userId: number;
@@ -521,6 +569,7 @@ export class GiveawaysService {
       receiver_id: ticket.receiverId,
       receiver: this.serializeUserSummary(ticket.receiver),
       ticket_id: this.label('ticket', ticket.ticketId),
+      queue_number: ticket.queueNumber,
       status: outcomeByStatus[status] ?? status.toLowerCase(),
       ticket_status: status,
     };
@@ -599,6 +648,12 @@ export class GiveawaysService {
         data: { status: 'Expired', updatedAt: new Date() },
       });
       throw new ConflictException('เลยกำหนดรับของแล้ว');
+    }
+    if (
+      ticket.giveaway.pickupStart &&
+      ticket.giveaway.pickupStart > new Date()
+    ) {
+      throw new ConflictException('ยังไม่ถึงเวลารับของ');
     }
     // One code per 15 minutes: while the current token is still inside its
     // window, hand back the same one with the seconds it has left, so reopening

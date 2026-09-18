@@ -1,13 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { getCopy } from "@/lib/copy";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Flag, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
-import { Radio, RadioGroupField } from "@/components/kit/choice";
+import { Radio, RadioGroup } from "react-aria-components";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
@@ -47,11 +47,12 @@ const POST_REPORT_REASONS = [
  * fold on a phone.
  */
 export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
-  const t = useTranslations();
+  const t = getCopy();
   const router = useRouter();
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
   const [busy, setBusy] = useState(false);
+  const deliveryId = useId();
 
   const canBuy = post.post_type !== "TradeOnly";
   const canTrade = post.post_type !== "SellOnly";
@@ -100,36 +101,48 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
             description={t("market.chooseDeliveryBody")}
             footer={
               <>
-                <Button variant="ghost" slot="close">{t("inventory.cancel")}</Button>
-                <Button onPress={buy} isLoading={busy}>
-                  <Handshake className="size-4" />{t("market.confirmPurchase")}</Button>
+                <Button variant="ghost" slot="close" isDisabled={busy}>{t("inventory.cancel")}</Button>
+                <Button onPress={buy} isLoading={busy} className="sm:min-w-44">
+                  {t("market.confirmPurchase")}</Button>
               </>
             }
           >
-            <RadioGroupField
+            <RadioGroup
               aria-label={t("market.deliveryMethod")}
               value={method}
-              onChange={(v) => setMethod(v as DeliveryMethod)}
-              variant="card"
+              onChange={(value) => setMethod(value as DeliveryMethod)}
+              isDisabled={busy}
+              className="flex flex-col gap-2"
             >
-              <Radio
-                value="Meetup"
-                description={t("market.meetupBody")}
-              >
-                <span className="flex items-center gap-2">
-                  <MapPin aria-hidden className="size-4" />{t("market.meetup")}</span>
-              </Radio>
-              <Radio
-                value="Shipping"
-                description={t("market.shippingBody")}
-              >
-                <span className="flex items-center gap-2">
-                  <Truck aria-hidden className="size-4" />{t("market.shipping")}</span>
-              </Radio>
-            </RadioGroupField>
+              {([
+                { value: "Meetup", icon: MapPin, title: "meetup", caption: "meetupCaption" },
+                { value: "Shipping", icon: Truck, title: "shipping", caption: "shippingCaption" },
+              ] as const).map(({ value, icon: Icon, title, caption }) => (
+                <Radio
+                  key={value}
+                  value={value}
+                  aria-labelledby={`${deliveryId}-${value}-label`}
+                  aria-describedby={`${deliveryId}-${value}-description`}
+                  className="group flex min-h-20 cursor-pointer items-center gap-3 rounded-control px-3.5 py-4 text-ink outline-none transition-colors hover:bg-surface-sunken data-[selected]:bg-surface-sunken data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-brand data-[disabled]:cursor-wait"
+                >
+                  {({ isSelected }) => (
+                    <>
+                      <Icon aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span id={`${deliveryId}-${value}-label`} className="text-body font-medium">{t(`market.${title}`)}</span>
+                        <span id={`${deliveryId}-${value}-description`} className="text-body-sm font-normal leading-relaxed text-ink-muted">{t(`market.${caption}`)}</span>
+                      </span>
+                      <span aria-hidden className="flex size-5 shrink-0 items-center justify-center self-center rounded-pill border border-ink-muted group-data-[selected]:border-brand group-data-[selected]:bg-brand group-data-[selected]:text-on-brand">
+                        {isSelected ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                      </span>
+                    </>
+                  )}
+                </Radio>
+              ))}
+            </RadioGroup>
 
-            <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-              Money moves directly between you, outside the platform. The app keeps the slip and the timestamps as evidence for both sides. Do not transfer before confirming here.
+            <p className="mt-4 mb-4 text-caption font-normal leading-relaxed text-ink-muted">
+              {t("market.directPaymentNotice")}
             </p>
           </Overlay>
         </OverlayTrigger>

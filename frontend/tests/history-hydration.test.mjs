@@ -37,8 +37,8 @@ function load(file, dependencies, DateClass = Date) {
 
 function history(DateClass) {
   return load('app/(app)/history/history-list.tsx', {
-    'next-intl': { useTranslations: () => (key) => key },
-    '@/lib/i18n/status-text': { useStatusText: () => ({ of: () => ({ label: 'Pending' }), key: (key) => key }) },
+    '@/lib/copy': { getCopy: () => (key) => key },
+    '@/lib/status-text': { useStatusText: () => ({ of: () => ({ label: 'Pending' }), key: (key) => key }) },
     '@/lib/inbox': { deadlineFor: () => null },
     '@/lib/status': {
       TRANSACTION_STATUS: presentation, TICKET_STATUS: presentation,
@@ -48,10 +48,10 @@ function history(DateClass) {
   }, DateClass).HistoryList;
 }
 
-async function pageProps(locale) {
+async function pageProps() {
   const page = load('app/(app)/history/page.tsx', {
     'next/navigation': { redirect: () => { throw new Error('Unexpected redirect'); } },
-    'next-intl/server': { getLocale: async () => locale },
+    '@/lib/date-format': load('lib/date-format.ts', {}),
     '@/lib/api/session': { getCurrentUserId: async () => 4 },
     '@/lib/api/transactions': { getTransactions: async () => [transaction] },
     '@/lib/api/giveaways': { getGiveaways: async () => [] },
@@ -61,9 +61,9 @@ async function pageProps(locale) {
 }
 
 test('history reuses server date text even when the browser would abbreviate September differently', async () => {
-  const props = await pageProps('en');
+  const props = await pageProps();
   const label = props.transactions[0].created_date_label;
-  assert.match(label, /^11 Sept? 2026$/); // Bangkok is already the following day.
+  assert.equal(label, "11/09/26"); // Bangkok is already the following day.
   class BrowserDate extends Date {
     toLocaleDateString() { throw new Error('Browser date formatting must not run during hydration'); }
   }
@@ -73,13 +73,9 @@ test('history reuses server date text even when the browser would abbreviate Sep
   assert.ok(browserHTML.includes(label));
 });
 
-test('history serializes the Thai Buddhist calendar date in the marketplace timezone', async () => {
-  const props = await pageProps('th');
+test('history uses Gregorian day-first dates in the marketplace timezone', async () => {
+  const props = await pageProps();
   const label = props.transactions[0].created_date_label;
-  assert.equal(label, new Intl.DateTimeFormat('th-TH', {
-    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok',
-  }).format(new Date(transaction.created_at)));
-  assert.match(label, /^11 /);
-  assert.ok(label.includes('2569'));
+  assert.equal(label, '11/09/26');
   assert.ok(renderToStaticMarkup(React.createElement(history(Date), props)).includes(label));
 });

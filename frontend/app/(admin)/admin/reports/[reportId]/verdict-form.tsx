@@ -1,5 +1,8 @@
 "use client";
 
+import { formatDateTime } from "@/lib/date-format";
+
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +16,7 @@ import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { adminResolveReport, adminRestoreReport } from "@/lib/actions/reports";
 import type { ApiError } from "@/lib/api/client";
 import type { AdminTransactionEvidence, Sanction } from "@/lib/api/reports";
@@ -267,7 +270,7 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
           <div key={label} className="flex justify-between gap-2">
             <span className="text-ink-muted">{label}</span>
             <span data-numeric>
-              {value ? new Date(value).toLocaleString("en-GB") : "—"}
+              {value ? formatDateTime(new Date(value)) : "—"}
             </span>
           </div>
         ))}

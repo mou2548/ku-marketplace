@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getCopy } from "@/lib/copy";
 import { CircleCheck, Flag } from "lucide-react";
 
 import { createReport } from "@/lib/actions/reports";
@@ -36,6 +37,7 @@ export function ReportDialog({
   reasons: ReportReasonOption[];
   trigger: React.ReactNode;
 }) {
+  const t = getCopy("reportDialog");
   const [reason, setReason] = useState(reasons[0]?.id ?? "");
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,7 +57,7 @@ export function ReportDialog({
       });
       setSubmitted(true);
     } catch (e) {
-      setError((e as ApiError).message ?? "Could not submit the report.");
+      setError((e as ApiError).message ?? t("error"));
     } finally {
       setBusy(false);
     }
@@ -73,19 +75,19 @@ export function ReportDialog({
       {trigger}
       <Overlay
         isBusy={busy}
-        title={`Report this ${reportType === "Post" ? "post" : "user"}`}
+        title={t(reportType === "Post" ? "postTitle" : "userTitle")}
         description={
           submitted
             ? undefined
-            : "Choose the reason that best matches what happened. An admin reviews every report."
+            : t("description")
         }
         footer={
           submitted ? (
-            <Button slot="close">Close</Button>
+            <Button slot="close">{t("close")}</Button>
           ) : (
             <>
               <Button variant="ghost" slot="close">
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 variant="danger"
@@ -94,7 +96,7 @@ export function ReportDialog({
                 onPress={submit}
               >
                 <Flag className="size-4" />
-                Submit report
+                {t("submit")}
               </Button>
             </>
           )
@@ -106,12 +108,12 @@ export function ReportDialog({
               <CircleCheck aria-hidden className="size-5" />
             </span>
             <p className="text-body text-ink-secondary">
-              Report submitted. An admin will review it and let you know.
+              {t("submitted")}
             </p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <RadioGroupField label="Reason" value={reason} onChange={setReason} variant="card">
+            <RadioGroupField label={t("reason")} value={reason} onChange={setReason} variant="card">
               {reasons.map((r) => (
                 <Radio key={r.id} value={r.id} description={r.description}>
                   {r.label}
@@ -120,12 +122,12 @@ export function ReportDialog({
             </RadioGroupField>
 
             <TextAreaField
-              label="Details"
+              label={t("details")}
               value={details}
               onChange={setDetails}
               rows={4}
-              placeholder="Anything that helps an admin understand what happened"
-              hint="Optional, but the more detail the faster an admin can decide."
+              placeholder={t("placeholder")}
+              hint={t("hint")}
               errorMessage={error}
             />
           </div>

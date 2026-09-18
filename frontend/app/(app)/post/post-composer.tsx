@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
+import {
+  getLocalTimeZone,
+  now,
+  toCalendarDateTime,
+  type CalendarDateTime,
+} from "@internationalized/date";
 import {
   ArrowLeftRight,
   Check,
@@ -26,7 +31,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { createGiveaway } from "@/lib/actions/giveaways";
 import { publishListing } from "@/lib/actions/posts";
 import type { ApiError } from "@/lib/api/client";
@@ -89,6 +94,7 @@ export function PostComposer({
   const router = useRouter();
   const toast = useToast();
   const tz = getLocalTimeZone();
+  const nowDT = toCalendarDateTime(now(tz));
   const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
 
   const [picked, setPicked] = useState<Set<number>>(new Set());
@@ -102,11 +108,17 @@ export function PostComposer({
   const [place, setPlace] = useState("");
   const [giveawayQuantity, setGiveawayQuantity] = useState("1");
   const [method, setMethod] = useState<AllocationMethod>("Random");
-  const [closeAt, setCloseAt] = useState<DateValue | null>(
-    today(tz).add({ days: 2 }),
+  const [registerStart, setRegisterStart] = useState<CalendarDateTime | null>(
+    nowDT,
   );
-  const [pickupTo, setPickupTo] = useState<DateValue | null>(
-    today(tz).add({ days: 5 }),
+  const [closeAt, setCloseAt] = useState<CalendarDateTime | null>(
+    nowDT.add({ days: 2 }),
+  );
+  const [pickupStart, setPickupStart] = useState<CalendarDateTime | null>(
+    nowDT.add({ days: 2 }),
+  );
+  const [pickupTo, setPickupTo] = useState<CalendarDateTime | null>(
+    nowDT.add({ days: 5 }),
   );
 
   const unlisted = items.filter((i) => !listed.has(i.item_id));
@@ -120,7 +132,9 @@ export function PostComposer({
     (isGiveaway
       ? place.trim().length > 0 &&
         Number(giveawayQuantity) > 0 &&
+        !!registerStart &&
         !!closeAt &&
+        !!pickupStart &&
         !!pickupTo
       : !wantsPrice || Number(price) > 0);
 
@@ -154,8 +168,14 @@ export function PostComposer({
               description: description || item.description || undefined,
               pickup_location: place,
               allocation_method: method,
+              register_start: registerStart
+                ? registerStart.toDate(tz).toISOString()
+                : undefined,
               register_deadline: closeAt
                 ? closeAt.toDate(tz).toISOString()
+                : undefined,
+              pickup_start: pickupStart
+                ? pickupStart.toDate(tz).toISOString()
                 : undefined,
               pickup_deadline: pickupTo
                 ? pickupTo.toDate(tz).toISOString()
@@ -475,18 +495,38 @@ export function PostComposer({
               </RadioGroupField>
 
               <DatePickerField
+                label="Registration opens"
+                value={registerStart}
+                onChange={setRegisterStart}
+                minValue={nowDT}
+                showTimeField
+                hint="Nobody can register before this time"
+              />
+
+              <DatePickerField
                 label="Registration closes"
                 value={closeAt}
                 onChange={setCloseAt}
-                minValue={today(tz)}
+                minValue={registerStart ?? nowDT}
+                showTimeField
                 hint="At this point recipients are chosen by the method above and a chat room opens for them"
+              />
+
+              <DatePickerField
+                label="Pickup window opens"
+                value={pickupStart}
+                onChange={setPickupStart}
+                minValue={closeAt ?? nowDT}
+                showTimeField
+                hint="Recipients can start collecting from this time"
               />
 
               <DatePickerField
                 label="Pickup deadline"
                 value={pickupTo}
                 onChange={setPickupTo}
-                minValue={closeAt?.add({ days: 1 }) ?? today(tz)}
+                minValue={pickupStart?.add({ minutes: 1 }) ?? nowDT}
+                showTimeField
                 hint="Selected recipients must collect by this date"
               />
 

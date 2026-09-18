@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/date-format";
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/kit/status-badge";
@@ -65,10 +66,7 @@ export default async function AdminReportsPage() {
                     dateTime={r.created_at}
                     className="text-meta text-ink-muted"
                   >
-                    {new Date(r.created_at).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {formatDate(new Date(r.created_at))}
                   </time>
                   <StatusBadge status={REPORT_STATUS[r.status]} size="sm" />
                 </div>

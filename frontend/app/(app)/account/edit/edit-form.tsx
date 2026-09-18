@@ -12,7 +12,7 @@ import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
-import { TrustBadge } from "@/components/kit/trust-badge";
+import { AvatarUploader } from "@/components/kit/avatar-uploader";
 import { TwoColumn } from "@/components/kit/two-column";
 
 /**
@@ -55,13 +55,13 @@ export function EditProfileForm({ profile }: { profile: User }) {
   const preview = (
     <Surface shape="card" className="flex flex-col gap-4 p-5">
       <p className="text-overline text-ink-muted uppercase">How you appear</p>
-      <TrustBadge
-        size="lg"
+      <AvatarUploader
         name={
           `${firstNameTh} ${lastNameTh}`.trim() ||
           `${profile.first_name_en} ${profile.last_name_en}`
         }
         isVerified
+        avatarUrl={profile.avatar_url}
       />
       <p className="text-caption leading-[1.6] text-ink-muted">
         This is the name and badge shown on your posts, your offers, and every

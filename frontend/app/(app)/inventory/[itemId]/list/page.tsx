@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 import { notFound } from "next/navigation";
 
 import { PostImage } from "@/components/kit/post-image";
@@ -22,8 +22,8 @@ export default async function ListItemPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
-  const tStatus = await getTranslations("status");
-  const t = await getTranslations();
+  const tStatus = await getCopy("status");
+  const t = await getCopy();
   const { itemId } = await params;
   const items = await getMyItems();
   const item = items.find((i) => i.item_id === Number(itemId));

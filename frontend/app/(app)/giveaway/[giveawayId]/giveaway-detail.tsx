@@ -1,6 +1,9 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,11 +17,12 @@ import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { ProductGallery } from "@/components/market/product-gallery";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
-import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS } from "@/lib/status";
+import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS, type Deadline } from "@/lib/status";
+import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 
 /**
  * Research risk R7: registering and then waiting had no shape at all in the
@@ -37,8 +41,7 @@ export function GiveawayDetail({
   ticket?: GiveawayTicket;
   isGiver: boolean;
 }) {
-  const t = useTranslations();
-  const locale = useLocale();
+  const t = getCopy();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
@@ -48,20 +51,59 @@ export function GiveawayDetail({
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
 
-  const drawDeadline = giveaway.register_deadline
-    ? {
-        kind: "giveaway-pickup" as const,
-        expiresAt: Date.parse(giveaway.register_deadline),
-        labelKey: "deadline.draw.label",
-        onExpiry: "forfeit" as const,
-      }
-    : undefined;
+  const now = useNow(30_000);
+  const known = now !== UNKNOWN_TIME;
+  const registerStartMs = giveaway.register_start
+    ? Date.parse(giveaway.register_start)
+    : null;
+  const registerEndMs = giveaway.register_deadline
+    ? Date.parse(giveaway.register_deadline)
+    : null;
+  const pickupStartMs = giveaway.pickup_start
+    ? Date.parse(giveaway.pickup_start)
+    : null;
+  const pickupEndMs = giveaway.pickup_deadline
+    ? Date.parse(giveaway.pickup_deadline)
+    : null;
+
+  // Before registration opens, count down to opening; once open, count down
+  // to the draw/close instead.
+  let drawDeadline: Deadline | undefined;
+  if (known && registerStartMs && now < registerStartMs) {
+    drawDeadline = {
+      kind: "giveaway-registration",
+      expiresAt: registerStartMs,
+      labelKey: "deadline.registration-opens.label",
+      onExpiry: "forfeit",
+    };
+  } else if (registerEndMs) {
+    drawDeadline = {
+      kind: "giveaway-registration",
+      expiresAt: registerEndMs,
+      labelKey: "deadline.draw.label",
+      onExpiry: "forfeit",
+    };
+  }
+
+  let pickupCountdown: Deadline | undefined;
+  if (known && pickupStartMs && now < pickupStartMs) {
+    pickupCountdown = {
+      kind: "giveaway-pickup",
+      expiresAt: pickupStartMs,
+      labelKey: "deadline.pickup-opens.label",
+      onExpiry: "forfeit",
+    };
+  } else if (pickupEndMs) {
+    pickupCountdown = {
+      kind: "giveaway-pickup",
+      expiresAt: pickupEndMs,
+      labelKey: "deadline.pickup-closes.label",
+      onExpiry: "forfeit",
+    };
+  }
 
   const pickupBy = giveaway.pickup_deadline
-    ? new Date(giveaway.pickup_deadline).toLocaleDateString(
-        locale === "th" ? "th-TH" : "en-GB",
-        { day: "numeric", month: "short" },
-      )
+    ? formatDate(new Date(giveaway.pickup_deadline))
     : null;
 
   async function join() {
@@ -264,6 +306,9 @@ export function GiveawayDetail({
                   <Clock aria-hidden className="size-4 shrink-0 text-tone-warning-fg" />
                   {t("giveaway.collectBy", { date: pickupBy })}
                 </p>
+              ) : null}
+              {pickupCountdown ? (
+                <CountdownPill deadline={pickupCountdown} showLabel />
               ) : null}
               <p
                 data-numeric

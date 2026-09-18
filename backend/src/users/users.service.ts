@@ -14,6 +14,7 @@ const PROFILE_SELECT = {
   firstNameTh: true,
   lastNameTh: true,
   phoneNumber: true,
+  avatarUrl: true,
   status: true,
   emailVerifiedAt: true,
   isAdmin: true,
@@ -52,6 +53,7 @@ export class UsersService {
         firstNameTh: dto.first_name_th,
         lastNameTh: dto.last_name_th,
         phoneNumber: dto.phone_number,
+        avatarUrl: dto.avatar_url,
       },
       select: PROFILE_SELECT,
     });

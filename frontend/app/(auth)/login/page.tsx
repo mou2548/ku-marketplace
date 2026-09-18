@@ -7,6 +7,7 @@ export const metadata = { title: "Sign in - KU Marketplace" };
  * route of its own — it is three fields, and moving between it and the sign-in
  * form should not cost a navigation. `/register` redirects here.
  */
-export default function LoginPage() {
-  return <AuthPanel />;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ returnTo?: string }> }) {
+  const { returnTo } = await searchParams;
+  return <AuthPanel returnTo={typeof returnTo === "string" ? returnTo : undefined} />;
 }

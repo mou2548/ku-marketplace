@@ -140,7 +140,7 @@ export function toPost(raw: RawPost): Post {
     seller: {
       user_id: raw.seller?.user_id ?? item.owner_id,
       name: raw.seller?.name ?? "KU student",
-      isVerified: raw.seller?.isVerified ?? true,
+      isVerified: raw.seller?.isVerified ?? false,
       faculty: raw.seller?.faculty ?? null,
       year: raw.seller?.year ?? null,
     },

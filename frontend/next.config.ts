@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import createNextIntlPlugin from "next-intl/plugin";
 
 /**
  * Redirect map from docs/design/ia.md §6.
@@ -120,11 +119,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-/**
- * Bilingual, with the locale in a cookie rather than the URL — there is no
- * `[locale]` segment, so the redirect map above keeps working unchanged.
- * See lib/i18n/locale.ts.
- */
-const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
-
-export default withNextIntl(nextConfig);
+export default nextConfig;

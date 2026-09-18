@@ -85,13 +85,20 @@ export class AuthService {
         email: true,
         firstNameEn: true,
         isAdmin: true,
+        passwordHash: true,
       },
     });
 
-    const accessToken = this.tokenService.generateAccessToken(user);
-    const refreshToken = this.tokenService.generateRefreshToken(user);
-
-    return { user, accessToken, refreshToken };
+    const tokens = await this.tokenService.createSession(user);
+    return {
+      user: {
+        userId: user.userId,
+        email: user.email,
+        firstNameEn: user.firstNameEn,
+        isAdmin: user.isAdmin,
+      },
+      ...tokens,
+    };
   }
 
   /**
@@ -123,8 +130,10 @@ export class AuthService {
       email: user.email,
       isAdmin: user.isAdmin,
     };
-    const accessToken = this.tokenService.generateAccessToken(tokenUser);
-    const refreshToken = this.tokenService.generateRefreshToken(tokenUser);
+    const tokens = await this.tokenService.createSession({
+      ...tokenUser,
+      passwordHash: user.passwordHash,
+    });
 
     return {
       user: {
@@ -134,9 +143,27 @@ export class AuthService {
         status: user.status,
         isAdmin: user.isAdmin,
       },
-      accessToken,
-      refreshToken,
+      ...tokens,
     };
+  }
+
+  async refresh(refreshToken: string) {
+    const payload = this.tokenService.verifyRefreshToken(refreshToken);
+    const user = await this.prisma.user.findUnique({
+      where: { userId: payload.userId },
+    });
+    if (
+      !user ||
+      !['Active', 'Suspended', 'Banned'].includes(user.status ?? '')
+    ) {
+      await this.tokenService.revoke(refreshToken);
+      throw new UnauthorizedException('Account is not available');
+    }
+    return this.tokenService.refresh(refreshToken, user);
+  }
+
+  async logout(refreshToken?: string) {
+    if (refreshToken) await this.tokenService.revoke(refreshToken);
   }
 
   /**

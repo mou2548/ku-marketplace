@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -46,7 +46,7 @@ export function OfferComposer({
   post: Post;
   inventory: Item[];
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   const toast = useToast();
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);

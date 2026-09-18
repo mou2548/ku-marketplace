@@ -11,7 +11,7 @@ import { CountdownPill } from "@/components/kit/countdown-pill";
 import { TextAreaField } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { uploadChatImage } from "@/lib/actions/chat";
 import { createReport } from "@/lib/actions/reports";
 import type { ApiError } from "@/lib/api/client";

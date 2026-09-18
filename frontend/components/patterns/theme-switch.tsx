@@ -1,7 +1,7 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ function subscribe(onStoreChange: () => void) {
 }
 
 export function ThemeSwitch({ className }: { className?: string }) {
-  const t = useTranslations();
+  const t = getCopy();
   const theme = useSyncExternalStore(
     subscribe,
     currentTheme,

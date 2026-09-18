@@ -826,7 +826,12 @@ describe('Fresh clone database', () => {
         quantity: 1,
         allocationMethod: 'Random',
         registerDeadline: new Date(Date.now() - 1000),
-        tickets: { create: [{ receiverId: 4 }, { receiverId: 5 }] },
+        tickets: {
+          create: [
+            { receiverId: 4, queueNumber: 1 },
+            { receiverId: 5, queueNumber: 2 },
+          ],
+        },
       },
     });
     await Promise.all([
@@ -858,7 +863,9 @@ describe('Fresh clone database', () => {
         quantity: 1,
         allocationMethod: 'Manual',
         pickupDeadline: new Date(Date.now() + 24 * 3600000),
-        tickets: { create: [{ receiverId: 4, status: 'Waiting' }] },
+        tickets: {
+          create: [{ receiverId: 4, status: 'Waiting', queueNumber: 1 }],
+        },
       },
       include: { tickets: true },
     });
@@ -1220,11 +1227,24 @@ describe('Fresh clone database', () => {
     delete process.env.RESEND_API_KEY;
     let app: import('@nestjs/common').INestApplication | undefined;
     try {
+      const sessionRecords = new Map<string, string>();
       const module = await Test.createTestingModule({ imports: [AppModule] })
         .overrideProvider(PrismaService)
         .useValue(prisma)
         .overrideProvider(RedisService)
-        .useValue({ disconnect: jest.fn() })
+        .useValue({
+          disconnect: jest.fn(),
+          set: jest.fn((key: string, value: string) => {
+            sessionRecords.set(key, value);
+            return Promise.resolve('OK');
+          }),
+          get: jest.fn((key: string) =>
+            Promise.resolve(sessionRecords.get(key) ?? null),
+          ),
+          del: jest.fn((key: string) =>
+            Promise.resolve(Number(sessionRecords.delete(key))),
+          ),
+        })
         .compile();
       app = module.createNestApplication();
       app.useGlobalInterceptors(new ResponseInterceptor(app.get(Reflector)));

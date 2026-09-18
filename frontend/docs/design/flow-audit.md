@@ -1,5 +1,9 @@
 # Flow audit — the built screens against `fornewdesign/`
 
+> Historical audit: this predates the user-selected `docs/activity diagram.pdf`.
+> See [activity-diagram-audit.md](activity-diagram-audit.md) for current findings;
+> the matching claims below have not been revalidated against that PDF.
+
 Checked 2026-08-07 against `flow1.png`, `flow2.png`, `flow3.png`, `flow4.png`,
 `API_Marketplace.pdf` and `DatabaseSchema.pdf`. `fornewdesign/` is git-ignored
 and local, so this file is the record of what it says.

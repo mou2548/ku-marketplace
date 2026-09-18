@@ -39,6 +39,7 @@ export interface User {
   first_name_th: string;
   last_name_th: string;
   phone_number?: string | null;
+  avatar_url?: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   email_verified_at?: string | null;
   isAdmin: boolean;
@@ -211,7 +212,9 @@ export interface GiveawayPost {
   giver_id: number;
   allocation_method: AllocationMethod;
   quantity: number;
+  register_start?: string | null;
   register_deadline?: string | null;
+  pickup_start?: string | null;
   pickup_deadline?: string | null;
   registration_open: boolean;
   remaining_slots: number;
@@ -227,6 +230,7 @@ export interface GiveawayTicket {
   ticket_id: number;
   giveaway_id: number;
   receiver_id: number;
+  queue_number: number;
   status: TicketStatus;
   updated_at: string;
   created_at: string;

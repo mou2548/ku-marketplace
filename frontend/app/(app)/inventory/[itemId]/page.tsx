@@ -1,4 +1,5 @@
-import { getTranslations } from "next-intl/server";
+import { formatDate } from "@/lib/date-format";
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowLeftRight, CalendarDays, Eye, Pencil, Store, Tag } from "lucide-react";
@@ -21,8 +22,8 @@ export default async function ItemDetailPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
-  const tStatus = await getTranslations("status");
-  const t = await getTranslations();
+  const tStatus = await getCopy("status");
+  const t = await getCopy();
   if (!(await getAccessToken())) redirect("/login");
 
   const { itemId } = await params;
@@ -55,11 +56,7 @@ export default async function ItemDetailPage({
   if (item.warranty_expiry) {
     specs.push([
       t("inventory.warranty"),
-      new Date(item.warranty_expiry).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
+      formatDate(new Date(item.warranty_expiry)),
     ]);
   }
 
@@ -242,11 +239,7 @@ export default async function ItemDetailPage({
           <p className="flex items-center gap-2 text-caption text-ink-muted">
             <CalendarDays aria-hidden className="size-4" />
             {t("inventory.addedOn", {
-              date: new Date(item.created_at).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }),
+              date: formatDate(new Date(item.created_at)),
             })}
           </p>
         </div>

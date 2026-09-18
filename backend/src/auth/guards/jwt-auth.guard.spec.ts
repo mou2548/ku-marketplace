@@ -19,6 +19,7 @@ describe('Sanctions on existing sessions', () => {
       };
       const request = { headers: { authorization: 'Bearer previous-token' } };
       const context = {
+        getHandler: () => function handler() {},
         switchToHttp: () => ({ getRequest: () => request }),
       } as unknown as ExecutionContext;
       const guard = new JwtAuthGuard(

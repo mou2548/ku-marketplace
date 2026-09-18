@@ -5,7 +5,7 @@ import { AlarmClock, TimerOff } from "lucide-react";
 
 import type { Deadline, Tone } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
-import { useStatusText } from "@/lib/i18n/status-text";
+import { useStatusText } from "@/lib/status-text";
 import { cn } from "@/lib/utils";
 
 import { TONE_CHIP, TONE_SOLID } from "./tone";

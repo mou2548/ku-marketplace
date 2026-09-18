@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { BadgeCheck } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export function TrustBadge({
   size = "md",
   className,
 }: TrustBadgeProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const initials = name.trim().slice(0, 2);
   const meta = [faculty, year ? `Year ${year}` : null].filter(Boolean).join(" · ");
   const stacked = size === "lg";

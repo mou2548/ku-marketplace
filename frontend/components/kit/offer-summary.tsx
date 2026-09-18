@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { ArrowLeftRight, Coins, PackageOpen } from "lucide-react";
 
 import type { Item } from "@/lib/api/types";
@@ -46,7 +46,7 @@ export function OfferSummary({
   size?: "sm" | "md";
   className?: string;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <div
       className={cn(

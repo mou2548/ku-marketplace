@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { RoomList } from "@/components/kit/room-list";
 import { EmptyState } from "@/components/kit/empty-state";
 import { MessagesSquare } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { getCopy } from "@/lib/copy";
 
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
 import { getAccessToken } from "@/lib/api/session";
@@ -31,7 +31,7 @@ export const metadata = { title: "Chat - KU Marketplace" };
  * `/chat/[roomId]` — it needs to know who is actually asking.
  */
 export default async function ChatInboxPage() {
-  const t = await getTranslations();
+  const t = await getCopy();
   if (!(await getAccessToken())) redirect("/login");
   const viewer = await getMe().catch(() => undefined);
   if (!viewer) redirect("/login");

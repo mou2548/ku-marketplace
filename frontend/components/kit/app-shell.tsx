@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -69,15 +69,26 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-function Count({ value }: { value?: number }) {
+/**
+ * A dot, not a number. The count rendered as a bare "1" that sat under the
+ * tab-bar icon and read as part of the label — and the exact number is not what
+ * the navigation is for: it only has to say "something here wants you". The
+ * number survives for screen readers, where it costs nothing.
+ */
+function Dot({ value, className }: { value?: number; className?: string }) {
+  const t = getCopy();
   if (!value) return null;
   return (
-    <span
-      data-numeric
-      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-meta font-semibold text-white"
-    >
-      {value > 99 ? "99+" : value}
-    </span>
+    <>
+      <span
+        aria-hidden
+        className={cn(
+          "size-2 shrink-0 rounded-pill bg-tone-danger-solid",
+          className,
+        )}
+      />
+      <span className="sr-only">{t("nav.needsYou", { count: value })}</span>
+    </>
   );
 }
 
@@ -88,7 +99,7 @@ export interface AppShellProps {
 }
 
 export function AppShell({ children, badges = {}, user }: AppShellProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const pathname = usePathname() ?? "";
   /**
    * The drawer has to be told to close.
@@ -186,7 +197,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                       words, which beats hiding the navigation entirely. */}
                   <Icon aria-hidden className="size-5 lg:hidden" />
                   <span className="hidden lg:inline">{t(labelKey)}</span>
-                  <Count value={badge ? badges[badge] : undefined} />
+                  <Dot value={badge ? badges[badge] : undefined} />
                   {active ? (
                     <span
                       aria-hidden
@@ -287,7 +298,13 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
                         )}
                       >
                         <Icon aria-hidden className="size-5" />
-                        <Count value={badge ? badges[badge] : undefined} />
+                        <Dot
+                          value={badge ? badges[badge] : undefined}
+                          /* Top-right of the icon, clear of the active pill, with
+                             a ring so it reads as a dot and not a smudge on the
+                             tinted background. */
+                          className="absolute -top-0.5 right-1.5 ring-2 ring-surface"
+                        />
                       </span>
                       <span className="text-meta leading-none">{t(labelKey)}</span>
                     </Link>
@@ -313,7 +330,7 @@ function MobileMenu({
   user?: { name: string };
   onNavigate: () => void;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <div className="flex h-full flex-col gap-3">
       <LinkButton href="/post" block size="lg" onClick={onNavigate}>
@@ -340,12 +357,9 @@ function MobileMenu({
             >
               <Icon aria-hidden className="size-5 shrink-0" />
               {t(labelKey)}
-              <span className="ml-auto">
-                <Count value={count} />
+              <span className="ml-auto flex items-center">
+                <Dot value={count} />
               </span>
-              {count ? (
-                <span className="sr-only">{t("nav.needsYou", { count })}</span>
-              ) : null}
             </Link>
           );
         })}

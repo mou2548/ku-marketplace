@@ -1,15 +1,16 @@
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 
 import type { StatusPresentation } from "@/lib/status";
 
 /**
  * Turns a presentation object's keys into the words on screen.
  *
- * `lib/status.ts` carries keys rather than English now, so exactly one hook
- * knows how to resolve them and no screen has to remember the `status.`
- * prefix. next-intl's `useTranslations` runs in Server Components as well as
- * Client ones, which matters here: `StatusBadge` and friends are rendered from
- * both and have no "use client" of their own.
+ * `lib/status.ts` carries keys rather than English, so exactly one module knows
+ * how to resolve them and no screen has to remember the `status.` prefix.
+ *
+ * The `use` prefix is left over from when this read a React context; it is a
+ * plain function now and works unchanged in Server and Client Components,
+ * which matters because `StatusBadge` and friends are rendered from both.
  */
 export interface StatusText {
   label: string;
@@ -17,7 +18,7 @@ export interface StatusText {
 }
 
 export function useStatusText() {
-  const t = useTranslations("status");
+  const t = getCopy("status");
 
   return {
     /** A presentation object from one of the tables in lib/status.ts. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { getCopy } from "@/lib/copy";
 import { ArrowDownLeft, ArrowUpRight, Coins, PackageOpen, X } from "lucide-react";
 
 import type { InventoryItem } from "./inventory-slot";
@@ -72,7 +72,7 @@ export function TradeBench({
   isReadOnly = false,
   className,
 }: TradeBenchProps) {
-  const t = useTranslations();
+  const t = getCopy();
   const remove = (id: number) =>
     onYouGiveChange(youGive.filter((i) => i.item_id !== id));
 
@@ -309,7 +309,7 @@ export function TradeSourcePanel({
   onAdd: (item: InventoryItem) => void;
   className?: string;
 }) {
-  const t = useTranslations();
+  const t = getCopy();
   return (
     <Surface
       as="section"
