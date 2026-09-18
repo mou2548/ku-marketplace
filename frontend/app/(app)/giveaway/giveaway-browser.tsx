@@ -2,7 +2,7 @@
 
 import { getCopy } from "@/lib/copy";
 import Link from "next/link";
-import { Gift, MapPin, Plus, Users } from "lucide-react";
+import { Gift, MapPin, Plus, ScanLine, Users } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
@@ -21,6 +21,24 @@ import { ALLOCATION_METHOD, TICKET_STATUS, type Deadline } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
+/**
+ * Whether a giveaway belongs on the public shelf at all — open for
+ * registration right now, or still to come. Mirrors the backend's
+ * `registration_open` conditions (`giveaways.service.ts`'s `serializeGiveaway`)
+ * except it drops the `registerStart <= now` check: a future registration
+ * window is exactly what a browsing receiver needs to see, the same way a
+ * concert listing shows "on sale Friday 10:00" rather than hiding the show
+ * until sales open. `GiveawayCard` already renders the "opens in" countdown
+ * for that case; only the parent's filter was hiding the card from it.
+ */
+function isBrowsable(g: GiveawayPost, now: number): boolean {
+  if (g.status !== "Active") return false;
+  const deadline = g.register_deadline ? Date.parse(g.register_deadline) : null;
+  if (deadline !== null && deadline <= now) return false;
+  if (g.allocation_method === "FirstCome" && g.remaining_slots <= 0) return false;
+  return true;
+}
+
 export function GiveawayBrowser({
   giveaways,
   tickets,
@@ -29,9 +47,13 @@ export function GiveawayBrowser({
   tickets: GiveawayTicket[];
 }) {
   const t = getCopy();
-  // "Open" has to mean open. Closed and Completed rows are still reachable
-  // from a ticket or a chat room; they are not something to browse and enter.
-  const open = giveaways.filter((g) => g.registration_open);
+  const now = useNow(30_000);
+  const known = now !== UNKNOWN_TIME;
+  // "Open" has to mean open or upcoming. Closed and Completed rows are still
+  // reachable from a ticket or a chat room; they are not something to browse
+  // and enter. Before the clock is known (server render), fall back to the
+  // backend's own flag so the first paint and the hydrated one agree.
+  const open = giveaways.filter((g) => (known ? isBrowsable(g, now) : g.registration_open));
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
@@ -45,10 +67,17 @@ export function GiveawayBrowser({
             {t("giveaway.subtitle")}
           </p>
         </div>
-        <LinkButton size="sm" href="/post?type=giveaway">
-          <Plus className="size-4" />
-          {t("giveaway.create")}
-        </LinkButton>
+        <div className="flex items-center gap-2">
+          <LinkButton size="sm" variant="secondary" href="/giveaway/scan">
+            <ScanLine className="size-4" />
+            Scan a ticket
+          </LinkButton>
+
+          <LinkButton size="sm" href="/post?type=giveaway">
+            <Plus className="size-4" />
+            {t("giveaway.create")}
+          </LinkButton>
+        </div>
       </header>
 
       <Tabs defaultSelectedKey="open">

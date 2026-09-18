@@ -213,6 +213,17 @@ export function GiveawayDetail({
       <Gift className="size-5" />
       Register for this giveaway
     </Button>
+  ) : known && registerStartMs && now < registerStartMs && giveaway.status === "Active" ? (
+    // Not open yet, not closed — the browse list now surfaces this giveaway
+    // before its window starts (like a concert listing showing "on sale
+    // Friday") specifically so a receiver knows to come back, so the CTA
+    // must not read as "closed".
+    <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
+      <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
+      <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
+        Registration has not opened yet. Come back when it opens.
+      </p>
+    </Surface>
   ) : (
     <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
       <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />

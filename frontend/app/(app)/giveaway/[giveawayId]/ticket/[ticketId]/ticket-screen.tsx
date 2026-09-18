@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate } from "@/lib/date-format";
+import { formatDateTime } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
@@ -48,8 +48,11 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
     }
   }
 
-  const pickupBy = giveaway.pickup_deadline
-    ? formatDate(new Date(giveaway.pickup_deadline))
+  const pickupFrom = giveaway.pickup_start
+    ? formatDateTime(new Date(giveaway.pickup_start))
+    : null;
+  const pickupTo = giveaway.pickup_deadline
+    ? formatDateTime(new Date(giveaway.pickup_deadline))
     : null;
 
   return (
@@ -106,10 +109,15 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
             <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
             {giveaway.pickup_location}
           </p>
-          {pickupBy ? (
+          {pickupFrom && pickupTo ? (
             <p className="flex items-center gap-2 text-body">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              {t("giveaway.collectBy", { date: pickupBy })}
+              {t("giveaway.collectWindow", { from: pickupFrom, to: pickupTo })}
+            </p>
+          ) : pickupTo ? (
+            <p className="flex items-center gap-2 text-body">
+              <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
+              {t("giveaway.collectBy", { date: pickupTo })}
             </p>
           ) : null}
           <TrustBadge
