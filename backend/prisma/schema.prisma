@@ -1,13 +1,298 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Appeal {
+  appeal_id                      Int       @id @default(autoincrement())
+  report_id                      Int
+  appellant_id                   Int
+  reason                         String
+  evidence_urls                  Json?
+  status                         String    @db.VarChar(20)
+  handled_by                     Int?
+  resolution_note                String?
+  created_at                     DateTime? @default(now()) @db.Timestamp(6)
+  handled_at                     DateTime? @db.Timestamp(6)
+  User_Appeal_appellant_idToUser User      @relation("Appeal_appellant_idToUser", fields: [appellant_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  User_Appeal_handled_byToUser   User?     @relation("Appeal_handled_byToUser", fields: [handled_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Report                         Report    @relation(fields: [report_id], references: [report_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Appointment_Card {
+  appointment_id Int         @id @default(autoincrement())
+  transaction_id Int
+  proposed_by    Int
+  date           DateTime    @db.Date
+  time           DateTime    @db.Time(6)
+  location       String      @db.VarChar(255)
+  status         String?     @default("Pending") @db.VarChar(20)
+  created_at     DateTime?   @default(now()) @db.Timestamp(6)
+  User           User        @relation(fields: [proposed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Transaction    Transaction @relation(fields: [transaction_id], references: [transaction_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Chat_Message {
+  message_id Int       @id @default(autoincrement())
+  room_id    Int
+  sender_id  Int
+  content    String?
+  image_urls Json?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  Chat_Room  Chat_Room @relation(fields: [room_id], references: [room_id], onDelete: NoAction, onUpdate: NoAction)
+  User       User      @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Chat_Room {
+  room_id        Int            @id @default(autoincrement())
+  transaction_id Int?
+  giveaway_id    Int?
+  created_at     DateTime?      @default(now()) @db.Timestamp(6)
+  Chat_Message   Chat_Message[]
+  Giveaway_Post  Giveaway_Post? @relation(fields: [giveaway_id], references: [giveaway_id], onDelete: NoAction, onUpdate: NoAction)
+  Transaction    Transaction?   @relation(fields: [transaction_id], references: [transaction_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Giveaway_Image {
+  image_id      Int           @id @default(autoincrement())
+  giveaway_id   Int
+  image_url     String        @db.VarChar(500)
+  display_order Int?          @default(0)
+  created_at    DateTime?     @default(now()) @db.Timestamp(6)
+  Giveaway_Post Giveaway_Post @relation(fields: [giveaway_id], references: [giveaway_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Giveaway_Post {
+  giveaway_id       Int               @id @default(autoincrement())
+  item_name         String            @db.VarChar(255)
+  description       String?
+  pickup_location   String            @db.VarChar(255)
+  giver_id          Int
+  allocation_method String            @db.VarChar(20)
+  pickup_deadline   DateTime?         @db.Timestamp(6)
+  status            String?           @default("Active") @db.VarChar(20)
+  created_at        DateTime?         @default(now()) @db.Timestamp(6)
+  Chat_Room         Chat_Room[]
+  Giveaway_Image    Giveaway_Image[]
+  User              User              @relation(fields: [giver_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Giveaway_Ticket   Giveaway_Ticket[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Giveaway_Ticket {
+  ticket_id     Int           @id @default(autoincrement())
+  giveaway_id   Int
+  receiver_id   Int
+  qr_token      String?       @unique @db.VarChar(255)
+  status        String?       @default("Waiting") @db.VarChar(20)
+  updated_at    DateTime?     @default(now()) @db.Timestamp(6)
+  Giveaway_Post Giveaway_Post @relation(fields: [giveaway_id], references: [giveaway_id], onDelete: NoAction, onUpdate: NoAction)
+  User          User          @relation(fields: [receiver_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Item {
+  item_id         Int          @id @default(autoincrement())
+  owner_id        Int
+  name            String       @db.VarChar(255)
+  category        String       @db.VarChar(50)
+  condition       String       @db.VarChar(50)
+  description     String?
+  status          String?      @default("Unlisted") @db.VarChar(20)
+  course_name     String?      @db.VarChar(100)
+  brand_model     String?      @db.VarChar(100)
+  warranty_expiry DateTime?    @db.Date
+  size            String?      @db.VarChar(20)
+  created_at      DateTime?    @default(now()) @db.Timestamp(6)
+  User            User         @relation(fields: [owner_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Item_Image      Item_Image[]
+  Offer_Item      Offer_Item[]
+  Post            Post?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Item_Image {
+  image_id      Int       @id @default(autoincrement())
+  item_id       Int
+  image_url     String    @db.VarChar(500)
+  is_primary    Boolean?  @default(false)
+  display_order Int?      @default(0)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  Item          Item      @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Offer {
+  offer_id         Int           @id @default(autoincrement())
+  post_id          Int
+  proposer_id      Int
+  additional_money Decimal?      @default(0.00) @db.Decimal(10, 2)
+  status           String?       @default("Pending") @db.VarChar(20)
+  created_at       DateTime?     @default(now()) @db.Timestamp(6)
+  Post             Post          @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  User             User          @relation(fields: [proposer_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Offer_Item       Offer_Item[]
+  Transaction      Transaction[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Offer_Item {
+  offer_id Int
+  item_id  Int
+  Item     Item  @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction)
+  Offer    Offer @relation(fields: [offer_id], references: [offer_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([offer_id, item_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Post {
+  post_id            Int           @id @default(autoincrement())
+  item_id            Int           @unique
+  post_type          String        @db.VarChar(20)
+  price              Decimal       @db.Decimal(10, 2)
+  quantity_total     Int           @default(1)
+  quantity_remaining Int           @default(1)
+  created_at         DateTime?     @default(now()) @db.Timestamp(6)
+  Offer              Offer[]
+  Item               Item          @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction)
+  Transaction        Transaction[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Report {
+  report_id                     Int           @id @default(autoincrement())
+  reporter_id                   Int
+  report_type                   String        @db.VarChar(20)
+  target_id                     Int
+  reason_category               String        @db.VarChar(100)
+  details                       String?
+  evidence_urls                 Json?
+  status                        String?       @default("Pending") @db.VarChar(20)
+  handled_by                    Int?
+  resolution_note               String?
+  handled_at                    DateTime?     @db.Timestamp(6)
+  created_at                    DateTime?     @default(now()) @db.Timestamp(6)
+  Appeal                        Appeal[]
+  User_Report_handled_byToUser  User?         @relation("Report_handled_byToUser", fields: [handled_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  User_Report_reporter_idToUser User          @relation("Report_reporter_idToUser", fields: [reporter_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Transaction                   Transaction[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Subscription {
+  subscription_id       Int                    @id @default(autoincrement())
+  user_id               Int
+  tier                  String                 @db.VarChar(20)
+  posts_used_this_month Int?                   @default(0)
+  status                String?                @default("Active") @db.VarChar(20)
+  start_date            DateTime?              @db.Timestamp(6)
+  end_date              DateTime?              @db.Timestamp(6)
+  User                  User                   @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Subscription_Payment  Subscription_Payment[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Subscription_Payment {
+  payment_id                                 Int          @id @default(autoincrement())
+  subscription_id                            Int
+  user_id                                    Int
+  amount                                     Int
+  slip_image_url                             String       @db.VarChar(500)
+  status                                     String       @default("Pending") @db.VarChar(25)
+  rejection_reason                           String?
+  handled_by                                 Int?
+  handled_at                                 DateTime?    @db.Timestamp(6)
+  created_at                                 DateTime?    @default(now()) @db.Timestamp(6)
+  User_Subscription_Payment_handled_byToUser User?        @relation("Subscription_Payment_handled_byToUser", fields: [handled_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Subscription                               Subscription @relation(fields: [subscription_id], references: [subscription_id], onDelete: NoAction, onUpdate: NoAction)
+  User_Subscription_Payment_user_idToUser    User         @relation("Subscription_Payment_user_idToUser", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model Transaction {
+  transaction_id                                   Int                @id @default(autoincrement())
+  post_id                                          Int
+  offer_id                                         Int?
+  buyer_id                                         Int
+  seller_id                                        Int
+  quantity                                         Int?               @default(1)
+  status                                           String?            @default("Pending") @db.VarChar(20)
+  active_report_id                                 Int?
+  delivery_method                                  String             @db.VarChar(20)
+  slip_image_url                                   String?            @db.VarChar(500)
+  tracking_number                                  String?            @db.VarChar(100)
+  estimated_delivery_date                          DateTime?          @db.Date
+  payment_confirmed_by_buyer_at                    DateTime?          @db.Timestamp(6)
+  payment_confirmed_by_seller_at                   DateTime?          @db.Timestamp(6)
+  item_received_confirmed_by_buyer_at              DateTime?          @db.Timestamp(6)
+  item_received_confirmed_by_seller_at             DateTime?          @db.Timestamp(6)
+  item_return_confirmed_at                         DateTime?          @db.Timestamp(6)
+  cancellation_requested_by                        Int?
+  refund_slip_url                                  String?            @db.VarChar(500)
+  refund_confirmed_by_buyer                        Boolean?           @default(false)
+  created_at                                       DateTime?          @default(now()) @db.Timestamp(6)
+  Appointment_Card                                 Appointment_Card[]
+  Chat_Room                                        Chat_Room[]
+  Report                                           Report?            @relation(fields: [active_report_id], references: [report_id], onDelete: NoAction, onUpdate: NoAction)
+  User_Transaction_buyer_idToUser                  User               @relation("Transaction_buyer_idToUser", fields: [buyer_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  User_Transaction_cancellation_requested_byToUser User?              @relation("Transaction_cancellation_requested_byToUser", fields: [cancellation_requested_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  Offer                                            Offer?             @relation(fields: [offer_id], references: [offer_id], onDelete: NoAction, onUpdate: NoAction)
+  Post                                             Post               @relation(fields: [post_id], references: [post_id], onDelete: NoAction, onUpdate: NoAction)
+  User_Transaction_seller_idToUser                 User               @relation("Transaction_seller_idToUser", fields: [seller_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model User {
+  user_id                                                    Int                    @id @default(autoincrement())
+  email                                                      String                 @unique @db.VarChar(255)
+  first_name_en                                              String                 @db.VarChar(100)
+  last_name_en                                               String                 @db.VarChar(100)
+  first_name_th                                              String                 @db.VarChar(100)
+  last_name_th                                               String                 @db.VarChar(100)
+  password_hash                                              String                 @db.VarChar(255)
+  phone_number                                               String?                @db.VarChar(20)
+  status                                                     String?                @default("Active") @db.VarChar(20)
+  email_verified_at                                          DateTime?              @db.Timestamp(6)
+  isAdmin                                                    Boolean?               @default(false)
+  created_at                                                 DateTime?              @default(now()) @db.Timestamp(6)
+  Appeal_Appeal_appellant_idToUser                           Appeal[]               @relation("Appeal_appellant_idToUser")
+  Appeal_Appeal_handled_byToUser                             Appeal[]               @relation("Appeal_handled_byToUser")
+  Appointment_Card                                           Appointment_Card[]
+  Chat_Message                                               Chat_Message[]
+  Giveaway_Post                                              Giveaway_Post[]
+  Giveaway_Ticket                                            Giveaway_Ticket[]
+  Item                                                       Item[]
+  Offer                                                      Offer[]
+  Report_Report_handled_byToUser                             Report[]               @relation("Report_handled_byToUser")
+  Report_Report_reporter_idToUser                            Report[]               @relation("Report_reporter_idToUser")
+  Subscription                                               Subscription[]
+  Subscription_Payment_Subscription_Payment_handled_byToUser Subscription_Payment[] @relation("Subscription_Payment_handled_byToUser")
+  Subscription_Payment_Subscription_Payment_user_idToUser    Subscription_Payment[] @relation("Subscription_Payment_user_idToUser")
+  Transaction_Transaction_buyer_idToUser                     Transaction[]          @relation("Transaction_buyer_idToUser")
+  Transaction_Transaction_cancellation_requested_byToUser    Transaction[]          @relation("Transaction_cancellation_requested_byToUser")
+  Transaction_Transaction_seller_idToUser                    Transaction[]          @relation("Transaction_seller_idToUser")
 }
