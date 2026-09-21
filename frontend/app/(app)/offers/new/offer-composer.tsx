@@ -1,7 +1,7 @@
 "use client";
 
 import { getCopy } from "@/lib/copy";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -23,7 +23,7 @@ import { Notice } from "@/components/patterns/notice";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import { useToast } from "@/components/kit/toast";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
-import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
+import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { sendOffer } from "@/lib/actions/posts";
 import type { Item, Post } from "@/lib/api/types";
 
@@ -60,13 +60,22 @@ export function OfferComposer({
   // (`Offer.items` has no per-item quantity — lib/api/types.ts, confirmed
   // against the real `POST /posts/{id}/offers` body, which takes `item_ids`
   // and nothing else), so offering fewer than a full stack means carving that
-  // amount out into its own item row first. That split has to live somewhere
-  // the rest of the screen can see it, hence local state rather than a memo
-  // over the `inventory` prop.
+  // amount out into its own item row. That carve-out used to happen the
+  // moment the quantity dialog was confirmed, which meant an abandoned offer
+  // (closed tab, "Back to listing", removed from the bench) left the stash
+  // permanently fragmented with no way to undo it. So a partial pick is now
+  // staged purely as local state — a negative, client-only `item_id` — and
+  // `pendingSplits` remembers which real item and quantity it stands for.
+  // The real `PATCH`/`POST /items` writes that do the actual carving only
+  // run inside `submit()`, once "Send offer" is pressed for real, and are
+  // rolled back if the offer itself then fails to send.
   const [items, setItems] = useState<Item[]>(inventory);
+  const [pendingSplits, setPendingSplits] = useState<
+    Record<number, { sourceItemId: number; quantity: number }>
+  >({});
+  const nextVirtualId = useRef(-1);
   const [splitTarget, setSplitTarget] = useState<InventoryItem | null>(null);
   const [splitQty, setSplitQty] = useState("1");
-  const [splitBusy, setSplitBusy] = useState(false);
 
   const stash: InventoryItem[] = useMemo(
     () =>
@@ -119,98 +128,151 @@ export function OfferComposer({
     }
   }
 
-  async function confirmSplit() {
+  function confirmSplit() {
     if (!splitTarget) return;
     const n = Math.min(Math.max(Number(splitQty) || 0, 1), splitTarget.quantity);
-    setSplitBusy(true);
 
     if (n === splitTarget.quantity) {
       // The whole stack — nothing to split, offer the item as-is.
       addToOffer(splitTarget);
-      setSplitBusy(false);
       setSplitTarget(null);
       return;
     }
 
     const original = items.find((i) => i.item_id === splitTarget.item_id);
     if (!original) {
-      setSplitBusy(false);
       setSplitTarget(null);
       return;
     }
 
-    // The split is two real writes, and the order matters: shrink the original
-    // first, so a failure on the second call leaves the stash short rather
-    // than double-counted. An offer carries whole items only (`item_ids` and
-    // nothing else), so the carved-out row has to exist server-side before it
-    // can be offered — a locally invented id would be rejected.
-    try {
-      await saveItemEdits(original.item_id, { quantity: original.quantity - n });
-    } catch (err) {
-      setSplitBusy(false);
-      toast.error(err instanceof Error ? err.message : "Could not split this item");
-      return;
-    }
-
-    let splitItem: Item;
-    try {
-      splitItem = await saveNewItem({
-        name: original.name,
-        category: original.category,
-        condition: original.condition,
-        quantity: n,
-        description: original.description ?? undefined,
-        course_name: original.course_name ?? undefined,
-        brand_model: original.brand_model ?? undefined,
-        warranty_expiry: original.warranty_expiry ?? undefined,
-        size: original.size ?? undefined,
-        images: original.images.map((img, i) => ({
-          image_url: img.image_url,
-          is_primary: i === 0,
-          display_order: i,
-        })),
-      });
-    } catch (err) {
-      // Put the units back rather than leaving them lost between two rows.
-      await saveItemEdits(original.item_id, { quantity: original.quantity }).catch(
-        () => undefined,
-      );
-      setSplitBusy(false);
-      toast.error(err instanceof Error ? err.message : "Could not split this item");
-      return;
-    }
-
-    setItems((list) => [
-      ...list.map((i) =>
+    // Purely local bookkeeping — no request goes out here. The virtual id
+    // just needs to be unique for this session; `submit()` is what turns it
+    // into a real item, and only for the entries still in `offered` then.
+    const virtualId = nextVirtualId.current--;
+    setPendingSplits((map) => ({
+      ...map,
+      [virtualId]: { sourceItemId: original.item_id, quantity: n },
+    }));
+    setItems((list) =>
+      list.map((i) =>
         i.item_id === original.item_id ? { ...i, quantity: i.quantity - n } : i,
       ),
-      splitItem,
-    ]);
+    );
     addToOffer({
-      item_id: splitItem.item_id,
-      name: splitItem.name,
-      quantity: splitItem.quantity,
-      condition: splitItem.condition,
-      category: splitItem.category,
-      image_url: splitItem.images[0]?.image_url ?? null,
+      item_id: virtualId,
+      name: original.name,
+      quantity: n,
+      condition: original.condition,
+      category: original.category,
+      image_url: original.images[0]?.image_url ?? null,
     });
 
-    setSplitBusy(false);
     setSplitTarget(null);
+  }
+
+  // Taking a staged (not-yet-real) entry off the bench must hand its units
+  // back to the stash locally, since nothing was ever written to the server
+  // for it.
+  function handleOfferedChange(next: InventoryItem[]) {
+    const nextIds = new Set(next.map((i) => i.item_id));
+    const removed = offered.filter((i) => !nextIds.has(i.item_id));
+    const restored = removed
+      .map((i) => pendingSplits[i.item_id])
+      .filter((p): p is { sourceItemId: number; quantity: number } => !!p);
+
+    if (restored.length > 0) {
+      setItems((list) =>
+        list.map((i) => {
+          const amount = restored
+            .filter((p) => p.sourceItemId === i.item_id)
+            .reduce((sum, p) => sum + p.quantity, 0);
+          return amount > 0 ? { ...i, quantity: i.quantity + amount } : i;
+        }),
+      );
+      setPendingSplits((map) => {
+        const copy = { ...map };
+        for (const i of removed) delete copy[i.item_id];
+        return copy;
+      });
+    }
+    setOffered(next);
   }
 
   async function submit() {
     setBusy(true);
+
+    // This is the one place a split becomes real. Every staged entry gets
+    // turned into an actual Item row here, in order, tracking what changed so
+    // a failure anywhere in the sequence — including the final offer create —
+    // can put every carved unit back rather than leaving the stash short.
+    const remaining = new Map(inventory.map((i) => [i.item_id, i.quantity]));
+    const createdItemIds: number[] = [];
+    const shrunkSourceIds = new Set<number>();
+    const finalItemIds: number[] = [];
+
     try {
+      for (const entry of offered) {
+        const pending = pendingSplits[entry.item_id];
+        if (!pending) {
+          finalItemIds.push(entry.item_id);
+          continue;
+        }
+        const source = inventory.find((i) => i.item_id === pending.sourceItemId);
+        const left = remaining.get(pending.sourceItemId);
+        if (!source || left === undefined) {
+          throw new Error("Could not find the item to split");
+        }
+
+        await saveItemEdits(pending.sourceItemId, {
+          quantity: left - pending.quantity,
+        });
+        shrunkSourceIds.add(pending.sourceItemId);
+        remaining.set(pending.sourceItemId, left - pending.quantity);
+
+        const splitItem = await saveNewItem({
+          name: source.name,
+          category: source.category,
+          condition: source.condition,
+          quantity: pending.quantity,
+          description: source.description ?? undefined,
+          course_name: source.course_name ?? undefined,
+          brand_model: source.brand_model ?? undefined,
+          warranty_expiry: source.warranty_expiry ?? undefined,
+          size: source.size ?? undefined,
+          images: source.images.map((img, i) => ({
+            image_url: img.image_url,
+            is_primary: i === 0,
+            display_order: i,
+          })),
+        });
+        createdItemIds.push(splitItem.item_id);
+        finalItemIds.push(splitItem.item_id);
+      }
+
       await sendOffer(post.post_id, {
-        item_ids: offered.map((i) => i.item_id),
+        item_ids: finalItemIds,
         additional_money: money > 0 ? money : undefined,
       });
     } catch (err) {
+      // Undo every write this attempt made — delete rows it created, and put
+      // shrunk originals back to their pre-submit quantity — so a failed
+      // send never leaves the stash fragmented.
+      for (const itemId of createdItemIds) {
+        await removeItem(itemId).catch(() => undefined);
+      }
+      for (const sourceId of shrunkSourceIds) {
+        const original = inventory.find((i) => i.item_id === sourceId);
+        if (original) {
+          await saveItemEdits(sourceId, { quantity: original.quantity }).catch(
+            () => undefined,
+          );
+        }
+      }
       setBusy(false);
       toast.error(err instanceof Error ? err.message : "Could not send this offer");
       return;
     }
+
     setBusy(false);
     setSent(true);
   }
@@ -328,7 +390,7 @@ export function OfferComposer({
           className="order-2 lg:order-1"
           youGet={wanted}
           youGive={offered}
-          onYouGiveChange={setOffered}
+          onYouGiveChange={handleOfferedChange}
           additionalMoney={money}
           onAdditionalMoneyChange={setMoney}
           // Composing an offer, you are always the one putting the cash up.
@@ -339,7 +401,6 @@ export function OfferComposer({
 
       <Overlay
         isOpen={!!splitTarget}
-        isBusy={splitBusy}
         onOpenChange={(open) => {
           if (!open) setSplitTarget(null);
         }}
@@ -355,9 +416,8 @@ export function OfferComposer({
             <Button
               variant="ghost"
               onPress={() => setSplitTarget(null)}
-              isDisabled={splitBusy}
             >{t("inventory.cancel")}</Button>
-            <Button isLoading={splitBusy} onPress={confirmSplit}>{t("offer.addToOffer")}</Button>
+            <Button onPress={confirmSplit}>{t("offer.addToOffer")}</Button>
           </>
         }
       >
