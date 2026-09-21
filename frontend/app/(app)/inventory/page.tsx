@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
-import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 
 import { InventoryScreen } from "./inventory-screen";
@@ -25,19 +24,11 @@ export default async function InventoryPage() {
     redirect("/login");
   }
 
-  const [allItems, posts] = await Promise.all([getMyItems(), listPosts()]);
+  const items = await getMyItems();
 
   // Transferred rows remain as read-only item history. Hiding them would make
   // the new sold/traded totals impossible to inspect from the inventory.
-  const items = allItems;
 
-  /**
-   * Flow 1 moves an item Unlisted → Listed when a post is created. The badge
-   * used to read `item.status` alone, which can disagree with the market it is
-   * standing next to; the screen sees the posts as well and derives the state
-   * from them.
-   */
-  const listedItemIds = posts.map((p) => p.item_id);
   const summaries = Object.fromEntries(
     await Promise.all(
       items.map(async (item) => [
@@ -47,11 +38,5 @@ export default async function InventoryPage() {
     ),
   );
 
-  return (
-    <InventoryScreen
-      items={items}
-      listedItemIds={listedItemIds}
-      summaries={summaries}
-    />
-  );
+  return <InventoryScreen items={items} summaries={summaries} />;
 }
