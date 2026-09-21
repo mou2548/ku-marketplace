@@ -26,11 +26,9 @@ import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
  */
 export function InventoryScreen({
   items,
-  listedItemIds,
   summaries,
 }: {
   items: Item[];
-  listedItemIds: number[];
   summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
   const t = getCopy();
@@ -39,24 +37,14 @@ export function InventoryScreen({
   const toast = useToast();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Selection>(new Set());
-  const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
   const transferredIds = useMemo(
     () => new Set(items.filter((item) => item.status === "Transferred").map((item) => item.item_id)),
     [items],
   );
-  const listedCount = items.filter(
-    (item) => !transferredIds.has(item.item_id) && listed.has(item.item_id),
-  ).length;
+  const listedCount = items.filter((item) => item.status === "Listed").length;
   const activeCount = items.length - transferredIds.size;
 
-  /** Active items reflect their current listing, while transferred items stay
-   * visible as read-only history for completed sale/trade totals. */
-  const statusOf = (item: Item): ItemStatus =>
-    item.status === "Transferred"
-      ? "Transferred"
-      : listed.has(item.item_id)
-        ? "Listed"
-        : "Unlisted";
+  const statusOf = (item: Item): ItemStatus => item.status;
 
   const slots: InventoryItem[] = useMemo(
     () =>

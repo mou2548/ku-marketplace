@@ -39,6 +39,11 @@ export default async function ItemDetailPage({
   const posts = await listPosts();
   const post = posts.find((candidate) => candidate.item_id === item.item_id);
   const isTransferred = item.status === "Transferred";
+  // Source of truth is `item.status`, not presence in the public feed: a
+  // Listed item can be temporarily absent from `listPosts()` while its stock
+  // is reserved by an in-progress transaction, and it must still read as
+  // Listed here, not fall back to the "not listed" CTA.
+  const isListed = item.status === "Listed";
   const rarity = ITEM_CONDITION[item.condition];
   const rest = items.filter(
     (candidate) =>
@@ -67,17 +72,17 @@ export default async function ItemDetailPage({
           <Store aria-hidden className="size-4 text-ink-brand" />
           {isTransferred
             ? "Transferred"
-            : post
+            : isListed
               ? t("inventory.onTheMarket")
               : t("inventory.notListed")}
         </span>
-        {post && !isTransferred ? (
+        {isListed && !isTransferred && post ? (
           <ListingTypeBadge type={post.post_type} />
         ) : null}
       </div>
 
       <div className="flex flex-col gap-3 p-5">
-        {!isTransferred && post?.post_type !== "TradeOnly" && post ? (
+        {isListed && !isTransferred && post && post.post_type !== "TradeOnly" ? (
           <p
             data-numeric
             className="text-[2rem] leading-tight font-bold text-ink-brand"
@@ -91,8 +96,27 @@ export default async function ItemDetailPage({
             This item has left your active inventory. Its listing and completed
             outcome remain visible below as history.
           </p>
-        ) : post ? (
-          <>
+        ) : isListed ? (
+          post ? (
+            <>
+              <LinkButton
+                size="lg"
+                block
+                href={`/inventory/${item.item_id}/list`}
+              >
+                <Tag className="size-4" />
+                {t("inventory.editListing")}
+              </LinkButton>
+              <LinkButton
+                variant="secondary"
+                block
+                href={`/market/${post.post_id}`}
+              >
+                <Eye className="size-4" />
+                {t("inventory.viewPublic")}
+              </LinkButton>
+            </>
+          ) : (
             <LinkButton
               size="lg"
               block
@@ -101,15 +125,7 @@ export default async function ItemDetailPage({
               <Tag className="size-4" />
               {t("inventory.editListing")}
             </LinkButton>
-            <LinkButton
-              variant="secondary"
-              block
-              href={`/market/${post.post_id}`}
-            >
-              <Eye className="size-4" />
-              {t("inventory.viewPublic")}
-            </LinkButton>
-          </>
+          )
         ) : (
           <>
             <p className="text-body-sm text-ink-secondary">
@@ -141,7 +157,7 @@ export default async function ItemDetailPage({
       <div className="bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
         {isTransferred
           ? "Read-only history"
-          : post
+          : isListed
             ? t("inventory.listedHint")
             : t("inventory.unlistedHint")}
       </div>
