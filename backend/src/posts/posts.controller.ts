@@ -53,12 +53,12 @@ export class PostsController {
   @Patch(':post_id')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('แก้ไขโพสต์สำเร็จ')
-  updatePostPrice(
+  updatePost(
     @Param('post_id') postId: string,
     @Body() body: UpdatePostPayload,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.postsService.updatePostPrice(postId, body, user.userId);
+    return this.postsService.updatePost(postId, body, user.userId);
   }
 
   @Delete(':post_id')

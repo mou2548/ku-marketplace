@@ -8,6 +8,7 @@ import {
   createOffer,
   createPost,
   rejectOffer,
+  updatePost,
   withdrawOffer,
   type AcceptOfferResult,
   type CreateOfferPayload,
@@ -16,6 +17,8 @@ import {
   type OfferSummary,
   type PostId,
   type PostSummary,
+  type UpdatePostPayload,
+  type UpdatePostResult,
 } from "@/lib/api/posts";
 import { getAccessToken, getCurrentUserId } from "@/lib/api/session";
 
@@ -54,6 +57,15 @@ export async function publishListing(
 ): Promise<PostSummary> {
   const token = await requireSession();
   return createPost(payload, { token });
+}
+
+/** `PATCH /posts/:post_id` — change the asking price and/or the sale kind. */
+export async function updateListing(
+  postId: PostId,
+  payload: UpdatePostPayload,
+): Promise<UpdatePostResult> {
+  const token = await requireSession();
+  return updatePost(postId, payload, { token });
 }
 
 /**

@@ -22,6 +22,7 @@ export interface CreatePostPayload {
 
 export interface UpdatePostPayload {
   price?: number;
+  post_type?: string;
 }
 
 export interface BuyPostPayload {
@@ -322,17 +323,23 @@ export class PostsService {
     return this.serializePost(post);
   }
 
-  async updatePostPrice(
-    postId: string,
-    payload: UpdatePostPayload,
-    userId: number,
-  ) {
+  async updatePost(postId: string, payload: UpdatePostPayload, userId: number) {
+    if (payload.price === undefined && payload.post_type === undefined) {
+      throw new BadRequestException('ไม่มีข้อมูลที่จะแก้ไข');
+    }
     if (
-      !Number.isFinite(payload.price) ||
-      payload.price === undefined ||
-      payload.price < 0
+      payload.price !== undefined &&
+      (!Number.isFinite(payload.price) || payload.price < 0)
     ) {
       throw new BadRequestException('price ต้องเป็นเลขที่ไม่ติดลบ');
+    }
+    if (
+      payload.post_type !== undefined &&
+      !['SellOnly', 'TradeOnly', 'Both'].includes(payload.post_type)
+    ) {
+      throw new BadRequestException(
+        'post_type ต้องเป็น SellOnly, TradeOnly หรือ Both',
+      );
     }
     await this.requirePostOwner(postId, userId);
     const id = this.id(postId, 'post');
@@ -342,11 +349,17 @@ export class PostsService {
     if (!found) throw new NotFoundException('ไม่พบโพสต์');
     const post = await this.prisma.post.update({
       where: { postId: id },
-      data: { price: payload.price },
+      data: {
+        ...(payload.price !== undefined && { price: payload.price }),
+        ...(payload.post_type !== undefined && {
+          postType: payload.post_type,
+        }),
+      },
     });
     return {
       post_id: this.label('post', post.postId),
       price: post.price.toNumber(),
+      post_type: post.postType,
     };
   }
 
@@ -355,10 +368,21 @@ export class PostsService {
     const id = this.id(postId, 'post');
     const post = await this.prisma.post.findUnique({
       where: { postId: id, deletedAt: null },
-      include: { _count: { select: { offers: true, transactions: true } } },
     });
     if (!post) throw new NotFoundException('ไม่พบโพสต์');
-    if (post._count.offers > 0 || post._count.transactions > 0) {
+    // §unlock — a Cancelled transaction never moved the item, and a Pending
+    // offer is the only kind still awaiting a decision (Accepted implies a
+    // transaction, which is checked directly; Rejected/Withdrawn/Cancelled
+    // are already done). Counting every offer/transaction ever made here —
+    // including cancelled ones — used to lock a post out of being
+    // unlisted/relisted forever the moment any deal on it fell through.
+    const [blockingOffer, blockingTransaction] = await Promise.all([
+      this.prisma.offer.findFirst({ where: { postId: id, status: 'Pending' } }),
+      this.prisma.transaction.findFirst({
+        where: { postId: id, status: { not: 'Cancelled' } },
+      }),
+    ]);
+    if (blockingOffer || blockingTransaction) {
       throw new ConflictException(
         'ลบโพสต์ที่มี offer หรือ transaction แล้วไม่ได้',
       );

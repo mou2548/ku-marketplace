@@ -13,9 +13,9 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
-import { publishListing } from "@/lib/actions/posts";
+import { publishListing, updateListing } from "@/lib/actions/posts";
 import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
-import type { Item } from "@/lib/api/types";
+import type { Item, Post } from "@/lib/api/types";
 import { POST_TYPE, type PostType } from "@/lib/status";
 
 /**
@@ -23,16 +23,23 @@ import { POST_TYPE, type PostType } from "@/lib/status";
  * post. So it is the first field, as cards rather than a dropdown, and the
  * fields below it appear or disappear with the choice — a price field on a
  * trade-only post is a question with no right answer.
+ *
+ * `post` is the terms already on the market for this item, if any. Its
+ * presence is what makes this screen an edit rather than a first listing —
+ * same fields, but seeded from the live post and saved with a `PATCH`
+ * instead of a `POST`, so changing your mind from "for sale" to "for trade"
+ * no longer means unlisting and starting over.
  */
-export function ListItemForm({ item }: { item: Item }) {
+export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
   const t = getCopy();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
+  const isEditing = !!post;
 
-  const [postType, setPostType] = useState<PostType>("SellOnly");
-  const [price, setPrice] = useState("");
-  const [wanted, setWanted] = useState("");
+  const [postType, setPostType] = useState<PostType>(post?.post_type ?? "SellOnly");
+  const [price, setPrice] = useState(post && post.post_type !== "TradeOnly" ? String(post.price) : "");
+  const [wanted, setWanted] = useState(post?.wanted_item_offer ?? "");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -42,9 +49,18 @@ export function ListItemForm({ item }: { item: Item }) {
 
   async function publish() {
     setBusy(true);
-    let post: PostSummary;
     try {
-      post = await publishListing({
+      if (isEditing) {
+        await updateListing(post.post_id, {
+          post_type: postType,
+          price: wantsPrice ? Number(price) : 0,
+        });
+        setBusy(false);
+        toast.success("Listing updated.");
+        router.push(`/market/${post.post_id}`);
+        return;
+      }
+      const created: PostSummary = await publishListing({
         item_id: item.item_id,
         post_type: postType,
         // A trade-only post still needs a number the API will accept; the
@@ -52,14 +68,19 @@ export function ListItemForm({ item }: { item: Item }) {
         price: wantsPrice ? Number(price) : 0,
         quantity_total: item.quantity,
       });
+      setBusy(false);
+      toast.success("Listed. It is live in the market now.");
+      router.push(`/market/${wireIdToNumber(created.post_id)}`);
     } catch (err) {
       setBusy(false);
-      toast.error(err instanceof Error ? err.message : "Could not list this item");
-      return;
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : isEditing
+            ? "Could not update this listing"
+            : "Could not list this item",
+      );
     }
-    setBusy(false);
-    toast.success("Listed. It is live in the market now.");
-    router.push(`/market/${wireIdToNumber(post.post_id)}`);
   }
 
   return (
@@ -75,7 +96,9 @@ export function ListItemForm({ item }: { item: Item }) {
           <p className="text-overline font-semibold text-ink-brand uppercase">
             {t("inventory.whatListing")}
           </p>
-          <h1 className="mt-1 text-h1">{t("inventory.listAnItem")}</h1>
+          <h1 className="mt-1 text-h1">
+            {isEditing ? t("inventory.editListing") : t("inventory.listAnItem")}
+          </h1>
           <p className="mt-1 truncate text-body-sm text-ink-muted">{item.name}</p>
         </div>
         <Button
@@ -154,7 +177,9 @@ export function ListItemForm({ item }: { item: Item }) {
           isLoading={busy}
           onPress={publish}
         >
-          <Store aria-hidden className="size-4" />{t("inventory.publish")}</Button>
+          <Store aria-hidden className="size-4" />
+          {isEditing ? t("inventory.saveChanges") : t("inventory.publish")}
+        </Button>
       </ActionBar>
     </div>
   );

@@ -5,6 +5,7 @@ import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { getMyItems } from "@/lib/api/items";
+import { listPosts } from "@/lib/api/posts";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
@@ -25,9 +26,12 @@ export default async function ListItemPage({
   const tStatus = await getCopy("status");
   const t = await getCopy();
   const { itemId } = await params;
-  const items = await getMyItems();
+  const [items, posts] = await Promise.all([getMyItems(), listPosts()]);
   const item = items.find((i) => i.item_id === Number(itemId));
   if (!item) notFound();
+  // A post already on the market for this item means the screen is editing
+  // its terms (sale kind, price), not creating a new listing.
+  const post = posts.find((p) => p.item_id === item.item_id);
 
   const rarity = ITEM_CONDITION[item.condition];
 
@@ -91,7 +95,7 @@ export default async function ListItemPage({
       columns="22rem minmax(0,1fr)"
       className="gap-8"
     >
-      <ListItemForm item={item} />
+      <ListItemForm item={item} post={post} />
     </TwoColumn>
   );
 }
