@@ -129,6 +129,17 @@ export async function getAppointmentCards(transactionId: number): Promise<Appoin
   return raw.map(toAppointmentCard);
 }
 
+/**
+ * GET /appointment-cards — every card on every transaction the viewer is part
+ * of, retired ones included, in one call. The inbox reads this instead of one
+ * `getAppointmentCards` per room.
+ */
+export async function getMyAppointmentCards(): Promise<AppointmentCardData[]> {
+  const init = await authedInit();
+  const raw = await apiFetch<RawAppointmentCard[]>("/appointment-cards", init);
+  return raw.map(toAppointmentCard);
+}
+
 /** POST /transactions/{id}/appointment-cards — Meetup-delivery transactions only (§6.3). */
 export async function createAppointment(
   transactionId: number,

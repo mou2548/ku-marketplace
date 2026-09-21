@@ -16,10 +16,12 @@
  */
 
 import type {
+  AppointmentCardData,
   GiveawayPost,
   Transaction,
   UserSummary,
 } from "@/lib/api/types";
+import { describeDeal, type DealProgress } from "@/lib/deal-progress";
 import type { TicketStatus, Tone } from "@/lib/status";
 
 export type RoomKind = "Sale" | "Trade" | "Giveaway";
@@ -46,6 +48,8 @@ export interface RoomSummary {
   needsYou: boolean;
   href: string;
   transaction?: Transaction;
+  /** Where a deal actually stands — payment, meetup, shipping, refund. */
+  progress?: DealProgress;
   giveaway?: GiveawayPost;
   /** Present when the viewer joined this giveaway rather than created it. */
   giveawayTicketStatus?: TicketStatus;
@@ -66,8 +70,8 @@ export interface TransactionRoomSource {
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageSenderId?: number;
-  /** Whose turn it is — sorts this room to the top of the inbox. */
-  needsYou: boolean;
+  /** This deal's cards; `undefined` when they could not be loaded. */
+  appointmentCards?: AppointmentCardData[];
 }
 
 export interface GiveawayRoomSource {
@@ -132,8 +136,10 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
-        needsYou,
-      }): RoomSummary => ({
+        appointmentCards,
+      }): RoomSummary => {
+        const progress = describeDeal(transaction, viewerId, appointmentCards);
+        return {
         room_id: roomId,
         kind: roomKind(transaction),
         counterparty: transaction.buyer_id === viewerId ? transaction.seller : transaction.buyer,
@@ -145,10 +151,15 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
-        needsYou,
+        // From the same derivation as the row's step line, so the "Your turn"
+        // chip can never contradict it (e.g. after proposing a meetup
+        // yourself). `both` counts: either side may propose a time.
+        needsYou: progress.waitingOn === "you" || progress.waitingOn === "both",
         href: `/chat/${roomId}`,
         transaction,
-      }),
+        progress,
+        };
+      },
     ),
     ...giveawayRooms.map(
       ({

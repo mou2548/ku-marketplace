@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import { getAppointmentCards, getChatHistory } from "@/lib/api/chat";
+import { getAppointmentCards, getChatHistory, getMyAppointmentCards } from "@/lib/api/chat";
 import { getEntrants, getGiveawayMessages, getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getTransaction, getTransactions } from "@/lib/api/transactions";
 import type {
@@ -11,11 +11,7 @@ import type {
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
 import { buildRooms, type RoomSummary } from "@/lib/rooms";
-import {
-  resolveTransactionActor,
-  type Party,
-  type TicketStatus,
-} from "@/lib/status";
+import type { TicketStatus } from "@/lib/status";
 
 /**
  * Giveaway chats the viewer may currently access: the giver and selected
@@ -59,12 +55,19 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
     myGiveaways(viewerId),
   ]);
 
+  // One call for every deal's appointment cards, so each row can say when and
+  // where the meetup is. A failure leaves it `undefined` — "unknown", which
+  // `describeDeal` renders as such rather than as "no meetup agreed".
+  const appointmentCards =
+    transactions.length > 0
+      ? await getMyAppointmentCards().catch(() => undefined)
+      : undefined;
+
   const [transactionRooms, giveawayRooms] = await Promise.all([
     Promise.all(
       transactions.map(async (transaction) => {
         const { roomId, messages } = await getChatHistory(transaction.transaction_id);
         const last = messages.at(-1);
-        const viewer: Party = transaction.buyer_id === viewerId ? "buyer" : "seller";
         return {
           transaction,
           roomId,
@@ -72,7 +75,9 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           lastMessage: last?.content ?? undefined,
           lastMessageAt: last?.created_at,
           lastMessageSenderId: last?.sender_id,
-          needsYou: resolveTransactionActor(transaction, viewer).actor === viewer,
+          appointmentCards: appointmentCards?.filter(
+            (card) => card.transaction_id === transaction.transaction_id,
+          ),
         };
       }),
     ),
