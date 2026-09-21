@@ -16,6 +16,7 @@
  */
 
 import type {
+  AppointmentCardData,
   GiveawayPost,
   Transaction,
   UserSummary,
@@ -42,6 +43,16 @@ export interface RoomSummary {
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageSenderId?: number;
+  /**
+   * When this conversation last moved — the newest of its last message and
+   * every timestamp the flow stamps on the way through (see
+   * `transactionActivityAt`). This, not `lastMessageAt`, is what `recent`
+   * sorts on: accepting an offer, approving a slip, proposing a meetup and
+   * asking to cancel are all things the other side needs to see, and none of
+   * them writes a chat message. `lastMessageAt` stays what it says it is —
+   * the preview line's own timestamp.
+   */
+  lastActivityAt?: string;
   /** True when the flow is waiting on the viewer — sorts these to the top. */
   needsYou: boolean;
   href: string;
@@ -66,6 +77,12 @@ export interface TransactionRoomSource {
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageSenderId?: number;
+  /**
+   * Every `Appointment_Card` on this transaction, not just the live one —
+   * a superseded card's `deleted_at` is the only stamp a "let's meet later
+   * instead" leaves behind. Omitted for a Shipping deal, which has none.
+   */
+  appointments?: readonly AppointmentCardData[];
   /** Whose turn it is — sorts this room to the top of the inbox. */
   needsYou: boolean;
 }
@@ -80,16 +97,74 @@ export interface GiveawayRoomSource {
 }
 
 /**
+ * The newest of a set of ISO timestamps, ignoring the null, undefined and
+ * unparseable ones. Returns the original string rather than a number so the
+ * value stays the same shape as every other timestamp on `RoomSummary`.
+ */
+export function latestTimestamp(
+  values: ReadonlyArray<string | null | undefined>,
+): string | undefined {
+  let newest: string | undefined;
+  let newestMs = -Infinity;
+  for (const value of values) {
+    if (!value) continue;
+    const ms = Date.parse(value);
+    if (!Number.isFinite(ms) || ms <= newestMs) continue;
+    newest = value;
+    newestMs = ms;
+  }
+  return newest;
+}
+
+/**
+ * When a deal last moved, from the columns flow 1 already stamps.
+ *
+ * The inbox used to order on the last chat message alone, which meant the only
+ * events that floated a room to the top were the ones a student typed. Every
+ * other thing that actually needs their attention — an accepted offer opening
+ * the room in the first place, a slip uploaded, a slip approved, a meetup
+ * proposed, a cancellation asked for, a refund sent — left the row exactly
+ * where it was, often far down a list, because none of them writes a message.
+ *
+ * `Transaction` has no `updated_at` (schema.prisma), so "when did this last
+ * move" is assembled from the individual step columns instead. Two steps stamp
+ * nothing at all and so cannot be seen here — see docs/design/api-gaps.md.
+ */
+export function transactionActivityAt(
+  transaction: Transaction,
+  appointments: readonly AppointmentCardData[] = [],
+): string | undefined {
+  return latestTimestamp([
+    // The deal itself appearing is an event: an accepted offer or a completed
+    // purchase is exactly the "a conversation just started" case.
+    transaction.created_at,
+    transaction.payment_confirmed_by_buyer_at,
+    transaction.payment_confirmed_by_seller_at,
+    transaction.item_received_confirmed_by_buyer_at,
+    transaction.item_received_confirmed_by_seller_at,
+    transaction.cancellation_requested_at,
+    transaction.refund_submitted_at,
+    transaction.item_return_confirmed_at,
+    ...appointments.flatMap((card) => [card.created_at, card.deleted_at]),
+  ]);
+}
+
+/**
  * How the inbox is ordered. `recent` is the default and the one the real-time
  * refresh relies on: whoever last typed floats to the top. `name` and
  * `counterparty` are the student-chosen alternatives (item name, other person).
  */
 export type RoomSortMode = "recent" | "name" | "counterparty";
 
+/** `lastActivityAt` already folds in `lastMessageAt` (see `buildRooms`); the
+ * fallback is for a `RoomSummary` assembled without it. */
+function recencyOf(room: RoomSummary): number {
+  const value = room.lastActivityAt ?? room.lastMessageAt;
+  return value ? Date.parse(value) : 0;
+}
+
 function byRecency(a: RoomSummary, b: RoomSummary): number {
-  const at = a.lastMessageAt ? Date.parse(a.lastMessageAt) : 0;
-  const bt = b.lastMessageAt ? Date.parse(b.lastMessageAt) : 0;
-  return bt - at;
+  return recencyOf(b) - recencyOf(a);
 }
 
 /**
@@ -132,6 +207,7 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
+        appointments,
         needsYou,
       }): RoomSummary => ({
         room_id: roomId,
@@ -145,6 +221,10 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
+        lastActivityAt: latestTimestamp([
+          lastMessageAt,
+          transactionActivityAt(transaction, appointments),
+        ]),
         needsYou,
         href: `/chat/${roomId}`,
         transaction,
@@ -167,6 +247,13 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
+        // Only two things a giveaway room can be ordered on today: a message,
+        // and the giveaway opening — which is what puts a freshly created room
+        // on top at all rather than at the bottom with no timestamp. Being
+        // selected, forfeiting and letting a pickup window lapse all move
+        // `Giveaway_Ticket.updated_at`, but `/giveaways/{id}/recipients` does
+        // not return it (docs/design/api-gaps.md), so they cannot be seen here.
+        lastActivityAt: latestTimestamp([lastMessageAt, giveaway.created_at]),
         // A giveaway has no "your turn" concept the way a transaction does.
         needsYou: false,
         href: `/chat/${roomId}`,

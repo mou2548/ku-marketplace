@@ -147,10 +147,14 @@ export function RoomList({
     if (activeRoomId !== undefined) markRoomRead(activeRoomId);
   }, [activeRoomId]);
 
-  // A room the viewer just messaged floats to the top at once, not on the next
+  // A room the viewer just acted in floats to the top at once, not on the next
   // poll: `markRoomActive` stamps it (lib/chat-activity.ts) and here that stamp
-  // overrides `lastMessageAt` whenever it is newer, so recency-based sorting
-  // lifts it immediately. The poll then replaces it with the real timestamp.
+  // overrides `lastActivityAt` whenever it is newer, so recency-based sorting
+  // lifts it immediately. The poll then replaces it with the server-derived
+  // value. It deliberately does not touch `lastMessageAt`, which the row
+  // renders as the preview's timestamp: approving a slip moves the
+  // conversation, but it did not send a message, and the row must not claim
+  // otherwise.
   const activity = useMemo(
     () => parseActivity(activitySnapshot),
     [activitySnapshot],
@@ -160,9 +164,10 @@ export function RoomList({
       liveRooms.map((room) => {
         const stamped = activity[String(room.room_id)];
         if (!stamped) return room;
-        const current = room.lastMessageAt ? Date.parse(room.lastMessageAt) : 0;
+        const value = room.lastActivityAt ?? room.lastMessageAt;
+        const current = value ? Date.parse(value) : 0;
         return stamped > current
-          ? { ...room, lastMessageAt: new Date(stamped).toISOString() }
+          ? { ...room, lastActivityAt: new Date(stamped).toISOString() }
           : room;
       }),
     [liveRooms, activity],

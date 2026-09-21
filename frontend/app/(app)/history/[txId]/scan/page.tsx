@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 
 import { QrScanner } from "@/components/kit/qr-scanner";
 import { useToast } from "@/components/kit/toast";
+import { fetchRoomId } from "@/lib/actions/chat";
 import { completeHandover } from "@/lib/actions/transactions";
+import { markRoomActive } from "@/lib/chat-activity";
 
 /**
  * The Meetup handover, buyer side. A Client Component all the way down because
@@ -40,6 +42,17 @@ export default function DealScanPage({
             : "That code did not work. Ask the seller to refresh it.",
         );
         return;
+      }
+      // The handover is a conversation event like any other, and this is the
+      // one place it can be performed from outside the room, so the inbox has
+      // to be told from here too. The server stamps
+      // `item_received_confirmed_by_buyer_at` either way, so the next poll
+      // would float the room regardless — this only removes the wait, and a
+      // failed lookup must not turn a recorded handover into an error.
+      try {
+        markRoomActive(await fetchRoomId(Number(txId)));
+      } catch {
+        // The poll still floats it, just later.
       }
       toast.success("Handover recorded. Check the deal for any remaining steps.");
       router.push(`/history/${txId}`);

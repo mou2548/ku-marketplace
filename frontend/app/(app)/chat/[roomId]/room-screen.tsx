@@ -395,6 +395,12 @@ export function RoomScreen({
     }
     setBusy(false);
     toast.success(message);
+    // Every status-changing control on this screen routes through `act`, so
+    // this one line is what makes approving a slip, entering a tracking
+    // number, answering a cancellation and confirming a handover float the
+    // room the way sending a message already did. The poll then replaces the
+    // local stamp with the derived `lastActivityAt` from the server.
+    markRoomActive(summary.room_id);
     if (next) {
       router.push(next);
     } else if (pathname !== `/chat/${summary.room_id}`) {
@@ -505,6 +511,7 @@ export function RoomScreen({
       setAppointment(created);
       setPlace("");
       setEditingAppointment(false);
+      markRoomActive(summary.room_id);
       toast.success(t("deal.meetupProposed"));
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not propose a meetup.");
@@ -536,6 +543,10 @@ export function RoomScreen({
     try {
       const updated = await respondToAppointment(appointment.appointment_id, response);
       setAppointment(updated);
+      // Confirming stamps nothing server-side (docs/design/api-gaps.md), so
+      // this local mark is the only thing that floats the room for the person
+      // who confirmed. The other side sees it on the next stamped event.
+      markRoomActive(summary.room_id);
       toast.success("Meetup confirmed");
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
