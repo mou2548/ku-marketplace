@@ -1,0 +1,106 @@
+import type { StepGroup } from '../types';
+
+export const reportStep: StepGroup = {
+  id: 'report',
+  step: 7,
+  title: 'รายงาน/อุทธรณ์ (Report & Appeal)',
+  icon: 'flag',
+  description: 'endpoint ที่มี badge สีแดง "admin" ต้องใช้ token ของ user ที่ isAdmin=true',
+  endpoints: [
+    {
+      id: 'report-create',
+      method: 'POST',
+      path: '/reports',
+      label: 'สร้างรายงาน',
+      needsAuth: true,
+      fields: [
+        {
+          name: 'report_type',
+          label: 'ประเภทที่ถูกรายงาน',
+          type: 'select',
+          defaultValue: 'Post',
+          options: [
+            { value: 'Post', label: 'โพสต์' },
+            { value: 'User', label: 'ผู้ใช้' },
+            { value: 'Transaction', label: 'ธุรกรรม' },
+          ],
+          required: true,
+        },
+        { name: 'target_id', label: 'ID ของสิ่งที่ถูกรายงาน', type: 'number', defaultValue: 1, required: true },
+        { name: 'reason_category', label: 'หมวดเหตุผล', type: 'text', defaultValue: 'สินค้าไม่ตรงตามคำอธิบาย', required: true },
+        { name: 'details', label: 'รายละเอียดเพิ่มเติม', type: 'textarea' },
+      ],
+      captures: [{ responseKeys: ['reportId'], sessionKey: 'reportId', numeric: true }],
+    },
+    { id: 'report-list', method: 'GET', path: '/admin/reports', label: 'ดูรายงานทั้งหมด', needsAuth: true, needsAdmin: true },
+    {
+      id: 'report-resolve',
+      method: 'POST',
+      path: '/admin/reports/:id/resolve',
+      label: 'ตัดสินรายงาน',
+      needsAuth: true,
+      needsAdmin: true,
+      params: [{ name: 'id', label: 'Report ID', sessionKey: 'reportId' }],
+      fields: [
+        {
+          name: 'status',
+          label: 'ผลตัดสิน',
+          type: 'select',
+          defaultValue: 'Violation_Confirmed',
+          options: [
+            { value: 'Violation_Confirmed', label: 'ยืนยันว่าผิดจริง' },
+            { value: 'Report_Dismissed', label: 'ยกคำร้อง' },
+          ],
+          required: true,
+        },
+        { name: 'resolution_note', label: 'บันทึกผลตัดสิน', type: 'textarea', defaultValue: 'ตรวจสอบแล้วพบว่าจริง' },
+      ],
+    },
+    {
+      id: 'report-restore',
+      method: 'POST',
+      path: '/admin/reports/:id/restore',
+      label: 'คืนสถานะโพสต์ (รายงานไม่เป็นธรรม)',
+      needsAuth: true,
+      needsAdmin: true,
+      params: [{ name: 'id', label: 'Report ID', sessionKey: 'reportId' }],
+    },
+    {
+      id: 'appeal-create',
+      method: 'POST',
+      path: '/appeals',
+      label: 'ยื่นอุทธรณ์',
+      needsAuth: true,
+      fields: [
+        { name: 'report_id', label: 'Report ID ที่จะอุทธรณ์', type: 'number', sessionKey: 'reportId', required: true },
+        { name: 'reason', label: 'เหตุผล', type: 'textarea', defaultValue: 'ไม่เห็นด้วยกับผลตัดสิน', required: true },
+      ],
+      hint: 'ยื่นได้ภายใน 7 วันหลังรายงานถูกตัดสิน',
+      captures: [{ responseKeys: ['appealId'], sessionKey: 'appealId', numeric: true }],
+    },
+    {
+      id: 'appeal-decide',
+      method: 'POST',
+      path: '/admin/appeals/:id/decide',
+      label: 'ตัดสินอุทธรณ์',
+      needsAuth: true,
+      needsAdmin: true,
+      params: [{ name: 'id', label: 'Appeal ID', sessionKey: 'appealId' }],
+      fields: [
+        {
+          name: 'status',
+          label: 'ผลตัดสิน',
+          type: 'select',
+          defaultValue: 'Approved',
+          options: [
+            { value: 'Approved', label: 'เห็นด้วยกับอุทธรณ์' },
+            { value: 'Rejected', label: 'ไม่เห็นด้วย' },
+          ],
+          required: true,
+        },
+        { name: 'resolution_note', label: 'บันทึกผลตัดสิน', type: 'textarea' },
+      ],
+      hint: 'ต้องเป็น admin คนละคนกับที่ตัดสินรายงานเดิม',
+    },
+  ],
+};

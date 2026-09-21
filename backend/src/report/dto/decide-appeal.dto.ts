@@ -1,0 +1,16 @@
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { AppealStatus } from '../../common/enums/report.enums';
+
+const DECIDABLE_STATUSES = [
+  AppealStatus.Approved,
+  AppealStatus.Rejected,
+] as const;
+
+export class DecideAppealDto {
+  @IsEnum(DECIDABLE_STATUSES)
+  status: (typeof DECIDABLE_STATUSES)[number];
+
+  @IsOptional()
+  @IsString()
+  resolution_note?: string;
+}
