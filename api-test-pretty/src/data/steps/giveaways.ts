@@ -31,6 +31,8 @@ export const giveawaysStep: StepGroup = {
           required: true,
         },
         { name: 'pickup_deadline', label: 'วันหมดเขตรับของ', type: 'date' },
+        { name: 'quantity', label: 'จำนวนสิทธิ์', type: 'number', defaultValue: 1, required: true },
+        { name: 'registration_deadline', label: 'วันปิดรับลงทะเบียน', type: 'date' },
       ],
       captures: [{ responseKeys: ['giveaway_id', 'giveawayId'], sessionKey: 'giveawayId', numeric: true }],
     },
@@ -103,6 +105,18 @@ export const giveawaysStep: StepGroup = {
       method: 'POST',
       path: '/giveaways/:id/tickets/:ticket_id/qr/scan',
       label: 'สแกน QR รับของ',
+      needsAuth: true,
+      params: [
+        { name: 'id', label: 'Giveaway ID', sessionKey: 'giveawayId' },
+        { name: 'ticket_id', label: 'Ticket ID', sessionKey: 'ticketId' },
+      ],
+      fields: [{ name: 'token', label: 'Token จาก QR', type: 'text', sessionKey: 'lastQrToken', required: true }],
+    },
+    {
+      id: 'ga-qr-confirm',
+      method: 'POST',
+      path: '/giveaways/:id/tickets/:ticket_id/qr/confirm',
+      label: 'ยืนยันรับของ (หลังสแกน QR)',
       needsAuth: true,
       params: [
         { name: 'id', label: 'Giveaway ID', sessionKey: 'giveawayId' },

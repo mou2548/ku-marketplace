@@ -1,8 +1,6 @@
 "use client";
 
 import { formatDateTime } from "@/lib/date-format";
-
-
 import { getCopy } from "@/lib/copy";
 import { Calendar, Check, MapPin, Pencil } from "lucide-react";
 

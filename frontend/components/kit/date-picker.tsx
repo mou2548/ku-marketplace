@@ -67,6 +67,37 @@ export function DatePickerField<T extends DateValue>({
   showTimeField = false,
   ...props
 }: DatePickerFieldProps<T>) {
+  /**
+   * `TimeField` reports back a bare `TimeValue` (hour/minute/second only) —
+   * it has no year/month/day of its own. Passing that straight to the
+   * outer `onChange` overwrote the date fields in state with a value
+   * missing them, which crashed anything downstream expecting a full
+   * `CalendarDateTime`/`ZonedDateTime` (`.add()`, `minValue` comparisons).
+   * It also reports `null` while a segment is mid-edit (e.g. cleared to
+   * retype), which must not blank out the date either. So: merge the time
+   * fields onto the existing full value, and ignore the callback entirely
+   * when there is no date yet to merge onto or the time is mid-edit.
+   */
+  function handleTimeChange(time: TimeValue | null) {
+    if (!props.value || !time) return;
+    const merged = (
+      props.value as unknown as {
+        set: (fields: {
+          hour: number;
+          minute: number;
+          second: number;
+          millisecond: number;
+        }) => T;
+      }
+    ).set({
+      hour: time.hour,
+      minute: time.minute,
+      second: time.second,
+      millisecond: time.millisecond,
+    });
+    props.onChange?.(merged as unknown as Parameters<NonNullable<typeof props.onChange>>[0]);
+  }
+
   return (
     // This calendar-only context fixes date order; there is no app language switch.
     <I18nProvider locale={DATE_LOCALE}>
@@ -169,20 +200,16 @@ export function DatePickerField<T extends DateValue>({
                   <>
                     <div className="h-px bg-line" />
                     <div className="flex items-center justify-between gap-3">
-                      {/* `TimeValue` accepts a full `CalendarDateTime`/`ZonedDateTime`
-                        and only edits its time fields, so this stays bound to the
-                        same value/onChange as the date field above — no separate
-                        state to keep in sync. The cast is safe because this branch
-                        only renders when the caller opted in via `showTimeField`,
-                        which implies `T` carries a time component. */}
+                      {/* `TimeField` only edits the time fields but reports back a
+                        bare `TimeValue`, so `handleTimeChange` merges it onto the
+                        outer date value rather than replacing it outright. The
+                        `value` cast is safe because this branch only renders when
+                        the caller opted in via `showTimeField`, which implies `T`
+                        carries a time component. */}
                       <Group className="flex h-11 flex-1 items-center gap-2 rounded-control bg-surface-sunken px-3.5 shadow-sunken">
                         <TimeField
                           value={props.value as unknown as TimeValue | null}
-                          onChange={
-                            props.onChange as unknown as (
-                              value: TimeValue | null,
-                            ) => void
-                          }
+                          onChange={handleTimeChange}
                         >
                           <DateInput className="flex items-center gap-0.5 text-body">
                             {(segment) => (

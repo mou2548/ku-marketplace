@@ -509,6 +509,7 @@ const COPY: { [key: string]: CopyNode } = {
       "about": "About this item",
       "giver": "Giver",
       "collectBy": "Collect by {date}",
+      "collectWindow": "Collect {from} – {to}",
       "freeNote": "No payment is involved. Agree on collection details before you travel.",
       "manageRecipients": "Choose recipients",
       "collectionTicket": "Collection ticket",

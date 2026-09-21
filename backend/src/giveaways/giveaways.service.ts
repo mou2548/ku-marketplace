@@ -39,6 +39,10 @@ export interface ScanQrPayload {
   token?: string;
 }
 
+export interface ConfirmQrPayload {
+  token?: string;
+}
+
 export interface SendGiveawayMessagePayload {
   content?: string;
   image_urls?: string[];
@@ -46,6 +50,9 @@ export interface SendGiveawayMessagePayload {
 
 /** §6.2 — same 7-day display lifetime as transactions.service.ts. */
 const IMAGE_DISPLAY_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** One code per 15 minutes, shared by qrGenerate/qrScan/qrConfirm. */
+const QR_TTL_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class GiveawaysService {
@@ -425,7 +432,7 @@ export class GiveawaysService {
       });
       await tx.giveawayPost.update({
         where: { giveawayId },
-        data: { status: 'Closed' },
+        data: { status: 'Closed', drawnAt: new Date() },
       });
       if (!(await tx.chatRoom.findFirst({ where: { giveawayId } }))) {
         await tx.chatRoom.create({ data: { giveawayId } });
@@ -518,7 +525,7 @@ export class GiveawaysService {
       });
       await tx.giveawayPost.update({
         where: { giveawayId },
-        data: { status: 'Closed' },
+        data: { status: 'Closed', drawnAt: new Date() },
       });
       if (!(await tx.chatRoom.findFirst({ where: { giveawayId } }))) {
         await tx.chatRoom.create({ data: { giveawayId } });
@@ -651,7 +658,6 @@ export class GiveawaysService {
     // One code per 15 minutes: while the current token is still inside its
     // window, hand back the same one with the seconds it has left, so reopening
     // the ticket keeps the original countdown instead of minting a new code.
-    const QR_TTL_MS = 15 * 60 * 1000;
     const now = Date.now();
     const aliveUntil = ticket.qrIssuedAt
       ? ticket.qrIssuedAt.getTime() + QR_TTL_MS
@@ -680,6 +686,10 @@ export class GiveawaysService {
     };
   }
 
+  /**
+   * สแกน QR — แค่ตรวจสอบความถูกต้อง ไม่เปลี่ยนสถานะ
+   * ต้องเรียก qrConfirm เพื่อยืนยันรับของจริง
+   */
   async qrScan(
     giveawayIdValue: string,
     ticketIdValue: string,
@@ -713,7 +723,6 @@ export class GiveawaysService {
         checked_at: new Date(),
       });
     }
-    const QR_TTL_MS = 15 * 60 * 1000;
     const fresh = Boolean(
       ticket.qrIssuedAt && Date.now() - ticket.qrIssuedAt.getTime() < QR_TTL_MS,
     );
@@ -722,18 +731,69 @@ export class GiveawaysService {
       ticket.qrToken === token &&
       fresh &&
       ticket.status === 'Waiting';
-    if (valid) {
-      await this.prisma.giveawayTicket.update({
-        where: { ticketId },
-        data: { status: 'Received', updatedAt: new Date() },
-      });
-    }
-    return new MessageOverride(valid ? 'ตรวจสอบ QR สำเร็จ' : 'QR ไม่ถูกต้อง', {
+    // ไม่เปลี่ยนสถานะ — แค่ตรวจสอบ
+    return new MessageOverride(valid ? 'QR ถูกต้อง รอยืนยัน' : 'QR ไม่ถูกต้อง', {
       giveaway_id: this.label('giveaway', giveawayId),
       ticket_id: this.label('ticket', ticketId),
       valid,
-      status: valid ? 'received' : 'invalid',
+      status: valid ? 'pending_confirm' : 'invalid',
       checked_at: new Date(),
+    });
+  }
+
+  /**
+   * ยืนยันรับของหลังสแกน QR — เปลี่ยนสถานะเป็น Received
+   */
+  async qrConfirm(
+    giveawayIdValue: string,
+    ticketIdValue: string,
+    token = '',
+    giverId: number,
+  ) {
+    const giveawayId = this.id(giveawayIdValue, 'giveaway');
+    const ticketId = this.id(ticketIdValue, 'ticket');
+    const ticket = await this.prisma.giveawayTicket.findFirst({
+      where: { ticketId, giveawayId },
+      include: { giveaway: true },
+    });
+    if (!ticket) throw new NotFoundException('ไม่พบ ticket');
+    if (ticket.giveaway.giverId !== giverId) {
+      throw new ForbiddenException('เฉพาะผู้ให้เท่านั้นที่ยืนยันรับของได้');
+    }
+    if (
+      ticket.giveaway.pickupDeadline &&
+      ticket.giveaway.pickupDeadline <= new Date()
+    ) {
+      await this.prisma.giveawayTicket.update({
+        where: { ticketId },
+        data: { status: 'Expired', updatedAt: new Date() },
+      });
+      throw new ConflictException('เลยกำหนดเวลารับของแล้ว');
+    }
+
+    const fresh = Boolean(
+      ticket.qrIssuedAt && Date.now() - ticket.qrIssuedAt.getTime() < QR_TTL_MS,
+    );
+    const valid =
+      Boolean(token) &&
+      ticket.qrToken === token &&
+      fresh &&
+      ticket.status === 'Waiting';
+    if (!valid) {
+      throw new BadRequestException('QR ไม่ถูกต้องหรือตั๋วถูกใช้แล้ว');
+    }
+
+    await this.prisma.giveawayTicket.update({
+      where: { ticketId },
+      data: { status: 'Received', updatedAt: new Date() },
+    });
+
+    return new MessageOverride('ยืนยันรับของสำเร็จ', {
+      giveaway_id: this.label('giveaway', giveawayId),
+      ticket_id: this.label('ticket', ticketId),
+      valid: true,
+      status: 'received',
+      confirmed_at: new Date(),
     });
   }
 

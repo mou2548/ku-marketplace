@@ -21,6 +21,12 @@ UPDATE "Giveaway_Ticket"
 SET "ticket_status" = 'Forfeited'
 WHERE "ticket_status" = 'Waived';
 
+-- TimedOut was the previous name for "won/held a ticket but never collected
+-- before pickup_deadline" — the exact meaning Expired carries now.
+UPDATE "Giveaway_Ticket"
+SET "ticket_status" = 'Expired'
+WHERE "ticket_status" = 'TimedOut';
+
 -- Active Random/Manual tickets have not been allocated yet, so this is the one
 -- historical Waiting state that can be migrated without guessing. Closed draws
 -- retain Waiting for winners. Existing Expired rows remain unchanged because

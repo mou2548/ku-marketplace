@@ -169,10 +169,16 @@ CREATE TABLE "Giveaway_Post" (
     "pickup_start" TIMESTAMP,
     "pickup_deadline" TIMESTAMP,
     "giveaway_status" VARCHAR(20) DEFAULT 'Active' CHECK("giveaway_status" IN ('Active', 'Closed', 'Completed')),
+    "drawn_at" TIMESTAMP,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 11. Giveaway_Ticket Table
+-- ticket_status splits the old catch-all 'Expired' into three auditable,
+-- mutually exclusive outcomes (spec §5.4/§5.5):
+--   NotSelected -> lost a Random draw or was not chosen in a Manual select
+--   TimedOut    -> won/held a ticket but never collected before pickup_deadline
+--   Forfeited   -> receiver voluntarily gave up the ticket
 CREATE TABLE "Giveaway_Ticket" (
     "ticket_id" SERIAL PRIMARY KEY,
     "giveaway_id" INTEGER NOT NULL REFERENCES "Giveaway_Post"("giveaway_id"),
@@ -397,13 +403,13 @@ INSERT INTO "Appointment_Card" ("transaction_id", "proposed_by", "date", "time",
 (8, 9, '2026-09-08', '17:00:00', 'Kasetsart BTS', 'Pending', '2026-09-01 13:00:00', NULL);
 
 -- 10. Giveaway_Post (6 Giveaways)
-INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "register_deadline", "giveaway_status") VALUES
-('สรุปสูตรฟิสิกส์', 5, 'แจก 5 ชุด นัดรับพร้อมกัน', 'ตึก LH1', 3, 'FirstCome', '2026-09-10 17:00:00', '2026-09-08 17:00:00', 'Active'),
-('เสื้อพละ มก.', 1, 'สภาพดี แจกฟรี', 'บาร์ใหม่', 4, 'Random', '2026-09-15 18:00:00', '2026-09-10 12:00:00', 'Active'),
-('หนังสือศัพท์ TOEIC', 2, 'แจก 2 เล่ม', 'หอพัก', 5, 'Manual', '2026-09-12 20:00:00', '2026-09-09 23:59:59', 'Active'),
-('สายชาร์จ iPhone', 1, 'ยังใช้งานได้ดี', 'หน้าตึก SC1', 6, 'FirstCome', '2026-08-30 12:00:00', '2026-08-28 12:00:00', 'Closed'),
-('แก้วน้ำ YETI (ปลอม)', 1, 'เก็บความเย็นได้อยู่', 'บาร์ใหม่', 7, 'Random', '2026-08-25 15:00:00', '2026-08-20 15:00:00', 'Completed'),
-('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', 'Closed');
+INSERT INTO "Giveaway_Post" ("item_name", "quantity", "description", "pickup_location", "giver_id", "allocation_method", "pickup_deadline", "register_deadline", "drawn_at", "giveaway_status") VALUES
+('สรุปสูตรฟิสิกส์', 5, 'แจก 5 ชุด นัดรับพร้อมกัน', 'ตึก LH1', 3, 'FirstCome', '2026-09-10 17:00:00', '2026-09-08 17:00:00', NULL, 'Active'),
+('เสื้อพละ มก.', 1, 'สภาพดี แจกฟรี', 'บาร์ใหม่', 4, 'Random', '2026-09-15 18:00:00', '2026-09-10 12:00:00', NULL, 'Active'),
+('หนังสือศัพท์ TOEIC', 2, 'แจก 2 เล่ม', 'หอพัก', 5, 'Manual', '2026-09-12 20:00:00', '2026-09-09 23:59:59', NULL, 'Active'),
+('สายชาร์จ iPhone', 1, 'ยังใช้งานได้ดี', 'หน้าตึก SC1', 6, 'FirstCome', '2026-08-30 12:00:00', '2026-08-28 12:00:00', NULL, 'Closed'),
+('แก้วน้ำ YETI (ปลอม)', 1, 'เก็บความเย็นได้อยู่', 'บาร์ใหม่', 7, 'Random', '2026-08-25 15:00:00', '2026-08-20 15:00:00', '2026-08-25 15:00:00', 'Completed'),
+('ไม้บรรทัดเหล็ก', 3, 'ปิดการแจกแล้ว', 'หอสมุด', 3, 'FirstCome', '2026-08-20 12:00:00', '2026-08-18 12:00:00', NULL, 'Closed');
 
 -- 11. Giveaway_Ticket (9 Tickets)
 INSERT INTO "Giveaway_Ticket" ("giveaway_id", "receiver_id", "qr_token", "ticket_status", "queue_number") VALUES
