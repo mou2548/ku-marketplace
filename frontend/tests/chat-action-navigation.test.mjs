@@ -17,26 +17,39 @@ const code = ts.transpileModule(handler, { compilerOptions: { target: ts.ScriptT
 
 function setup(pathname, roomId) {
   const navigations = [];
+  const floated = [];
   const context = {
     pathname, summary: { room_id: roomId }, setBusy: () => {},
     toast: { success: () => {}, error: () => {} },
+    // Every status change routes through `act`, and each one has to float the
+    // room in the inbox the way a sent message does.
+    markRoomActive: (id) => floated.push(id),
     router: Object.fromEntries(['push', 'replace', 'refresh'].map(method => [method, (...args) => navigations.push([method, ...args])])),
   };
   vm.createContext(context);
   vm.runInContext(code, context);
-  return { act: context.act, navigations };
+  return { act: context.act, navigations, floated };
 }
 
 test('accepting from the inbox pins the current room instead of refreshing the sorted preview', async () => {
   const x = setup('/chat', 42);
   await x.act(async () => {}, 'Accepted', 'Failed');
   assert.deepEqual(x.navigations, [['replace', '/chat/42']]);
+  assert.deepEqual(x.floated, [42]);
 });
 
 test('accepting inside a room refreshes that room', async () => {
   const x = setup('/chat/42', 42);
   await x.act(async () => {}, 'Accepted', 'Failed');
   assert.deepEqual(x.navigations, [['refresh']]);
+});
+
+test('a status change floats its room, and a failed one does not', async () => {
+  const x = setup('/chat/42', 42);
+  await x.act(async () => {}, 'Accepted', 'Failed');
+  assert.deepEqual(x.floated, [42]);
+  await x.act(async () => { throw new Error('Rejected'); }, 'Accepted', 'Failed');
+  assert.deepEqual(x.floated, [42]);
 });
 
 test('failed acceptance stays in place and explicit next destinations remain supported', async () => {

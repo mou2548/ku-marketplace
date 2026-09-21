@@ -62,7 +62,17 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
   const [transactionRooms, giveawayRooms] = await Promise.all([
     Promise.all(
       transactions.map(async (transaction) => {
-        const { roomId, messages } = await getChatHistory(transaction.transaction_id);
+        const [{ roomId, messages }, appointments] = await Promise.all([
+          getChatHistory(transaction.transaction_id),
+          // Proposing and declining a meetup are conversation events the inbox
+          // has to see, and they live on `Appointment_Card` rather than on the
+          // transaction. Only a Meetup deal has any, so a Shipping deal does
+          // not pay for the extra call; a failure here must not cost the
+          // student their whole inbox, so it degrades to "no cards".
+          transaction.delivery_method === "Meetup"
+            ? getAppointmentCards(transaction.transaction_id).catch(() => [])
+            : Promise.resolve([] as AppointmentCardData[]),
+        ]);
         const last = messages.at(-1);
         const viewer: Party = transaction.buyer_id === viewerId ? "buyer" : "seller";
         return {
@@ -72,6 +82,7 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           lastMessage: last?.content ?? undefined,
           lastMessageAt: last?.created_at,
           lastMessageSenderId: last?.sender_id,
+          appointments,
           needsYou: resolveTransactionActor(transaction, viewer).actor === viewer,
         };
       }),

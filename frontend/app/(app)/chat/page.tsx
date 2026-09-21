@@ -19,9 +19,11 @@ export const metadata = { title: "Chat - KU Marketplace" };
  * This used to be a `max-w-2xl` list and nothing else, which measured 47% of a
  * 1440px window with the rest empty. A messaging app on a laptop shows the list
  * beside a thread, so it does: the room that opens is the first in
- * `buildRooms`' order, which sorts rooms waiting on the viewer ahead of
- * everything else and then by recency — "the one waiting on me, otherwise the
- * latest".
+ * `buildRooms`' order, which is pure recency on `lastActivityAt` — the
+ * conversation that moved last, whether it moved because someone typed or
+ * because the deal itself advanced. Whose turn it is deliberately does not
+ * reorder the list; it stays a per-row badge (see `sortRooms` in
+ * `lib/rooms.ts`).
  *
  * Below `xl` it stays the plain list. That is the same breakpoint
  * `/chat/[roomId]` uses to show or hide the list beside a room, and on a phone

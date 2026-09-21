@@ -34,6 +34,20 @@ export async function fetchChatHistory(transactionId: number): Promise<ChatMessa
   return messages;
 }
 
+/**
+ * The `room_id` behind a transaction, for a screen that holds a `txId` and
+ * needs to float that conversation in the inbox (`markRoomActive`).
+ *
+ * `Chat_Room` rows are created lazily, so there is no lighter lookup than the
+ * history call — it is what creates the room in the first place. Only worth
+ * paying on a one-off action, never in a poll.
+ */
+export async function fetchRoomId(transactionId: number): Promise<number> {
+  await requireSession();
+  const { roomId } = await getChatHistoryApi(transactionId);
+  return roomId;
+}
+
 export async function sendChatMessage(
   transactionId: number,
   input: { content?: string; image_urls?: string[] },

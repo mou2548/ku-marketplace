@@ -355,3 +355,70 @@ A cross-device unread badge requires a backend field or endpoint that records
 the viewer's last-read message per room. The frontend must not infer that state
 from transaction workflow ownership (`needsYou`), because whose turn it is and
 whether a message was read are different facts.
+
+## Some flow steps stamp no reachable timestamp, so the inbox cannot order on them
+
+Recorded 2026-09-21 while fixing the conversation list, which floated a room to
+the top only on a new chat message and left every status change where it was.
+
+The inbox now orders on `lastActivityAt` (`transactionActivityAt` in
+`lib/rooms.ts`), assembled from the step columns `Transaction` and
+`Appointment_Card` already stamp: `created_at`, both `payment_confirmed_by_*_at`,
+both `item_received_confirmed_by_*_at`, `cancellation_requested_at`,
+`refund_submitted_at`, `item_return_confirmed_at`, and each appointment card's
+`created_at` and `deleted_at`. Neither table has an `updated_at`, so this
+assembly is the only way to ask "when did this deal last move".
+
+Six steps are invisible to it. Five write no timestamp at all:
+
+- **Confirming an appointment.** Responding flips `appointment_status` to
+  `Confirmed` and nothing else. (Rejecting is visible, because a rejected or
+  superseded card gets `deleted_at`.)
+- **Entering a tracking number.** `tracking_number` is set with no companion
+  column, and the status move to `Processing` is not stamped either.
+- **Answering a cancellation or return request.** Approving or rejecting sets
+  `cancellation_response` and, on a rejection, opens a dispute — none of it
+  stamped. Only the original request is, via `cancellation_requested_at`, so
+  the request floats the room for the other party but the answer never floats
+  it back for the requester.
+- **An administrator settling a cancellation dispute.** `settleCancellationDispute`
+  clears `active_report_id` and writes the final `cancellation_response` and
+  status. Nothing stamped, so neither party's inbox moves on the decision.
+- **Confirming a refund was received.** `confirmRefund` writes
+  `refund_confirmed_by_buyer`, a boolean, and moves the status to `Refunded`.
+  The seller's side of the deal ends with no timestamp anywhere. (The other
+  half of the same return, `item_return_confirmed_at`, is stamped — so a return
+  floats on the goods going back but not on the money arriving.)
+
+The sixth is stamped but not returned:
+
+- **A giveaway ticket moving.** `Giveaway_Ticket.updated_at` exists and covers
+  being selected, forfeiting and letting a pickup window lapse, but
+  `GET /giveaways/{id}/recipients` does not include it — `asRecipient` returns
+  `ticket_id`, `receiver_id`, `queue_number`, `status` and the receiver only.
+  `lib/api/giveaways.ts`'s `getMyTicket` fills `updated_at` from
+  `giveaway.created_at` to satisfy the `GiveawayTicket` type, so it is not a
+  real ticket timestamp and must not be treated as one. A giveaway room is
+  therefore ordered on its messages and on `Giveaway_Post.created_at` alone.
+
+What the UI does now: the person who performs either action floats the room on
+their own device through `markRoomActive` (`lib/chat-activity.ts`, browser-local).
+The other party's inbox does not move until the next event that does stamp
+something — usually the next message, the handover, or a cancellation.
+
+Closing the first five needs a backend column, which is outside this scope
+(`CLAUDE.md` 0). `Transaction.updated_at` and `Appointment_Card.updated_at`
+would close all five at once and let the whole derivation collapse to two
+fields; narrower columns (`appointment_responded_at`, `tracking_entered_at`,
+`cancellation_responded_at`, `refund_confirmed_at`) would work too but have to
+be added one per step and kept in step with every future one. The sixth needs
+no new column at all — only `updated_at` added to the recipients response,
+after which the ticket timestamp can be plumbed into `lastActivityAt` and
+`getMyTicket` can stop synthesizing it.
+
+A client-side fallback was considered and rejected: `RoomList` polls the whole
+transaction every 10s, so it could diff successive snapshots and stamp the
+moment it noticed a status field change. It would cover all six, but only
+while an inbox is mounted, and it would record when the change was noticed
+rather than when it happened. That is a different fact wearing the same name,
+and the inbox is not the place to invent it.
