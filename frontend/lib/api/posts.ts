@@ -176,7 +176,8 @@ export interface CreatePostPayload {
 }
 
 export interface UpdatePostPayload {
-  price: number;
+  price?: number;
+  post_type?: PostType;
 }
 
 export interface BuyPostPayload {
@@ -200,6 +201,7 @@ export interface AcceptOfferPayload {
 export interface UpdatePostResult {
   post_id: string;
   price: number;
+  post_type: PostType;
 }
 
 export interface DeletePostResult {
@@ -251,7 +253,7 @@ export function createPost(
   return apiFetch<PostSummary>("/posts", { ...opts, method: "POST", body: payload });
 }
 
-/** `PATCH /posts/:post_id` — change the asking price. Auth. */
+/** `PATCH /posts/:post_id` — change the asking price and/or the sale kind. Auth. */
 export function updatePost(
   postId: PostId,
   payload: UpdatePostPayload,

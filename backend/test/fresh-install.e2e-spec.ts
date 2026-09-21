@@ -669,7 +669,7 @@ describe('Fresh clone database', () => {
       3,
     );
     await expect(
-      service.updatePostPrice(post.post_id, { price: 0 }, 4),
+      service.updatePost(post.post_id, { price: 0 }, 4),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(service.deletePost(post.post_id, 4)).rejects.toBeInstanceOf(
       ForbiddenException,
@@ -1059,6 +1059,61 @@ describe('Fresh clone database', () => {
       3,
     );
     expect(relisted.post_id).toBe(first.post_id);
+  });
+
+  it('lets a cancelled trade unlock its post for relisting under a different type', async () => {
+    const service = new PostsService(prisma as unknown as PrismaService);
+    const sellerItem = await prisma.item.create({
+      data: {
+        ownerId: 3,
+        name: 'Unlock test',
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    const proposerItem = await prisma.item.create({
+      data: {
+        ownerId: 4,
+        name: 'Unlock trade-in',
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    const post = await service.createPost(
+      { item_id: sellerItem.itemId, post_type: 'TradeOnly', price: 0 },
+      3,
+    );
+    const offer = await service.createOffer(post.post_id, {
+      proposer_id: 4,
+      item_ids: [proposerItem.itemId],
+    });
+    await service.acceptOffer(post.post_id, offer.offer_id, {}, 3);
+
+    // Still an open deal — the guard should keep blocking here.
+    await expect(service.deletePost(post.post_id, 3)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    const postRow = await prisma.post.findUniqueOrThrow({
+      where: { itemId: sellerItem.itemId },
+    });
+    const deal = await prisma.transaction.findFirstOrThrow({
+      where: { postId: postRow.postId },
+    });
+    await transactionService().requestCancellation(deal.transactionId, 4, {
+      reason: 'Changed my mind',
+    });
+
+    // The Offer row stays 'Accepted' forever once its transaction exists, and
+    // the Transaction itself is now 'Cancelled' — neither should keep the
+    // post locked out of being unlisted and relisted as a different kind.
+    await service.deletePost(post.post_id, 3);
+    const relisted = await service.createPost(
+      { item_id: sellerItem.itemId, post_type: 'SellOnly', price: 25 },
+      3,
+    );
+    expect(relisted.post_id).toBe(post.post_id);
+    expect(relisted.post_type).toBe('SellOnly');
   });
 
   it('prevents the same offered item being accepted by two different sellers', async () => {

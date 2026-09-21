@@ -670,7 +670,8 @@ const COPY: { [key: string]: CopyNode } = {
       "backToItem": "Back to item",
       "listAnItem": "List an item",
       "editItem": "Edit item",
-      "publish": "Publish listing"
+      "publish": "Publish listing",
+      "saveChanges": "Save changes"
     },
     "listing": {
       "kind": "What kind of listing is this",
