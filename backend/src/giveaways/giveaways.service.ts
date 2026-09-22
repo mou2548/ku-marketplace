@@ -432,7 +432,7 @@ export class GiveawaysService {
       });
       await tx.giveawayPost.update({
         where: { giveawayId },
-        data: { status: 'Closed', drawnAt: new Date() },
+        data: { status: 'Closed' },
       });
       if (!(await tx.chatRoom.findFirst({ where: { giveawayId } }))) {
         await tx.chatRoom.create({ data: { giveawayId } });
@@ -525,7 +525,7 @@ export class GiveawaysService {
       });
       await tx.giveawayPost.update({
         where: { giveawayId },
-        data: { status: 'Closed', drawnAt: new Date() },
+        data: { status: 'Closed' },
       });
       if (!(await tx.chatRoom.findFirst({ where: { giveawayId } }))) {
         await tx.chatRoom.create({ data: { giveawayId } });

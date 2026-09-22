@@ -170,7 +170,6 @@ model GiveawayPost {
   pickupStart      DateTime?        @map("pickup_start") @db.Timestamp(6)
   pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
   status           String?          @default("Active") @map("giveaway_status") @db.VarChar(20)
-  drawnAt          DateTime?        @map("drawn_at") @db.Timestamp(6)
   createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   giver            User             @relation(fields: [giverId], references: [userId])
   images           GiveawayImage[]
