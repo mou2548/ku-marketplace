@@ -119,6 +119,8 @@ export interface RoomDetail {
    * room has no `Appointment_Card` concept at all.
    */
   appointment?: AppointmentCardData;
+  /** Every card on the deal, retired ones included — the chat's timeline. */
+  appointmentCards?: AppointmentCardData[];
   /**
    * Who else is in a giveaway room — real (`lib/api/giveaways.ts`'s
    * `getEntrants`, `GET /giveaways/{id}/recipients`). Outcome states remain
@@ -157,7 +159,13 @@ export async function getRoomDetail(
         getAppointmentCards(transactionId),
       ]);
       const { pinned, pending } = deriveAppointmentView(cards);
-      return { summary, transaction, appointment: pending ?? pinned, messages };
+      return {
+        summary,
+        transaction,
+        appointment: pending ?? pinned,
+        appointmentCards: cards,
+        messages,
+      };
     }
 
     if (summary.giveaway) {

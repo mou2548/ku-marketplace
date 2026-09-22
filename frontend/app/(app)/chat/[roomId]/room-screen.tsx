@@ -4,7 +4,7 @@ import { formatDateTime } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
@@ -12,14 +12,21 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarPlus,
-  ChevronDown,
-  ChevronUp,
+  CalendarX,
+  CircleCheck,
   Flag,
+  Handshake,
+  Info,
   MapPin,
+  PackageCheck,
   QrCode,
+  RotateCcw,
   ScanLine,
+  ShieldAlert,
   Truck,
+  Wallet,
   XCircle,
+  type LucideIcon,
 } from "lucide-react";
 
 import { ActionCard, ChatThread } from "@/components/kit/chat-thread";
@@ -30,7 +37,6 @@ import { DatePickerField } from "@/components/kit/date-picker";
 import { DeliveryCard } from "@/components/kit/delivery-card";
 import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
-import { PostImage } from "@/components/kit/post-image";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
@@ -48,7 +54,7 @@ import {
   submitPaymentSlip,
   submitRefundSlip,
 } from "@/lib/actions/transactions";
-import { TONE_CHIP } from "@/components/kit/tone";
+import { TONE_CHIP, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
 import {
   buildSteps,
   TransactionStepper,
@@ -76,6 +82,8 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
+import { describeDeal } from "@/lib/deal-progress";
+import { buildDealTimeline, type DealEvent, type DealEventKind } from "@/lib/deal-timeline";
 import { useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
@@ -86,9 +94,9 @@ import {
   requiresPayment,
   resolveTransactionActor,
   TRANSACTION_STATUS,
-  type ActorPrompt,
   type Deadline,
   type Party,
+  type Tone,
 } from "@/lib/status";
 import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
@@ -118,13 +126,6 @@ const USER_REPORT_REASONS = [
     description: "This is not who they claim to be",
   },
 ];
-
-/** Day-first date, local marketplace time and the agreed location. */
-function appointmentLabel(appointment: AppointmentCardData): string {
-  const at = new Date(`${appointment.date}T${appointment.time}+07:00`);
-  const when = formatDateTime(at);
-  return `${when} · ${appointment.location}`;
-}
 
 /**
  * `POST /transactions/{id}/appointment-card`. Flow 1 puts this between the
@@ -232,6 +233,7 @@ export function RoomScreen({
   transaction,
   giveaway,
   appointment: initialAppointment,
+  appointmentCards: initialAppointmentCards,
   entrants,
   messages: initialMessages,
 }: {
@@ -247,6 +249,9 @@ export function RoomScreen({
    * single "current appointment" row in the backend.
    */
   appointment?: AppointmentCardData;
+  /** Every card on the deal, retired ones included — feeds the progress
+   * summaries in the thread. */
+  appointmentCards?: AppointmentCardData[];
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
   messages: ChatMessage[];
@@ -255,33 +260,31 @@ export function RoomScreen({
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
-  const st = useStatusText();
   const [tracking, setTracking] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [place, setPlace] = useState("");
   const [when, setWhen] = useState<DateValue | null>(null);
   const [time, setTime] = useState("12:00");
   const [busy, setBusy] = useState(false);
-  const [pinOpen, setPinOpen] = useState(false);
   /** Toggles the pin between showing the current AppointmentCard and showing
    * the pre-filled edit form for it — never both, which is what used to make
    * an edited appointment look like it had split into two cards. */
   const [editingAppointment, setEditingAppointment] = useState(false);
-  const appointmentPinRef = useRef<HTMLDivElement>(null);
   /**
-   * The deal strip's disclosure — everything the desktop rail used to hold.
-   *
-   * Open when the next move is the viewer's. A closed accordion is a
-   * reasonable default for a deal you are waiting on; it is the wrong one for
-   * a deal that is waiting on you.
+   * The deal's details — status, slip, meetup, stepper, cancellation — open in
+   * a pop-up, the same way the slip and the QR do. They used to be two
+   * disclosures fixed above the thread that squeezed the conversation.
    */
-  const [detailToggled, setDetailToggled] = useState<boolean | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Real messages refresh on a poll (no realtime transport exists) — for
   // either a transaction room or a giveaway group room. Appointments are a
   // transaction-only concept.
   const [messages, setMessages] = useState(initialMessages);
   const [appointment, setAppointment] = useState(initialAppointment);
+  const [appointmentCards, setAppointmentCards] = useState(
+    initialAppointmentCards ?? [],
+  );
 
   usePolling(() => {
     if (transaction) {
@@ -291,6 +294,7 @@ export function RoomScreen({
         .then((cards) => {
           const { pinned, pending } = deriveAppointmentView(cards);
           setAppointment(pending ?? pinned);
+          setAppointmentCards(cards);
         })
         .catch(() => {});
     } else if (giveaway) {
@@ -323,9 +327,16 @@ export function RoomScreen({
     transaction.status === "Pending" &&
     requiresPayment(transaction);
   const isYourTurn = prompt?.actor === viewer;
-  /* Null means nobody has touched it, so the deal decides: open when the next
-     move is yours. Once opened or closed by hand, that choice sticks. */
-  const detailOpen = detailToggled ?? isYourTurn;
+  /* The one "where does this deal stand" sentence, shared with the inbox row
+     and the latest progress card. It knows about the appointment, which
+     `resolveTransactionActor` does not — that one still says "scan the QR"
+     before any meetup exists. */
+  const progress = transaction
+    ? describeDeal(transaction, viewerId, appointmentCards)
+    : undefined;
+  const timeline = transaction
+    ? buildDealTimeline(transaction, appointmentCards, viewerId)
+    : [];
   const now = useNow();
   // §QR refresh loop — QrTicket schedules its own re-issue (every `periodMs`).
   // Passing a fresh inline `() => createHandoverToken(id)` on every render made
@@ -365,10 +376,6 @@ export function RoomScreen({
     : giveaway
       ? `/giveaway/${giveaway.giveaway_id}`
       : null;
-  const subjectImage = transaction
-    ? (transaction.post.item.images.find((i) => i.is_primary)?.image_url ??
-      transaction.post.item.images[0]?.image_url)
-    : giveaway?.images[0]?.image_url;
 
   /**
    * Every transition on this screen goes through here. It used to be a 400ms
@@ -503,6 +510,7 @@ export function RoomScreen({
         location: place,
       });
       setAppointment(created);
+      setAppointmentCards((prev) => [...prev, created]);
       setPlace("");
       setEditingAppointment(false);
       toast.success(t("deal.meetupProposed"));
@@ -536,6 +544,9 @@ export function RoomScreen({
     try {
       const updated = await respondToAppointment(appointment.appointment_id, response);
       setAppointment(updated);
+      setAppointmentCards((prev) =>
+        prev.map((c) => (c.appointment_id === updated.appointment_id ? updated : c)),
+      );
       toast.success("Meetup confirmed");
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
@@ -591,12 +602,7 @@ export function RoomScreen({
               </p>
               <Button
                 block
-                onPress={() => {
-                  setPinOpen(true);
-                  appointmentPinRef.current?.scrollIntoView({
-                    block: "nearest",
-                  });
-                }}
+                onPress={() => setDetailsOpen(true)}
               >
                 <CalendarClock className="size-4" />{t("deal.proposeTimeAndPlace")}</Button>
             </div>
@@ -718,12 +724,7 @@ export function RoomScreen({
                 </p>
                 <Button
                   block
-                  onPress={() => {
-                    setPinOpen(true);
-                    appointmentPinRef.current?.scrollIntoView({
-                      block: "nearest",
-                    });
-                  }}
+                  onPress={() => setDetailsOpen(true)}
                 >
                   <CalendarClock className="size-4" />
                   {t("deal.proposeTimeAndPlace")}
@@ -816,6 +817,57 @@ export function RoomScreen({
       </ActionCard>
     ) : null;
 
+  const stepAction = currentAction() ?? sellerQr;
+
+  /*
+   * A slip is posted into the thread as a labelled receipt when it is
+   * uploaded, so a "sent the slip" line beside it says the same thing twice.
+   * The line stays only when the post never made it into the chat.
+   */
+  const postedImages = new Set(
+    messages.flatMap((m) => (m.image_urls?.length === 1 ? m.image_urls : [])),
+  );
+  const shownEvents = timeline.filter(
+    (e) =>
+      !(e.kind === "slip" && transaction?.slip_image_url && postedImages.has(transaction.slip_image_url)) &&
+      !(e.kind === "refund-slip" && transaction?.refund_slip_url && postedImages.has(transaction.refund_slip_url)),
+  );
+  // Where the status card goes: straight after the latest step, merged or not.
+  const statusAt = timeline.length ? timeline[timeline.length - 1].placeAt : 0;
+  /* The dots only describe the normal flow; a cancellation, return or review
+     is its own path and is told in words instead. */
+  const onMainPath =
+    !!transaction &&
+    !transaction.active_report_id &&
+    transaction.cancellation_response !== "Pending" &&
+    (transaction.status === "Pending" ||
+      transaction.status === "Processing" ||
+      transaction.status === "Completed");
+  const progressEvents = transaction
+    ? [
+        ...shownEvents.map((event) => ({
+          key: event.id,
+          placeAt: event.placeAt,
+          node: <ProgressLine event={event} />,
+        })),
+        {
+          key: "status",
+          placeAt: statusAt,
+          node: (
+            <StatusCard
+              steps={onMainPath ? steps : []}
+              // "Your step" below already says it when the viewer can act —
+              // but off the main path there are no dots, and the card must
+              // never be left saying nothing.
+              headline={stepAction && onMainPath ? undefined : progress?.headline}
+              tone={progress?.tone ?? "info"}
+              onOpenDetails={() => setDetailsOpen(true)}
+            />
+          ),
+        },
+      ]
+    : [];
+
   return (
     /* A messenger, not a card. The room is the surface: it fills the column the
        shell gives it, and the only thing that scrolls is the thread. */
@@ -888,154 +940,47 @@ export function RoomScreen({
               {summary.subject}
             </span>
           )}
+          {transaction || giveaway ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              pill
+              aria-label={giveaway ? "Giveaway details" : "Deal details"}
+              className="shrink-0 max-sm:w-9 max-sm:px-0"
+              onPress={() => setDetailsOpen(true)}
+            >
+              <Info aria-hidden className="size-4" />
+              <span className="max-sm:hidden">Details</span>
+            </Button>
+          ) : null}
         </span>
       </header>
 
-    {/* The deal strip. This used to be the phone-only stand-in for a rail
-        that covered desktop; with the rail gone it is the one summary at
-        every width, and tapping it opens everything the rail used to hold. */}
-    <div className="shrink-0 border-b border-line">
-      <button
-        type="button"
-        onClick={() => setDetailToggled(!detailOpen)}
-        aria-expanded={detailOpen}
-        className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
+      <ChatThread
+        messages={messages}
+        viewerId={viewerId}
+        receipts={receipts}
+        senders={senders}
+        showSenders={isGroupRoom}
+        action={stepAction}
+        events={progressEvents}
+        isReadOnly={giveawayReadOnly}
+        readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
+        onSend={handleSend}
+        onAttach={handleAttach}
+      />
+
+      {/* Everything the deal strip and the appointment pin used to hold,
+          opened on demand from the header or from any progress card. */}
+      <Overlay
+        isOpen={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        title={giveaway ? "Giveaway details" : "Deal details"}
+        size="lg"
       >
-        <span className="block w-11 shrink-0 overflow-hidden rounded-slot">
-          <PostImage src={subjectImage} alt="" aspectRatio={1} sizes="44px" />
-        </span>
-
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-body-sm font-semibold">
-            {summary.subject}
-          </span>
-          {/* PRODUCT.md principle 1: "whose turn is it — always answer,
-              always first." resolveTransactionActor already produces exactly
-              that sentence, in second person, and it was rendered inside
-              DealDetails inside this accordion — which starts closed. What
-              was visible instead was the delivery method and the amount:
-              two facts the viewer already knows.
-
-              The owner named not knowing whose turn it is twice, once as a
-              fear and once as the worst thing about these screens. It is the
-              most-supported finding in the project and the answer was one
-              disclosure away. */}
-          <span
-            className={cn(
-              "block truncate text-caption",
-              isYourTurn ? "font-semibold text-ink" : "text-ink-muted",
-            )}
-          >
-            {prompt
-              ? st.key(prompt.labelKey)
-              : giveaway
-                ? `Collect at ${giveaway.pickup_location}`
-                : null}
-          </span>
-        </span>
-
-        {/* Was iconOnly, so the deal's state reached the collapsed strip as a
-            wordless coloured dot. The sentence above says it in words now, so
-            the badge is redundant here and stays in DealDetails. */}
-
-        <ChevronDown
-          aria-hidden
-          className={cn(
-            "size-4 shrink-0 text-ink-muted transition-transform duration-[--dur-fast]",
-            detailOpen && "rotate-180",
-          )}
-        />
-      </button>
-
-      {detailOpen ? (
-        <div className="max-h-[24dvh] overflow-y-auto overscroll-contain border-t border-line bg-surface-sunken/40 px-4 py-4">
+        <div className="flex flex-col gap-5">
           {transaction && viewer ? (
-            <DealDetails
-              transaction={transaction}
-              viewer={viewer}
-              appointment={appointment}
-              counterpartyName={summary.counterparty.name}
-              prompt={prompt}
-              steps={steps}
-              currentStepNumber={currentStepNumber}
-              deadline={deadline}
-              reportable={reportable}
-              busy={busy}
-              onCancel={(reason) =>
-                act(
-                  () => askToCancel(transaction.transaction_id, reason),
-                  "Cancellation requested",
-                  "Could not send the cancellation request",
-                )
-              }
-            />
-          ) : null}
-
-          {giveaway ? (
-            <GiveawayDetails
-              giveaway={giveaway}
-              entrants={entrants}
-              viewerId={viewerId}
-            />
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-
-      {/* Pinned like LINE pins a message: one line, expandable, always the
-          first thing under the header. What it pins depends on how the item
-          changes hands — a shipped deal has no appointment, so pinning one
-          was showing information that does not exist. */}
-      {transaction && viewer ? (
-        <div
-          ref={appointmentPinRef}
-          className={cn(
-            "shrink-0 border-b border-line",
-            (transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund")
-              ? "bg-tone-success-bg/60"
-              : "bg-tone-info-bg/60",
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => setPinOpen((v) => !v)}
-            aria-expanded={pinOpen}
-            className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-caption"
-          >
-            {(transaction.delivery_method === "Meetup" || transaction.status === "Pending Refund") ? (
-              <>
-                <CalendarClock
-                  aria-hidden
-                  className="size-4 shrink-0 text-tone-success-fg"
-                />
-                {/* The real Appointment_Card row. This line used to be a
-                    hardcoded date that every Meetup deal in the app claimed
-                    as its own. */}
-                <span className="min-w-0 flex-1 truncate font-medium text-tone-success-fg">
-                  {appointment
-                    ? `Meetup · ${appointmentLabel(appointment)}`
-                    : meetupBlockedOnPayment
-                      ? t("deal.meetupWaitingOnPayment")
-                      : "No time agreed yet"}
-                </span>
-              </>
-            ) : (
-              <DeliveryCard
-                transaction={transaction}
-                viewer={viewer}
-                compact
-                className="flex-1"
-              />
-            )}
-            {pinOpen ? (
-              <ChevronUp aria-hidden className="size-4 shrink-0" />
-            ) : (
-              <ChevronDown aria-hidden className="size-4 shrink-0" />
-            )}
-          </button>
-
-          {pinOpen ? (
-            <div className="max-h-[20dvh] overflow-y-auto overscroll-contain px-4 pb-4">
+            <section aria-label="Handover" className="flex flex-col gap-3">
               {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment && editingAppointment ? (
@@ -1082,24 +1027,159 @@ export function RoomScreen({
                   onPropose={handlePropose}
                 />
               )}
-            </div>
+            </section>
+          ) : null}
+          {transaction && viewer ? (
+            <DealDetails
+              transaction={transaction}
+              viewer={viewer}
+              appointment={appointment}
+              counterpartyName={summary.counterparty.name}
+              headline={progress?.headline}
+              headlineTone={progress?.tone}
+              steps={steps}
+              currentStepNumber={currentStepNumber}
+              deadline={deadline}
+              reportable={reportable}
+              busy={busy}
+              onCancel={(reason) =>
+                act(
+                  () => askToCancel(transaction.transaction_id, reason),
+                  "Cancellation requested",
+                  "Could not send the cancellation request",
+                )
+              }
+            />
+          ) : null}
+
+          {giveaway ? (
+            <GiveawayDetails
+              giveaway={giveaway}
+              entrants={entrants}
+              viewerId={viewerId}
+            />
+          ) : null}
+        </div>
+      </Overlay>
+    </div>
+  );
+}
+
+const EVENT_ICON: Record<DealEventKind, LucideIcon> = {
+  started: Handshake,
+  slip: Wallet,
+  paid: CircleCheck,
+  "meetup-proposed": CalendarClock,
+  "meetup-confirmed": CalendarClock,
+  "meetup-closed": CalendarX,
+  shipped: Truck,
+  received: PackageCheck,
+  "cancel-requested": XCircle,
+  "cancel-answered": XCircle,
+  review: ShieldAlert,
+  "refund-slip": RotateCcw,
+  "refund-received": RotateCcw,
+  "item-returned": RotateCcw,
+  closed: XCircle,
+};
+
+/**
+ * A step that already happened, as a quiet system line the way LINE shows
+ * one: centred, small, no card and no button. The thread is a conversation
+ * first; past steps are context, not things to act on.
+ */
+function ProgressLine({ event }: { event: DealEvent }) {
+  const Icon = EVENT_ICON[event.kind];
+  return (
+    <div className="flex flex-col items-center gap-0.5 px-6 py-0.5 text-center">
+      {/* Inline, not flex: a long title wraps under its icon instead of
+          leaving the icon alone on a line of its own. */}
+      <p className="text-body-lg text-ink-muted">
+        <Icon
+          aria-hidden
+          className={cn("mr-1.5 inline-block size-5 align-[-0.2em]", TONE_TEXT[event.tone])}
+        />
+        <span className="font-medium text-ink-secondary">{event.title}</span>
+      </p>
+      {event.at || event.detail ? (
+        <p className="text-body-lg break-words text-ink-muted">
+          {event.at ? (
+            <time dateTime={event.at}>{formatDateTime(event.at)}</time>
+          ) : null}
+          {event.at && event.detail ? " · " : null}
+          {event.detail}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The one card in the thread: where the deal stands now. Dots for the normal
+ * flow, and the waiting-on sentence only when the viewer has nothing to do —
+ * when they do, the "Your step" card under the thread already says it.
+ */
+function StatusCard({
+  steps,
+  headline,
+  tone,
+  onOpenDetails,
+}: {
+  steps: Step[];
+  headline?: string;
+  tone: Tone;
+  onOpenDetails: () => void;
+}) {
+  const current = steps.findIndex((s) => s.current);
+  const label =
+    current === -1 ? undefined : `Step ${current + 1} of ${steps.length}: ${steps[current].label}`;
+
+  return (
+    <article
+      aria-label="Deal status"
+      className="mx-auto flex w-full max-w-md flex-col gap-2 rounded-card bg-surface px-4 py-3 shadow-raised"
+    >
+      {steps.length ? (
+        <div className="flex flex-col gap-1.5">
+          <ol aria-label={label ?? "All steps done"} className="flex items-center">
+            {steps.map((step, i) => (
+              <li key={step.id} className={cn("flex items-center", i > 0 && "flex-1")}>
+                {i > 0 ? (
+                  <span
+                    aria-hidden
+                    className={cn("h-0.5 flex-1", step.done || step.current ? TONE_DOT.success : "bg-gray-200")}
+                  />
+                ) : null}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "block shrink-0 rounded-full",
+                    step.current
+                      ? "size-3 bg-brand ring-4 ring-brand-subtle"
+                      : cn("size-2", step.done ? TONE_DOT.success : "bg-gray-200"),
+                  )}
+                />
+              </li>
+            ))}
+          </ol>
+          {label ? (
+            <p className="text-[1.125rem] font-semibold text-ink">{label}</p>
           ) : null}
         </div>
       ) : null}
 
-      <ChatThread
-        messages={messages}
-        viewerId={viewerId}
-        receipts={receipts}
-        senders={senders}
-        showSenders={isGroupRoom}
-        action={currentAction() ?? sellerQr}
-        isReadOnly={giveawayReadOnly}
-        readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
-        onSend={handleSend}
-        onAttach={handleAttach}
-      />
-    </div>
+      {headline ? (
+        <p className={cn("text-[1.125rem] font-medium", TONE_TEXT[tone])}>{headline}</p>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={onOpenDetails}
+        className="self-start text-[1.125rem] font-medium text-ink-brand hover:underline"
+      >
+        View details
+      </button>
+    </article>
   );
 }
 
@@ -1116,7 +1196,8 @@ function DealDetails({
   viewer,
   appointment,
   counterpartyName,
-  prompt,
+  headline,
+  headlineTone,
   steps,
   currentStepNumber,
   deadline,
@@ -1128,7 +1209,9 @@ function DealDetails({
   viewer: Party;
   appointment?: AppointmentCardData;
   counterpartyName: string;
-  prompt?: ActorPrompt;
+  /** From `describeDeal`, so it matches the progress card and inbox row. */
+  headline?: string;
+  headlineTone?: Tone;
   steps: Step[];
   currentStepNumber: number;
   deadline?: Deadline;
@@ -1160,14 +1243,14 @@ function DealDetails({
           />
         </div>
 
-        {prompt ? (
+        {headline ? (
           <p
             className={cn(
               "rounded-control border px-3 py-2 text-body-sm font-medium",
-              TONE_CHIP[prompt.tone],
+              TONE_CHIP[headlineTone ?? "info"],
             )}
           >
-            {st.key(prompt.labelKey)}
+            {headline}
           </p>
         ) : null}
 
