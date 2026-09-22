@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -27,7 +27,6 @@ import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
-import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
@@ -36,11 +35,10 @@ import { createGiveaway } from "@/lib/actions/giveaways";
 import { publishListing } from "@/lib/actions/posts";
 import type { ApiError } from "@/lib/api/client";
 import { wireIdToNumber } from "@/lib/api/posts";
-import type { Item } from "@/lib/api/types";
+import type { Item, ItemHistorySummary } from "@/lib/api/types";
 import {
   ALLOCATION_METHOD,
   ITEM_CONDITION,
-  ITEM_STATUS,
   POST_TYPE,
   type AllocationMethod,
   type PostType,
@@ -83,25 +81,43 @@ const STEPS: Array<[key: string, label: string, detail: string]> = [
 
 export function PostComposer({
   items,
-  listedItemIds,
+  summaries,
   initialKind = "SellOnly",
+  initialPicked = [],
 }: {
   items: Item[];
-  listedItemIds: number[];
+  /** Per-item availability — how much of each item can still be committed
+   * to a new channel right now. An item with some already listed for sale
+   * can still have stock free to trade or give away. */
+  summaries: Record<number, ItemHistorySummary | undefined>;
   initialKind?: ListingKind;
+  /** Preselected item ids — from the inventory screen's "Select" bulk
+   * action, or handed off from the listing form's "Give away" option. */
+  initialPicked?: number[];
 }) {
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const tz = getLocalTimeZone();
   const nowDT = toCalendarDateTime(now(tz));
-  const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
 
-  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const available = (item: Item) =>
+    summaries[item.item_id]?.available_quantity ?? item.quantity;
+
+  const [picked, setPicked] = useState<Set<number>>(
+    () =>
+      new Set(
+        initialPicked.filter((id) => {
+          const item = items.find((i) => i.item_id === id);
+          return item && available(item) > 0;
+        }),
+      ),
+  );
   const [kind, setKind] = useState<ListingKind>(initialKind);
   const [price, setPrice] = useState("");
   const [wanted, setWanted] = useState("");
   const [description, setDescription] = useState("");
+  const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
 
   // Giveaway terms.
@@ -121,25 +137,43 @@ export function PostComposer({
     nowDT.add({ days: 5 }),
   );
 
-  const unlisted = items.filter((i) => !listed.has(i.item_id));
-  const alreadyListed = items.filter((i) => listed.has(i.item_id));
+  // An item with some stock already committed to another channel can still
+  // be picked here — the gate is whether anything is left, not whether it
+  // has ever been listed before.
+  const pickable = items.filter((i) => available(i) > 0);
+  const unavailable = items.filter((i) => available(i) <= 0);
+
+  const pickedItems = items.filter((i) => picked.has(i.item_id));
+
+  function quantityFor(item: Item): number {
+    const raw = quantities[item.item_id];
+    return raw !== undefined ? Number(raw) : available(item);
+  }
 
   const isGiveaway = kind === "Giveaway";
   const wantsPrice = kind === "SellOnly" || kind === "Both";
   const wantsTradeTerms = kind === "TradeOnly" || kind === "Both";
+  const quantitiesValid = pickedItems.every((item) => {
+    const q = quantityFor(item);
+    return Number.isInteger(q) && q > 0 && q <= available(item);
+  });
   const canPublish =
     picked.size > 0 &&
     (isGiveaway
       ? place.trim().length > 0 &&
         Number(giveawayQuantity) > 0 &&
+        Number(giveawayQuantity) <= available(pickedItems[0] ?? items[0]) &&
         !!registerStart &&
         !!closeAt &&
         !!pickupStart &&
         !!pickupTo
-      : !wantsPrice || Number(price) > 0);
+      : quantitiesValid && (!wantsPrice || Number(price) > 0));
 
   function toggle(id: number) {
     setPicked((prev) => {
+      // A giveaway targets exactly one item — picking a different one while
+      // in that mode replaces the selection instead of adding to it.
+      if (isGiveaway) return prev.has(id) ? new Set() : new Set([id]);
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -147,53 +181,51 @@ export function PostComposer({
     });
   }
 
+  function changeKind(next: ListingKind) {
+    setKind(next);
+    if (next === "Giveaway" && picked.size > 1) {
+      setPicked(new Set([[...picked][0]]));
+    }
+  }
+
   async function publish() {
     setBusy(true);
 
     if (isGiveaway) {
-      // POST /giveaways, once per selected item. A giveaway carries the
-      // item's name, description and primary image across because the
-      // giveaway table has no item_id to point at (docs/design/api-gaps.md
-      // §1). Capacity and the separate registration/pickup deadlines are sent
-      // explicitly. Collection has one final deadline in the API.
-      const pickedItems = items.filter((i) => picked.has(i.item_id));
+      // POST /giveaways — the giveaway is now linked to the picked item via
+      // item_id (the field the backend gates availability on). It still also
+      // carries the item's name/description/primary image across, since the
+      // giveaway read screens display those directly and don't fetch the
+      // linked item separately yet (docs/design/api-gaps.md §1).
+      const item = pickedItems[0];
       try {
-        const created = [];
-        for (const item of pickedItems) {
-          const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
-          created.push(
-            await createGiveaway({
-              item_name: item.name,
-              quantity: Number(giveawayQuantity),
-              description: description || item.description || undefined,
-              pickup_location: place,
-              allocation_method: method,
-              register_start: registerStart
-                ? registerStart.toDate(tz).toISOString()
-                : undefined,
-              register_deadline: closeAt
-                ? closeAt.toDate(tz).toISOString()
-                : undefined,
-              pickup_start: pickupStart
-                ? pickupStart.toDate(tz).toISOString()
-                : undefined,
-              pickup_deadline: pickupTo
-                ? pickupTo.toDate(tz).toISOString()
-                : undefined,
-              images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
-            }),
-          );
-        }
-        toast.success(
-          created.length === 1
-            ? "Giveaway posted. Registration is open."
-            : `Posted ${created.length} giveaways. Registration is open.`,
-        );
-        // Straight to the new post when there's exactly one — /giveaway's
-        // "Open" tab lists real giveaways now (getGiveaways in
+        const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
+        const created = await createGiveaway({
+          item_id: item.item_id,
+          item_name: item.name,
+          quantity: Number(giveawayQuantity),
+          description: description || item.description || undefined,
+          pickup_location: place,
+          allocation_method: method,
+          register_start: registerStart
+            ? registerStart.toDate(tz).toISOString()
+            : undefined,
+          register_deadline: closeAt
+            ? closeAt.toDate(tz).toISOString()
+            : undefined,
+          pickup_start: pickupStart
+            ? pickupStart.toDate(tz).toISOString()
+            : undefined,
+          pickup_deadline: pickupTo
+            ? pickupTo.toDate(tz).toISOString()
+            : undefined,
+          images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
+        });
+        toast.success("Giveaway posted. Registration is open.");
+        // /giveaway's "Open" tab lists real giveaways now (getGiveaways in
         // lib/api/giveaways.ts), but jumping to the post itself skips a
         // redundant round trip through the list.
-        router.push(created.length === 1 ? `/giveaway/${created[0].giveaway_id}` : "/giveaway");
+        router.push(`/giveaway/${created.giveaway_id}`);
       } catch (error) {
         toast.error((error as ApiError).message ?? "Could not post the giveaway.");
       } finally {
@@ -202,7 +234,6 @@ export function PostComposer({
       return;
     }
 
-    const pickedItems = items.filter((item) => picked.has(item.item_id));
     try {
       const created = await Promise.all(
         pickedItems.map((item) =>
@@ -210,7 +241,9 @@ export function PostComposer({
             item_id: item.item_id,
             post_type: kind,
             price: wantsPrice ? Number(price) : 0,
-            quantity_total: item.quantity,
+            quantity_total: quantityFor(item),
+            description: description.trim() || undefined,
+            wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
           }),
         ),
       );
@@ -278,20 +311,21 @@ export function PostComposer({
         </Link>
       </div>
 
-      {unlisted.length === 0 ? (
+      {pickable.length === 0 ? (
         <Notice tone="brand" className="text-body-sm text-ink-secondary">
-          Everything you own is already on the market. Add a new item to list
-          something else.
+          Nothing left to list. Add a new item, or free up stock by unlisting
+          something.
         </Notice>
       ) : (
         // `min-w-0` on each item: a grid track defaults to `min-width:auto`,
         // so without it the row cannot shrink below its content and the page
         // scrolls sideways at 360px.
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {unlisted.map((item) => (
+          {pickable.map((item) => (
             <li key={item.item_id} className="min-w-0">
               <ItemPick
                 item={item}
+                available={available(item)}
                 isPicked={picked.has(item.item_id)}
                 onToggle={() => toggle(item.item_id)}
               />
@@ -300,21 +334,15 @@ export function PostComposer({
         </ul>
       )}
 
-      {alreadyListed.length > 0 ? (
+      {unavailable.length > 0 ? (
         <details className="text-caption text-ink-muted">
           <summary className="cursor-pointer">
-            {alreadyListed.length} already on the market
+            {unavailable.length} with nothing left to list
           </summary>
           <ul className="mt-2 flex flex-col gap-1.5">
-            {alreadyListed.map((item) => (
+            {unavailable.map((item) => (
               <li key={item.item_id} className="flex items-center gap-2">
                 <span className="truncate">{item.name}</span>
-                <StatusBadge
-                  status={ITEM_STATUS.Listed}
-                  size="sm"
-                  iconOnly
-                  className="shrink-0"
-                />
               </li>
             ))}
           </ul>
@@ -409,7 +437,7 @@ export function PostComposer({
           <RadioGroupField
             label="What kind of listing is this"
             value={kind}
-            onChange={(v) => setKind(v as ListingKind)}
+            onChange={(v) => changeKind(v as ListingKind)}
             variant="card"
           >
             <Radio value="SellOnly" description="Cash only, no trades">
@@ -464,7 +492,11 @@ export function PostComposer({
                 inputMode="numeric"
                 isRequired
                 icon={<Users className="size-4" />}
-                hint="The number of people who can receive this giveaway"
+                hint={
+                  pickedItems[0]
+                    ? `Up to ${available(pickedItems[0])} unlisted on this item`
+                    : "The number of people who can receive this giveaway"
+                }
               />
 
               {/* Radio cards, not a dropdown: the three options carry three
@@ -537,6 +569,33 @@ export function PostComposer({
             </>
           ) : null}
 
+          {!isGiveaway ? (
+            <div className="flex flex-col gap-2">
+              <h3 className="text-body-sm font-medium">
+                How much of each are you listing
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {pickedItems.map((item) => (
+                  <li key={item.item_id}>
+                    <TextInput
+                      label={item.name}
+                      value={quantities[item.item_id] ?? String(available(item))}
+                      onChange={(v) =>
+                        setQuantities((prev) => ({
+                          ...prev,
+                          [item.item_id]: v.replace(/\D/g, ""),
+                        }))
+                      }
+                      inputMode="numeric"
+                      isRequired
+                      hint={`${available(item)} unlisted`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {wantsPrice ? (
             <TextInput
               label="Price"
@@ -586,10 +645,12 @@ export function PostComposer({
 
 function ItemPick({
   item,
+  available,
   isPicked,
   onToggle,
 }: {
   item: Item;
+  available: number;
   isPicked: boolean;
   onToggle: () => void;
 }) {
@@ -649,6 +710,8 @@ function ItemPick({
             <span className="font-medium text-ink-secondary">
               {st.of(rarity).label}
             </span>
+            <span aria-hidden> · </span>
+            <span data-numeric>{available} unlisted</span>
           </span>
         </span>
       </Surface>

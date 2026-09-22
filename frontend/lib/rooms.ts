@@ -242,7 +242,7 @@ export function buildRooms({
         room_id: roomId,
         kind: "Giveaway",
         counterparty: giveaway.giver,
-        subject: giveaway.item_name,
+        subject: giveaway.item_name ?? "",
         subjectImage: giveaway.images[0]?.image_url ?? null,
         lastMessage,
         lastMessageAt,

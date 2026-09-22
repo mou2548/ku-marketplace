@@ -227,7 +227,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
         <div className="relative overflow-hidden rounded-card bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/drop:-translate-y-0.5 group-hover/drop:shadow-floating group-focus-visible/drop:shadow-floating">
           <PostImage
             src={image}
-            alt={giveaway.item_name}
+            alt={giveaway.item_name ?? ""}
             aspectRatio={1.35}
             sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 25vw"
             className="transition-transform duration-[--dur-slow] ease-[--ease-out] group-hover/drop:scale-[1.025]"
@@ -275,13 +275,13 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
               <Users aria-hidden className="size-3.5" />
               {giveaway.registered_count} registered
               <span aria-hidden className="text-ink-disabled">·</span>
-              {giveaway.quantity} recipient {giveaway.quantity === 1 ? "place" : "places"}
+              {giveaway.quantity} {giveaway.quantity === 1 ? "spot" : "spots"} total
             </span>
           </div>
 
           <div
             role="progressbar"
-            aria-label={`${giveaway.registered_count} registered for ${giveaway.quantity} recipient places`}
+            aria-label={`${giveaway.registered_count} registered out of ${giveaway.quantity} spots total`}
             aria-valuemin={0}
             aria-valuemax={giveaway.quantity}
             aria-valuenow={Math.min(

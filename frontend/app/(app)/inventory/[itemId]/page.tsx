@@ -2,19 +2,21 @@ import { formatDate } from "@/lib/date-format";
 import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowLeftRight, CalendarDays, Eye, Pencil, Store, Tag } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, CalendarDays, Eye, Gift, Pencil, Plus, Store, Tag, XCircle } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { ProductGallery } from "@/components/market/product-gallery";
+import { unlistListing } from "@/lib/actions/posts";
 import { getItem, getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 import type { Item } from "@/lib/api/types";
-import { ITEM_CONDITION, ITEM_STATUS } from "@/lib/status";
+import { ITEM_CONDITION, ITEM_TRANSFERRED_STATUS, isItemTransferred } from "@/lib/status";
 
 /** Owner-facing counterpart of the market detail: photo, facts, then action. */
 export default async function ItemDetailPage({
@@ -36,19 +38,48 @@ export default async function ItemDetailPage({
     notFound();
   }
 
-  const posts = await listPosts();
-  const post = posts.find((candidate) => candidate.item_id === item.item_id);
-  const isTransferred = item.status === "Transferred";
-  // Source of truth is `item.status`, not presence in the public feed: a
-  // Listed item can be temporarily absent from `listPosts()` while its stock
-  // is reserved by an in-progress transaction, and it must still read as
-  // Listed here, not fall back to the "not listed" CTA.
-  const isListed = item.status === "Listed";
+  // An item can now carry more than one live post at once (e.g. a SellOnly
+  // post and a TradeOnly post together) — every open channel gets its own
+  // row in the action panel below, keyed by its own post_id.
+  //
+  // The channel list comes from the history summary, not `listPosts()`: the
+  // public feed (and `GET /posts/:id`) both filter to `quantityRemaining >
+  // 0`, so a sold-out-but-still-open post would silently vanish from the
+  // action panel instead of showing "0 left" if `listPosts()` were the only
+  // source. `listPosts()` is only used here to enrich a channel with its
+  // price when it happens to still be publicly visible.
+  const allPosts = await listPosts();
+  const postById = new Map(allPosts.map((p) => [p.post_id, p]));
+  const channels = (summary?.channels ?? [])
+    .filter((channel) => channel.type === "post")
+    .map((channel) => ({
+      post_id: channel.post_id,
+      post_type: channel.post_type,
+      quantity_remaining: channel.quantity_remaining,
+      // Sold out (quantityRemaining 0) is filtered out of the public feed,
+      // so such a channel has no price to show and no public page to view.
+      isPubliclyVisible: postById.has(channel.post_id),
+      price: postById.get(channel.post_id)?.price ?? null,
+    }));
+  const isTransferred = summary ? isItemTransferred(summary) : false;
+  const available = summary?.available_quantity ?? item.quantity;
   const rarity = ITEM_CONDITION[item.condition];
-  const rest = items.filter(
-    (candidate) =>
-      candidate.item_id !== item.item_id && candidate.status !== "Transferred",
+
+  const restSummaries = Object.fromEntries(
+    await Promise.all(
+      items
+        .filter((candidate) => candidate.item_id !== item.item_id)
+        .map(async (candidate) => [
+          candidate.item_id,
+          await getItemHistorySummary(candidate.item_id).catch(() => undefined),
+        ] as const),
+    ),
   );
+  const rest = items.filter((candidate) => {
+    if (candidate.item_id === item.item_id) return false;
+    const candidateSummary = restSummaries[candidate.item_id];
+    return candidateSummary ? !isItemTransferred(candidateSummary) : true;
+  });
 
   const specs: Array<[string, string]> = [
     [t("inventory.category"), item.category],
@@ -72,73 +103,102 @@ export default async function ItemDetailPage({
           <Store aria-hidden className="size-4 text-ink-brand" />
           {isTransferred
             ? "Transferred"
-            : isListed
+            : channels.length > 0
               ? t("inventory.onTheMarket")
               : t("inventory.notListed")}
         </span>
-        {isListed && !isTransferred && post ? (
-          <ListingTypeBadge type={post.post_type} />
-        ) : null}
       </div>
 
       <div className="flex flex-col gap-3 p-5">
-        {isListed && !isTransferred && post && post.post_type !== "TradeOnly" ? (
-          <p
-            data-numeric
-            className="text-[2rem] leading-tight font-bold text-ink-brand"
-          >
-            ฿{post.price.toLocaleString("en-GB")}
-          </p>
-        ) : null}
-
         {isTransferred ? (
           <p className="text-body-sm text-ink-secondary">
             This item has left your active inventory. Its listing and completed
             outcome remain visible below as history.
           </p>
-        ) : isListed ? (
-          post ? (
-            <>
+        ) : (
+          <>
+            {channels.length === 0 ? (
+              <p className="text-body-sm text-ink-secondary">
+                {t("inventory.privateItemHint")}
+              </p>
+            ) : null}
+
+            {channels.map((channel) => (
+              <Surface
+                key={channel.post_id}
+                shape="card"
+                elevation="flat"
+                className="flex flex-col gap-2 p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <ListingTypeBadge type={channel.post_type} />
+                  <span data-numeric className="text-meta text-ink-muted">
+                    {channel.quantity_remaining} left
+                  </span>
+                </div>
+                {channel.post_type !== "TradeOnly" && channel.price !== null ? (
+                  <p data-numeric className="text-h3 font-bold text-ink-brand">
+                    ฿{channel.price.toLocaleString("en-GB")}
+                  </p>
+                ) : null}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <LinkButton
+                    size="sm"
+                    block
+                    className="min-w-0 flex-1"
+                    href={`/inventory/${item.item_id}/list/${channel.post_id}`}
+                  >
+                    <Tag className="size-4 shrink-0" />
+                    <span className="truncate">{t("inventory.editListing")}</span>
+                  </LinkButton>
+                  {channel.isPubliclyVisible ? (
+                    <LinkButton
+                      variant="secondary"
+                      size="sm"
+                      block
+                      className="min-w-0 flex-1"
+                      href={`/market/${channel.post_id}`}
+                    >
+                      <Eye className="size-4 shrink-0" />
+                      <span className="truncate">{t("inventory.viewPublic")}</span>
+                    </LinkButton>
+                  ) : null}
+                </div>
+                <ConfirmButton
+                  title="Unlist this listing?"
+                  description="This takes it off the market. The item itself stays in your inventory, and this channel's history is kept."
+                  confirmLabel="Unlist"
+                  doneMessage="Listing removed from the market."
+                  icon={<XCircle className="size-4" />}
+                  onConfirm={unlistListing.bind(null, channel.post_id)}
+                  trigger={
+                    <>
+                      <XCircle className="size-4" />
+                      Unlist
+                    </>
+                  }
+                  triggerProps={{ variant: "ghost", size: "sm" }}
+                />
+              </Surface>
+            ))}
+
+            {available > 0 ? (
               <LinkButton
                 size="lg"
                 block
+                variant={channels.length > 0 ? "secondary" : "primary"}
                 href={`/inventory/${item.item_id}/list`}
               >
-                <Tag className="size-4" />
-                {t("inventory.editListing")}
+                {channels.length > 0 ? (
+                  <Plus className="size-4" />
+                ) : (
+                  <Tag className="size-4" />
+                )}
+                {channels.length > 0
+                  ? t("inventory.addAnotherListing")
+                  : t("inventory.listIt")}
               </LinkButton>
-              <LinkButton
-                variant="secondary"
-                block
-                href={`/market/${post.post_id}`}
-              >
-                <Eye className="size-4" />
-                {t("inventory.viewPublic")}
-              </LinkButton>
-            </>
-          ) : (
-            <LinkButton
-              size="lg"
-              block
-              href={`/inventory/${item.item_id}/list`}
-            >
-              <Tag className="size-4" />
-              {t("inventory.editListing")}
-            </LinkButton>
-          )
-        ) : (
-          <>
-            <p className="text-body-sm text-ink-secondary">
-              {t("inventory.privateItemHint")}
-            </p>
-            <LinkButton
-              size="lg"
-              block
-              href={`/inventory/${item.item_id}/list`}
-            >
-              <Tag className="size-4" />
-              {t("inventory.listIt")}
-            </LinkButton>
+            ) : null}
           </>
         )}
 
@@ -157,9 +217,9 @@ export default async function ItemDetailPage({
       <div className="bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
         {isTransferred
           ? "Read-only history"
-          : isListed
-            ? t("inventory.listedHint")
-            : t("inventory.unlistedHint")}
+          : available > 0
+            ? t("inventory.available", { count: available })
+            : t("inventory.noneAvailable")}
       </div>
     </Surface>
   );
@@ -183,7 +243,9 @@ export default async function ItemDetailPage({
               {item.category}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={ITEM_STATUS[item.status]} size="sm" />
+              {isTransferred ? (
+                <StatusBadge status={ITEM_TRANSFERRED_STATUS} size="sm" />
+              ) : null}
               <span
                 style={
                   {
@@ -213,7 +275,7 @@ export default async function ItemDetailPage({
           <section>
             <h2 className="mb-3 text-h3">Item activity</h2>
             {summary ? (
-              <dl className="grid grid-cols-3 gap-2">
+              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <ActivityMetric
                   icon={<Store className="size-4" />}
                   label="Posted"
@@ -228,6 +290,16 @@ export default async function ItemDetailPage({
                   icon={<ArrowLeftRight className="size-4" />}
                   label="Traded"
                   value={summary.traded_quantity}
+                />
+                <ActivityMetric
+                  icon={<Gift className="size-4" />}
+                  label={t("inventory.given")}
+                  value={summary.given_quantity}
+                />
+                <ActivityMetric
+                  icon={<Plus className="size-4" />}
+                  label="Unlisted"
+                  value={summary.available_quantity}
                 />
               </dl>
             ) : (

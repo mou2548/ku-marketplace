@@ -244,7 +244,7 @@ export function GiveawayDetail({
       </Link>
 
       <section className="grid min-w-0 gap-7 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
-        <ProductGallery images={giveaway.images} name={giveaway.item_name} />
+        <ProductGallery images={giveaway.images} name={giveaway.item_name ?? ""} />
 
         <div className="flex min-w-0 flex-col gap-6 md:pt-2">
           <header className="flex flex-col gap-3">
@@ -330,7 +330,7 @@ export function GiveawayDetail({
                 <span aria-hidden className="text-ink-disabled">
                   ·
                 </span>
-                {giveaway.quantity} recipient {giveaway.quantity === 1 ? "place" : "places"}
+                {giveaway.quantity} {giveaway.quantity === 1 ? "spot" : "spots"} total
               </p>
               {giveaway.allocation_method === "FirstCome" ? (
                 <p data-numeric className="text-caption text-ink-secondary">

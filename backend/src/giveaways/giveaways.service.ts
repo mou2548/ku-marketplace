@@ -8,6 +8,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageOverride } from '../dto/message-override.dto';
+import { getItemAvailability } from '../items/item-availability';
 
 export interface GiveawayImage {
   image_url: string;
@@ -15,6 +16,7 @@ export interface GiveawayImage {
 }
 
 export interface CreateGiveawayPayload {
+  item_id?: number;
   item_name?: string;
   quantity?: number;
   description?: string;
@@ -83,13 +85,16 @@ export class GiveawaysService {
 
   async create(payload: CreateGiveawayPayload, giverId: number) {
     if (
-      !payload.item_name ||
+      !payload.item_id ||
       !payload.pickup_location ||
       !payload.allocation_method
     ) {
       throw new BadRequestException(
-        'item_name, pickup_location และ allocation_method จำเป็นต้องระบุ',
+        'item_id, pickup_location และ allocation_method จำเป็นต้องระบุ',
       );
+    }
+    if (!Number.isSafeInteger(payload.item_id) || payload.item_id < 1) {
+      throw new BadRequestException('item_id ไม่ถูกต้อง');
     }
     if (
       !['FirstCome', 'Random', 'Manual'].includes(payload.allocation_method)
@@ -159,29 +164,47 @@ export class GiveawaysService {
       );
     }
 
-    const giveaway = await this.prisma.giveawayPost.create({
-      data: {
-        giverId,
-        itemName: payload.item_name,
-        quantity,
-        description: payload.description,
-        pickupLocation: payload.pickup_location,
-        allocationMethod: payload.allocation_method,
-        registerStart,
-        registerDeadline,
-        pickupStart,
-        pickupDeadline,
-        images: {
-          create: (payload.images ?? []).map((image) => ({
-            imageUrl: image.image_url,
-            displayOrder: image.display_order ?? 0,
-          })),
+    const itemId = payload.item_id;
+    const pickupLocation = payload.pickup_location;
+    const allocationMethod = payload.allocation_method;
+    const giveaway = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "item_id" FROM "Item" WHERE "item_id" = ${itemId} FOR UPDATE`;
+      const item = await tx.item.findUnique({ where: { itemId } });
+      if (!item) throw new NotFoundException('ไม่พบสินค้า');
+      if (item.deletedAt) throw new ConflictException('สินค้านี้ถูกลบไปแล้ว');
+      if (item.ownerId !== giverId)
+        throw new ForbiddenException('Only the owner can give away this item');
+      const { available } = await getItemAvailability(tx, itemId);
+      if (quantity > available)
+        throw new BadRequestException(
+          'Giveaway quantity exceeds available inventory quantity',
+        );
+
+      return tx.giveawayPost.create({
+        data: {
+          giverId,
+          itemId,
+          itemName: payload.item_name,
+          quantity,
+          description: payload.description,
+          pickupLocation,
+          allocationMethod,
+          registerStart,
+          registerDeadline,
+          pickupStart,
+          pickupDeadline,
+          images: {
+            create: (payload.images ?? []).map((image) => ({
+              imageUrl: image.image_url,
+              displayOrder: image.display_order ?? 0,
+            })),
+          },
         },
-      },
-      include: {
-        images: { orderBy: { displayOrder: 'asc' } },
-        giver: true,
-      },
+        include: {
+          images: { orderBy: { displayOrder: 'asc' } },
+          giver: true,
+        },
+      });
     });
     return this.serializeGiveaway(giveaway, 0);
   }
@@ -189,7 +212,8 @@ export class GiveawaysService {
   private serializeGiveaway(
     giveaway: {
       giveawayId: number;
-      itemName: string;
+      itemId: number | null;
+      itemName: string | null;
       description: string | null;
       pickupLocation: string;
       giverId: number;
@@ -213,6 +237,7 @@ export class GiveawaysService {
   ) {
     return {
       giveaway_id: this.label('giveaway', giveaway.giveawayId),
+      item_id: giveaway.itemId,
       item_name: giveaway.itemName,
       description: giveaway.description,
       pickup_location: giveaway.pickupLocation,
@@ -732,13 +757,16 @@ export class GiveawaysService {
       fresh &&
       ticket.status === 'Waiting';
     // ไม่เปลี่ยนสถานะ — แค่ตรวจสอบ
-    return new MessageOverride(valid ? 'QR ถูกต้อง รอยืนยัน' : 'QR ไม่ถูกต้อง', {
-      giveaway_id: this.label('giveaway', giveawayId),
-      ticket_id: this.label('ticket', ticketId),
-      valid,
-      status: valid ? 'pending_confirm' : 'invalid',
-      checked_at: new Date(),
-    });
+    return new MessageOverride(
+      valid ? 'QR ถูกต้อง รอยืนยัน' : 'QR ไม่ถูกต้อง',
+      {
+        giveaway_id: this.label('giveaway', giveawayId),
+        ticket_id: this.label('ticket', ticketId),
+        valid,
+        status: valid ? 'pending_confirm' : 'invalid',
+        checked_at: new Date(),
+      },
+    );
   }
 
   /**

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { getItemAvailability } from './item-availability';
 
 @Injectable()
 export class ItemsService {
@@ -87,11 +88,19 @@ export class ItemsService {
     const item = await this.prisma.item.findUnique({
       where: { itemId: id, deletedAt: null },
       include: {
-        post: {
+        posts: {
           include: {
             transactions: {
               where: { status: 'Completed' },
               select: { offerId: true, quantity: true },
+            },
+          },
+        },
+        giveawayPosts: {
+          include: {
+            tickets: {
+              where: { status: 'Received' },
+              select: { ticketId: true },
             },
           },
         },
@@ -107,20 +116,53 @@ export class ItemsService {
       );
     }
 
-    const completed = item.post?.transactions ?? [];
+    const completed = item.posts.flatMap((post) => post.transactions);
     const sumQuantity = (withOffer: boolean) =>
       completed
         .filter((transaction) => Boolean(transaction.offerId) === withOffer)
         .reduce((total, transaction) => total + (transaction.quantity ?? 1), 0);
 
+    const openPosts = item.posts.filter(
+      (post) => post.deletedAt === null && post.status === 'Active',
+    );
+    const openGiveaways = item.giveawayPosts.filter(
+      (giveaway) => giveaway.status === 'Active',
+    );
+    const { available } = await getItemAvailability(this.prisma, id);
+
     return {
       item_id: item.itemId,
       inventory_quantity: item.quantity,
-      posted_quantity: item.post?.quantityTotal ?? 0,
-      currently_listed_quantity:
-        item.post?.status === 'Active' ? item.post.quantityRemaining : 0,
+      posted_quantity: item.posts.reduce(
+        (total, post) => total + post.quantityTotal,
+        0,
+      ),
+      currently_listed_quantity: openPosts.reduce(
+        (total, post) => total + post.quantityRemaining,
+        0,
+      ),
+      available_quantity: available,
       sold_quantity: sumQuantity(false),
       traded_quantity: sumQuantity(true),
+      given_quantity: item.giveawayPosts.reduce(
+        (total, giveaway) => total + giveaway.tickets.length,
+        0,
+      ),
+      channels: [
+        ...openPosts.map((post) => ({
+          type: 'post' as const,
+          post_id: post.postId,
+          post_type: post.postType,
+          quantity_total: post.quantityTotal,
+          quantity_remaining: post.quantityRemaining,
+        })),
+        ...openGiveaways.map((giveaway) => ({
+          type: 'giveaway' as const,
+          giveaway_id: giveaway.giveawayId,
+          quantity_total: giveaway.quantity,
+          quantity_claimed: giveaway.tickets.length,
+        })),
+      ],
     };
   }
 
@@ -155,12 +197,13 @@ export class ItemsService {
           },
         },
       });
-      if (reserved || item.status === 'Transferred')
+      const { available, isTransferred } = await getItemAvailability(tx, id);
+      if (reserved || isTransferred)
         throw new ConflictException('This item is committed to a transaction');
       if (
         updateItemDto.quantity !== undefined &&
         updateItemDto.quantity !== item.quantity &&
-        item.status !== 'Unlisted'
+        available !== item.quantity
       )
         throw new ConflictException(
           'Unlist the item before changing its quantity',
@@ -232,9 +275,10 @@ export class ItemsService {
           },
         },
       });
-      if (reserved || item.status === 'Transferred')
+      const { available, isTransferred } = await getItemAvailability(tx, id);
+      if (reserved || isTransferred)
         throw new ConflictException('This item is committed to a transaction');
-      if (item.status !== 'Unlisted')
+      if (available !== item.quantity)
         throw new ConflictException('Unlist the item before deleting it');
       // §soft-delete — Item is master data that Report/Appeal evidence may
       // still point to, so this never physically removes the row. Hard

@@ -20,6 +20,7 @@ import { GiveawaysService } from '../src/giveaways/giveaways.service';
 import { GiveawayExpiryService } from '../src/giveaways/giveaway-expiry.service';
 import { RedisService } from '../src/redis/redis.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { getItemAvailability } from '../src/items/item-availability';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import request from 'supertest';
@@ -169,12 +170,11 @@ describe('Fresh clone database', () => {
       estimated_delivery_date: new Date(Date.now() + 86400000).toISOString(),
     });
     expect((await service.confirmDelivery(id, 4)).status).toBe('Completed');
+    // One of the two units sold; the other stays reserved by the still-open
+    // post, so the item has nothing free to commit to a brand new channel.
+    expect((await getItemAvailability(prisma, item.itemId)).available).toBe(0);
     expect(
-      (await prisma.item.findUniqueOrThrow({ where: { itemId: item.itemId } }))
-        .status,
-    ).toBe('Listed');
-    expect(
-      (await prisma.post.findUniqueOrThrow({ where: { itemId: item.itemId } }))
+      (await prisma.post.findFirstOrThrow({ where: { itemId: item.itemId } }))
         .quantityRemaining,
     ).toBe(1);
     await expect(service.confirmDelivery(id, 4)).rejects.toThrow();
@@ -686,7 +686,7 @@ describe('Fresh clone database', () => {
       ConflictException,
     );
     const stored = await prisma.post.findUniqueOrThrow({
-      where: { itemId: item.itemId },
+      where: { postId: Number(post.post_id.replace('post_', '')) },
     });
     expect(stored.quantityRemaining).toBe(0);
     expect(
@@ -1039,7 +1039,7 @@ describe('Fresh clone database', () => {
     ).not.toBeNull();
   });
 
-  it('allows relisting a deleted listing while preserving its original row', async () => {
+  it('creates a new post row when relisting, preserving the original as history', async () => {
     const service = new PostsService(prisma as unknown as PrismaService);
     const item = await prisma.item.create({
       data: {
@@ -1058,7 +1058,13 @@ describe('Fresh clone database', () => {
       { item_id: item.itemId, post_type: 'SellOnly', price: 12 },
       3,
     );
-    expect(relisted.post_id).toBe(first.post_id);
+    expect(relisted.post_id).not.toBe(first.post_id);
+    const original = await prisma.post.findUniqueOrThrow({
+      where: { postId: Number(first.post_id.replace('post_', '')) },
+    });
+    expect(original.deletedAt).not.toBeNull();
+    expect(original.status).toBe('Inactive');
+    expect(original.price.toNumber()).toBe(10);
   });
 
   it('lets a cancelled trade unlock its post for relisting under a different type', async () => {
@@ -1094,11 +1100,9 @@ describe('Fresh clone database', () => {
       ConflictException,
     );
 
-    const postRow = await prisma.post.findUniqueOrThrow({
-      where: { itemId: sellerItem.itemId },
-    });
+    const postId = Number(post.post_id.replace('post_', ''));
     const deal = await prisma.transaction.findFirstOrThrow({
-      where: { postId: postRow.postId },
+      where: { postId },
     });
     await transactionService().requestCancellation(deal.transactionId, 4, {
       reason: 'Changed my mind',
@@ -1107,12 +1111,14 @@ describe('Fresh clone database', () => {
     // The Offer row stays 'Accepted' forever once its transaction exists, and
     // the Transaction itself is now 'Cancelled' — neither should keep the
     // post locked out of being unlisted and relisted as a different kind.
+    // Relisting always creates a new post row now, so this is a fresh
+    // post_id rather than the original one coming back to life.
     await service.deletePost(post.post_id, 3);
     const relisted = await service.createPost(
       { item_id: sellerItem.itemId, post_type: 'SellOnly', price: 25 },
       3,
     );
-    expect(relisted.post_id).toBe(post.post_id);
+    expect(relisted.post_id).not.toBe(post.post_id);
     expect(relisted.post_type).toBe('SellOnly');
   });
 

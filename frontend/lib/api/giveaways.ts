@@ -58,7 +58,8 @@ interface RawImage {
 
 interface RawGiveaway {
   giveaway_id: string;
-  item_name: string;
+  item_id: number | null;
+  item_name: string | null;
   description: string | null;
   pickup_location: string;
   giver_id: number;
@@ -133,6 +134,7 @@ function toGiveawayStatus(raw: string | null): GiveawayStatus {
 function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
   return {
     giveaway_id: numFromLabel(raw.giveaway_id),
+    item_id: raw.item_id,
     item_name: raw.item_name,
     description: raw.description,
     pickup_location: raw.pickup_location,
@@ -213,7 +215,9 @@ function toRecipientRow(raw: RawRecipient): RecipientRow {
  * ------------------------------------------------------------------ */
 
 export interface CreateGiveawayInput {
-  item_name: string;
+  item_id: number;
+  /** Optional fallback label — the linked item's own name is authoritative. */
+  item_name?: string;
   quantity: number;
   description?: string;
   pickup_location: string;

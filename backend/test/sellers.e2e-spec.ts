@@ -112,8 +112,7 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
           name: `Book ${type}`,
           category: 'Books',
           condition: 'Good',
-          status: 'Listed',
-          post: {
+          posts: {
             create: {
               postType: type,
               price,
@@ -122,9 +121,9 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
             },
           },
         },
-        include: { post: true },
+        include: { posts: true },
       });
-      available.push(item.post!.postId);
+      available.push(item.posts[0].postId);
     }
   });
   afterAll(async () => {
@@ -323,9 +322,9 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
     const trade = await prisma.post.findUniqueOrThrow({
       where: { postId: available[2] },
     });
-    await prisma.item.update({
-      where: { itemId: trade.itemId },
-      data: { status: 'Unlisted' },
+    await prisma.post.update({
+      where: { postId: trade.postId },
+      data: { status: 'Inactive' },
     });
     expect((await sellers.profile(seller)).active_listing_count).toBe(0);
     expect((await sellers.listings(seller, {})).meta.total).toBe(0);
@@ -336,9 +335,15 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
     });
     expect((await sellers.profile(seller)).active_listing_count).toBe(1);
     expect((await sellers.listings(seller, {})).meta.total).toBe(1);
+    // Restoring the post's own status doesn't matter once the item itself is
+    // soft-deleted — item.deletedAt alone is enough to keep it excluded.
+    await prisma.post.update({
+      where: { postId: trade.postId },
+      data: { status: 'Active' },
+    });
     await prisma.item.update({
       where: { itemId: trade.itemId },
-      data: { status: 'Listed', deletedAt: new Date() },
+      data: { deletedAt: new Date() },
     });
     expect((await sellers.listings(seller, {})).meta.total).toBe(1);
   });

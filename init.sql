@@ -64,13 +64,15 @@ CREATE TABLE "Item_Image" (
 -- 4. Post Table
 CREATE TABLE "Post" (
     "post_id" SERIAL PRIMARY KEY,
-    "item_id" INTEGER UNIQUE NOT NULL REFERENCES "Item"("item_id"),
+    "item_id" INTEGER NOT NULL REFERENCES "Item"("item_id"),
     "deleted_at" TIMESTAMP,
     "post_type" VARCHAR(20) NOT NULL CHECK("post_type" IN ('SellOnly', 'TradeOnly', 'Both')),
     "post_status" VARCHAR(20) DEFAULT 'Active' CHECK("post_status" IN ('Active', 'Inactive')),
     "price" DECIMAL(10,2) NOT NULL CHECK("price" >= 0),
     "quantity_total" INTEGER NOT NULL DEFAULT 1 CHECK ("quantity_total" > 0),
     "quantity_remaining" INTEGER NOT NULL DEFAULT 1 CHECK ("quantity_remaining" >= 0),
+    "description" TEXT,
+    "wanted_item_offer" TEXT,
     "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -158,7 +160,8 @@ CREATE TABLE "Appointment_Card" (
 -- 10. Giveaway_Post Table
 CREATE TABLE "Giveaway_Post" (
     "giveaway_id" SERIAL PRIMARY KEY,
-    "item_name" VARCHAR(255) NOT NULL,
+    "item_id" INTEGER REFERENCES "Item"("item_id"),
+    "item_name" VARCHAR(255),
     "quantity" INTEGER NOT NULL DEFAULT 1 CHECK("quantity" > 0),
     "description" TEXT,
     "pickup_location" VARCHAR(255) NOT NULL,

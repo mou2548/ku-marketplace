@@ -64,7 +64,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           variant="secondary"
           block
           className="lg:w-auto"
-          href={`/inventory/${post.item_id}/list`}
+          href={`/inventory/${post.item_id}/list/${post.post_id}`}
         >{t("inventory.editListing")}</LinkButton>
       </div>
     );

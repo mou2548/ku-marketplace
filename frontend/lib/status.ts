@@ -162,15 +162,33 @@ export const OFFER_STATUS: Record<OfferStatus, StatusPresentation> = {
  * Item + Post
  * ------------------------------------------------------------------ */
 
-export type ItemStatus = "Unlisted" | "Listed" | "Transferred";
-
-export const ITEM_STATUS: Record<ItemStatus, StatusPresentation> = {
-  // The schema's own word. "Not listed" read as a state nobody recognised
-  // next to the two the spec actually names.
-  Unlisted: { tone: "neutral", labelKey: "item.Unlisted.label", icon: "Package" },
-  Listed: { tone: "info", labelKey: "item.Listed.label", icon: "Store" },
-  Transferred: { tone: "success", labelKey: "item.Transferred.label", icon: "PackageCheck" },
+/**
+ * An item can now back several open channels at once (a sale post and a
+ * trade post together, say), so there is no single "Unlisted"/"Listed"
+ * state to name any more — only whether anything is still open at all.
+ * `Transferred` survives as the one terminal state: every unit has actually
+ * moved (sold, traded, or handed over via a giveaway), nothing left open.
+ */
+export const ITEM_TRANSFERRED_STATUS: StatusPresentation = {
+  tone: "success",
+  labelKey: "item.Transferred.label",
+  icon: "PackageCheck",
 };
+
+/**
+ * True once every unit this item ever had is gone: sold, traded, or given
+ * away, with nothing left in an open channel. Derived from
+ * `ItemHistorySummary` rather than a stored field — see
+ * docs/design/api-gaps.md for the one edge case this doesn't catch (a
+ * closed-but-not-fully-claimed giveaway won't appear in `channels`, so it
+ * won't register as fully transferred; the safe direction to be wrong in).
+ */
+export function isItemTransferred(summary: {
+  available_quantity: number;
+  channels: unknown[];
+}): boolean {
+  return summary.available_quantity === 0 && summary.channels.length === 0;
+}
 
 export type PostType = "SellOnly" | "TradeOnly" | "Both";
 

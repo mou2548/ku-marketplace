@@ -244,12 +244,6 @@ const COPY: { [key: string]: CopyNode } = {
         }
       },
       "item": {
-        "Unlisted": {
-          "label": "Unlisted"
-        },
-        "Listed": {
-          "label": "Listed"
-        },
         "Transferred": {
           "label": "Handed over"
         }
@@ -638,14 +632,15 @@ const COPY: { [key: string]: CopyNode } = {
       "editListing": "Edit listing",
       "viewPublic": "View the public listing",
       "listIt": "List it on the market",
+      "addAnotherListing": "Add another listing",
       "notListed": "Private item",
       "privateItemHint": "Only you can see this item until you publish a listing.",
-      "listedHint": "This item is visible in the market and ready to receive buyers or offers.",
-      "unlistedHint": "Keep it private, or publish it whenever you are ready.",
+      "available": "{count} still unlisted",
+      "noneAvailable": "Nothing left to list",
+      "given": "Given",
       "addedOn": "Added {date}",
       "details": "Details",
       "editDetails": "Edit details",
-      "handedOver": "This item has been handed over and is kept for your records only.",
       "theRest": "The rest of your stuff",
       "inYourStash": "In your stash",
       "category": "Category",
@@ -680,6 +675,8 @@ const COPY: { [key: string]: CopyNode } = {
       "both": "Buy it or trade for it. One post accepts both.",
       "price": "Price",
       "thb": "THB",
+      "quantity": "Quantity to list",
+      "quantityHint": "{count} still unlisted across the rest of your stock",
       "wantInTrade": "What do you want in trade",
       "wantPlaceholder": "e.g. Chemistry 1 textbook, or Calculus 2 notes",
       "wantHint": "Being specific filters out a lot of offers that miss the mark",

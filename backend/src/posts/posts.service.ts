@@ -11,6 +11,7 @@ import {
   MEMBERSHIP_CONFIG,
   type MembershipTier,
 } from '../common/constants/membership.constant';
+import { getItemAvailability } from '../items/item-availability';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreatePostPayload {
@@ -18,11 +19,19 @@ export interface CreatePostPayload {
   post_type?: string;
   price?: number;
   quantity_total?: number;
+  description?: string;
+  wanted_item_offer?: string;
 }
 
 export interface UpdatePostPayload {
   price?: number;
   post_type?: string;
+  /** Changing this restocks or reduces the channel — see updatePost's own
+   * validation: can't drop below what this channel already sold/traded, and
+   * an increase can't exceed the item's current available quantity. */
+  quantity_total?: number;
+  description?: string;
+  wanted_item_offer?: string;
 }
 
 export interface BuyPostPayload {
@@ -64,12 +73,13 @@ export class PostsService {
     price: { toNumber(): number };
     quantityTotal: number;
     quantityRemaining: number;
+    description?: string | null;
+    wantedItemOffer?: string | null;
     createdAt: Date | null;
     item: {
       itemId?: number;
       name: string;
       description: string | null;
-      status: string | null;
       category?: string;
       condition?: string;
       courseName?: string | null;
@@ -101,7 +111,10 @@ export class PostsService {
       post_type: post.postType,
       // Flat fields kept for backward compatibility with existing callers.
       item_name: item.name,
-      description: item.description,
+      // The channel's own listing description — distinct from item.description
+      // (the item's own facts, nested below, shared by every channel it backs).
+      description: post.description ?? null,
+      wanted_item_offer: post.wantedItemOffer ?? null,
       price: post.price.toNumber(),
       quantity_total: post.quantityTotal,
       quantity_available: post.quantityRemaining,
@@ -119,7 +132,6 @@ export class PostsService {
         category: item.category ?? null,
         condition: item.condition ?? null,
         description: item.description,
-        status: item.status,
         course_name: item.courseName ?? null,
         brand_model: item.brandModel ?? null,
         warranty_expiry: item.warrantyExpiry ?? null,
@@ -191,25 +203,13 @@ export class PostsService {
       if (!item) throw new NotFoundException('ไม่พบสินค้า');
       if (item.ownerId !== userId)
         throw new ForbiddenException('Only the owner can list this item');
-      if (item.deletedAt || item.status !== 'Unlisted')
+      if (item.deletedAt)
         throw new ConflictException('Item is not available for listing');
-      const existing = await tx.post.findUnique({ where: { itemId } });
-      if (existing && !existing.deletedAt)
-        throw new ConflictException('สินค้านี้มีโพสต์อยู่แล้ว');
-      if (quantity > item.quantity)
+      const { available } = await getItemAvailability(tx, itemId);
+      if (quantity > available)
         throw new BadRequestException(
-          'Listing quantity exceeds inventory quantity',
+          'Listing quantity exceeds available inventory quantity',
         );
-      if (
-        existing &&
-        (await tx.report.count({
-          where: { reportType: 'Post', targetId: existing.postId },
-        }))
-      ) {
-        throw new ConflictException(
-          'A reported listing must retain its original evidence',
-        );
-      }
       const reservedOffer = await tx.offerItem.findFirst({
         where: {
           itemId,
@@ -227,12 +227,22 @@ export class PostsService {
       if (reservedOffer)
         throw new ConflictException('Item is reserved for an accepted trade');
 
-      if (!existing) {
-        await tx.$queryRaw`SELECT "user_id" FROM "User" WHERE "user_id" = ${userId} FOR UPDATE`;
+      // §membership quota — charged once per item per month, not once per
+      // channel: an item that already has a post/relist this month doesn't
+      // pay again to open a 2nd or 3rd channel in the same month.
+      await tx.$queryRaw`SELECT "user_id" FROM "User" WHERE "user_id" = ${userId} FOR UPDATE`;
+      const now = new Date();
+      const monthStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+      );
+      const chargedThisMonth = await tx.post.findFirst({
+        where: { itemId, createdAt: { gte: monthStart } },
+        select: { postId: true },
+      });
+      if (!chargedThisMonth) {
         const subscription = await tx.subscription.findFirst({
           where: { userId },
         });
-        const now = new Date();
         const tier: MembershipTier =
           subscription?.status === 'Active' &&
           subscription.endDate &&
@@ -241,31 +251,31 @@ export class PostsService {
             : 'Free';
         const quota =
           MEMBERSHIP_CONFIG[tier]?.postQuota ?? (tier === 'Diamond' ? null : 3);
-        const monthStart = new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-        );
-        const used = await tx.post.count({
-          where: { item: { ownerId: userId }, createdAt: { gte: monthStart } },
-        });
-        if (quota !== null && used >= quota)
-          throw new ForbiddenException('Monthly listing quota reached');
+        if (quota !== null) {
+          const itemsChargedThisMonth = await tx.post.groupBy({
+            by: ['itemId'],
+            where: {
+              item: { ownerId: userId },
+              createdAt: { gte: monthStart },
+            },
+          });
+          if (itemsChargedThisMonth.length >= quota)
+            throw new ForbiddenException('Monthly listing quota reached');
+        }
       }
 
-      const data = {
-        itemId,
-        postType,
-        price,
-        quantityTotal: quantity,
-        quantityRemaining: quantity,
-        status: 'Active',
-        deletedAt: null,
-      };
-      const created = existing
-        ? await tx.post.update({ where: { postId: existing.postId }, data })
-        : await tx.post.create({ data });
-      await tx.item.update({
-        where: { itemId },
-        data: { status: 'Listed' },
+      const created = await tx.post.create({
+        data: {
+          itemId,
+          postType,
+          price,
+          quantityTotal: quantity,
+          quantityRemaining: quantity,
+          status: 'Active',
+          deletedAt: null,
+          description: payload.description || null,
+          wantedItemOffer: payload.wanted_item_offer || null,
+        },
       });
       return { ...created, item };
     });
@@ -289,7 +299,12 @@ export class PostsService {
               orderBy: { displayOrder: 'asc' },
             },
             owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
+              select: {
+                userId: true,
+                firstNameEn: true,
+                lastNameEn: true,
+                emailVerifiedAt: true,
+              },
             },
           },
         },
@@ -313,7 +328,12 @@ export class PostsService {
               orderBy: { displayOrder: 'asc' },
             },
             owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
+              select: {
+                userId: true,
+                firstNameEn: true,
+                lastNameEn: true,
+                emailVerifiedAt: true,
+              },
             },
           },
         },
@@ -324,7 +344,13 @@ export class PostsService {
   }
 
   async updatePost(postId: string, payload: UpdatePostPayload, userId: number) {
-    if (payload.price === undefined && payload.post_type === undefined) {
+    if (
+      payload.price === undefined &&
+      payload.post_type === undefined &&
+      payload.quantity_total === undefined &&
+      payload.description === undefined &&
+      payload.wanted_item_offer === undefined
+    ) {
       throw new BadRequestException('ไม่มีข้อมูลที่จะแก้ไข');
     }
     if (
@@ -341,25 +367,78 @@ export class PostsService {
         'post_type ต้องเป็น SellOnly, TradeOnly หรือ Both',
       );
     }
+    if (
+      payload.quantity_total !== undefined &&
+      (!Number.isInteger(payload.quantity_total) || payload.quantity_total < 1)
+    ) {
+      throw new BadRequestException(
+        'quantity_total ต้องเป็นจำนวนเต็มที่มากกว่า 0',
+      );
+    }
     await this.requirePostOwner(postId, userId);
     const id = this.id(postId, 'post');
-    const found = await this.prisma.post.findUnique({
-      where: { postId: id, deletedAt: null },
+
+    const post = await this.prisma.$transaction(async (tx) => {
+      const found = await tx.post.findUnique({
+        where: { postId: id, deletedAt: null },
+      });
+      if (!found) throw new NotFoundException('ไม่พบโพสต์');
+
+      let quantityTotal = found.quantityTotal;
+      let quantityRemaining = found.quantityRemaining;
+      // §restock/reduce — changing quantity_total on an existing channel.
+      // Locked the same way createPost locks the item before recomputing
+      // availability, since two concurrent restocks on the same item could
+      // otherwise both read the same "room left" figure and overcommit it.
+      if (
+        payload.quantity_total !== undefined &&
+        payload.quantity_total !== found.quantityTotal
+      ) {
+        await tx.$queryRaw`SELECT "item_id" FROM "Item" WHERE "item_id" = ${found.itemId} FOR UPDATE`;
+        const sold = found.quantityTotal - found.quantityRemaining;
+        if (payload.quantity_total < sold) {
+          throw new BadRequestException(
+            `ลดจำนวนได้ต่ำสุด ${sold} ชิ้น เพราะขายหรือแลกไปแล้วเท่านั้นในโพสต์นี้`,
+          );
+        }
+        const delta = payload.quantity_total - found.quantityTotal;
+        if (delta > 0) {
+          const { available } = await getItemAvailability(tx, found.itemId);
+          if (delta > available) {
+            throw new BadRequestException(
+              'เพิ่มจำนวนเกินกว่าสต็อกที่เหลืออยู่ของสินค้านี้',
+            );
+          }
+        }
+        quantityTotal = payload.quantity_total;
+        quantityRemaining = found.quantityRemaining + delta;
+      }
+
+      return tx.post.update({
+        where: { postId: id },
+        data: {
+          ...(payload.price !== undefined && { price: payload.price }),
+          ...(payload.post_type !== undefined && {
+            postType: payload.post_type,
+          }),
+          ...(payload.description !== undefined && {
+            description: payload.description || null,
+          }),
+          ...(payload.wanted_item_offer !== undefined && {
+            wantedItemOffer: payload.wanted_item_offer || null,
+          }),
+          quantityTotal,
+          quantityRemaining,
+        },
+      });
     });
-    if (!found) throw new NotFoundException('ไม่พบโพสต์');
-    const post = await this.prisma.post.update({
-      where: { postId: id },
-      data: {
-        ...(payload.price !== undefined && { price: payload.price }),
-        ...(payload.post_type !== undefined && {
-          postType: payload.post_type,
-        }),
-      },
-    });
+
     return {
       post_id: this.label('post', post.postId),
       price: post.price.toNumber(),
       post_type: post.postType,
+      quantity_total: post.quantityTotal,
+      quantity_remaining: post.quantityRemaining,
     };
   }
 
@@ -393,16 +472,10 @@ export class PostsService {
     // in-progress investigation, so this marks it gone without removing the
     // row. findAllPosts/getPostById both filter deletedAt: null already, so
     // it disappears from the public API immediately.
-    await this.prisma.$transaction([
-      this.prisma.post.update({
-        where: { postId: id },
-        data: { status: 'Inactive', deletedAt: new Date() },
-      }),
-      this.prisma.item.update({
-        where: { itemId: post.itemId },
-        data: { status: 'Unlisted' },
-      }),
-    ]);
+    await this.prisma.post.update({
+      where: { postId: id },
+      data: { status: 'Inactive', deletedAt: new Date() },
+    });
     return {
       post_id: this.label('post', id),
       deleted: true,
@@ -438,7 +511,12 @@ export class PostsService {
                 orderBy: { displayOrder: 'asc' },
               },
               owner: {
-                select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
+                select: {
+                  userId: true,
+                  firstNameEn: true,
+                  lastNameEn: true,
+                  emailVerifiedAt: true,
+                },
               },
             },
           },
@@ -530,7 +608,13 @@ export class PostsService {
               orderBy: { displayOrder: 'asc' },
             },
             owner: {
-              select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true, status: true },
+              select: {
+                userId: true,
+                firstNameEn: true,
+                lastNameEn: true,
+                emailVerifiedAt: true,
+                status: true,
+              },
             },
           },
         },
@@ -544,8 +628,7 @@ export class PostsService {
       post.item.owner.status !== 'Active' ||
       post.status !== 'Active' ||
       post.quantityRemaining < 1 ||
-      post.item.deletedAt ||
-      post.item.status !== 'Listed'
+      post.item.deletedAt
     ) {
       throw new ConflictException(
         'Post is unavailable or stock is insufficient',
@@ -563,7 +646,7 @@ export class PostsService {
     }
     const items = await this.prisma.item.findMany({
       where: { itemId: { in: itemIds } },
-      select: { itemId: true, ownerId: true, status: true, deletedAt: true },
+      select: { itemId: true, ownerId: true, quantity: true, deletedAt: true },
     });
     if (items.length !== itemIds.length)
       throw new NotFoundException('ไม่พบสินค้าที่ใช้เสนอแลกบางรายการ');
@@ -572,7 +655,17 @@ export class PostsService {
         'สินค้าที่ใช้เสนอแลกต้องเป็นของผู้เสนอเท่านั้น',
       );
     }
-    if (items.some((item) => item.status !== 'Unlisted' || item.deletedAt)) {
+    if (items.some((item) => item.deletedAt)) {
+      throw new ConflictException('An offered item is no longer available');
+    }
+    const itemAvailabilities = await Promise.all(
+      items.map((item) => getItemAvailability(this.prisma, item.itemId)),
+    );
+    if (
+      items.some(
+        (item, index) => itemAvailabilities[index].available !== item.quantity,
+      )
+    ) {
       throw new ConflictException('An offered item is no longer available');
     }
     const reservedItem = await this.prisma.offerItem.findFirst({
@@ -668,9 +761,17 @@ export class PostsService {
         include: { post: { include: { item: true } }, items: true },
       });
       if (!offer) throw new NotFoundException('ไม่พบ offer');
-      if (!await tx.post.count({ where: { postId: postPk, AND: publicListing() } }))
+      if (
+        !(await tx.post.count({
+          where: { postId: postPk, AND: publicListing() },
+        }))
+      )
         throw new ConflictException('Post is unavailable');
-      if (!await tx.user.count({ where: { userId: offer.proposerId, status: 'Active' } }))
+      if (
+        !(await tx.user.count({
+          where: { userId: offer.proposerId, status: 'Active' },
+        }))
+      )
         throw new ConflictException('Proposer unavailable');
       if (offer.status !== 'Pending')
         throw new ConflictException('offer นี้ไม่ได้อยู่ในสถานะ Pending');
@@ -693,15 +794,24 @@ export class PostsService {
       await tx.$queryRaw(
         Prisma.sql`SELECT "item_id" FROM "Item" WHERE "item_id" IN (${Prisma.join(offeredIds)}) ORDER BY "item_id" FOR UPDATE`,
       );
-      const available = await tx.item.count({
+      const offeredItems = await tx.item.findMany({
         where: {
           itemId: { in: offeredIds },
           ownerId: offer.proposerId,
-          status: 'Unlisted',
           deletedAt: null,
         },
+        select: { itemId: true, quantity: true },
       });
-      if (available !== offeredIds.length)
+      if (offeredItems.length !== offeredIds.length)
+        throw new ConflictException('An offered item is no longer available');
+      const offeredAvailabilities = await Promise.all(
+        offeredItems.map((item) => getItemAvailability(tx, item.itemId)),
+      );
+      const allFullyAvailable = offeredItems.every(
+        (item, index) =>
+          offeredAvailabilities[index].available === item.quantity,
+      );
+      if (!allFullyAvailable)
         throw new ConflictException('An offered item is no longer available');
       const reservedItem = await tx.offerItem.findFirst({
         where: {
@@ -822,7 +932,12 @@ export class PostsService {
           orderBy: { displayOrder: 'asc' },
         },
         owner: {
-          select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
+          select: {
+            userId: true,
+            firstNameEn: true,
+            lastNameEn: true,
+            emailVerifiedAt: true,
+          },
         },
       },
     } as const;
@@ -833,7 +948,12 @@ export class PostsService {
       },
       include: {
         proposer: {
-          select: { userId: true, firstNameEn: true, lastNameEn: true, emailVerifiedAt: true },
+          select: {
+            userId: true,
+            firstNameEn: true,
+            lastNameEn: true,
+            emailVerifiedAt: true,
+          },
         },
         items: { include: { item: includeItem } },
         post: { include: { item: includeItem } },
@@ -873,7 +993,6 @@ export class PostsService {
     ownerId: number;
     name: string;
     description: string | null;
-    status: string | null;
     category: string;
     condition: string;
     courseName: string | null;
@@ -897,7 +1016,6 @@ export class PostsService {
       category: item.category,
       condition: item.condition,
       description: item.description,
-      status: item.status,
       course_name: item.courseName,
       brand_model: item.brandModel,
       warranty_expiry: item.warrantyExpiry,

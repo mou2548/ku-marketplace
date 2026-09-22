@@ -8,7 +8,7 @@ import {
   parseDate,
   type DateValue,
 } from "@internationalized/date";
-import { ImagePlus, Save, X } from "lucide-react";
+import { ImagePlus, Save, Trash2, X } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button } from "@/components/kit/button";
@@ -18,6 +18,7 @@ import {
   SelectField,
   SelectOption,
 } from "@/components/kit/choice";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
@@ -25,7 +26,7 @@ import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
-import { saveItemEdits, saveNewItem } from "@/lib/actions/items";
+import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { ItemPayload } from "@/lib/api/items";
 import type { Item, ItemCategory } from "@/lib/api/types";
@@ -399,6 +400,27 @@ export function ItemForm({
         placeholder={t("inventory.descHint")}
         rows={5}
       />
+
+      {mode === "edit" && item ? (
+        <div className="flex justify-end">
+          <ConfirmButton
+            title="Delete this item?"
+            description="This removes it from your inventory for good. Only possible while nothing of it is committed to a listing or a giveaway — unlist everything first if this is blocked."
+            confirmLabel="Delete item"
+            doneMessage="Item deleted."
+            icon={<Trash2 className="size-4" />}
+            onConfirm={() => removeItem(item.item_id)}
+            onDone={() => router.push("/inventory")}
+            trigger={
+              <>
+                <Trash2 className="size-4" />
+                Delete item
+              </>
+            }
+            triggerProps={{ variant: "ghost", size: "sm" }}
+          />
+        </div>
+      ) : null}
 
       <ActionBar>
         <Button
