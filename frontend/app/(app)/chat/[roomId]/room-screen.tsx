@@ -413,6 +413,29 @@ export function RoomScreen({
   }
 
   /**
+   * `act()` swallows its own errors (shows a toast, does not rethrow) — fine
+   * for every other control here, which has no further use for the failure.
+   * `SlipUploader` (`slip.tsx`) is different: its own `send()` awaits
+   * `onUpload` and depends on the rejection to keep the pending file and
+   * show its own inline "try again" state instead of clearing the preview.
+   * Routing the slip upload through `act()` meant that state never fired —
+   * every failed upload (a real backend error, a dropped connection, an
+   * expired session) still showed "Slip sent" with the preview intact, since
+   * `act()` had already turned the rejection into a toast and a normal
+   * return before `SlipUploader` ever saw it.
+   */
+  async function uploadAndRefresh(call: () => Promise<unknown>, message: string) {
+    await call();
+    toast.success(message);
+    markRoomActive(summary.room_id);
+    if (pathname !== `/chat/${summary.room_id}`) {
+      router.replace(`/chat/${summary.room_id}`);
+    } else {
+      router.refresh();
+    }
+  }
+
+  /**
    * Uploading a slip also drops it into the conversation.
    *
    * The deal panel is the record, but nobody looks there first: the habit this
@@ -575,7 +598,7 @@ export function RoomScreen({
       return <ActionCard title="Return and refund">
         <div className="flex flex-col gap-3">
           {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => act(() => uploadSlip("refund", file), "Refund slip uploaded", "Could not upload refund slip")} /> :
+            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => uploadAndRefresh(() => uploadSlip("refund", file), "Refund slip uploaded")} /> :
             transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
@@ -622,10 +645,9 @@ export function RoomScreen({
               isUploaded={!!transaction.slip_image_url}
               uploadedAt={transaction.payment_confirmed_by_buyer_at}
               onUpload={(file) =>
-                act(
+                uploadAndRefresh(
                   () => uploadSlip("payment", file),
                   "Slip uploaded. Waiting on the seller.",
-                  "Could not upload the slip",
                 )
               }
             />
