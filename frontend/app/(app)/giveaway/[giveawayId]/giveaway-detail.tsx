@@ -52,7 +52,13 @@ export function GiveawayDetail({
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
 
-  const now = useNow(30_000);
+  // 1s, not the 30s default elsewhere on this screen's countdowns: `canDraw`
+  // below is a boolean gate, not a display, and "End registration now" moves
+  // `register_deadline` into the past via a `router.refresh()` — with a
+  // coarser bucket, this `now` could still read as "before" that new
+  // deadline for up to 30s after the refresh, leaving the button looking
+  // stuck even though the server has already closed registration.
+  const now = useNow(1_000);
   const known = now !== UNKNOWN_TIME;
   const registerStartMs = giveaway.register_start
     ? Date.parse(giveaway.register_start)

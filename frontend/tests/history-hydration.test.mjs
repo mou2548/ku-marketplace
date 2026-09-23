@@ -42,6 +42,7 @@ function history(DateClass) {
     '@/lib/inbox': { deadlineFor: () => null },
     '@/lib/status': {
       TRANSACTION_STATUS: presentation, TICKET_STATUS: presentation,
+      transactionStatusPresentation: () => ({ labelKey: 'pending' }),
       resolveTransactionActor: () => ({ actor: 'seller', labelKey: 'waiting' }),
     },
     '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },

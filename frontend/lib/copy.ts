@@ -26,6 +26,10 @@ const COPY: { [key: string]: CopyNode } = {
           "label": "Awaiting payment",
           "hint": "The buyer has not uploaded a transfer slip yet"
         },
+        "PendingTrade": {
+          "label": "Deal agreed",
+          "hint": "Arranging the handover — no payment involved"
+        },
         "Processing": {
           "label": "In progress",
           "hint": "Payment confirmed, waiting on handover"

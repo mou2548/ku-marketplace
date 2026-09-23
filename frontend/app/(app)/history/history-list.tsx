@@ -19,6 +19,7 @@ import {
   resolveTransactionActor,
   TICKET_STATUS,
   TRANSACTION_STATUS,
+  transactionStatusPresentation,
   type PromptAction,
   type TransactionStatus,
 } from "@/lib/status";
@@ -262,7 +263,7 @@ function DealRow({ tx, viewerId }: { tx: HistoryTransaction; viewerId: number })
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {deadline ? <CountdownPill deadline={deadline} /> : null}
-            <StatusBadge status={TRANSACTION_STATUS[tx.status]} size="sm" />
+            <StatusBadge status={transactionStatusPresentation(tx)} size="sm" />
           </div>
         </div>
 

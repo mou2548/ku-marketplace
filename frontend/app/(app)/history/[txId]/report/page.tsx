@@ -10,7 +10,7 @@ import { getTransaction } from "@/lib/api/transactions";
 import { getAccessToken } from "@/lib/api/session";
 import { getMe } from "@/lib/api/users";
 import { deadlineFor } from "@/lib/inbox";
-import { canReport, requiresPayment, TRANSACTION_STATUS } from "@/lib/status";
+import { canReport, requiresPayment, transactionStatusPresentation } from "@/lib/status";
 
 import { ReportForm } from "./report-form";
 
@@ -75,7 +75,7 @@ export default async function ReportPage({
       </Link>
 
       <StatusBadge
-        status={TRANSACTION_STATUS[tx.status]}
+        status={transactionStatusPresentation(tx)}
         size="sm"
         className="w-fit"
       />

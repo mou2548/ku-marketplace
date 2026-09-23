@@ -86,7 +86,7 @@ import {
   ENTRANT_STATUS,
   requiresPayment,
   resolveTransactionActor,
-  TRANSACTION_STATUS,
+  transactionStatusPresentation,
   type ActorPrompt,
   type Deadline,
   type Party,
@@ -420,20 +420,24 @@ export function RoomScreen({
    * `router.refresh()` re-runs the server component that fetched the
    * transaction, so the stepper, the prompt and the pinned card all move on
    * the answer rather than on the toast.
+   *
+   * Returns whether `call` succeeded, so a caller that owns its own dialog
+   * (e.g. the cancellation request below) can close it on success and leave
+   * it open — with the toast's error still visible — on failure.
    */
   async function act(
     call: () => Promise<unknown>,
     message: string,
     failure: string,
     next?: string,
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     try {
       await call();
     } catch (err) {
       setBusy(false);
       toast.error(err instanceof Error ? err.message : failure);
-      return;
+      return false;
     }
     setBusy(false);
     toast.success(message);
@@ -452,6 +456,7 @@ export function RoomScreen({
     } else {
       router.refresh();
     }
+    return true;
   }
 
   /**
@@ -826,13 +831,13 @@ export function RoomScreen({
               slipUrl={transaction.refund_slip_url}
               isUploaded={!!transaction.refund_slip_url}
               uploadedAt={transaction.refund_submitted_at}
-              onUpload={(file) =>
-                act(
+              onUpload={async (file) => {
+                await act(
                   () => uploadSlip("refund", file),
                   "Refund slip uploaded",
                   "Could not upload the refund slip",
-                )
-              }
+                );
+              }}
             />
           </ActionCard>
         );
@@ -1243,7 +1248,7 @@ function DealDetails({
   deadline?: Deadline;
   reportable: boolean;
   busy: boolean;
-  onCancel: (reason: string) => void;
+  onCancel: (reason: string) => Promise<boolean>;
 }) {
   const t = getCopy();
   const st = useStatusText();
@@ -1251,6 +1256,12 @@ function DealDetails({
   // rejected cancellation flips dispute_status to under_review immediately, so
   // this text is the only context the admin who picks it up will have.
   const [cancelReason, setCancelReason] = useState("");
+  // Controlled rather than `OverlayTrigger`'s own uncontrolled open state,
+  // because closing on success has to wait for `onCancel` to resolve — an
+  // uncontrolled dialog has no "close only if this succeeded" hook, which is
+  // exactly why this one used to stay open (looking stuck) after a
+  // successful submit.
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
@@ -1263,7 +1274,7 @@ function DealDetails({
             {transaction.post.item.name}
           </Link>
           <StatusBadge
-            status={TRANSACTION_STATUS[transaction.status]}
+            status={transactionStatusPresentation(transaction)}
             size="sm"
             className="w-fit"
           />
@@ -1330,21 +1341,26 @@ function DealDetails({
 
           {transaction.status === "Pending" ||
           transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by) ? (
-            <OverlayTrigger>
-              <Button variant="ghost" size="sm">
+            <>
+              <Button variant="ghost" size="sm" onPress={() => setCancelOpen(true)}>
                 <XCircle className="size-4" />{transaction.status === "Completed" ? "Request return (within 7 days)" : t("deal.requestCancellation")}</Button>
               <Overlay
+                isOpen={cancelOpen}
+                onOpenChange={setCancelOpen}
                 isBusy={busy}
                 title={transaction.status === "Completed" ? "Request a return" : t("deal.cancelTitle")}
                 description={transaction.status === "Completed" ? "Explain the reason. The other party must respond before goods or money are returned." : t("deal.cancelBody")}
                 footer={
                   <>
-                    <Button variant="ghost" slot="close">{t("deal.keepDeal")}</Button>
+                    <Button variant="ghost" slot="close" isDisabled={busy}>{t("deal.keepDeal")}</Button>
                     <Button
                       variant="danger"
                       isLoading={busy}
                       isDisabled={!cancelReason.trim()}
-                      onPress={() => onCancel(cancelReason.trim())}
+                      onPress={async () => {
+                        const ok = await onCancel(cancelReason.trim());
+                        if (ok) setCancelOpen(false);
+                      }}
                     >{t("deal.sendCancelRequest")}</Button>
                   </>
                 }
@@ -1358,7 +1374,7 @@ function DealDetails({
                   hint={t("deal.reasonHint")}
                 />
               </Overlay>
-            </OverlayTrigger>
+            </>
           ) : null}
         </div>
       </div>

@@ -605,6 +605,28 @@ export function requiresPayment(tx: TransactionLike): boolean {
   return (tx.additional_money ?? 0) > 0;
 }
 
+/**
+ * `TRANSACTION_STATUS.Pending`'s copy ("Awaiting payment" / "the buyer has
+ * not uploaded a transfer slip yet") assumes a paid sale — wrong for a
+ * cash-free trade, which has no slip step at all. Every other status's copy
+ * already reads correctly regardless of payment, so only this one needs a
+ * second version; every caller that renders a transaction's status badge
+ * should use this instead of indexing `TRANSACTION_STATUS` directly.
+ */
+export function transactionStatusPresentation(
+  tx: TransactionLike,
+): StatusPresentation {
+  if (tx.status === "Pending" && !requiresPayment(tx)) {
+    return {
+      tone: "warning",
+      labelKey: "transaction.PendingTrade.label",
+      icon: "Handshake",
+      hintKey: "transaction.PendingTrade.hint",
+    };
+  }
+  return TRANSACTION_STATUS[tx.status];
+}
+
 export function resolveTransactionActor(
   tx: TransactionLike,
   viewer: Party,

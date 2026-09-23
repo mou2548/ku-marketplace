@@ -58,7 +58,13 @@ export function ManageGiveaway({
   const registerEndMs = giveaway.register_deadline
     ? Date.parse(giveaway.register_deadline)
     : null;
-  const now = useNow(30_000);
+  // 1s, not the 30s default elsewhere: `canSelect` is a boolean gate, not a
+  // display, and "End registration now" moves `register_deadline` into the
+  // past via a `router.refresh()` — with a coarser bucket this `now` could
+  // still read as "before" that new deadline for up to 30s after the
+  // refresh, leaving the button looking stuck even though the server has
+  // already closed registration.
+  const now = useNow(1_000);
   // The backend refuses to select before the deadline no matter what — this
   // only mirrors that so the button doesn't invite a dead click.
   const canSelect = now !== UNKNOWN_TIME && registerEndMs !== null && now >= registerEndMs;
