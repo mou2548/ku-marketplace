@@ -484,7 +484,7 @@ export function PostComposer({
               />
 
               <TextInput
-                label="Maximum recipients"
+                label={method === "FirstCome" ? "Maximum recipients" : "Items to give away"}
                 value={giveawayQuantity}
                 onChange={(value) =>
                   setGiveawayQuantity(value.replace(/\D/g, ""))
@@ -493,9 +493,13 @@ export function PostComposer({
                 isRequired
                 icon={<Users className="size-4" />}
                 hint={
-                  pickedItems[0]
-                    ? `Up to ${available(pickedItems[0])} unlisted on this item`
-                    : "The number of people who can receive this giveaway"
+                  method === "FirstCome"
+                    ? pickedItems[0]
+                      ? `Up to ${available(pickedItems[0])} unlisted on this item. Registration closes once this many people have joined.`
+                      : "The number of people who can receive this giveaway"
+                    : pickedItems[0]
+                      ? `Up to ${available(pickedItems[0])} unlisted on this item. Anyone can register; this many are chosen when registration closes.`
+                      : "How many you're giving away. Anyone can register; this many are chosen when registration closes."
                 }
               />
 

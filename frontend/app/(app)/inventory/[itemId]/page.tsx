@@ -2,7 +2,7 @@ import { formatDate } from "@/lib/date-format";
 import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowLeftRight, CalendarDays, Eye, Gift, Pencil, Plus, Store, Tag, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, CalendarDays, Clock, Eye, Gift, Pencil, Plus, Store, Tag, XCircle } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { ConfirmButton } from "@/components/kit/confirm-button";
@@ -10,6 +10,7 @@ import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { TONE_CHIP } from "@/components/kit/tone";
 import { ProductGallery } from "@/components/market/product-gallery";
 import { unlistListing } from "@/lib/actions/posts";
 import { getItem, getItemHistorySummary, getMyItems } from "@/lib/api/items";
@@ -17,6 +18,7 @@ import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 import type { Item } from "@/lib/api/types";
 import { ITEM_CONDITION, ITEM_TRANSFERRED_STATUS, isItemTransferred } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 /** Owner-facing counterpart of the market detail: photo, facts, then action. */
 export default async function ItemDetailPage({
@@ -61,6 +63,12 @@ export default async function ItemDetailPage({
       isPubliclyVisible: postById.has(channel.post_id),
       price: postById.get(channel.post_id)?.price ?? null,
     }));
+  // A giveaway is also a channel — it used to be silently dropped here, so
+  // an item entirely given away read as "Not listed" with no way back to it.
+  const giveawayChannels = (summary?.channels ?? []).filter(
+    (channel) => channel.type === "giveaway",
+  );
+  const hasOpenChannel = channels.length > 0 || giveawayChannels.length > 0;
   const isTransferred = summary ? isItemTransferred(summary) : false;
   const available = summary?.available_quantity ?? item.quantity;
   const rarity = ITEM_CONDITION[item.condition];
@@ -103,7 +111,7 @@ export default async function ItemDetailPage({
           <Store aria-hidden className="size-4 text-ink-brand" />
           {isTransferred
             ? "Transferred"
-            : channels.length > 0
+            : hasOpenChannel
               ? t("inventory.onTheMarket")
               : t("inventory.notListed")}
         </span>
@@ -117,11 +125,43 @@ export default async function ItemDetailPage({
           </p>
         ) : (
           <>
-            {channels.length === 0 ? (
+            {!hasOpenChannel ? (
               <p className="text-body-sm text-ink-secondary">
                 {t("inventory.privateItemHint")}
               </p>
             ) : null}
+
+            {giveawayChannels.map((channel) => (
+              <Surface
+                key={`giveaway-${channel.giveaway_id}`}
+                shape="card"
+                elevation="flat"
+                className="flex flex-col gap-2 p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={cn(
+                      "inline-flex w-fit items-center gap-1 rounded-chip border px-2 py-0.5 text-[0.6875rem] leading-4 font-semibold",
+                      TONE_CHIP.trade,
+                    )}
+                  >
+                    <Gift aria-hidden className="size-3" />
+                    Giveaway
+                  </span>
+                  <span data-numeric className="text-meta text-ink-muted">
+                    {channel.quantity_total - channel.quantity_claimed} left
+                  </span>
+                </div>
+                <LinkButton
+                  size="sm"
+                  block
+                  href={`/giveaway/${channel.giveaway_id}`}
+                >
+                  <Gift className="size-4 shrink-0" />
+                  View giveaway
+                </LinkButton>
+              </Surface>
+            ))}
 
             {channels.map((channel) => (
               <Surface
@@ -186,15 +226,15 @@ export default async function ItemDetailPage({
               <LinkButton
                 size="lg"
                 block
-                variant={channels.length > 0 ? "secondary" : "primary"}
+                variant={hasOpenChannel ? "secondary" : "primary"}
                 href={`/inventory/${item.item_id}/list`}
               >
-                {channels.length > 0 ? (
+                {hasOpenChannel ? (
                   <Plus className="size-4" />
                 ) : (
                   <Tag className="size-4" />
                 )}
-                {channels.length > 0
+                {hasOpenChannel
                   ? t("inventory.addAnotherListing")
                   : t("inventory.listIt")}
               </LinkButton>
@@ -275,11 +315,16 @@ export default async function ItemDetailPage({
           <section>
             <h2 className="mb-3 text-h3">Item activity</h2>
             {summary ? (
-              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <ActivityMetric
                   icon={<Store className="size-4" />}
-                  label="Posted"
+                  label="Listed"
                   value={summary.posted_quantity}
+                />
+                <ActivityMetric
+                  icon={<Clock className="size-4" />}
+                  label="Ongoing"
+                  value={summary.ongoing_quantity}
                 />
                 <ActivityMetric
                   icon={<Tag className="size-4" />}

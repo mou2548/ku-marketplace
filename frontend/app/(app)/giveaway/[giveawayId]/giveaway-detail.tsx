@@ -65,6 +65,9 @@ export function GiveawayDetail({
   const pickupEndMs = giveaway.pickup_deadline
     ? Date.parse(giveaway.pickup_deadline)
     : null;
+  // The backend refuses to draw or select before the deadline no matter
+  // what — this only mirrors that so the button doesn't invite a dead click.
+  const canDraw = known && registerEndMs !== null && now >= registerEndMs;
 
   // Before registration opens, count down to opening; once open, count down
   // to the draw/close instead.
@@ -156,14 +159,20 @@ export function GiveawayDetail({
     ) : giveaway.allocation_method === "Random" ? (
       giveaway.status === "Active" ? (
         <div className="flex flex-col gap-2">
-          <Button size="lg" block isLoading={drawing} onPress={runDraw}>
+          <Button
+            size="lg"
+            block
+            isLoading={drawing}
+            isDisabled={!canDraw}
+            onPress={runDraw}
+          >
             <Dices className="size-5" />
             Run the draw
           </Button>
           <p className="text-caption leading-[1.6] text-ink-secondary">
-            Selects up to {giveaway.quantity} recipients and closes
-            registration. If registrations do not exceed that number, everyone
-            receives a place.
+            {canDraw
+              ? `Selects up to ${giveaway.quantity} recipients and closes registration. If registrations do not exceed that number, everyone receives a place.`
+              : `Available once registration closes${registerEndMs ? ` at ${formatDate(new Date(registerEndMs))}` : ""}. It can't be run early.`}
           </p>
         </div>
       ) : (
@@ -330,7 +339,9 @@ export function GiveawayDetail({
                 <span aria-hidden className="text-ink-disabled">
                   ·
                 </span>
-                {giveaway.quantity} {giveaway.quantity === 1 ? "spot" : "spots"} total
+                {giveaway.allocation_method === "FirstCome"
+                  ? `${giveaway.quantity} ${giveaway.quantity === 1 ? "spot" : "spots"} total`
+                  : `${giveaway.quantity} to be given away`}
               </p>
               {giveaway.allocation_method === "FirstCome" ? (
                 <p data-numeric className="text-caption text-ink-secondary">

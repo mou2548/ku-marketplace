@@ -4,7 +4,7 @@ import { getCopy } from "@/lib/copy";
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GridListItem, type Selection } from "react-aria-components";
-import { Check, CheckSquare, Package, Plus, Store, X } from "lucide-react";
+import { ArrowLeftRight, Check, CheckSquare, Gift, Package, Plus, Store, Tag, X } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -162,6 +162,13 @@ export function InventoryScreen({
             const rarity = ITEM_CONDITION[item.condition];
             const summary = summaries[item.item_id];
             const transferred = isTransferred(item);
+            const resolution = summary
+              ? ([
+                  { icon: Tag, label: "Sold", value: summary.sold_quantity },
+                  { icon: ArrowLeftRight, label: "Traded", value: summary.traded_quantity },
+                  { icon: Gift, label: t("inventory.given"), value: summary.given_quantity },
+                ] as const).filter((entry) => entry.value > 0)
+              : [];
             return (
               <GridListItem
                 id={slot.item_id}
@@ -219,39 +226,37 @@ export function InventoryScreen({
                       >
                         {statusText.of(rarity).label}
                       </span>
-                      {summary ? (
-                        <dl className="grid grid-cols-3 gap-x-1 gap-y-2 border-t border-line pt-2 text-center">
-                          <div>
-                            <dt className="text-meta text-ink-muted">Posted</dt>
-                            <dd data-numeric className="text-meta font-semibold">
+                      {transferred ? (
+                        resolution.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2">
+                            {resolution.map(({ icon: Icon, label, value }) => (
+                              <span key={label} className="flex items-center gap-1.5">
+                                <Icon aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+                                <span className="text-meta text-ink-muted">{label}</span>
+                                <span data-numeric className="text-body-sm font-semibold">
+                                  {value}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null
+                      ) : summary ? (
+                        <div className="flex flex-col gap-1 border-t border-line pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                          <span className="flex items-center gap-1.5">
+                            <Store aria-hidden className="size-3.5 shrink-0 text-ink-brand" />
+                            <span className="text-meta text-ink-muted">Listed</span>
+                            <span data-numeric className="text-body-sm font-semibold text-ink-brand">
                               {summary.posted_quantity}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-meta text-ink-muted">Sold</dt>
-                            <dd data-numeric className="text-meta font-semibold">
-                              {summary.sold_quantity}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-meta text-ink-muted">Traded</dt>
-                            <dd data-numeric className="text-meta font-semibold">
-                              {summary.traded_quantity}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-meta text-ink-muted">{t("inventory.given")}</dt>
-                            <dd data-numeric className="text-meta font-semibold">
-                              {summary.given_quantity}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-meta text-ink-muted">Unlisted</dt>
-                            <dd data-numeric className="text-meta font-semibold">
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Package aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+                            <span className="text-meta text-ink-muted">Unlisted</span>
+                            <span data-numeric className="text-body-sm font-semibold">
                               {summary.available_quantity}
-                            </dd>
-                          </div>
-                        </dl>
+                            </span>
+                          </span>
+                        </div>
                       ) : (
                         <p className="border-t border-line pt-2 text-meta text-ink-muted">
                           History unavailable

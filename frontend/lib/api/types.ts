@@ -119,6 +119,8 @@ export interface ItemHistorySummary {
   available_quantity: number;
   sold_quantity: number;
   traded_quantity: number;
+  /** Reserved by a deal that hasn't completed yet — not free, not history. */
+  ongoing_quantity: number;
   /** How many units have actually been handed over via a giveaway. */
   given_quantity: number;
   /** Every currently open Post/Giveaway channel for this item. */

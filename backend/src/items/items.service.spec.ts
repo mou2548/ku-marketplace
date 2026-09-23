@@ -33,9 +33,10 @@ describe('ItemsService history summary', () => {
                   quantityTotal: 6,
                   quantityRemaining: 1,
                   transactions: [
-                    { offerId: null, quantity: 2 },
-                    { offerId: null, quantity: null },
-                    { offerId: 19, quantity: 2 },
+                    { offerId: null, quantity: 2, status: 'Completed' },
+                    { offerId: null, quantity: null, status: 'Completed' },
+                    { offerId: 19, quantity: 2, status: 'Completed' },
+                    { offerId: null, quantity: 4, status: 'Pending' },
                   ],
                 },
               ],
@@ -62,6 +63,7 @@ describe('ItemsService history summary', () => {
       available_quantity: 0,
       sold_quantity: 3,
       traded_quantity: 2,
+      ongoing_quantity: 4,
       given_quantity: 0,
       channels: [
         {
@@ -85,7 +87,11 @@ describe('ItemsService history summary', () => {
           posts: expect.objectContaining({
             include: expect.objectContaining({
               transactions: expect.objectContaining({
-                where: { status: 'Completed' },
+                where: {
+                  status: {
+                    in: ['Completed', 'Pending', 'Processing', 'Pending Refund'],
+                  },
+                },
               }),
             }),
           }),

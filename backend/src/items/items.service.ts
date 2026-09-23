@@ -91,8 +91,17 @@ export class ItemsService {
         posts: {
           include: {
             transactions: {
-              where: { status: 'Completed' },
-              select: { offerId: true, quantity: true },
+              // Completed feeds Sold/Traded below; the rest (Pending,
+              // Processing, Pending Refund) feeds Ongoing — stock already
+              // reserved by an unfinished deal, distinct from both history
+              // and from what's still free to list. Cancelled/Refunded are
+              // excluded: those deals are over and don't hold stock.
+              where: {
+                status: {
+                  in: ['Completed', 'Pending', 'Processing', 'Pending Refund'],
+                },
+              },
+              select: { offerId: true, quantity: true, status: true },
             },
           },
         },
@@ -116,11 +125,17 @@ export class ItemsService {
       );
     }
 
-    const completed = item.posts.flatMap((post) => post.transactions);
+    const allTransactions = item.posts.flatMap((post) => post.transactions);
+    const completed = allTransactions.filter(
+      (transaction) => transaction.status === 'Completed',
+    );
     const sumQuantity = (withOffer: boolean) =>
       completed
         .filter((transaction) => Boolean(transaction.offerId) === withOffer)
         .reduce((total, transaction) => total + (transaction.quantity ?? 1), 0);
+    const ongoingQuantity = allTransactions
+      .filter((transaction) => transaction.status !== 'Completed')
+      .reduce((total, transaction) => total + (transaction.quantity ?? 1), 0);
 
     const openPosts = item.posts.filter(
       (post) => post.deletedAt === null && post.status === 'Active',
@@ -142,6 +157,7 @@ export class ItemsService {
       available_quantity: available,
       sold_quantity: sumQuantity(false),
       traded_quantity: sumQuantity(true),
+      ongoing_quantity: ongoingQuantity,
       given_quantity: item.giveawayPosts.reduce(
         (total, giveaway) => total + giveaway.tickets.length,
         0,

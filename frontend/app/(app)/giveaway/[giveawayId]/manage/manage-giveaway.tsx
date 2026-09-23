@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/lib/date-format";
 import { getCopy } from "@/lib/copy";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -22,6 +23,7 @@ import type { ApiError } from "@/lib/api/client";
 import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
 import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
+import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,6 +53,14 @@ export function ManageGiveaway({
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
   const isManual = giveaway.allocation_method === "Manual";
+
+  const registerEndMs = giveaway.register_deadline
+    ? Date.parse(giveaway.register_deadline)
+    : null;
+  const now = useNow(30_000);
+  // The backend refuses to select before the deadline no matter what — this
+  // only mirrors that so the button doesn't invite a dead click.
+  const canSelect = now !== UNKNOWN_TIME && registerEndMs !== null && now >= registerEndMs;
 
   const deadline = giveaway.register_deadline
     ? {
@@ -196,6 +206,14 @@ export function ManageGiveaway({
         </section>
       ) : null}
 
+      {isManual && !canSelect ? (
+        <p className="text-caption leading-[1.6] text-ink-secondary">
+          {`Confirming recipients is available once registration closes${
+            registerEndMs ? ` at ${formatDate(new Date(registerEndMs))}` : ""
+          }. It cannot be run early.`}
+        </p>
+      ) : null}
+
       <ActionBar>
         {/* `QrScanner` is a full-screen component (design principle 7) and
             breaks inside `Overlay`'s height-capped dialog, so the handover
@@ -207,7 +225,7 @@ export function ManageGiveaway({
 
         {isManual ? (
           <Button
-            isDisabled={picked.size === 0}
+            isDisabled={picked.size === 0 || !canSelect}
             isLoading={busy}
             onPress={confirmSelection}
           >
