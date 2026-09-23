@@ -755,6 +755,7 @@ const COPY: { [key: string]: CopyNode } = {
       "ownerLooking": "The owner is looking for",
       "details": "Details",
       "aboutItem": "About this item",
+      "sellerNotes": "Seller's notes for this listing",
       "productInfo": "Product information",
       "available": "Available",
       "courseCode": "Course code",

@@ -58,8 +58,7 @@ describe('ItemsService history summary', () => {
     await expect(service.historySummary(7, 3)).resolves.toEqual({
       item_id: 7,
       inventory_quantity: 8,
-      posted_quantity: 6,
-      currently_listed_quantity: 1,
+      posted_quantity: 8,
       available_quantity: 0,
       sold_quantity: 3,
       traded_quantity: 2,

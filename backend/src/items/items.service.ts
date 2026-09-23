@@ -133,14 +133,12 @@ export class ItemsService {
     return {
       item_id: item.itemId,
       inventory_quantity: item.quantity,
-      posted_quantity: item.posts.reduce(
-        (total, post) => total + post.quantityTotal,
-        0,
-      ),
-      currently_listed_quantity: openPosts.reduce(
-        (total, post) => total + post.quantityRemaining,
-        0,
-      ),
+      // Live commitment right now, not lifetime history — Sold/Traded/Given
+      // already cover what happened in the past, so this only counts
+      // channels that are still Active, sale/trade and giveaway alike.
+      posted_quantity:
+        openPosts.reduce((total, post) => total + post.quantityTotal, 0) +
+        openGiveaways.reduce((total, giveaway) => total + giveaway.quantity, 0),
       available_quantity: available,
       sold_quantity: sumQuantity(false),
       traded_quantity: sumQuantity(true),

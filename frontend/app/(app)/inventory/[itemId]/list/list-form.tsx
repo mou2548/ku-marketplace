@@ -198,8 +198,8 @@ export function ListItemForm({
           hint={
             isEditing
               ? soldOnThisChannel > 0
-                ? `Can be ${minQuantity}-${maxQuantity}: at least ${minQuantity} already sold or traded here, up to ${maxQuantity} counting what's still unlisted elsewhere`
-                : `Up to ${maxQuantity}, counting what's still unlisted elsewhere`
+                ? `${minQuantity}–${maxQuantity} — can't go below what's already sold or traded here`
+                : `Up to ${maxQuantity} total`
               : t("listing.quantityHint", { count: maxQuantity })
           }
         />

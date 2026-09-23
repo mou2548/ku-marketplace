@@ -113,8 +113,8 @@ export type ItemChannel =
 export interface ItemHistorySummary {
   item_id: number;
   inventory_quantity: number;
+  /** Committed to a currently open channel — sale, trade or giveaway. */
   posted_quantity: number;
-  currently_listed_quantity: number;
   /** How many units can still be committed to a new channel right now. */
   available_quantity: number;
   sold_quantity: number;

@@ -3,16 +3,17 @@
 import { getCopy } from "@/lib/copy";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck, XCircle } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { Radio, RadioGroup } from "react-aria-components";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
 import type { DeliveryMethod } from "@/lib/status";
-import { buyPostAction } from "@/lib/actions/posts";
+import { buyPostAction, unlistListing } from "@/lib/actions/posts";
 import type { Post } from "@/lib/api/types";
 
 /** §7.5.1 — the system-provided reasons for a post report. */
@@ -66,6 +67,22 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           className="lg:w-auto"
           href={`/inventory/${post.item_id}/list/${post.post_id}`}
         >{t("inventory.editListing")}</LinkButton>
+        <ConfirmButton
+          title="Unlist this listing?"
+          description="This takes it off the market. The item itself stays in your inventory, and this channel's history is kept."
+          confirmLabel="Unlist"
+          doneMessage="Listing removed from the market."
+          icon={<XCircle className="size-4" />}
+          onConfirm={unlistListing.bind(null, post.post_id)}
+          onDone={() => router.push(`/inventory/${post.item_id}`)}
+          trigger={
+            <>
+              <XCircle className="size-4" />
+              Unlist
+            </>
+          }
+          triggerProps={{ variant: "ghost", block: true, className: "lg:w-auto" }}
+        />
       </div>
     );
   }
