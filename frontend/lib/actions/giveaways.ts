@@ -3,6 +3,7 @@
 import { getAccessToken } from "@/lib/api/session";
 import {
   closeGiveawayRegistration as closeGiveawayRegistrationApi,
+  confirmTicketQr as confirmTicketQrApi,
   createGiveaway as createGiveawayApi,
   drawGiveaway as drawGiveawayApi,
   forfeitTicket as forfeitTicketApi,
@@ -67,6 +68,15 @@ export async function scanTicketQr(
 ): Promise<boolean> {
   await requireSession();
   return scanTicketQrApi(giveawayId, ticketId, token);
+}
+
+export async function confirmTicketQr(
+  giveawayId: number,
+  ticketId: number,
+  token: string,
+): Promise<boolean> {
+  await requireSession();
+  return confirmTicketQrApi(giveawayId, ticketId, token);
 }
 
 export async function sendGiveawayMessage(

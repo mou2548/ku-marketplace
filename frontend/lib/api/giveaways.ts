@@ -396,7 +396,14 @@ export async function generateTicketQr(
   };
 }
 
-/** `POST /giveaways/{id}/tickets/{ticket_id}/qr/scan` */
+/**
+ * `POST /giveaways/{id}/tickets/{ticket_id}/qr/scan` — validates only, never
+ * changes the ticket's status (the backend's own docstring: "ไม่เปลี่ยนสถานะ
+ * — แค่ตรวจสอบ"). Not used by any screen right now; `confirmTicketQr` below
+ * is what the giver-facing scanner actually needs, since a scan has to
+ * complete the handover, not just preview it. Kept for a future two-step
+ * "preview then confirm" flow if one gets built.
+ */
 export async function scanTicketQr(
   giveawayId: number,
   ticketId: number,
@@ -405,6 +412,24 @@ export async function scanTicketQr(
   const init = await authedInit();
   const raw = await apiFetch<{ valid: boolean }>(
     `/giveaways/${giveawayId}/tickets/${ticketId}/qr/scan`,
+    { ...init, method: "POST", body: JSON.stringify({ token }) },
+  );
+  return raw.valid;
+}
+
+/**
+ * `POST /giveaways/{id}/tickets/{ticket_id}/qr/confirm` — validates the
+ * token (fresh, matching, ticket still Waiting) and marks the ticket
+ * Received in the same call. This is what actually completes a handover.
+ */
+export async function confirmTicketQr(
+  giveawayId: number,
+  ticketId: number,
+  token: string,
+): Promise<boolean> {
+  const init = await authedInit();
+  const raw = await apiFetch<{ valid: boolean }>(
+    `/giveaways/${giveawayId}/tickets/${ticketId}/qr/confirm`,
     { ...init, method: "POST", body: JSON.stringify({ token }) },
   );
   return raw.valid;

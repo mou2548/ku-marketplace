@@ -454,7 +454,12 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
-        status: 'Pending',
+        // Processing, not Pending: this test is about chat-room creation
+        // under concurrency and appointment-card supersession, not payment
+        // gating, so the fixture starts past `createAppointment`'s own
+        // payment-required guard (a still-Pending, no-offer transaction
+        // cannot arrange a meetup at all — see that guard's own comment).
+        status: 'Processing',
         deliveryMethod: 'Meetup',
       },
     });
@@ -884,12 +889,15 @@ describe('Fresh clone database', () => {
       first.expires_in_seconds,
     );
 
-    // Once the 15-minute window has passed the giver's scan no longer counts.
+    // Once the 15-minute window has passed, confirming with the stale token
+    // is rejected outright (qrConfirm is the state-changing half of the QR
+    // flow — qrScan deliberately never changes status, it only previews
+    // validity, see its own "ไม่เปลี่ยนสถานะ — แค่ตรวจสอบ" comment).
     await prisma.giveawayTicket.update({
       where: { ticketId: post.tickets[0].ticketId },
       data: { qrIssuedAt: new Date(Date.now() - 16 * 60 * 1000) },
     });
-    await giveaways.qrScan(gid, tid, first.token, 3);
+    await expect(giveaways.qrConfirm(gid, tid, first.token, 3)).rejects.toThrow();
     expect(
       (
         await prisma.giveawayTicket.findUniqueOrThrow({
@@ -898,10 +906,10 @@ describe('Fresh clone database', () => {
       ).status,
     ).toBe('Waiting');
 
-    // Reopening after expiry mints a genuinely new code that does scan.
+    // Reopening after expiry mints a genuinely new code that does confirm.
     const fresh = await giveaways.qrGenerate(gid, tid, 4);
     expect(fresh.token).not.toBe(first.token);
-    await giveaways.qrScan(gid, tid, fresh.token, 3);
+    await giveaways.qrConfirm(gid, tid, fresh.token, 3);
     expect(
       (
         await prisma.giveawayTicket.findUniqueOrThrow({
