@@ -76,6 +76,7 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
+import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
@@ -232,6 +233,7 @@ export function RoomScreen({
   transaction,
   giveaway,
   appointment: initialAppointment,
+  appointments: initialAppointments,
   entrants,
   messages: initialMessages,
 }: {
@@ -247,6 +249,10 @@ export function RoomScreen({
    * single "current appointment" row in the backend.
    */
   appointment?: AppointmentCardData;
+  /** Every card on this transaction, superseded ones included — what
+   * `buildDealTimeline` needs to show every meetup proposal, not just the
+   * live one. */
+  appointments?: AppointmentCardData[];
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
   messages: ChatMessage[];
@@ -282,6 +288,7 @@ export function RoomScreen({
   // transaction-only concept.
   const [messages, setMessages] = useState(initialMessages);
   const [appointment, setAppointment] = useState(initialAppointment);
+  const [appointments, setAppointments] = useState(initialAppointments ?? []);
 
   usePolling(() => {
     if (transaction) {
@@ -291,6 +298,7 @@ export function RoomScreen({
         .then((cards) => {
           const { pinned, pending } = deriveAppointmentView(cards);
           setAppointment(pending ?? pinned);
+          setAppointments(cards);
         })
         .catch(() => {});
     } else if (giveaway) {
@@ -309,6 +317,40 @@ export function RoomScreen({
   // Same derivation the stepper runs, for the "Step n of m" counter above it.
   const steps = transaction ? buildSteps(transaction, appointment?.status) : [];
   const currentStep = steps.findIndex((s) => s.current);
+  // The stepper above only ever shows the current step of the happy path —
+  // it has no representation at all for a cancellation, a refund, a return,
+  // or an admin report. `buildDealTimeline` covers every branch, with a
+  // timestamp, so both sides see the full story instead of one snapshot.
+  const timelineEvents = useMemo(
+    () => (transaction ? buildDealTimeline(transaction, appointments, viewerId) : []),
+    [transaction, appointments, viewerId],
+  );
+  // `messages` is already oldest-first (ChatThread's own day-grouping relies
+  // on that order too), so the last message at or before an event's `placeAt`
+  // is found in one pass. `afterMessageId` 0 is "before the first message" —
+  // see `ChatThread`'s own doc comment on `systemCards`.
+  const systemCards = useMemo(() => {
+    if (timelineEvents.length === 0) return [];
+    const buckets = new Map<number, DealEvent[]>();
+    for (const event of timelineEvents) {
+      let afterMessageId = 0;
+      for (const m of messages) {
+        if (Date.parse(m.created_at) <= event.placeAt) afterMessageId = m.message_id;
+        else break;
+      }
+      buckets.set(afterMessageId, [...(buckets.get(afterMessageId) ?? []), event]);
+    }
+    return Array.from(buckets, ([afterMessageId, events]) => ({
+      afterMessageId,
+      node: (
+        <div className="flex flex-col gap-1.5">
+          {events.map((event) => (
+            <DealEventCard key={event.id} event={event} />
+          ))}
+        </div>
+      ),
+    }));
+  }, [timelineEvents, messages]);
   // Every step done means the deal is finished, not that it is back at step 1.
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
@@ -1127,11 +1169,45 @@ export function RoomScreen({
         senders={senders}
         showSenders={isGroupRoom}
         action={currentAction() ?? sellerQr}
+        systemCards={systemCards}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
         onSend={handleSend}
         onAttach={handleAttach}
       />
+    </div>
+  );
+}
+
+/**
+ * One entry from `buildDealTimeline`, rendered as a centered system card —
+ * the same visual register as the day-divider pill in `ChatThread`, since
+ * this reports what the deal did, not what either party said.
+ */
+function DealEventCard({ event }: { event: DealEvent }) {
+  return (
+    <div className="flex justify-center">
+      <div
+        className={cn(
+          "flex max-w-[90%] items-start gap-3 rounded-control border px-3 py-2 text-caption",
+          TONE_CHIP[event.tone],
+        )}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{event.title}</p>
+          {event.detail ? (
+            <p className="mt-0.5 text-ink-muted">{event.detail}</p>
+          ) : null}
+        </div>
+        {event.at ? (
+          <time
+            dateTime={event.at}
+            className="shrink-0 text-meta text-ink-muted"
+          >
+            {formatDateTime(event.at)}
+          </time>
+        ) : null}
+      </div>
     </div>
   );
 }

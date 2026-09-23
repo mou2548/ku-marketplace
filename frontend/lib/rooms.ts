@@ -21,6 +21,7 @@ import type {
   Transaction,
   UserSummary,
 } from "@/lib/api/types";
+import { describeDeal, type DealProgress } from "@/lib/deal-progress";
 import type { TicketStatus, Tone } from "@/lib/status";
 
 export type RoomKind = "Sale" | "Trade" | "Giveaway";
@@ -57,6 +58,11 @@ export interface RoomSummary {
   needsYou: boolean;
   href: string;
   transaction?: Transaction;
+  /**
+   * The one-glance version of `transaction`, for the row's second line —
+   * see `lib/deal-progress.ts`. Undefined for a giveaway room.
+   */
+  progress?: DealProgress;
   giveaway?: GiveawayPost;
   /** Present when the viewer joined this giveaway rather than created it. */
   giveawayTicketStatus?: TicketStatus;
@@ -228,6 +234,14 @@ export function buildRooms({
         needsYou,
         href: `/chat/${roomId}`,
         transaction,
+        // `cards` is `undefined` (not `[]`) when the source omitted it, so a
+        // Shipping deal's absent appointments never read as "no meetup
+        // agreed" for a Meetup deal — see `describeDeal`'s own doc comment.
+        progress: describeDeal(
+          transaction,
+          viewerId,
+          appointments ? [...appointments] : undefined,
+        ),
       }),
     ),
     ...giveawayRooms.map(

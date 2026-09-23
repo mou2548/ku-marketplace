@@ -6,8 +6,18 @@ import { formatDate } from "@/lib/date-format";
 import { getCopy } from "@/lib/copy";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { MessagesSquare } from "lucide-react";
+import {
+  Banknote,
+  CalendarClock,
+  CircleCheck,
+  MessagesSquare,
+  PackageOpen,
+  Truck,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 
+import type { DealFactKind, DealProgress } from "@/lib/deal-progress";
 import type { RoomKind, RoomSortMode, RoomSummary } from "@/lib/rooms";
 import { ROOM_KIND_TONE, sortRooms } from "@/lib/rooms";
 import { fetchRoomSummaries } from "@/lib/actions/chat";
@@ -17,7 +27,7 @@ import {
   parseActivity,
   subscribeChatActivity,
 } from "@/lib/chat-activity";
-import { ENTRANT_STATUS, TICKET_STATUS, TRANSACTION_STATUS } from "@/lib/status";
+import { ENTRANT_STATUS, TICKET_STATUS } from "@/lib/status";
 import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
 
@@ -304,8 +314,12 @@ function RoomRow({
 }) {
   const t = getCopy();
   const tone = ROOM_KIND_TONE[room.kind];
+  // A transaction room shows `room.progress`'s headline instead of the flat
+  // status badge below — `Processing` alone cannot say "slip uploaded" from
+  // "meetup agreed", `progress` can. The badge stays for a giveaway room,
+  // which has no equivalent one-glance derivation.
   const status = room.transaction
-    ? TRANSACTION_STATUS[room.transaction.status]
+    ? undefined
     : room.giveawayTicketStatus === "Expired"
       ? ENTRANT_STATUS.Expired
       : room.giveawayTicketStatus
@@ -418,6 +432,8 @@ function RoomRow({
           </span>
         ) : null}
 
+        {room.progress ? <DealProgressLines progress={room.progress} /> : null}
+
         {status || room.needsYou ? (
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             {status ? <StatusBadge status={status} size="sm" /> : null}
@@ -430,5 +446,51 @@ function RoomRow({
         ) : null}
       </span>
     </Link>
+  );
+}
+
+const FACT_ICON: Record<DealFactKind, LucideIcon> = {
+  payment: Wallet,
+  meetup: CalendarClock,
+  shipping: Truck,
+  refund: Banknote,
+  return: PackageOpen,
+};
+
+/**
+ * The step a deal is on, readable without opening the chat: one sentence for
+ * "what happens next", then the payment and handover state it rests on (slip
+ * sent or not, meetup date and place, tracking number). The status badge
+ * alone said "In progress" for all of those — see `lib/deal-progress.ts`.
+ */
+function DealProgressLines({ progress }: { progress: DealProgress }) {
+  return (
+    <span className="mt-1 flex min-w-0 flex-col gap-0.5">
+      <span
+        className={cn(
+          "line-clamp-2 text-caption font-medium",
+          TONE_TEXT[progress.tone],
+        )}
+      >
+        {progress.headline}
+      </span>
+      {progress.facts.map((fact) => {
+        const Icon = fact.done ? CircleCheck : FACT_ICON[fact.kind];
+        return (
+          <span
+            key={`${fact.kind}-${fact.label}`}
+            className="flex min-w-0 items-center gap-1.5 text-meta text-ink-muted"
+          >
+            <Icon
+              aria-hidden
+              className={cn("size-3.5 shrink-0", TONE_TEXT[fact.tone])}
+            />
+            <span className="min-w-0 truncate" title={fact.label}>
+              {fact.label}
+            </span>
+          </span>
+        );
+      })}
+    </span>
   );
 }

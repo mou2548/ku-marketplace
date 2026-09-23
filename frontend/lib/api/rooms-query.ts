@@ -126,6 +126,11 @@ export interface RoomDetail {
    */
   appointment?: AppointmentCardData;
   /**
+   * Every card on this transaction, superseded ones included — `deal-timeline.ts`
+   * needs the full history, not just the one `appointment` worth acting on.
+   */
+  appointments?: AppointmentCardData[];
+  /**
    * Who else is in a giveaway room — real (`lib/api/giveaways.ts`'s
    * `getEntrants`, `GET /giveaways/{id}/recipients`). Outcome states remain
    * visible instead of disappearing from the roster.
@@ -163,7 +168,13 @@ export async function getRoomDetail(
         getAppointmentCards(transactionId),
       ]);
       const { pinned, pending } = deriveAppointmentView(cards);
-      return { summary, transaction, appointment: pending ?? pinned, messages };
+      return {
+        summary,
+        transaction,
+        appointment: pending ?? pinned,
+        appointments: cards,
+        messages,
+      };
     }
 
     if (summary.giveaway) {
