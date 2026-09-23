@@ -897,7 +897,9 @@ describe('Fresh clone database', () => {
       where: { ticketId: post.tickets[0].ticketId },
       data: { qrIssuedAt: new Date(Date.now() - 16 * 60 * 1000) },
     });
-    await expect(giveaways.qrConfirm(gid, tid, first.token, 3)).rejects.toThrow();
+    await expect(
+      giveaways.qrConfirm(gid, tid, first.token, 3),
+    ).rejects.toThrow();
     expect(
       (
         await prisma.giveawayTicket.findUniqueOrThrow({

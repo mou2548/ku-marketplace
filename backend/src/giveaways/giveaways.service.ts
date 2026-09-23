@@ -427,7 +427,9 @@ export class GiveawaysService {
       });
       if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
       if (giveaway.giverId !== giverId) {
-        throw new ForbiddenException('เฉพาะผู้ให้เท่านั้นที่ปิดรับลงทะเบียนได้');
+        throw new ForbiddenException(
+          'เฉพาะผู้ให้เท่านั้นที่ปิดรับลงทะเบียนได้',
+        );
       }
       if (!['Random', 'Manual'].includes(giveaway.allocationMethod)) {
         throw new BadRequestException(

@@ -89,7 +89,12 @@ describe('ItemsService history summary', () => {
               transactions: expect.objectContaining({
                 where: {
                   status: {
-                    in: ['Completed', 'Pending', 'Processing', 'Pending Refund'],
+                    in: [
+                      'Completed',
+                      'Pending',
+                      'Processing',
+                      'Pending Refund',
+                    ],
                   },
                 },
               }),
