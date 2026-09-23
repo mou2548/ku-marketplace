@@ -315,38 +315,52 @@ export default async function ItemDetailPage({
           <section>
             <h2 className="mb-3 text-h3">Item activity</h2>
             {summary ? (
-              <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <ActivityMetric
-                  icon={<Store className="size-4" />}
-                  label="Listed"
-                  value={summary.posted_quantity}
-                />
-                <ActivityMetric
-                  icon={<Clock className="size-4" />}
-                  label="Ongoing"
-                  value={summary.ongoing_quantity}
-                />
-                <ActivityMetric
-                  icon={<Tag className="size-4" />}
-                  label="Sold"
-                  value={summary.sold_quantity}
-                />
-                <ActivityMetric
-                  icon={<ArrowLeftRight className="size-4" />}
-                  label="Traded"
-                  value={summary.traded_quantity}
-                />
-                <ActivityMetric
-                  icon={<Gift className="size-4" />}
-                  label={t("inventory.given")}
-                  value={summary.given_quantity}
-                />
-                <ActivityMetric
-                  icon={<Plus className="size-4" />}
-                  label="Unlisted"
-                  value={summary.available_quantity}
-                />
-              </dl>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="mb-2 text-meta text-ink-muted">Right now</p>
+                  <dl className="grid grid-cols-2 gap-2">
+                    <ActivityMetric
+                      icon={<Store className="size-4" />}
+                      label="Listed"
+                      value={summary.posted_quantity}
+                      sub={
+                        summary.ongoing_quantity > 0
+                          ? {
+                              icon: <Clock className="size-3" />,
+                              text: `${summary.ongoing_quantity} ongoing`,
+                            }
+                          : undefined
+                      }
+                    />
+                    <ActivityMetric
+                      icon={<Plus className="size-4" />}
+                      label="Unlisted"
+                      value={summary.available_quantity}
+                    />
+                  </dl>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-meta text-ink-muted">History</p>
+                  <dl className="grid grid-cols-3 gap-2">
+                    <ActivityMetric
+                      icon={<Tag className="size-4" />}
+                      label="Sold"
+                      value={summary.sold_quantity}
+                    />
+                    <ActivityMetric
+                      icon={<ArrowLeftRight className="size-4" />}
+                      label="Traded"
+                      value={summary.traded_quantity}
+                    />
+                    <ActivityMetric
+                      icon={<Gift className="size-4" />}
+                      label={t("inventory.given")}
+                      value={summary.given_quantity}
+                    />
+                  </dl>
+                </div>
+              </div>
             ) : (
               <Surface shape="card" elevation="flat" className="p-4 text-body-sm text-ink-muted">
                 Item history is temporarily unavailable.
@@ -391,10 +405,15 @@ function ActivityMetric({
   icon,
   label,
   value,
+  sub,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
+  /** A quantity nested *inside* this one (e.g. Ongoing inside Listed) — shown
+   * as a smaller line under the number, never its own same-weight tile, so
+   * it can't be misread as a sibling amount to add on top. */
+  sub?: { icon: React.ReactNode; text: string };
 }) {
   return (
     <div className="rounded-card bg-surface p-3 shadow-raised">
@@ -405,6 +424,12 @@ function ActivityMetric({
       <dd data-numeric className="mt-1 text-h2 text-ink-brand">
         {value}
       </dd>
+      {sub ? (
+        <p className="mt-1 flex items-center gap-1 text-caption text-ink-muted">
+          {sub.icon}
+          {sub.text}
+        </p>
+      ) : null}
     </div>
   );
 }
