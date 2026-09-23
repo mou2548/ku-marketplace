@@ -5,11 +5,12 @@ import { getCopy } from "@/lib/copy";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ScanLine, Users } from "lucide-react";
+import { ArrowLeft, Lock, ScanLine, Users } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
 import { Checkbox } from "@/components/kit/choice";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
@@ -18,7 +19,7 @@ import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
-import { selectRecipients } from "@/lib/actions/giveaways";
+import { closeGiveawayRegistration, selectRecipients } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
@@ -61,6 +62,9 @@ export function ManageGiveaway({
   // The backend refuses to select before the deadline no matter what — this
   // only mirrors that so the button doesn't invite a dead click.
   const canSelect = now !== UNKNOWN_TIME && registerEndMs !== null && now >= registerEndMs;
+  const registeredCount = entrants.filter(
+    (entry) => entry.ticket_status === "Registered",
+  ).length;
 
   const deadline = giveaway.register_deadline
     ? {
@@ -207,11 +211,30 @@ export function ManageGiveaway({
       ) : null}
 
       {isManual && !canSelect ? (
-        <p className="text-caption leading-[1.6] text-ink-secondary">
-          {`Confirming recipients is available once registration closes${
-            registerEndMs ? ` at ${formatDate(new Date(registerEndMs))}` : ""
-          }. It cannot be run early.`}
-        </p>
+        <div className="flex flex-col gap-2">
+          <p className="text-caption leading-[1.6] text-ink-secondary">
+            {`Confirming recipients is available once registration closes${
+              registerEndMs ? ` at ${formatDate(new Date(registerEndMs))}` : ""
+            }. It cannot be run early.`}
+          </p>
+          <ConfirmButton
+            title="End registration now?"
+            description={`${registeredCount} ${registeredCount === 1 ? "person has" : "people have"} registered so far. This closes registration immediately${
+              registerEndMs ? `, before ${formatDate(new Date(registerEndMs))}` : ""
+            } — nobody else can join, and it cannot be undone. You can then confirm recipients right away.`}
+            confirmLabel="End registration"
+            doneMessage="Registration closed. You can confirm recipients now."
+            icon={<Lock className="size-4" />}
+            onConfirm={closeGiveawayRegistration.bind(null, giveaway.giveaway_id)}
+            trigger={
+              <>
+                <Lock className="size-4" />
+                End registration now
+              </>
+            }
+            triggerProps={{ variant: "ghost", size: "sm" }}
+          />
+        </div>
       ) : null}
 
       <ActionBar>

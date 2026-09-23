@@ -7,9 +7,10 @@ import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Clock, Dices, Gift, MapPin, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, Clock, Dices, Gift, Lock, MapPin, Sparkles, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -18,7 +19,7 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { ProductGallery } from "@/components/market/product-gallery";
 import { useStatusText } from "@/lib/status-text";
-import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
+import { closeGiveawayRegistration, drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS, type Deadline } from "@/lib/status";
@@ -174,6 +175,23 @@ export function GiveawayDetail({
               ? `Selects up to ${giveaway.quantity} recipients and closes registration. If registrations do not exceed that number, everyone receives a place.`
               : `Available once registration closes${registerEndMs ? ` at ${formatDate(new Date(registerEndMs))}` : ""}. It can't be run early.`}
           </p>
+          {!canDraw ? (
+            <ConfirmButton
+              title="End registration now?"
+              description={`${giveaway.registered_count} ${giveaway.registered_count === 1 ? "person has" : "people have"} registered so far. This closes registration immediately, before ${registerEndMs ? formatDate(new Date(registerEndMs)) : "the original deadline"} — nobody else can join, and it can't be undone. You can then run the draw right away.`}
+              confirmLabel="End registration"
+              doneMessage="Registration closed. You can run the draw now."
+              icon={<Lock className="size-4" />}
+              onConfirm={closeGiveawayRegistration.bind(null, giveaway.giveaway_id)}
+              trigger={
+                <>
+                  <Lock className="size-4" />
+                  End registration now
+                </>
+              }
+              triggerProps={{ variant: "ghost", size: "sm" }}
+            />
+          ) : null}
         </div>
       ) : (
         <Notice tone="success">
@@ -301,6 +319,19 @@ export function GiveawayDetail({
         <aside className="min-w-0 md:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
           <Surface shape="panel" className="overflow-hidden">
             <div aria-hidden className="h-1 bg-tone-warning-solid" />
+            <div className="flex items-center gap-3 border-b border-line bg-tone-warning-bg p-5">
+              <Gift aria-hidden className="size-7 shrink-0 text-tone-warning-fg" />
+              <div>
+                <p data-numeric className="text-[2rem] leading-none font-bold text-tone-warning-fg">
+                  {giveaway.quantity}
+                </p>
+                <p className="mt-1 text-body-sm font-medium text-ink-secondary">
+                  {giveaway.allocation_method === "FirstCome"
+                    ? `${giveaway.quantity === 1 ? "spot" : "spots"} total`
+                    : "to be given away"}
+                </p>
+              </div>
+            </div>
             <div className="flex flex-col gap-4 p-5">
               <div>
                 <p className="mb-3 text-overline text-ink-muted uppercase">
@@ -336,12 +367,6 @@ export function GiveawayDetail({
               >
                 <Users aria-hidden className="size-4 shrink-0" />
                 {giveaway.registered_count} registered
-                <span aria-hidden className="text-ink-disabled">
-                  ·
-                </span>
-                {giveaway.allocation_method === "FirstCome"
-                  ? `${giveaway.quantity} ${giveaway.quantity === 1 ? "spot" : "spots"} total`
-                  : `${giveaway.quantity} to be given away`}
               </p>
               {giveaway.allocation_method === "FirstCome" ? (
                 <p data-numeric className="text-caption text-ink-secondary">

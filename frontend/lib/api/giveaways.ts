@@ -270,6 +270,20 @@ export async function joinGiveaway(
   return toGiveawayTicket(raw, giveaway);
 }
 
+/**
+ * `POST /giveaways/{id}/close-registration` — Random/Manual only. Moves
+ * `register_deadline` to now so the next `drawGiveaway`/`selectRecipients`
+ * call succeeds immediately, instead of waiting for the original deadline.
+ */
+export async function closeGiveawayRegistration(giveawayId: number): Promise<void> {
+  const init = await authedInit();
+  await apiFetch(`/giveaways/${giveawayId}/close-registration`, {
+    ...init,
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 /** `POST /giveaways/{id}/draw` — Random only. */
 export async function drawGiveaway(giveawayId: number): Promise<RecipientRow[]> {
   const init = await authedInit();

@@ -404,6 +404,53 @@ export class GiveawaysService {
     };
   }
 
+  /**
+   * Lets a Random/Manual giver decide "enough people have registered" and
+   * close the window themselves instead of waiting for `registerDeadline`.
+   * `draw()`/`select()` already refuse to run before that deadline — this
+   * just moves it to now, so the very next call to either succeeds. FirstCome
+   * has no equivalent: it resolves continuously as people register, so there
+   * is nothing to "close" ahead of a draw.
+   */
+  async closeRegistrationEarly(id: string, giverId: number) {
+    const giveawayId = this.id(id, 'giveaway');
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "giveaway_id"
+        FROM "Giveaway_Post"
+        WHERE "giveaway_id" = ${giveawayId}
+        FOR UPDATE
+      `;
+      const giveaway = await tx.giveawayPost.findUnique({
+        where: { giveawayId },
+      });
+      if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
+      if (giveaway.giverId !== giverId) {
+        throw new ForbiddenException('เฉพาะผู้ให้เท่านั้นที่ปิดรับลงทะเบียนได้');
+      }
+      if (!['Random', 'Manual'].includes(giveaway.allocationMethod)) {
+        throw new BadRequestException(
+          'ปิดรับลงทะเบียนก่อนกำหนดได้เฉพาะวิธี Random หรือ Manual',
+        );
+      }
+      if (giveaway.status !== 'Active') {
+        throw new ConflictException('กิจกรรมนี้ไม่ได้เปิดรับลงทะเบียนอยู่');
+      }
+      if (giveaway.registerDeadline && giveaway.registerDeadline <= now) {
+        throw new ConflictException('การลงทะเบียนปิดไปแล้ว');
+      }
+      await tx.giveawayPost.update({
+        where: { giveawayId },
+        data: { registerDeadline: now },
+      });
+    });
+    return {
+      giveaway_id: this.label('giveaway', giveawayId),
+      register_deadline: now,
+    };
+  }
+
   async draw(id: string, giverId: number) {
     const giveawayId = this.id(id, 'giveaway');
     const winners = await this.prisma.$transaction(async (tx) => {
