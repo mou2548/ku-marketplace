@@ -6,6 +6,7 @@ import {
   confirmPaymentReceived,
   confirmRefund,
   generateHandoverQr,
+  getTransaction,
   requestCancellation,
   respondToCancellation,
   scanHandoverQr,
@@ -29,6 +30,21 @@ async function requireSession(): Promise<void> {
   if (!(await getAccessToken())) {
     throw new Error("Not signed in");
   }
+}
+
+/**
+ * Re-reads the transaction itself, for the room's poll.
+ *
+ * The poll already re-fetches messages and appointment cards, but not the
+ * transaction they're about — so a party who isn't the one clicking buttons
+ * never saw the other side's confirmations (a payment, a handover) land
+ * without a manual reload: the stepper, the prompt, and every deal-timeline
+ * card in `deal-timeline.ts` all read from this object, and it only ever
+ * changed via a `router.refresh()` triggered by the viewer's own action.
+ */
+export async function fetchTransaction(transactionId: number): Promise<Transaction> {
+  await requireSession();
+  return getTransaction(transactionId);
 }
 
 /**

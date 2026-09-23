@@ -44,6 +44,7 @@ import {
   confirmItemArrived,
   confirmSlip,
   createHandoverToken,
+  fetchTransaction,
   saveTracking,
   submitPaymentSlip,
   submitRefundSlip,
@@ -230,7 +231,7 @@ function ProposeMeetup({
 export function RoomScreen({
   summary,
   viewerId,
-  transaction,
+  transaction: initialTransaction,
   giveaway,
   appointment: initialAppointment,
   appointments: initialAppointments,
@@ -289,6 +290,14 @@ export function RoomScreen({
   const [messages, setMessages] = useState(initialMessages);
   const [appointment, setAppointment] = useState(initialAppointment);
   const [appointments, setAppointments] = useState(initialAppointments ?? []);
+  // The transaction itself also has to poll, not just messages and
+  // appointments — the stepper, the prompt, every `describeDeal`/
+  // `buildDealTimeline` card, and `sellerQr`'s own visibility all read from
+  // this object. Without polling it, only the party who just clicked
+  // something saw it change (their own `act()` calls `router.refresh()`);
+  // the other side saw nothing update — including no "payment confirmed"
+  // card — until they reloaded the page by hand.
+  const [transaction, setTransaction] = useState(initialTransaction);
 
   usePolling(() => {
     if (transaction) {
@@ -301,6 +310,7 @@ export function RoomScreen({
           setAppointments(cards);
         })
         .catch(() => {});
+      fetchTransaction(transactionId).then(setTransaction).catch(() => {});
     } else if (giveaway) {
       fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
     }
