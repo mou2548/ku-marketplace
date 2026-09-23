@@ -4,16 +4,22 @@ import fs from 'node:fs';
 import ts from 'typescript';
 import vm from 'node:vm';
 
-function load() {
+function load(path, dependencies = {}) {
   const exports = {};
-  const source = ts.transpileModule(fs.readFileSync('lib/rooms.ts', 'utf8'), {
+  const source = ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
-  vm.runInNewContext(source, { exports, require: () => ({}) });
+  vm.runInNewContext(source, { exports, require: (name) => dependencies[name] ?? {} });
   return exports;
 }
 
-const rooms = load();
+const rooms = load('lib/rooms.ts', {
+  '@/lib/deal-progress': load('lib/deal-progress.ts', {
+    '@/lib/appointment': load('lib/appointment.ts'),
+    '@/lib/date-format': load('lib/date-format.ts'),
+    '@/lib/status': load('lib/status.ts'),
+  }),
+});
 
 const user = (name) => ({ user_id: 1, name, isVerified: true });
 function transaction(overrides = {}) {
@@ -162,4 +168,26 @@ test('name and counterparty sorts break ties on activity, not on messages alone'
     giveawayRooms: [],
   });
   assert.deepEqual(order(rooms.sortRooms(built, 'name')), [2, 1]);
+});
+
+// Regression for the appointment-cards fetch that failed silently: a failed
+// fetch must reach `describeDeal` as `undefined` ("could not load"), not `[]`
+// ("no meetup exists") — the latter renders "No meetup time agreed yet" on a
+// deal that may well have one, which is exactly the false statement
+// `rooms-query.ts`'s `getRoomSummaries` used to produce via `.catch(() => [])`.
+test('an omitted appointments list reads as "could not load", not "no meetup exists"', () => {
+  const paidMeetup = {
+    status: 'Processing',
+    payment_confirmed_by_buyer_at: '2026-09-04T00:00:00.000Z',
+  };
+  const [unknown] = rooms.buildRooms({
+    transactionRooms: [source(1, paidMeetup, { appointments: undefined })],
+    giveawayRooms: [],
+  });
+  const [none] = rooms.buildRooms({
+    transactionRooms: [source(2, paidMeetup, { appointments: [] })],
+    giveawayRooms: [],
+  });
+  assert.ok(!unknown.progress.facts.some((f) => f.kind === 'meetup'));
+  assert.ok(none.progress.facts.some((f) => f.kind === 'meetup' && f.label === 'No meetup time agreed yet'));
 });

@@ -7,7 +7,6 @@ export function publicListing(sellerId?: number): Prisma.PostWhereInput {
     deletedAt: null,
     quantityRemaining: { gt: 0 },
     item: {
-      status: 'Listed',
       deletedAt: null,
       ...(sellerId === undefined ? {} : { ownerId: sellerId }),
       owner: { status: 'Active' },

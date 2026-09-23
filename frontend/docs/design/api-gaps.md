@@ -6,17 +6,23 @@ invented endpoint.
 
 ## 1. A giveaway cannot point at an inventory item
 
-`Giveaway_Post` carries `item_name: string` and has no `item_id`. Posting a
-giveaway now happens in the same composer as a sale or a trade
-(`app/(app)/post/post-composer.tsx`), where the giver picks something they
-already own, so the composer copies `name`, `description` and the primary image
-across at publish time.
+Resolved by the multi-listing backend delivery (2026-09-23). `Giveaway_Post`
+now carries `item_id`, and `POST /giveaways` requires it — the composer
+(`app/(app)/post/post-composer.tsx`) sends the picked item's id, and the
+backend gates the giveaway's quantity against that item's real remaining
+stock (`available_quantity`) the same way a sale or trade post is gated.
 
-Consequences accepted:
-
-- The item's row is not marked as gone when the giveaway completes. An item that
-  has been given away still reads `Listed` or `Unlisted` in the inventory.
-- Editing the item afterwards does not update the giveaway.
+One narrower gap remains: the `GiveawayPost` response is still a flat
+`item_id`/`item_name` scalar pair, not a nested `item` relation with its own
+images/description. The composer therefore still copies the item's name,
+description and primary image across at publish time
+(`item_name` stays as an optional fallback label), and no read screen
+(`giveaway-detail.tsx`, `manage-giveaway.tsx`, `giveaway-browser.tsx`) fetches
+the linked item separately. Editing the item afterwards still does not
+update a giveaway already posted from it. Closing this fully would mean the
+backend returning the linked item's images/description on `GET
+/giveaways/{id}` — not done in this pass, since it wasn't required to make
+`item_id` linkage work end to end.
 
 ## 2. Giveaway capacity is explicit
 
@@ -422,3 +428,31 @@ moment it noticed a status field change. It would cover all six, but only
 while an inbox is mounted, and it would record when the change was noticed
 rather than when it happened. That is a different fact wearing the same name,
 and the inbox is not the place to invent it.
+
+## An item's fully-transferred state is not returned directly
+
+Recorded 2026-09-23 while wiring the multi-listing backend delivery's
+`available_quantity`/`channels` fields into the inventory and item detail
+screens.
+
+`Item.status` (`Unlisted`/`Listed`/`Transferred`) is gone from every API
+response — an item can now carry several open channels at once, so no single
+status word describes it. `GET /items/:id/history-summary` returns
+`available_quantity` and a `channels[]` array of currently open Post/Giveaway
+rows instead, but no `is_transferred` boolean.
+
+What the UI does: `lib/status.ts`'s `isItemTransferred(summary)` derives it
+as `available_quantity === 0 && channels.length === 0`. This is accurate for
+every case except one: `channels` only lists channels that are still
+`Active`. A Random/Manual giveaway that has closed registration but still has
+unclaimed tickets sitting with a receiver drops out of `channels` even though
+the item is not really "gone" yet. Such an item would read as fully
+transferred slightly early.
+
+The failure direction was chosen deliberately: reading an item as still
+active a little longer than strictly true (editable, shown in "the rest of
+your stuff") is harmless, where the reverse — locking an item read-only while
+a giveaway recipient still hasn't collected — would actively block the owner.
+Closing this properly needs the backend to return `is_transferred` directly,
+computed from all of an item's channels (open and recently closed), not just
+the open ones.

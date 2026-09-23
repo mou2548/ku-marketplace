@@ -68,9 +68,13 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           // has to see, and they live on `Appointment_Card` rather than on the
           // transaction. Only a Meetup deal has any, so a Shipping deal does
           // not pay for the extra call; a failure here must not cost the
-          // student their whole inbox, so it degrades to "no cards".
+          // student their whole inbox, so it degrades gracefully — but to
+          // `undefined` ("could not load"), not `[]` ("no meetup exists"),
+          // since `describeDeal` (via `lib/rooms.ts`) reads an empty array as
+          // "no meetup time agreed yet" and would otherwise show that false
+          // statement on a real meetup deal just because this one poll failed.
           transaction.delivery_method === "Meetup"
-            ? getAppointmentCards(transaction.transaction_id).catch(() => [])
+            ? getAppointmentCards(transaction.transaction_id).catch(() => undefined)
             : Promise.resolve([] as AppointmentCardData[]),
         ]);
         const last = messages.at(-1);
@@ -126,6 +130,11 @@ export interface RoomDetail {
    */
   appointment?: AppointmentCardData;
   /**
+   * Every card on this transaction, superseded ones included — `deal-timeline.ts`
+   * needs the full history, not just the one `appointment` worth acting on.
+   */
+  appointments?: AppointmentCardData[];
+  /**
    * Who else is in a giveaway room — real (`lib/api/giveaways.ts`'s
    * `getEntrants`, `GET /giveaways/{id}/recipients`). Outcome states remain
    * visible instead of disappearing from the roster.
@@ -163,7 +172,13 @@ export async function getRoomDetail(
         getAppointmentCards(transactionId),
       ]);
       const { pinned, pending } = deriveAppointmentView(cards);
-      return { summary, transaction, appointment: pending ?? pinned, messages };
+      return {
+        summary,
+        transaction,
+        appointment: pending ?? pinned,
+        appointments: cards,
+        messages,
+      };
     }
 
     if (summary.giveaway) {

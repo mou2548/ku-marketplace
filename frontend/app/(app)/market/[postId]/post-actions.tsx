@@ -3,16 +3,18 @@
 import { getCopy } from "@/lib/copy";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck, XCircle } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
+import { ConfirmButton } from "@/components/kit/confirm-button";
+import { TextInput } from "@/components/kit/field";
 import { Radio, RadioGroup } from "react-aria-components";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
 import type { DeliveryMethod } from "@/lib/status";
-import { buyPostAction } from "@/lib/actions/posts";
+import { buyPostAction, unlistListing } from "@/lib/actions/posts";
 import type { Post } from "@/lib/api/types";
 
 /** §7.5.1 — the system-provided reasons for a post report. */
@@ -51,11 +53,17 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
+  const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
   const deliveryId = useId();
 
   const canBuy = post.post_type !== "TradeOnly";
   const canTrade = post.post_type !== "SellOnly";
+  const quantityValue = Number(quantity);
+  const canConfirm =
+    Number.isInteger(quantityValue) &&
+    quantityValue >= 1 &&
+    quantityValue <= post.quantity_remaining;
 
   if (isMine) {
     return (
@@ -64,17 +72,33 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           variant="secondary"
           block
           className="lg:w-auto"
-          href={`/inventory/${post.item_id}/list`}
+          href={`/inventory/${post.item_id}/list/${post.post_id}`}
         >{t("inventory.editListing")}</LinkButton>
+        <ConfirmButton
+          title="Unlist this listing?"
+          description="This takes it off the market. The item itself stays in your inventory, and this channel's history is kept."
+          confirmLabel="Unlist"
+          doneMessage="Listing removed from the market."
+          icon={<XCircle className="size-4" />}
+          onConfirm={unlistListing.bind(null, post.post_id)}
+          onDone={() => router.push(`/inventory/${post.item_id}`)}
+          trigger={
+            <>
+              <XCircle className="size-4" />
+              Unlist
+            </>
+          }
+          triggerProps={{ variant: "ghost", block: true, className: "lg:w-auto" }}
+        />
       </div>
     );
   }
 
   async function buy() {
-    if (busy) return;
+    if (busy || !canConfirm) return;
     setBusy(true);
     try {
-      const deal = await buyPostAction(post.post_id, { delivery_method: method, quantity: 1 });
+      const deal = await buyPostAction(post.post_id, { delivery_method: method, quantity: quantityValue });
       const transactionId = Number(deal.transaction_id.replace(/^transaction_/, ""));
       if (!Number.isSafeInteger(transactionId) || transactionId < 1) throw new Error("The purchase returned an invalid transaction ID");
       toast.success("Deal created. A chat room has been opened for you.");
@@ -102,7 +126,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
             footer={
               <>
                 <Button variant="ghost" slot="close" isDisabled={busy}>{t("inventory.cancel")}</Button>
-                <Button onPress={buy} isLoading={busy} className="sm:min-w-44">
+                <Button onPress={buy} isDisabled={!canConfirm} isLoading={busy} className="sm:min-w-44">
                   {t("market.confirmPurchase")}</Button>
               </>
             }
@@ -140,6 +164,19 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
                 </Radio>
               ))}
             </RadioGroup>
+
+            {post.quantity_remaining > 1 ? (
+              <TextInput
+                className="mt-4"
+                label="Quantity"
+                value={quantity}
+                onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
+                inputMode="numeric"
+                isRequired
+                isInvalid={quantity !== "" && !canConfirm}
+                hint={`${post.quantity_remaining} available`}
+              />
+            ) : null}
 
             <p className="mt-4 mb-4 text-caption font-normal leading-relaxed text-ink-muted">
               {t("market.directPaymentNotice")}

@@ -113,9 +113,18 @@ export default async function PostDetailPage({
             </div>
           </header>
 
-          {post.description ? (
+          {post.item.description ? (
             <div>
               <h2 className="mb-2 text-h3">{t("market.aboutItem")}</h2>
+              <p className="max-w-prose text-body whitespace-pre-line text-ink-secondary">
+                {post.item.description}
+              </p>
+            </div>
+          ) : null}
+
+          {post.description ? (
+            <div>
+              <h2 className="mb-2 text-h3">{t("market.sellerNotes")}</h2>
               <p className="max-w-prose text-body whitespace-pre-line text-ink-secondary">
                 {post.description}
               </p>

@@ -44,6 +44,7 @@ import {
   confirmItemArrived,
   confirmSlip,
   createHandoverToken,
+  fetchTransaction,
   saveTracking,
   submitPaymentSlip,
   submitRefundSlip,
@@ -76,6 +77,7 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
+import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
@@ -85,7 +87,7 @@ import {
   ENTRANT_STATUS,
   requiresPayment,
   resolveTransactionActor,
-  TRANSACTION_STATUS,
+  transactionStatusPresentation,
   type ActorPrompt,
   type Deadline,
   type Party,
@@ -229,9 +231,10 @@ function ProposeMeetup({
 export function RoomScreen({
   summary,
   viewerId,
-  transaction,
+  transaction: initialTransaction,
   giveaway,
   appointment: initialAppointment,
+  appointments: initialAppointments,
   entrants,
   messages: initialMessages,
 }: {
@@ -247,6 +250,10 @@ export function RoomScreen({
    * single "current appointment" row in the backend.
    */
   appointment?: AppointmentCardData;
+  /** Every card on this transaction, superseded ones included — what
+   * `buildDealTimeline` needs to show every meetup proposal, not just the
+   * live one. */
+  appointments?: AppointmentCardData[];
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
   messages: ChatMessage[];
@@ -282,6 +289,15 @@ export function RoomScreen({
   // transaction-only concept.
   const [messages, setMessages] = useState(initialMessages);
   const [appointment, setAppointment] = useState(initialAppointment);
+  const [appointments, setAppointments] = useState(initialAppointments ?? []);
+  // The transaction itself also has to poll, not just messages and
+  // appointments — the stepper, the prompt, every `describeDeal`/
+  // `buildDealTimeline` card, and `sellerQr`'s own visibility all read from
+  // this object. Without polling it, only the party who just clicked
+  // something saw it change (their own `act()` calls `router.refresh()`);
+  // the other side saw nothing update — including no "payment confirmed"
+  // card — until they reloaded the page by hand.
+  const [transaction, setTransaction] = useState(initialTransaction);
 
   usePolling(() => {
     if (transaction) {
@@ -291,8 +307,10 @@ export function RoomScreen({
         .then((cards) => {
           const { pinned, pending } = deriveAppointmentView(cards);
           setAppointment(pending ?? pinned);
+          setAppointments(cards);
         })
         .catch(() => {});
+      fetchTransaction(transactionId).then(setTransaction).catch(() => {});
     } else if (giveaway) {
       fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
     }
@@ -309,6 +327,40 @@ export function RoomScreen({
   // Same derivation the stepper runs, for the "Step n of m" counter above it.
   const steps = transaction ? buildSteps(transaction, appointment?.status) : [];
   const currentStep = steps.findIndex((s) => s.current);
+  // The stepper above only ever shows the current step of the happy path —
+  // it has no representation at all for a cancellation, a refund, a return,
+  // or an admin report. `buildDealTimeline` covers every branch, with a
+  // timestamp, so both sides see the full story instead of one snapshot.
+  const timelineEvents = useMemo(
+    () => (transaction ? buildDealTimeline(transaction, appointments, viewerId) : []),
+    [transaction, appointments, viewerId],
+  );
+  // `messages` is already oldest-first (ChatThread's own day-grouping relies
+  // on that order too), so the last message at or before an event's `placeAt`
+  // is found in one pass. `afterMessageId` 0 is "before the first message" —
+  // see `ChatThread`'s own doc comment on `systemCards`.
+  const systemCards = useMemo(() => {
+    if (timelineEvents.length === 0) return [];
+    const buckets = new Map<number, DealEvent[]>();
+    for (const event of timelineEvents) {
+      let afterMessageId = 0;
+      for (const m of messages) {
+        if (Date.parse(m.created_at) <= event.placeAt) afterMessageId = m.message_id;
+        else break;
+      }
+      buckets.set(afterMessageId, [...(buckets.get(afterMessageId) ?? []), event]);
+    }
+    return Array.from(buckets, ([afterMessageId, events]) => ({
+      afterMessageId,
+      node: (
+        <div className="flex flex-col gap-1.5">
+          {events.map((event) => (
+            <DealEventCard key={event.id} event={event} />
+          ))}
+        </div>
+      ),
+    }));
+  }, [timelineEvents, messages]);
   // Every step done means the deal is finished, not that it is back at step 1.
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
@@ -378,20 +430,24 @@ export function RoomScreen({
    * `router.refresh()` re-runs the server component that fetched the
    * transaction, so the stepper, the prompt and the pinned card all move on
    * the answer rather than on the toast.
+   *
+   * Returns whether `call` succeeded, so a caller that owns its own dialog
+   * (e.g. the cancellation request below) can close it on success and leave
+   * it open — with the toast's error still visible — on failure.
    */
   async function act(
     call: () => Promise<unknown>,
     message: string,
     failure: string,
     next?: string,
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     try {
       await call();
     } catch (err) {
       setBusy(false);
       toast.error(err instanceof Error ? err.message : failure);
-      return;
+      return false;
     }
     setBusy(false);
     toast.success(message);
@@ -406,6 +462,30 @@ export function RoomScreen({
     } else if (pathname !== `/chat/${summary.room_id}`) {
       // The inbox preview is selected by queue priority, which changes after
       // accepting a payment. Keep this conversation instead of picking again.
+      router.replace(`/chat/${summary.room_id}`);
+    } else {
+      router.refresh();
+    }
+    return true;
+  }
+
+  /**
+   * `act()` swallows its own errors (shows a toast, does not rethrow) — fine
+   * for every other control here, which has no further use for the failure.
+   * `SlipUploader` (`slip.tsx`) is different: its own `send()` awaits
+   * `onUpload` and depends on the rejection to keep the pending file and
+   * show its own inline "try again" state instead of clearing the preview.
+   * Routing the slip upload through `act()` meant that state never fired —
+   * every failed upload (a real backend error, a dropped connection, an
+   * expired session) still showed "Slip sent" with the preview intact, since
+   * `act()` had already turned the rejection into a toast and a normal
+   * return before `SlipUploader` ever saw it.
+   */
+  async function uploadAndRefresh(call: () => Promise<unknown>, message: string) {
+    await call();
+    toast.success(message);
+    markRoomActive(summary.room_id);
+    if (pathname !== `/chat/${summary.room_id}`) {
       router.replace(`/chat/${summary.room_id}`);
     } else {
       router.refresh();
@@ -575,7 +655,7 @@ export function RoomScreen({
       return <ActionCard title="Return and refund">
         <div className="flex flex-col gap-3">
           {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => act(() => uploadSlip("refund", file), "Refund slip uploaded", "Could not upload refund slip")} /> :
+            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => uploadAndRefresh(() => uploadSlip("refund", file), "Refund slip uploaded")} /> :
             transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
@@ -622,10 +702,9 @@ export function RoomScreen({
               isUploaded={!!transaction.slip_image_url}
               uploadedAt={transaction.payment_confirmed_by_buyer_at}
               onUpload={(file) =>
-                act(
+                uploadAndRefresh(
                   () => uploadSlip("payment", file),
                   "Slip uploaded. Waiting on the seller.",
-                  "Could not upload the slip",
                 )
               }
             />
@@ -762,13 +841,13 @@ export function RoomScreen({
               slipUrl={transaction.refund_slip_url}
               isUploaded={!!transaction.refund_slip_url}
               uploadedAt={transaction.refund_submitted_at}
-              onUpload={(file) =>
-                act(
+              onUpload={async (file) => {
+                await act(
                   () => uploadSlip("refund", file),
                   "Refund slip uploaded",
                   "Could not upload the refund slip",
-                )
-              }
+                );
+              }}
             />
           </ActionCard>
         );
@@ -1105,11 +1184,45 @@ export function RoomScreen({
         senders={senders}
         showSenders={isGroupRoom}
         action={currentAction() ?? sellerQr}
+        systemCards={systemCards}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
         onSend={handleSend}
         onAttach={handleAttach}
       />
+    </div>
+  );
+}
+
+/**
+ * One entry from `buildDealTimeline`, rendered as a centered system card —
+ * the same visual register as the day-divider pill in `ChatThread`, since
+ * this reports what the deal did, not what either party said.
+ */
+function DealEventCard({ event }: { event: DealEvent }) {
+  return (
+    <div className="flex justify-center">
+      <div
+        className={cn(
+          "flex max-w-[90%] items-start gap-3 rounded-control border px-3 py-2 text-caption",
+          TONE_CHIP[event.tone],
+        )}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{event.title}</p>
+          {event.detail ? (
+            <p className="mt-0.5 text-ink-muted">{event.detail}</p>
+          ) : null}
+        </div>
+        {event.at ? (
+          <time
+            dateTime={event.at}
+            className="shrink-0 text-meta text-ink-muted"
+          >
+            {formatDateTime(event.at)}
+          </time>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1145,7 +1258,7 @@ function DealDetails({
   deadline?: Deadline;
   reportable: boolean;
   busy: boolean;
-  onCancel: (reason: string) => void;
+  onCancel: (reason: string) => Promise<boolean>;
 }) {
   const t = getCopy();
   const st = useStatusText();
@@ -1153,6 +1266,12 @@ function DealDetails({
   // rejected cancellation flips dispute_status to under_review immediately, so
   // this text is the only context the admin who picks it up will have.
   const [cancelReason, setCancelReason] = useState("");
+  // Controlled rather than `OverlayTrigger`'s own uncontrolled open state,
+  // because closing on success has to wait for `onCancel` to resolve — an
+  // uncontrolled dialog has no "close only if this succeeded" hook, which is
+  // exactly why this one used to stay open (looking stuck) after a
+  // successful submit.
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
@@ -1165,7 +1284,7 @@ function DealDetails({
             {transaction.post.item.name}
           </Link>
           <StatusBadge
-            status={TRANSACTION_STATUS[transaction.status]}
+            status={transactionStatusPresentation(transaction)}
             size="sm"
             className="w-fit"
           />
@@ -1232,21 +1351,26 @@ function DealDetails({
 
           {transaction.status === "Pending" ||
           transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by) ? (
-            <OverlayTrigger>
-              <Button variant="ghost" size="sm">
+            <>
+              <Button variant="ghost" size="sm" onPress={() => setCancelOpen(true)}>
                 <XCircle className="size-4" />{transaction.status === "Completed" ? "Request return (within 7 days)" : t("deal.requestCancellation")}</Button>
               <Overlay
+                isOpen={cancelOpen}
+                onOpenChange={setCancelOpen}
                 isBusy={busy}
                 title={transaction.status === "Completed" ? "Request a return" : t("deal.cancelTitle")}
                 description={transaction.status === "Completed" ? "Explain the reason. The other party must respond before goods or money are returned." : t("deal.cancelBody")}
                 footer={
                   <>
-                    <Button variant="ghost" slot="close">{t("deal.keepDeal")}</Button>
+                    <Button variant="ghost" slot="close" isDisabled={busy}>{t("deal.keepDeal")}</Button>
                     <Button
                       variant="danger"
                       isLoading={busy}
                       isDisabled={!cancelReason.trim()}
-                      onPress={() => onCancel(cancelReason.trim())}
+                      onPress={async () => {
+                        const ok = await onCancel(cancelReason.trim());
+                        if (ok) setCancelOpen(false);
+                      }}
                     >{t("deal.sendCancelRequest")}</Button>
                   </>
                 }
@@ -1260,7 +1384,7 @@ function DealDetails({
                   hint={t("deal.reasonHint")}
                 />
               </Overlay>
-            </OverlayTrigger>
+            </>
           ) : null}
         </div>
       </div>

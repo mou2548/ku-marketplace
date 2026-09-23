@@ -43,7 +43,12 @@ export interface ChatThreadProps {
   viewerId: number;
   /** Rendered pinned to the end of the thread — the current flow action. */
   action?: React.ReactNode;
-  /** Cards interleaved by timestamp, e.g. accepted appointments. */
+  /**
+   * Cards interleaved by timestamp, e.g. accepted appointments. `0` is a
+   * sentinel for "before the first message" — a real `message_id` is never
+   * 0 — for a deal event that predates every message in the room (or a room
+   * with no messages at all yet).
+   */
   systemCards?: Array<{ afterMessageId: number; node: React.ReactNode }>;
   onSend?: (text: string) => void | Promise<void>;
   onAttach?: (files: FileList) => void | Promise<void>;
@@ -181,6 +186,8 @@ export function ChatThread({
             three messages hangs from the top of a tall column with the gap
             underneath, which reads as a document rather than a thread. */}
         <div className="mt-auto flex flex-col gap-3">
+          {cardsByMessage.get(0) ?? null}
+
           {messages.map((m, i) => {
             const mine = m.sender_id === viewerId;
             // Only the first message of a run gets the name — repeating it on

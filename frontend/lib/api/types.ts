@@ -16,7 +16,6 @@ import type {
   DeliveryMethod,
   EntrantStatus,
   ItemCondition,
-  ItemStatus,
   OfferStatus,
   PostType,
   ReportStatus,
@@ -82,7 +81,6 @@ export interface Item {
   category: ItemCategory;
   condition: ItemCondition;
   description?: string | null;
-  status: ItemStatus;
   /** Books and lecture notes. Persona P1 searches by this. */
   course_name?: string | null;
   brand_model?: string | null;
@@ -92,13 +90,41 @@ export interface Item {
   images: ItemImage[];
 }
 
+/**
+ * One currently open channel this item is committed to. An item can carry
+ * several at once (e.g. a SellOnly post and a TradeOnly post together) —
+ * this is why `Item` no longer carries a single `status` field.
+ */
+export type ItemChannel =
+  | {
+      type: "post";
+      post_id: number;
+      post_type: PostType;
+      quantity_total: number;
+      quantity_remaining: number;
+    }
+  | {
+      type: "giveaway";
+      giveaway_id: number;
+      quantity_total: number;
+      quantity_claimed: number;
+    };
+
 export interface ItemHistorySummary {
   item_id: number;
   inventory_quantity: number;
+  /** Committed to a currently open channel — sale, trade or giveaway. */
   posted_quantity: number;
-  currently_listed_quantity: number;
+  /** How many units can still be committed to a new channel right now. */
+  available_quantity: number;
   sold_quantity: number;
   traded_quantity: number;
+  /** Reserved by a deal that hasn't completed yet — not free, not history. */
+  ongoing_quantity: number;
+  /** How many units have actually been handed over via a giveaway. */
+  given_quantity: number;
+  /** Every currently open Post/Giveaway channel for this item. */
+  channels: ItemChannel[];
 }
 
 export interface Post {
@@ -106,6 +132,7 @@ export interface Post {
   item_id: number;
   post_type: PostType;
   price: number;
+  quantity_total: number;
   quantity_remaining: number;
   description?: string | null;
   /** Only meaningful when post_type is TradeOnly or Both. */
@@ -206,7 +233,10 @@ export interface AppointmentCardData {
 
 export interface GiveawayPost {
   giveaway_id: number;
-  item_name: string;
+  /** Null on legacy rows created before item linking existed. */
+  item_id: number | null;
+  /** Optional fallback label — the linked item's own name is authoritative. */
+  item_name: string | null;
   description?: string | null;
   pickup_location: string;
   giver_id: number;

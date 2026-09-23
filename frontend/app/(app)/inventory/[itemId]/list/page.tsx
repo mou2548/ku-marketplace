@@ -4,14 +4,17 @@ import { notFound } from "next/navigation";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
-import { getMyItems } from "@/lib/api/items";
-import { listPosts } from "@/lib/api/posts";
+import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
 
 /**
- * E5 — put an owned item on the market.
+ * E5 — put an owned item on the market. Always a new listing: an item can
+ * carry several open channels at once now (a sale post and a trade post
+ * together, say), so this route never looks for an existing post to reuse —
+ * editing one already on the market happens at
+ * `/inventory/[itemId]/list/[postId]` instead.
  *
  * Separate from the item form on purpose (schema §2.4): an item is a thing you
  * own, a post is the terms you are offering it under. The same item can go up
@@ -26,12 +29,13 @@ export default async function ListItemPage({
   const tStatus = await getCopy("status");
   const t = await getCopy();
   const { itemId } = await params;
-  const [items, posts] = await Promise.all([getMyItems(), listPosts()]);
+  const [items, summary] = await Promise.all([
+    getMyItems(),
+    getItemHistorySummary(Number(itemId)).catch(() => undefined),
+  ]);
   const item = items.find((i) => i.item_id === Number(itemId));
   if (!item) notFound();
-  // A post already on the market for this item means the screen is editing
-  // its terms (sale kind, price), not creating a new listing.
-  const post = posts.find((p) => p.item_id === item.item_id);
+  const available = summary?.available_quantity ?? item.quantity;
 
   const rarity = ITEM_CONDITION[item.condition];
 
@@ -95,7 +99,7 @@ export default async function ListItemPage({
       columns="22rem minmax(0,1fr)"
       className="gap-8"
     >
-      <ListItemForm item={item} post={post} />
+      <ListItemForm item={item} available={available} />
     </TwoColumn>
   );
 }

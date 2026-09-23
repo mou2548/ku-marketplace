@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { getItemAvailability } from './item-availability';
 
 @Injectable()
 export class ItemsService {
@@ -87,11 +88,28 @@ export class ItemsService {
     const item = await this.prisma.item.findUnique({
       where: { itemId: id, deletedAt: null },
       include: {
-        post: {
+        posts: {
           include: {
             transactions: {
-              where: { status: 'Completed' },
-              select: { offerId: true, quantity: true },
+              // Completed feeds Sold/Traded below; the rest (Pending,
+              // Processing, Pending Refund) feeds Ongoing — stock already
+              // reserved by an unfinished deal, distinct from both history
+              // and from what's still free to list. Cancelled/Refunded are
+              // excluded: those deals are over and don't hold stock.
+              where: {
+                status: {
+                  in: ['Completed', 'Pending', 'Processing', 'Pending Refund'],
+                },
+              },
+              select: { offerId: true, quantity: true, status: true },
+            },
+          },
+        },
+        giveawayPosts: {
+          include: {
+            tickets: {
+              where: { status: 'Received' },
+              select: { ticketId: true },
             },
           },
         },
@@ -107,20 +125,58 @@ export class ItemsService {
       );
     }
 
-    const completed = item.post?.transactions ?? [];
+    const allTransactions = item.posts.flatMap((post) => post.transactions);
+    const completed = allTransactions.filter(
+      (transaction) => transaction.status === 'Completed',
+    );
     const sumQuantity = (withOffer: boolean) =>
       completed
         .filter((transaction) => Boolean(transaction.offerId) === withOffer)
         .reduce((total, transaction) => total + (transaction.quantity ?? 1), 0);
+    const ongoingQuantity = allTransactions
+      .filter((transaction) => transaction.status !== 'Completed')
+      .reduce((total, transaction) => total + (transaction.quantity ?? 1), 0);
+
+    const openPosts = item.posts.filter(
+      (post) => post.deletedAt === null && post.status === 'Active',
+    );
+    const openGiveaways = item.giveawayPosts.filter(
+      (giveaway) => giveaway.status === 'Active',
+    );
+    const { available } = await getItemAvailability(this.prisma, id);
 
     return {
       item_id: item.itemId,
       inventory_quantity: item.quantity,
-      posted_quantity: item.post?.quantityTotal ?? 0,
-      currently_listed_quantity:
-        item.post?.status === 'Active' ? item.post.quantityRemaining : 0,
+      // Live commitment right now, not lifetime history — Sold/Traded/Given
+      // already cover what happened in the past, so this only counts
+      // channels that are still Active, sale/trade and giveaway alike.
+      posted_quantity:
+        openPosts.reduce((total, post) => total + post.quantityTotal, 0) +
+        openGiveaways.reduce((total, giveaway) => total + giveaway.quantity, 0),
+      available_quantity: available,
       sold_quantity: sumQuantity(false),
       traded_quantity: sumQuantity(true),
+      ongoing_quantity: ongoingQuantity,
+      given_quantity: item.giveawayPosts.reduce(
+        (total, giveaway) => total + giveaway.tickets.length,
+        0,
+      ),
+      channels: [
+        ...openPosts.map((post) => ({
+          type: 'post' as const,
+          post_id: post.postId,
+          post_type: post.postType,
+          quantity_total: post.quantityTotal,
+          quantity_remaining: post.quantityRemaining,
+        })),
+        ...openGiveaways.map((giveaway) => ({
+          type: 'giveaway' as const,
+          giveaway_id: giveaway.giveawayId,
+          quantity_total: giveaway.quantity,
+          quantity_claimed: giveaway.tickets.length,
+        })),
+      ],
     };
   }
 
@@ -155,12 +211,13 @@ export class ItemsService {
           },
         },
       });
-      if (reserved || item.status === 'Transferred')
+      const { available, isTransferred } = await getItemAvailability(tx, id);
+      if (reserved || isTransferred)
         throw new ConflictException('This item is committed to a transaction');
       if (
         updateItemDto.quantity !== undefined &&
         updateItemDto.quantity !== item.quantity &&
-        item.status !== 'Unlisted'
+        available !== item.quantity
       )
         throw new ConflictException(
           'Unlist the item before changing its quantity',
@@ -232,9 +289,10 @@ export class ItemsService {
           },
         },
       });
-      if (reserved || item.status === 'Transferred')
+      const { available, isTransferred } = await getItemAvailability(tx, id);
+      if (reserved || isTransferred)
         throw new ConflictException('This item is committed to a transaction');
-      if (item.status !== 'Unlisted')
+      if (available !== item.quantity)
         throw new ConflictException('Unlist the item before deleting it');
       // §soft-delete — Item is master data that Report/Appeal evidence may
       // still point to, so this never physically removes the row. Hard

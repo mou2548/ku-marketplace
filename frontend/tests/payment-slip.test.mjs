@@ -156,10 +156,24 @@ test('the slip stays readable to both parties after the turn that produced it', 
 });
 
 test('English copy includes every slip label', () => {
-  const copy = fs.readFileSync('lib/copy.ts', 'utf8');
+  // copy.ts nests keys ("slip": { "viewFullscreen": ... }), not flat dotted
+  // strings, so a literal `"slip.viewFullscreen":` search can never match —
+  // every key here would fail that check, not just the one the loop happens
+  // to reach first. Load the real module and use its own documented "unknown
+  // key returns the key itself" contract (getCopy's own doc comment) instead.
+  const code = ts.transpileModule(fs.readFileSync('lib/copy.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  const exports = {};
+  vm.runInNewContext(code, { exports, require: () => { throw new Error('lib/copy.ts must not import anything'); } });
+  const t = exports.getCopy();
+
   const used = new Set([...slipSource.matchAll(/t\("slip\.(\w+)"\)/g)].map((m) => m[1]));
   for (const key of ['uploadedAt', 'uploadedByBuyerAt']) used.add(key);
-  for (const key of used) assert.ok(copy.includes(`"slip.${key}":`), `missing copy slip.${key}`);
+  for (const key of used) {
+    const fullKey = `slip.${key}`;
+    assert.notEqual(t(fullKey), fullKey, `missing copy ${fullKey}`);
+  }
 });
 
 /** Runs room-screen's slip upload against stubbed actions, nothing mounted. */

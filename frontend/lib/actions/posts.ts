@@ -7,6 +7,8 @@ import {
   type BuyPostResult,
   createOffer,
   createPost,
+  deletePost,
+  type DeletePostResult,
   rejectOffer,
   updatePost,
   withdrawOffer,
@@ -66,6 +68,16 @@ export async function updateListing(
 ): Promise<UpdatePostResult> {
   const token = await requireSession();
   return updatePost(postId, payload, { token });
+}
+
+/**
+ * `DELETE /posts/:post_id` — unlist this channel. Rejected server-side if a
+ * Pending offer or non-Cancelled transaction is attached to it. Never had a
+ * UI control wired to it before this.
+ */
+export async function unlistListing(postId: PostId): Promise<DeletePostResult> {
+  const token = await requireSession();
+  return deletePost(postId, { token });
 }
 
 /**

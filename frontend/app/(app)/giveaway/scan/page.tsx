@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { QrScanner } from "@/components/kit/qr-scanner";
 import { useToast } from "@/components/kit/toast";
-import { scanTicketQr } from "@/lib/actions/giveaways";
+import { confirmTicketQr } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import { decodeTicketQr } from "@/lib/giveaway-qr";
 
@@ -29,7 +29,7 @@ export default function GiveawayScanPage() {
       return;
     }
     try {
-      const valid = await scanTicketQr(decoded.giveawayId, decoded.ticketId, decoded.token);
+      const valid = await confirmTicketQr(decoded.giveawayId, decoded.ticketId, decoded.token);
       if (!valid) {
         toast.error("This QR is not valid.");
         return;

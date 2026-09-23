@@ -33,6 +33,7 @@ export interface PostSummary {
   post_type: PostType;
   item_name: string;
   description: string | null;
+  wanted_item_offer: string | null;
   price: number;
   quantity_total: number;
   quantity_available: number;
@@ -60,7 +61,6 @@ interface RawPostItem {
   category: string | null;
   condition: string | null;
   description: string | null;
-  status: string | null;
   course_name: string | null;
   brand_model: string | null;
   warranty_expiry: string | null;
@@ -112,8 +112,7 @@ export function toPost(raw: RawPost): Post {
     quantity: ri?.quantity ?? 1,
     category: ri?.category ?? "",
     condition: (ri?.condition ?? "Good") as ItemCondition,
-    description: ri?.description ?? raw.description,
-    status: (ri?.status ?? "Listed") as Item["status"],
+    description: ri?.description ?? null,
     course_name: ri?.course_name ?? null,
     brand_model: ri?.brand_model ?? null,
     warranty_expiry: ri?.warranty_expiry ?? null,
@@ -132,9 +131,10 @@ export function toPost(raw: RawPost): Post {
     item_id: raw.item_id,
     post_type: raw.post_type,
     price: raw.price,
+    quantity_total: raw.quantity_total,
     quantity_remaining: raw.quantity_remaining ?? raw.quantity_available,
     description: raw.description,
-    wanted_item_offer: null,
+    wanted_item_offer: raw.wanted_item_offer ?? null,
     created_at: raw.created_at ?? "",
     item,
     seller: {
@@ -173,11 +173,17 @@ export interface CreatePostPayload {
   post_type: PostType;
   price: number;
   quantity_total?: number;
+  description?: string;
+  wanted_item_offer?: string;
 }
 
 export interface UpdatePostPayload {
   price?: number;
   post_type?: PostType;
+  /** Restocks or reduces this channel — see updatePost's own validation. */
+  quantity_total?: number;
+  description?: string;
+  wanted_item_offer?: string;
 }
 
 export interface BuyPostPayload {
@@ -202,6 +208,8 @@ export interface UpdatePostResult {
   post_id: string;
   price: number;
   post_type: PostType;
+  quantity_total: number;
+  quantity_remaining: number;
 }
 
 export interface DeletePostResult {

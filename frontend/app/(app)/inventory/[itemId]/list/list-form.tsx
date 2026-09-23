@@ -4,7 +4,7 @@ import { getCopy } from "@/lib/copy";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowLeftRight, Coins, Sparkles, Store } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Coins, Gift, Sparkles, Store } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button } from "@/components/kit/button";
@@ -24,28 +24,60 @@ import { POST_TYPE, type PostType } from "@/lib/status";
  * fields below it appear or disappear with the choice — a price field on a
  * trade-only post is a question with no right answer.
  *
- * `post` is the terms already on the market for this item, if any. Its
- * presence is what makes this screen an edit rather than a first listing —
- * same fields, but seeded from the live post and saved with a `PATCH`
- * instead of a `POST`, so changing your mind from "for sale" to "for trade"
- * no longer means unlisting and starting over.
+ * `post` is the specific channel being edited, if any. Its presence is what
+ * makes this screen an edit rather than a new listing — same fields, but
+ * seeded from that post and saved with a `PATCH` instead of a `POST`. An
+ * item can carry more than one open channel at once now, so creating a new
+ * listing never looks for an existing post to reuse — it always adds one.
  */
-export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
+export function ListItemForm({
+  item,
+  post,
+  available,
+  priceKnown = true,
+}: {
+  item: Item;
+  post?: Post;
+  /** How much of the item is still free to commit to a new (or bigger)
+   * channel — the ceiling for a new listing's quantity, and how far this
+   * one can grow if edited. */
+  available?: number;
+  /** False when editing a channel whose current price could not be loaded
+   * (a sold-out post drops out of the public endpoint this reads from) —
+   * the price field starts empty instead of seeding a wrong "0". */
+  priceKnown?: boolean;
+}) {
   const t = getCopy();
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const isEditing = !!post;
+  const freeStock = available ?? item.quantity;
+  // Editing: this channel can shrink down to what it already sold/traded
+  // (never below), and grow by however much is still free elsewhere.
+  const soldOnThisChannel = post ? post.quantity_total - post.quantity_remaining : 0;
+  const minQuantity = isEditing ? soldOnThisChannel : 1;
+  const maxQuantity = isEditing ? (post?.quantity_total ?? 0) + freeStock : freeStock;
 
   const [postType, setPostType] = useState<PostType>(post?.post_type ?? "SellOnly");
-  const [price, setPrice] = useState(post && post.post_type !== "TradeOnly" ? String(post.price) : "");
+  const [price, setPrice] = useState(
+    post && post.post_type !== "TradeOnly" && priceKnown ? String(post.price) : "",
+  );
+  const [quantity, setQuantity] = useState(
+    String(isEditing ? (post?.quantity_total ?? maxQuantity) : maxQuantity),
+  );
   const [wanted, setWanted] = useState(post?.wanted_item_offer ?? "");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(post?.description ?? "");
   const [busy, setBusy] = useState(false);
 
   const wantsPrice = postType !== "TradeOnly";
   const wantsTradeTerms = postType !== "SellOnly";
-  const canPost = !wantsPrice || Number(price) > 0;
+  const quantityValue = Number(quantity);
+  const quantityValid =
+    Number.isInteger(quantityValue) &&
+    quantityValue >= minQuantity &&
+    quantityValue <= maxQuantity;
+  const canPost = (!wantsPrice || Number(price) > 0) && quantityValid;
 
   async function publish() {
     setBusy(true);
@@ -54,6 +86,9 @@ export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
         await updateListing(post.post_id, {
           post_type: postType,
           price: wantsPrice ? Number(price) : 0,
+          quantity_total: quantityValue,
+          description: description.trim() || undefined,
+          wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
         });
         setBusy(false);
         toast.success("Listing updated.");
@@ -66,7 +101,9 @@ export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
         // A trade-only post still needs a number the API will accept; the
         // asking price is meaningless there and the field is hidden for it.
         price: wantsPrice ? Number(price) : 0,
-        quantity_total: item.quantity,
+        quantity_total: quantityValue,
+        description: description.trim() || undefined,
+        wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
       });
       setBusy(false);
       toast.success("Listed. It is live in the market now.");
@@ -112,7 +149,16 @@ export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
         <RadioGroupField
           label={t("listing.kind")}
           value={postType}
-          onChange={(v) => setPostType(v as PostType)}
+          onChange={(v) => {
+            if (v === "Giveaway") {
+              // A giveaway is a different table with its own form (pickup
+              // location, allocation method, dates) — reuse that screen
+              // instead of duplicating it here, with this item preselected.
+              router.push(`/post?type=giveaway&item=${item.item_id}`);
+              return;
+            }
+            setPostType(v as PostType);
+          }}
           variant="card"
         >
           <Radio value="SellOnly" description={t("listing.sellOnly")}>
@@ -133,7 +179,30 @@ export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
               {st.of(POST_TYPE.Both).label}
             </span>
           </Radio>
+          {!isEditing ? (
+            <Radio value="Giveaway" description="Free — set pickup and registration details on the next screen">
+              <span className="flex items-center gap-2">
+                <Gift aria-hidden className="size-4" />
+                Give away
+              </span>
+            </Radio>
+          ) : null}
         </RadioGroupField>
+
+        <TextInput
+          label={t("listing.quantity")}
+          value={quantity}
+          onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
+          inputMode="numeric"
+          isRequired
+          hint={
+            isEditing
+              ? soldOnThisChannel > 0
+                ? `${minQuantity}–${maxQuantity} — can't go below what's already sold or traded here`
+                : `Up to ${maxQuantity} total`
+              : t("listing.quantityHint", { count: maxQuantity })
+          }
+        />
 
         {wantsPrice ? (
           <TextInput
@@ -144,7 +213,13 @@ export function ListItemForm({ item, post }: { item: Item; post?: Post }) {
             isRequired
             icon={<Coins className="size-4" />}
             suffix={<span className="text-caption">{t("listing.thb")}</span>}
-            hint={postType === "Both" ? t("listing.priceHintBoth") : undefined}
+            hint={
+              !priceKnown
+                ? "This listing is sold out, so its current price could not be loaded — enter the price you want it to have."
+                : postType === "Both"
+                  ? t("listing.priceHintBoth")
+                  : undefined
+            }
           />
         ) : null}
 
