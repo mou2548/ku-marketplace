@@ -68,9 +68,13 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           // has to see, and they live on `Appointment_Card` rather than on the
           // transaction. Only a Meetup deal has any, so a Shipping deal does
           // not pay for the extra call; a failure here must not cost the
-          // student their whole inbox, so it degrades to "no cards".
+          // student their whole inbox, so it degrades gracefully — but to
+          // `undefined` ("could not load"), not `[]` ("no meetup exists"),
+          // since `describeDeal` (via `lib/rooms.ts`) reads an empty array as
+          // "no meetup time agreed yet" and would otherwise show that false
+          // statement on a real meetup deal just because this one poll failed.
           transaction.delivery_method === "Meetup"
-            ? getAppointmentCards(transaction.transaction_id).catch(() => [])
+            ? getAppointmentCards(transaction.transaction_id).catch(() => undefined)
             : Promise.resolve([] as AppointmentCardData[]),
         ]);
         const last = messages.at(-1);
