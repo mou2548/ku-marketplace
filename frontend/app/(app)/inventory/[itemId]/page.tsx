@@ -2,7 +2,7 @@ import { formatDate } from "@/lib/date-format";
 import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowLeftRight, CalendarDays, Clock, Eye, Gift, Pencil, Plus, Store, Tag, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, CalendarDays, Clock, Eye, Gift, Pencil, Plus, ShoppingBag, Store, Tag, XCircle } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { ConfirmButton } from "@/components/kit/confirm-button";
@@ -69,6 +69,16 @@ export default async function ItemDetailPage({
     (channel) => channel.type === "giveaway",
   );
   const hasOpenChannel = channels.length > 0 || giveawayChannels.length > 0;
+  // How much of what's Listed can still actually be bought/claimed right
+  // now — Listed itself never moves on a sale, so this is the number that
+  // answers "is there anything left on my listing" at a glance, without
+  // requiring a click into each channel's own "N left".
+  const stillAvailable =
+    channels.reduce((total, channel) => total + channel.quantity_remaining, 0) +
+    giveawayChannels.reduce(
+      (total, channel) => total + (channel.quantity_total - channel.quantity_claimed),
+      0,
+    );
   const isTransferred = summary ? isItemTransferred(summary) : false;
   const available = summary?.available_quantity ?? item.quantity;
   const rarity = ITEM_CONDITION[item.condition];
@@ -323,14 +333,23 @@ export default async function ItemDetailPage({
                       icon={<Store className="size-4" />}
                       label="Listed"
                       value={summary.posted_quantity}
-                      sub={
+                      sub={[
+                        hasOpenChannel
+                          ? {
+                              icon: <ShoppingBag className="size-3" />,
+                              text:
+                                stillAvailable > 0
+                                  ? `${stillAvailable} still up for grabs`
+                                  : "None left to buy or claim",
+                            }
+                          : null,
                         summary.ongoing_quantity > 0
                           ? {
                               icon: <Clock className="size-3" />,
                               text: `${summary.ongoing_quantity} ongoing`,
                             }
-                          : undefined
-                      }
+                          : null,
+                      ].filter((line) => line !== null)}
                     />
                     <ActivityMetric
                       icon={<Plus className="size-4" />}
@@ -410,10 +429,11 @@ function ActivityMetric({
   icon: React.ReactNode;
   label: string;
   value: number;
-  /** A quantity nested *inside* this one (e.g. Ongoing inside Listed) — shown
-   * as a smaller line under the number, never its own same-weight tile, so
-   * it can't be misread as a sibling amount to add on top. */
-  sub?: { icon: React.ReactNode; text: string };
+  /** Quantities nested *inside* this one (e.g. how much of Listed is still
+   * gettable, how much is Ongoing) — shown as smaller lines under the
+   * number, never their own same-weight tile, so they can't be misread as
+   * sibling amounts to add on top. */
+  sub?: Array<{ icon: React.ReactNode; text: string }>;
 }) {
   return (
     <div className="rounded-card bg-surface p-3 shadow-raised">
@@ -424,12 +444,15 @@ function ActivityMetric({
       <dd data-numeric className="mt-1 text-h2 text-ink-brand">
         {value}
       </dd>
-      {sub ? (
-        <p className="mt-1 flex items-center gap-1 text-caption text-ink-muted">
-          {sub.icon}
-          {sub.text}
+      {sub?.map((line) => (
+        <p
+          key={line.text}
+          className="mt-1 flex items-center gap-1 text-caption text-ink-muted"
+        >
+          {line.icon}
+          {line.text}
         </p>
-      ) : null}
+      ))}
     </div>
   );
 }
