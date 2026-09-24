@@ -58,6 +58,7 @@ export interface RoomSummary {
   needsYou: boolean;
   href: string;
   transaction?: Transaction;
+  /** Where a deal actually stands — payment, meetup, shipping, refund. */
   /**
    * The one-glance version of `transaction`, for the row's second line —
    * see `lib/deal-progress.ts`. Undefined for a giveaway room.
@@ -83,6 +84,8 @@ export interface TransactionRoomSource {
   lastMessage?: string;
   lastMessageAt?: string;
   lastMessageSenderId?: number;
+  /** This deal's cards; `undefined` when they could not be loaded. */
+  appointmentCards?: AppointmentCardData[];
   /**
    * Every `Appointment_Card` on this transaction, not just the live one —
    * a superseded card's `deleted_at` is the only stamp a "let's meet later
@@ -213,6 +216,10 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
+        appointmentCards,
+      }): RoomSummary => {
+        const progress = describeDeal(transaction, viewerId, appointmentCards);
+        return {
         appointments,
         needsYou,
       }): RoomSummary => ({
@@ -227,6 +234,15 @@ export function buildRooms({
         lastMessage,
         lastMessageAt,
         lastMessageSenderId,
+        // From the same derivation as the row's step line, so the "Your turn"
+        // chip can never contradict it (e.g. after proposing a meetup
+        // yourself). `both` counts: either side may propose a time.
+        needsYou: progress.waitingOn === "you" || progress.waitingOn === "both",
+        href: `/chat/${roomId}`,
+        transaction,
+        progress,
+        };
+      },
         lastActivityAt: latestTimestamp([
           lastMessageAt,
           transactionActivityAt(transaction, appointments),

@@ -75,6 +75,7 @@ export default async function ChatInboxPage() {
             transaction={first.transaction}
             giveaway={first.giveaway}
             appointment={first.appointment}
+            appointmentCards={first.appointmentCards}
             entrants={first.entrants}
             messages={first.messages}
           />

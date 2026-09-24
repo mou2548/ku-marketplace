@@ -44,6 +44,12 @@ export interface ChatThreadProps {
   /** Rendered pinned to the end of the thread — the current flow action. */
   action?: React.ReactNode;
   /**
+   * Cards placed by time among the messages — the deal's progress summaries.
+   * Sorted by `placeAt` (epoch ms); each renders before the first message sent
+   * after it, and `Infinity` puts one after the last message.
+   */
+  events?: Array<{ key: string; placeAt: number; node: React.ReactNode }>;
+  /** Cards interleaved by timestamp, e.g. accepted appointments. */
    * Cards interleaved by timestamp, e.g. accepted appointments. `0` is a
    * sentinel for "before the first message" — a real `message_id` is never
    * 0 — for a deal event that predates every message in the room (or a room
@@ -144,6 +150,7 @@ export function ChatThread({
   messages,
   viewerId,
   action,
+  events = [],
   systemCards = [],
   receipts,
   onSend,
@@ -172,7 +179,7 @@ export function ChatThread({
   // user when they are reading back through the thread.
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [messages.length, events.length]);
 
   const cardsByMessage = new Map(
     systemCards.map((c) => [c.afterMessageId, c.node]),
@@ -189,6 +196,12 @@ export function ChatThread({
           {cardsByMessage.get(0) ?? null}
 
           {messages.map((m, i) => {
+            const sentAt = Date.parse(m.created_at);
+            const before = events.filter(
+              (e) =>
+                e.placeAt <= sentAt &&
+                (i === 0 || e.placeAt > Date.parse(messages[i - 1].created_at)),
+            );
             const mine = m.sender_id === viewerId;
             // Only the first message of a run gets the name — repeating it on
             // every bubble of a five-message burst is noise, not attribution.
@@ -208,6 +221,9 @@ export function ChatThread({
 
             return (
               <div key={m.message_id} className="flex flex-col gap-3">
+                {before.map((e) => (
+                  <div key={e.key}>{e.node}</div>
+                ))}
                 {startsNewDay ? (
                   <div className="flex justify-center py-1">
                     <span className="rounded-pill bg-surface-sunken px-3 py-1 text-meta font-medium text-ink-muted">
@@ -289,6 +305,16 @@ export function ChatThread({
               </div>
             );
           })}
+
+          {events
+            .filter(
+              (e) =>
+                messages.length === 0 ||
+                e.placeAt > Date.parse(messages[messages.length - 1].created_at),
+            )
+            .map((e) => (
+              <div key={e.key}>{e.node}</div>
+            ))}
 
           <div ref={endRef} />
         </div>
