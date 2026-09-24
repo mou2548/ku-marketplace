@@ -69,8 +69,7 @@ model Item {
 
 model Post {
   postId            Int           @id @default(autoincrement()) @map("post_id")
-  itemId            Int           @unique @map("item_id")
-  deletedAt         DateTime?     @map("deleted_at") @db.Timestamp(6)
+  itemId            Int           @map("item_id")
   postType          String        @map("post_type") @db.VarChar(20)
   status            String?       @default("Active") @map("post_status") @db.VarChar(20)
   price             Decimal       @db.Decimal(10, 2)
@@ -229,6 +228,7 @@ model Report {
   resolutionNote     String?       @map("resolution_note")
   handledAt          DateTime?     @map("handled_at") @db.Timestamp(6)
   createdAt          DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  sanction           String?       @db.VarChar(30)
   appeals            Appeal[]
   handler            User?         @relation("ReportHandledBy", fields: [handledBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
   reporter           User          @relation("ReportReporter", fields: [reporterId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
@@ -286,18 +286,14 @@ model ChatRoom {
 }
 
 model ChatMessage {
-  messageId      Int       @id @default(autoincrement()) @map("message_id")
-  roomId         Int       @map("room_id")
-  senderId       Int       @map("sender_id")
-  content        String?
-  imageUrls      Json?     @map("image_urls")
-  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
-  message_type   String    @default("User") @db.VarChar(10)
-  system_event   String?   @db.VarChar(40)
-  system_payload Json?
-  dedupe_key     String?   @unique @db.VarChar(120)
-  room           ChatRoom  @relation(fields: [roomId], references: [roomId], onDelete: NoAction, onUpdate: NoAction)
-  sender         User      @relation(fields: [senderId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  messageId Int       @id @default(autoincrement()) @map("message_id")
+  roomId    Int       @map("room_id")
+  senderId  Int       @map("sender_id")
+  content   String?
+  imageUrls Json?     @map("image_urls")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  room      ChatRoom  @relation(fields: [roomId], references: [roomId], onDelete: NoAction, onUpdate: NoAction)
+  sender    User      @relation(fields: [senderId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("Chat_Message")
 }
