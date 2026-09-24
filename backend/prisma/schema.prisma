@@ -18,8 +18,8 @@ model User {
   status                                                  String?               @default("Active") @map("user_status") @db.VarChar(20)
   emailVerifiedAt                                         DateTime?             @map("email_verified_at") @db.Timestamp(6)
   isAdmin                                                 Boolean?              @default(false) @map("isAdmin")
-  avatarUrl                                               String?               @map("avatar_url") @db.VarChar(500)
   createdAt                                               DateTime?             @default(now()) @map("created_at") @db.Timestamp(6)
+  avatarUrl                                               String?               @map("avatar_url") @db.VarChar(500)
   appealsFiled                                            Appeal[]              @relation("AppealAppellant")
   appealsHandled                                          Appeal[]              @relation("AppealHandledBy")
   appointmentsProposed                                    AppointmentCard[]
@@ -44,24 +44,25 @@ model User {
 }
 
 model Item {
-  itemId         Int         @id @default(autoincrement()) @map("item_id")
-  ownerId        Int         @map("owner_id")
-  name           String      @db.VarChar(255)
-  category       String      @db.VarChar(50)
-  quantity       Int         @default(1)
-  deletedAt      DateTime?   @map("deleted_at") @db.Timestamp(6)
-  condition      String      @db.VarChar(50)
+  itemId         Int            @id @default(autoincrement()) @map("item_id")
+  ownerId        Int            @map("owner_id")
+  name           String         @db.VarChar(255)
+  category       String         @db.VarChar(50)
+  condition      String         @db.VarChar(50)
   description    String?
-  status         String?     @default("Unlisted") @map("item_status") @db.VarChar(20)
-  courseName     String?     @map("course_name") @db.VarChar(100)
-  brandModel     String?     @map("brand_model") @db.VarChar(100)
-  warrantyExpiry DateTime?   @map("warranty_expiry") @db.Date
-  size           String?     @db.VarChar(20)
-  createdAt      DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
-  owner          User        @relation(fields: [ownerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  status         String?        @default("Unlisted") @map("item_status") @db.VarChar(20)
+  courseName     String?        @map("course_name") @db.VarChar(100)
+  brandModel     String?        @map("brand_model") @db.VarChar(100)
+  warrantyExpiry DateTime?      @map("warranty_expiry") @db.Date
+  size           String?        @db.VarChar(20)
+  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamp(6)
+  quantity       Int            @default(1)
+  deletedAt      DateTime?      @map("deleted_at") @db.Timestamp(6)
+  giveawayPosts  GiveawayPost[]
+  owner          User           @relation(fields: [ownerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
   images         ItemImage[]
   offerItems     OfferItem[]
-  post           Post?
+  posts          Post[]
 
   @@map("Item")
 }
@@ -76,6 +77,9 @@ model Post {
   quantityTotal     Int           @default(1) @map("quantity_total")
   quantityRemaining Int           @default(1) @map("quantity_remaining")
   createdAt         DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt         DateTime?     @map("deleted_at") @db.Timestamp(6)
+  description       String?
+  wantedItemOffer   String?       @map("wanted_item_offer")
   offers            Offer[]
   item              Item          @relation(fields: [itemId], references: [itemId], onDelete: NoAction, onUpdate: NoAction)
   transactions      Transaction[]
@@ -148,22 +152,23 @@ model Transaction {
 
 model GiveawayPost {
   giveawayId       Int              @id @default(autoincrement()) @map("giveaway_id")
-  itemName         String           @map("item_name") @db.VarChar(255)
+  itemName         String?          @map("item_name") @db.VarChar(255)
   quantity         Int              @default(1)
   description      String?
   pickupLocation   String           @map("pickup_location") @db.VarChar(255)
   giverId          Int              @map("giver_id")
   allocationMethod String           @map("allocation_method") @db.VarChar(20)
-  registerStart    DateTime?        @map("register_start") @db.Timestamp(6)
-  registerDeadline DateTime?        @map("register_deadline") @db.Timestamp(6)
-  pickupStart      DateTime?        @map("pickup_start") @db.Timestamp(6)
   pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
   status           String?          @default("Active") @map("giveaway_status") @db.VarChar(20)
+  registerDeadline DateTime?        @map("register_deadline") @db.Timestamp(6)
   createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
-  drawnAt          DateTime?        @map("drawn_at") @db.Timestamp(6)
+  registerStart    DateTime?        @map("register_start") @db.Timestamp(6)
+  pickupStart      DateTime?        @map("pickup_start") @db.Timestamp(6)
+  itemId           Int?             @map("item_id")
   chatRooms        ChatRoom[]
   images           GiveawayImage[]
   giver            User             @relation(fields: [giverId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  item             Item?            @relation(fields: [itemId], references: [itemId], onDelete: NoAction, onUpdate: NoAction)
   tickets          GiveawayTicket[]
 
   @@map("Giveaway_Post")
@@ -186,10 +191,10 @@ model GiveawayTicket {
   giveawayId  Int          @map("giveaway_id")
   receiverId  Int          @map("receiver_id")
   qrToken     String?      @unique @map("qr_token") @db.VarChar(255)
-  qrIssuedAt  DateTime?    @map("qr_issued_at") @db.Timestamp(6)
-  status      String?      @default("Registered") @map("ticket_status") @db.VarChar(20)
-  queueNumber Int          @map("queue_number")
+  status      String?      @default("Waiting") @map("ticket_status") @db.VarChar(20)
   updatedAt   DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
+  qrIssuedAt  DateTime?    @map("qr_issued_at") @db.Timestamp(6)
+  queueNumber Int          @map("queue_number")
   giveaway    GiveawayPost @relation(fields: [giveawayId], references: [giveawayId], onDelete: NoAction, onUpdate: NoAction)
   receiver    User         @relation(fields: [receiverId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
 
@@ -220,7 +225,6 @@ model Report {
   details            String?
   evidenceUrls       Json?         @map("evidence_urls")
   status             String?       @default("Pending") @map("report_status") @db.VarChar(20)
-  sanction           String?       @db.VarChar(30)
   handledBy          Int?          @map("handled_by")
   resolutionNote     String?       @map("resolution_note")
   handledAt          DateTime?     @map("handled_at") @db.Timestamp(6)
@@ -259,8 +263,8 @@ model AppointmentCard {
   time          DateTime    @db.Time(6)
   location      String      @db.VarChar(255)
   status        String?     @default("Pending") @map("appointment_status") @db.VarChar(20)
-  deletedAt     DateTime?   @map("deleted_at") @db.Timestamp(6)
   createdAt     DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt     DateTime?   @map("deleted_at") @db.Timestamp(6)
   proposer      User        @relation(fields: [proposedBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
   transaction   Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
 

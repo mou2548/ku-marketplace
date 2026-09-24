@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * A per-room "just interacted" timestamp, written the moment the viewer sends a
- * message and read by the inbox to float that room to the top instantly.
+ * A per-room "just interacted" timestamp, written the moment the viewer does
+ * anything in a room — sends a message, approves a slip, proposes a meetup,
+ * answers a cancellation — and read by the inbox to float that room to the top
+ * instantly.
  *
  * The inbox refreshes on a 10s poll (no realtime transport exists, see
  * `lib/use-polling.ts`), so without this a chat you just replied in would not
@@ -11,7 +13,7 @@
  * entry plus a `window` event, so the open room and the list beside it — two
  * sibling components — agree the instant a message goes out, and it survives
  * across tabs via the native `storage` event. The poll then confirms it with
- * the real `lastMessageAt` and the two converge.
+ * the real `lastActivityAt` and the two converge.
  */
 
 const ACTIVITY_KEY = "ku-marketplace:chat-activity";
@@ -52,7 +54,12 @@ export function getServerChatActivitySnapshot() {
 }
 
 /** Record that the viewer just interacted with a room, floating it to the top
- * of the inbox until the next poll confirms with the real last message. */
+ * of the inbox until the next poll confirms with the real `lastActivityAt`.
+ *
+ * This is the viewer's own browser only. The other party's inbox floats the
+ * room from the server-derived timestamp instead (`transactionActivityAt` in
+ * `lib/rooms.ts`), which is why that derivation — not this — is the fix for
+ * "a status change did not move the conversation". */
 export function markRoomActive(roomId: number) {
   try {
     const activity = parseActivity(getChatActivitySnapshot());

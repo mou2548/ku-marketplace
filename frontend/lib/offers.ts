@@ -38,11 +38,19 @@ export function offerSides(offer: Offer, viewerId: number): OfferSides {
   const viewerIsProposer = offer.proposer_id === viewerId;
   const money = Math.max(0, offer.additional_money);
 
+  // A trade always moves exactly one unit of the post's item, whatever
+  // `Item.quantity` says — see `acceptOffer`'s hardcoded `quantity: 1`.
+  // Multi-listing means that field can now be the item's total stock across
+  // every channel, not what's actually on the table in this one trade; the
+  // composer already builds its own preview slot the same way (offer-composer
+  // line ~99), this just does the same for the read-only review screens.
+  const postSlot: Item = { ...offer.post.item, quantity: 1 };
+
   // The proposer puts up their items plus the cash and receives the post's
   // item. The post's owner is the mirror of that.
   return viewerIsProposer
     ? {
-        youGet: [offer.post.item],
+        youGet: [postSlot],
         youGive: offer.items,
         money,
         moneyDirection: "you-pay",
@@ -51,7 +59,7 @@ export function offerSides(offer: Offer, viewerId: number): OfferSides {
       }
     : {
         youGet: offer.items,
-        youGive: [offer.post.item],
+        youGive: [postSlot],
         money,
         moneyDirection: "you-receive",
         counterparty: offer.proposer,

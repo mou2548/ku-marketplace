@@ -31,7 +31,7 @@ const profileSelect = {
   _count: {
     select: {
       followers: { where: { follower: { status: 'Active' } } },
-      items: { where: { post: publicListing() } },
+      items: { where: { posts: { some: publicListing() } } },
     },
   },
 } satisfies Prisma.UserSelect;

@@ -11,7 +11,7 @@ import {
   APPEAL_STATUS,
   REPORT_STATUS,
   TICKET_STATUS,
-  TRANSACTION_STATUS,
+  transactionStatusPresentation,
 } from "@/lib/status";
 
 /**
@@ -90,7 +90,7 @@ export async function getNotifications(): Promise<Notification[]> {
   }
 
   for (const t of transactions) {
-    const pres = TRANSACTION_STATUS[t.status];
+    const pres = transactionStatusPresentation(t);
     const other = t.buyer_id === viewerId ? t.seller.name : t.buyer.name;
     out.push({
       notification_id: nid("deal", t.transaction_id),

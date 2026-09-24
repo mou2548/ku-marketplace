@@ -7,9 +7,10 @@ import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Clock, Dices, Gift, MapPin, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, Clock, Dices, Gift, Lock, MapPin, Sparkles, Users } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -18,7 +19,7 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { ProductGallery } from "@/components/market/product-gallery";
 import { useStatusText } from "@/lib/status-text";
-import { drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
+import { closeGiveawayRegistration, drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS, type Deadline } from "@/lib/status";
@@ -51,7 +52,13 @@ export function GiveawayDetail({
 
   const method = ALLOCATION_METHOD[giveaway.allocation_method];
 
-  const now = useNow(30_000);
+  // 1s, not the 30s default elsewhere on this screen's countdowns: `canDraw`
+  // below is a boolean gate, not a display, and "End registration now" moves
+  // `register_deadline` into the past via a `router.refresh()` — with a
+  // coarser bucket, this `now` could still read as "before" that new
+  // deadline for up to 30s after the refresh, leaving the button looking
+  // stuck even though the server has already closed registration.
+  const now = useNow(1_000);
   const known = now !== UNKNOWN_TIME;
   const registerStartMs = giveaway.register_start
     ? Date.parse(giveaway.register_start)
@@ -65,6 +72,9 @@ export function GiveawayDetail({
   const pickupEndMs = giveaway.pickup_deadline
     ? Date.parse(giveaway.pickup_deadline)
     : null;
+  // The backend refuses to draw or select before the deadline no matter
+  // what — this only mirrors that so the button doesn't invite a dead click.
+  const canDraw = known && registerEndMs !== null && now >= registerEndMs;
 
   // Before registration opens, count down to opening; once open, count down
   // to the draw/close instead.
@@ -156,15 +166,38 @@ export function GiveawayDetail({
     ) : giveaway.allocation_method === "Random" ? (
       giveaway.status === "Active" ? (
         <div className="flex flex-col gap-2">
-          <Button size="lg" block isLoading={drawing} onPress={runDraw}>
+          <Button
+            size="lg"
+            block
+            isLoading={drawing}
+            isDisabled={!canDraw}
+            onPress={runDraw}
+          >
             <Dices className="size-5" />
             Run the draw
           </Button>
           <p className="text-caption leading-[1.6] text-ink-secondary">
-            Selects up to {giveaway.quantity} recipients and closes
-            registration. If registrations do not exceed that number, everyone
-            receives a place.
+            {canDraw
+              ? `Selects up to ${giveaway.quantity} recipients and closes registration. If registrations do not exceed that number, everyone receives a place.`
+              : `Available once registration closes${registerEndMs ? ` at ${formatDate(new Date(registerEndMs))}` : ""}. It can't be run early.`}
           </p>
+          {!canDraw ? (
+            <ConfirmButton
+              title="End registration now?"
+              description={`${giveaway.registered_count} ${giveaway.registered_count === 1 ? "person has" : "people have"} registered so far. This closes registration immediately, before ${registerEndMs ? formatDate(new Date(registerEndMs)) : "the original deadline"} — nobody else can join, and it can't be undone. You can then run the draw right away.`}
+              confirmLabel="End registration"
+              doneMessage="Registration closed. You can run the draw now."
+              icon={<Lock className="size-4" />}
+              onConfirm={closeGiveawayRegistration.bind(null, giveaway.giveaway_id)}
+              trigger={
+                <>
+                  <Lock className="size-4" />
+                  End registration now
+                </>
+              }
+              triggerProps={{ variant: "ghost", size: "sm" }}
+            />
+          ) : null}
         </div>
       ) : (
         <Notice tone="success">
@@ -244,7 +277,7 @@ export function GiveawayDetail({
       </Link>
 
       <section className="grid min-w-0 gap-7 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(17rem,.78fr)_20rem] xl:gap-8">
-        <ProductGallery images={giveaway.images} name={giveaway.item_name} />
+        <ProductGallery images={giveaway.images} name={giveaway.item_name ?? ""} />
 
         <div className="flex min-w-0 flex-col gap-6 md:pt-2">
           <header className="flex flex-col gap-3">
@@ -292,6 +325,19 @@ export function GiveawayDetail({
         <aside className="min-w-0 md:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
           <Surface shape="panel" className="overflow-hidden">
             <div aria-hidden className="h-1 bg-tone-warning-solid" />
+            <div className="flex items-center gap-3 border-b border-line bg-tone-warning-bg p-5">
+              <Gift aria-hidden className="size-7 shrink-0 text-tone-warning-fg" />
+              <div>
+                <p data-numeric className="text-[2rem] leading-none font-bold text-tone-warning-fg">
+                  {giveaway.quantity}
+                </p>
+                <p className="mt-1 text-body-sm font-medium text-ink-secondary">
+                  {giveaway.allocation_method === "FirstCome"
+                    ? `${giveaway.quantity === 1 ? "spot" : "spots"} total`
+                    : "to be given away"}
+                </p>
+              </div>
+            </div>
             <div className="flex flex-col gap-4 p-5">
               <div>
                 <p className="mb-3 text-overline text-ink-muted uppercase">
@@ -327,10 +373,6 @@ export function GiveawayDetail({
               >
                 <Users aria-hidden className="size-4 shrink-0" />
                 {giveaway.registered_count} registered
-                <span aria-hidden className="text-ink-disabled">
-                  ·
-                </span>
-                {giveaway.quantity} recipient {giveaway.quantity === 1 ? "place" : "places"}
               </p>
               {giveaway.allocation_method === "FirstCome" ? (
                 <p data-numeric className="text-caption text-ink-secondary">

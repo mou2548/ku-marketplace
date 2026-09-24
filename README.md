@@ -53,7 +53,9 @@ Cloudinary settings documented in `backend/.env.example`.
 Use unique token secrets and real service credentials for deployed environments.
 Do not commit `.env` files. Never deploy the seeded demo database publicly.
 
-## Existing databases
+```bash
+docker compose up -d 
+```
 
 Docker does not rerun `init.sql` when you pull changes. Back up your database
 before applying schema updates. The existing incremental SQL updates can be run
@@ -98,8 +100,6 @@ cases, browser evidence and remaining device/integration checks.
 
 The optional API console runs on port 3001:
 
-```sh
-cp api-test-pretty/.env.local.example api-test-pretty/.env.local
-npm ci --prefix api-test-pretty
-npm run dev --prefix api-test-pretty
-```
+- **Line endings**: `.gitattributes` ตั้งค่าให้ทุกไฟล์ text เก็บเป็น LF เสมอ ไม่ว่าจะ commit จาก Windows หรือ Mac — ไม่ต้องตั้งค่าอะไรเพิ่มเอง
+- **Node version**: โปรเจ็คนี้ไม่ได้ใช้ nvm — ทุกคนต้องลง Node 20 ตรงจาก nodejs.org เอง และเช็คด้วย `node -v` ก่อน install ทุกครั้งที่สลับเครื่อง/โปรเจ็ค
+- **Docker**: ใช้แค่รัน Postgres ตอน dev เท่านั้น ยังไม่มี Dockerfile สำหรับ frontend/backend (จะเพิ่มตอนใกล้ deploy จริง)

@@ -20,6 +20,7 @@ import { GiveawaysService } from '../src/giveaways/giveaways.service';
 import { GiveawayExpiryService } from '../src/giveaways/giveaway-expiry.service';
 import { RedisService } from '../src/redis/redis.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { getItemAvailability } from '../src/items/item-availability';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import request from 'supertest';
@@ -169,12 +170,11 @@ describe('Fresh clone database', () => {
       estimated_delivery_date: new Date(Date.now() + 86400000).toISOString(),
     });
     expect((await service.confirmDelivery(id, 4)).status).toBe('Completed');
+    // One of the two units sold; the other stays reserved by the still-open
+    // post, so the item has nothing free to commit to a brand new channel.
+    expect((await getItemAvailability(prisma, item.itemId)).available).toBe(0);
     expect(
-      (await prisma.item.findUniqueOrThrow({ where: { itemId: item.itemId } }))
-        .status,
-    ).toBe('Listed');
-    expect(
-      (await prisma.post.findUniqueOrThrow({ where: { itemId: item.itemId } }))
+      (await prisma.post.findFirstOrThrow({ where: { itemId: item.itemId } }))
         .quantityRemaining,
     ).toBe(1);
     await expect(service.confirmDelivery(id, 4)).rejects.toThrow();
@@ -454,7 +454,12 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
-        status: 'Pending',
+        // Processing, not Pending: this test is about chat-room creation
+        // under concurrency and appointment-card supersession, not payment
+        // gating, so the fixture starts past `createAppointment`'s own
+        // payment-required guard (a still-Pending, no-offer transaction
+        // cannot arrange a meetup at all — see that guard's own comment).
+        status: 'Processing',
         deliveryMethod: 'Meetup',
       },
     });
@@ -669,7 +674,7 @@ describe('Fresh clone database', () => {
       3,
     );
     await expect(
-      service.updatePostPrice(post.post_id, { price: 0 }, 4),
+      service.updatePost(post.post_id, { price: 0 }, 4),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(service.deletePost(post.post_id, 4)).rejects.toBeInstanceOf(
       ForbiddenException,
@@ -686,7 +691,7 @@ describe('Fresh clone database', () => {
       ConflictException,
     );
     const stored = await prisma.post.findUniqueOrThrow({
-      where: { itemId: item.itemId },
+      where: { postId: Number(post.post_id.replace('post_', '')) },
     });
     expect(stored.quantityRemaining).toBe(0);
     expect(
@@ -884,12 +889,17 @@ describe('Fresh clone database', () => {
       first.expires_in_seconds,
     );
 
-    // Once the 15-minute window has passed the giver's scan no longer counts.
+    // Once the 15-minute window has passed, confirming with the stale token
+    // is rejected outright (qrConfirm is the state-changing half of the QR
+    // flow — qrScan deliberately never changes status, it only previews
+    // validity, see its own "ไม่เปลี่ยนสถานะ — แค่ตรวจสอบ" comment).
     await prisma.giveawayTicket.update({
       where: { ticketId: post.tickets[0].ticketId },
       data: { qrIssuedAt: new Date(Date.now() - 16 * 60 * 1000) },
     });
-    await giveaways.qrScan(gid, tid, first.token, 3);
+    await expect(
+      giveaways.qrConfirm(gid, tid, first.token, 3),
+    ).rejects.toThrow();
     expect(
       (
         await prisma.giveawayTicket.findUniqueOrThrow({
@@ -898,10 +908,10 @@ describe('Fresh clone database', () => {
       ).status,
     ).toBe('Waiting');
 
-    // Reopening after expiry mints a genuinely new code that does scan.
+    // Reopening after expiry mints a genuinely new code that does confirm.
     const fresh = await giveaways.qrGenerate(gid, tid, 4);
     expect(fresh.token).not.toBe(first.token);
-    await giveaways.qrScan(gid, tid, fresh.token, 3);
+    await giveaways.qrConfirm(gid, tid, fresh.token, 3);
     expect(
       (
         await prisma.giveawayTicket.findUniqueOrThrow({
@@ -1039,7 +1049,7 @@ describe('Fresh clone database', () => {
     ).not.toBeNull();
   });
 
-  it('allows relisting a deleted listing while preserving its original row', async () => {
+  it('creates a new post row when relisting, preserving the original as history', async () => {
     const service = new PostsService(prisma as unknown as PrismaService);
     const item = await prisma.item.create({
       data: {
@@ -1058,7 +1068,68 @@ describe('Fresh clone database', () => {
       { item_id: item.itemId, post_type: 'SellOnly', price: 12 },
       3,
     );
-    expect(relisted.post_id).toBe(first.post_id);
+    expect(relisted.post_id).not.toBe(first.post_id);
+    const original = await prisma.post.findUniqueOrThrow({
+      where: { postId: Number(first.post_id.replace('post_', '')) },
+    });
+    expect(original.deletedAt).not.toBeNull();
+    expect(original.status).toBe('Inactive');
+    expect(original.price.toNumber()).toBe(10);
+  });
+
+  it('lets a cancelled trade unlock its post for relisting under a different type', async () => {
+    const service = new PostsService(prisma as unknown as PrismaService);
+    const sellerItem = await prisma.item.create({
+      data: {
+        ownerId: 3,
+        name: 'Unlock test',
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    const proposerItem = await prisma.item.create({
+      data: {
+        ownerId: 4,
+        name: 'Unlock trade-in',
+        category: 'Books',
+        condition: 'Good',
+      },
+    });
+    const post = await service.createPost(
+      { item_id: sellerItem.itemId, post_type: 'TradeOnly', price: 0 },
+      3,
+    );
+    const offer = await service.createOffer(post.post_id, {
+      proposer_id: 4,
+      item_ids: [proposerItem.itemId],
+    });
+    await service.acceptOffer(post.post_id, offer.offer_id, {}, 3);
+
+    // Still an open deal — the guard should keep blocking here.
+    await expect(service.deletePost(post.post_id, 3)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    const postId = Number(post.post_id.replace('post_', ''));
+    const deal = await prisma.transaction.findFirstOrThrow({
+      where: { postId },
+    });
+    await transactionService().requestCancellation(deal.transactionId, 4, {
+      reason: 'Changed my mind',
+    });
+
+    // The Offer row stays 'Accepted' forever once its transaction exists, and
+    // the Transaction itself is now 'Cancelled' — neither should keep the
+    // post locked out of being unlisted and relisted as a different kind.
+    // Relisting always creates a new post row now, so this is a fresh
+    // post_id rather than the original one coming back to life.
+    await service.deletePost(post.post_id, 3);
+    const relisted = await service.createPost(
+      { item_id: sellerItem.itemId, post_type: 'SellOnly', price: 25 },
+      3,
+    );
+    expect(relisted.post_id).not.toBe(post.post_id);
+    expect(relisted.post_type).toBe('SellOnly');
   });
 
   it('prevents the same offered item being accepted by two different sellers', async () => {

@@ -19,7 +19,6 @@ interface RawItem {
   condition: string;
   quantity: number;
   description: string | null;
-  status: string;
   courseName: string | null;
   brandModel: string | null;
   warrantyExpiry: string | null;
@@ -38,7 +37,6 @@ function toItem(raw: RawItem): Item {
     category: raw.category,
     condition: raw.condition as Item["condition"],
     description: raw.description,
-    status: raw.status as Item["status"],
     course_name: raw.courseName,
     brand_model: raw.brandModel,
     warranty_expiry: raw.warrantyExpiry,

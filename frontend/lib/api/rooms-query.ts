@@ -66,7 +66,21 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
   const [transactionRooms, giveawayRooms] = await Promise.all([
     Promise.all(
       transactions.map(async (transaction) => {
-        const { roomId, messages } = await getChatHistory(transaction.transaction_id);
+        const [{ roomId, messages }, appointments] = await Promise.all([
+          getChatHistory(transaction.transaction_id),
+          // Proposing and declining a meetup are conversation events the inbox
+          // has to see, and they live on `Appointment_Card` rather than on the
+          // transaction. Only a Meetup deal has any, so a Shipping deal does
+          // not pay for the extra call; a failure here must not cost the
+          // student their whole inbox, so it degrades gracefully — but to
+          // `undefined` ("could not load"), not `[]` ("no meetup exists"),
+          // since `describeDeal` (via `lib/rooms.ts`) reads an empty array as
+          // "no meetup time agreed yet" and would otherwise show that false
+          // statement on a real meetup deal just because this one poll failed.
+          transaction.delivery_method === "Meetup"
+            ? getAppointmentCards(transaction.transaction_id).catch(() => undefined)
+            : Promise.resolve([] as AppointmentCardData[]),
+        ]);
         const last = messages.at(-1);
         return {
           transaction,
@@ -78,6 +92,8 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
           appointmentCards: appointmentCards?.filter(
             (card) => card.transaction_id === transaction.transaction_id,
           ),
+          appointments,
+          needsYou: resolveTransactionActor(transaction, viewer).actor === viewer,
         };
       }),
     ),
@@ -122,6 +138,11 @@ export interface RoomDetail {
   /** Every card on the deal, retired ones included — the chat's timeline. */
   appointmentCards?: AppointmentCardData[];
   /**
+   * Every card on this transaction, superseded ones included — `deal-timeline.ts`
+   * needs the full history, not just the one `appointment` worth acting on.
+   */
+  appointments?: AppointmentCardData[];
+  /**
    * Who else is in a giveaway room — real (`lib/api/giveaways.ts`'s
    * `getEntrants`, `GET /giveaways/{id}/recipients`). Outcome states remain
    * visible instead of disappearing from the roster.
@@ -164,6 +185,7 @@ export async function getRoomDetail(
         transaction,
         appointment: pending ?? pinned,
         appointmentCards: cards,
+        appointments: cards,
         messages,
       };
     }

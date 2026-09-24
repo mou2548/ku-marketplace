@@ -1,10 +1,10 @@
 "use client";
 
 import { getCopy } from "@/lib/copy";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GridListItem, type Selection } from "react-aria-components";
-import { Check, CheckSquare, Package, Plus, Store, X } from "lucide-react";
+import { ArrowLeftRight, Check, CheckSquare, Gift, Package, Plus, Store, Tag, X } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -13,10 +13,14 @@ import type { InventoryItem } from "@/components/kit/inventory-slot";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
 import type { Item, ItemHistorySummary } from "@/lib/api/types";
-import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
+import {
+  ITEM_CONDITION,
+  ITEM_TRANSFERRED_STATUS,
+  isItemTransferred,
+} from "@/lib/status";
+import { ChannelChips } from "@/components/kit/channel-chips";
 
 /**
  * A product catalogue for things the student owns. Inventory behaviour stays
@@ -26,37 +30,33 @@ import { ITEM_CONDITION, ITEM_STATUS, type ItemStatus } from "@/lib/status";
  */
 export function InventoryScreen({
   items,
-  listedItemIds,
   summaries,
 }: {
   items: Item[];
-  listedItemIds: number[];
   summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
   const t = getCopy();
   const statusText = useStatusText();
   const router = useRouter();
-  const toast = useToast();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Selection>(new Set());
-  const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
-  const transferredIds = useMemo(
-    () => new Set(items.filter((item) => item.status === "Transferred").map((item) => item.item_id)),
-    [items],
-  );
-  const listedCount = items.filter(
-    (item) => !transferredIds.has(item.item_id) && listed.has(item.item_id),
-  ).length;
-  const activeCount = items.length - transferredIds.size;
 
-  /** Active items reflect their current listing, while transferred items stay
-   * visible as read-only history for completed sale/trade totals. */
-  const statusOf = (item: Item): ItemStatus =>
-    item.status === "Transferred"
-      ? "Transferred"
-      : listed.has(item.item_id)
-        ? "Listed"
-        : "Unlisted";
+  const isTransferred = useCallback(
+    (item: Item) => {
+      const summary = summaries[item.item_id];
+      return summary ? isItemTransferred(summary) : false;
+    },
+    [summaries],
+  );
+  const transferredIds = useMemo(
+    () => new Set(items.filter(isTransferred).map((item) => item.item_id)),
+    [items, isTransferred],
+  );
+  const openCount = items.filter((item) => {
+    const summary = summaries[item.item_id];
+    return summary ? summary.channels.length > 0 : false;
+  }).length;
+  const activeCount = items.length - transferredIds.size;
 
   const slots: InventoryItem[] = useMemo(
     () =>
@@ -109,10 +109,10 @@ export function InventoryScreen({
           </div>
           <div className="flex flex-wrap gap-2 text-meta">
             <span className="rounded-pill bg-brand-subtle px-2.5 py-1 font-medium text-ink-brand">
-              {listedCount} {t("inventory.onTheMarket")}
+              {openCount} {t("inventory.onTheMarket")}
             </span>
             <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-secondary">
-              {activeCount - listedCount} {t("inventory.notListed")}
+              {activeCount - openCount} {t("inventory.notListed")}
             </span>
             {transferredIds.size > 0 ? (
               <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-muted">
@@ -159,13 +159,24 @@ export function InventoryScreen({
         >
           {(slot: InventoryItem) => {
             const item = items.find((i) => i.item_id === slot.item_id)!;
-            const itemStatus = statusOf(item);
             const rarity = ITEM_CONDITION[item.condition];
             const summary = summaries[item.item_id];
+            const transferred = isTransferred(item);
+            const resolution = summary
+              ? ([
+                  { icon: Tag, label: "Sold", value: summary.sold_quantity },
+                  { icon: ArrowLeftRight, label: "Traded", value: summary.traded_quantity },
+                  { icon: Gift, label: t("inventory.given"), value: summary.given_quantity },
+                ] as const).filter((entry) => entry.value > 0)
+              : [];
             return (
               <GridListItem
                 id={slot.item_id}
-                textValue={`${item.name}, ${statusText.of(ITEM_STATUS[itemStatus]).label}`}
+                textValue={
+                  transferred
+                    ? `${item.name}, ${statusText.of(ITEM_TRANSFERRED_STATUS).label}`
+                    : item.name
+                }
                 style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
                 className="group min-w-0 cursor-pointer overflow-hidden rounded-card bg-surface shadow-raised outline-none transition-[transform,box-shadow] duration-[--dur-fast] hover:-translate-y-0.5 hover:shadow-floating focus-visible:ring-2 focus-visible:ring-brand data-[pressed]:translate-y-px data-[selected]:ring-2 data-[selected]:ring-brand"
               >
@@ -179,11 +190,18 @@ export function InventoryScreen({
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                         className="h-full"
                       />
-                      <StatusBadge
-                        status={ITEM_STATUS[itemStatus]}
-                        size="sm"
-                        className="absolute top-2 left-2 shadow-raised"
-                      />
+                      {transferred ? (
+                        <StatusBadge
+                          status={ITEM_TRANSFERRED_STATUS}
+                          size="sm"
+                          className="absolute top-2 left-2 shadow-raised"
+                        />
+                      ) : summary && summary.channels.length > 0 ? (
+                        <ChannelChips
+                          channels={summary.channels}
+                          className="absolute top-2 left-2"
+                        />
+                      ) : null}
                       {isSelected ? (
                         <span className="absolute top-2 right-2 grid size-7 place-items-center rounded-pill bg-brand text-on-brand shadow-raised">
                           <Check aria-hidden className="size-4" />
@@ -208,27 +226,37 @@ export function InventoryScreen({
                       >
                         {statusText.of(rarity).label}
                       </span>
-                      {summary ? (
-                        <dl className="grid grid-cols-3 gap-1 border-t border-line pt-2 text-center">
-                          <div>
-                            <dt className="text-meta text-ink-muted">Posted</dt>
-                            <dd data-numeric className="text-meta font-semibold">
+                      {transferred ? (
+                        resolution.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2">
+                            {resolution.map(({ icon: Icon, label, value }) => (
+                              <span key={label} className="flex items-center gap-1.5">
+                                <Icon aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+                                <span className="text-meta text-ink-muted">{label}</span>
+                                <span data-numeric className="text-body-sm font-semibold">
+                                  {value}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null
+                      ) : summary ? (
+                        <div className="flex flex-col gap-1 border-t border-line pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                          <span className="flex items-center gap-1.5">
+                            <Store aria-hidden className="size-3.5 shrink-0 text-ink-brand" />
+                            <span className="text-meta text-ink-muted">Listed</span>
+                            <span data-numeric className="text-body-sm font-semibold text-ink-brand">
                               {summary.posted_quantity}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-meta text-ink-muted">Sold</dt>
-                            <dd data-numeric className="text-meta font-semibold">
-                              {summary.sold_quantity}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-meta text-ink-muted">Traded</dt>
-                            <dd data-numeric className="text-meta font-semibold">
-                              {summary.traded_quantity}
-                            </dd>
-                          </div>
-                        </dl>
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Package aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+                            <span className="text-meta text-ink-muted">Unlisted</span>
+                            <span data-numeric className="text-body-sm font-semibold">
+                              {summary.available_quantity}
+                            </span>
+                          </span>
+                        </div>
                       ) : (
                         <p className="border-t border-line pt-2 text-meta text-ink-muted">
                           History unavailable
@@ -259,7 +287,10 @@ export function InventoryScreen({
               if (selectedIds.length === 1) {
                 router.push(`/inventory/${selectedIds[0]}/list`);
               } else {
-                toast.info(`Preparing to list ${selectedIds.length} items`);
+                // The composer already handles picking terms for several
+                // items at once — hand it the selection instead of asking
+                // the owner to find them again there.
+                router.push(`/post?item=${selectedIds.join(",")}`);
               }
             }}
           >

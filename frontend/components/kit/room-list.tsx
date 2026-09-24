@@ -27,7 +27,7 @@ import {
   parseActivity,
   subscribeChatActivity,
 } from "@/lib/chat-activity";
-import { ENTRANT_STATUS, TICKET_STATUS, TRANSACTION_STATUS } from "@/lib/status";
+import { ENTRANT_STATUS, TICKET_STATUS } from "@/lib/status";
 import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
 
@@ -157,10 +157,14 @@ export function RoomList({
     if (activeRoomId !== undefined) markRoomRead(activeRoomId);
   }, [activeRoomId]);
 
-  // A room the viewer just messaged floats to the top at once, not on the next
+  // A room the viewer just acted in floats to the top at once, not on the next
   // poll: `markRoomActive` stamps it (lib/chat-activity.ts) and here that stamp
-  // overrides `lastMessageAt` whenever it is newer, so recency-based sorting
-  // lifts it immediately. The poll then replaces it with the real timestamp.
+  // overrides `lastActivityAt` whenever it is newer, so recency-based sorting
+  // lifts it immediately. The poll then replaces it with the server-derived
+  // value. It deliberately does not touch `lastMessageAt`, which the row
+  // renders as the preview's timestamp: approving a slip moves the
+  // conversation, but it did not send a message, and the row must not claim
+  // otherwise.
   const activity = useMemo(
     () => parseActivity(activitySnapshot),
     [activitySnapshot],
@@ -170,9 +174,10 @@ export function RoomList({
       liveRooms.map((room) => {
         const stamped = activity[String(room.room_id)];
         if (!stamped) return room;
-        const current = room.lastMessageAt ? Date.parse(room.lastMessageAt) : 0;
+        const value = room.lastActivityAt ?? room.lastMessageAt;
+        const current = value ? Date.parse(value) : 0;
         return stamped > current
-          ? { ...room, lastMessageAt: new Date(stamped).toISOString() }
+          ? { ...room, lastActivityAt: new Date(stamped).toISOString() }
           : room;
       }),
     [liveRooms, activity],
@@ -309,8 +314,12 @@ function RoomRow({
 }) {
   const t = getCopy();
   const tone = ROOM_KIND_TONE[room.kind];
+  // A transaction room shows `room.progress`'s headline instead of the flat
+  // status badge below — `Processing` alone cannot say "slip uploaded" from
+  // "meetup agreed", `progress` can. The badge stays for a giveaway room,
+  // which has no equivalent one-glance derivation.
   const status = room.transaction
-    ? TRANSACTION_STATUS[room.transaction.status]
+    ? undefined
     : room.giveawayTicketStatus === "Expired"
       ? ENTRANT_STATUS.Expired
       : room.giveawayTicketStatus
@@ -452,7 +461,7 @@ const FACT_ICON: Record<DealFactKind, LucideIcon> = {
  * The step a deal is on, readable without opening the chat: one sentence for
  * "what happens next", then the payment and handover state it rests on (slip
  * sent or not, meetup date and place, tracking number). The status badge
- * alone said "In progress" for all of those.
+ * alone said "In progress" for all of those — see `lib/deal-progress.ts`.
  */
 function DealProgressLines({ progress }: { progress: DealProgress }) {
   return (

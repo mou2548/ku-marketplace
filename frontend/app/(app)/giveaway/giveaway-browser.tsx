@@ -227,7 +227,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
         <div className="relative overflow-hidden rounded-card bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/drop:-translate-y-0.5 group-hover/drop:shadow-floating group-focus-visible/drop:shadow-floating">
           <PostImage
             src={image}
-            alt={giveaway.item_name}
+            alt={giveaway.item_name ?? ""}
             aspectRatio={1.35}
             sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 25vw"
             className="transition-transform duration-[--dur-slow] ease-[--ease-out] group-hover/drop:scale-[1.025]"
@@ -275,32 +275,41 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
               <Users aria-hidden className="size-3.5" />
               {giveaway.registered_count} registered
               <span aria-hidden className="text-ink-disabled">·</span>
-              {giveaway.quantity} recipient {giveaway.quantity === 1 ? "place" : "places"}
+              {giveaway.allocation_method === "FirstCome"
+                ? `${giveaway.quantity} ${giveaway.quantity === 1 ? "spot" : "spots"} total`
+                : `${giveaway.quantity} to be given away`}
             </span>
           </div>
 
-          <div
-            role="progressbar"
-            aria-label={`${giveaway.registered_count} registered for ${giveaway.quantity} recipient places`}
-            aria-valuemin={0}
-            aria-valuemax={giveaway.quantity}
-            aria-valuenow={Math.min(
-              giveaway.registered_count,
-              giveaway.quantity,
-            )}
-            className="h-1.5 overflow-hidden rounded-pill bg-surface-sunken"
-          >
-            <span
-              aria-hidden
-              className="block h-full rounded-pill bg-brand"
-              style={{
-                width: `${Math.min(
-                  (giveaway.registered_count / giveaway.quantity) * 100,
-                  100,
-                )}%`,
-              }}
-            />
-          </div>
+          {/* A registration cap only exists for FirstCome — Random and
+              Manual accept any number of entrants and choose this many when
+              registration closes, so "progress toward full" isn't a real
+              state for them and the bar would misreport "full" while
+              registration is still open. */}
+          {giveaway.allocation_method === "FirstCome" ? (
+            <div
+              role="progressbar"
+              aria-label={`${giveaway.registered_count} registered out of ${giveaway.quantity} spots total`}
+              aria-valuemin={0}
+              aria-valuemax={giveaway.quantity}
+              aria-valuenow={Math.min(
+                giveaway.registered_count,
+                giveaway.quantity,
+              )}
+              className="h-1.5 overflow-hidden rounded-pill bg-surface-sunken"
+            >
+              <span
+                aria-hidden
+                className="block h-full rounded-pill bg-brand"
+                style={{
+                  width: `${Math.min(
+                    (giveaway.registered_count / giveaway.quantity) * 100,
+                    100,
+                  )}%`,
+                }}
+              />
+            </div>
+          ) : null}
 
           <TrustBadge
             name={giveaway.giver.name}

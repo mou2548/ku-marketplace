@@ -55,6 +55,17 @@ export class GiveawaysController {
     return this.giveawaysService.join(id, user.userId);
   }
 
+  @Post('giveaways/:id/close-registration')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('ปิดรับลงทะเบียนสำเร็จ')
+  closeRegistration(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.giveawaysService.closeRegistrationEarly(id, user.userId);
+  }
+
   @Post('giveaways/:id/draw')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)

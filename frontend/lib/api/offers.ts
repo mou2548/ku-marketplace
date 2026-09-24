@@ -19,7 +19,6 @@ interface RawOfferItem {
   category: string | null;
   condition: string | null;
   description: string | null;
-  status: string | null;
   course_name: string | null;
   brand_model: string | null;
   warranty_expiry: string | null;
@@ -55,7 +54,6 @@ function toOfferItem(raw: RawOfferItem): Item {
     category: raw.category ?? "",
     condition: (raw.condition ?? "Good") as ItemCondition,
     description: raw.description,
-    status: (raw.status ?? "Unlisted") as Item["status"],
     course_name: raw.course_name,
     brand_model: raw.brand_model,
     warranty_expiry: raw.warranty_expiry,

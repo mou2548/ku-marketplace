@@ -6,17 +6,23 @@ invented endpoint.
 
 ## 1. A giveaway cannot point at an inventory item
 
-`Giveaway_Post` carries `item_name: string` and has no `item_id`. Posting a
-giveaway now happens in the same composer as a sale or a trade
-(`app/(app)/post/post-composer.tsx`), where the giver picks something they
-already own, so the composer copies `name`, `description` and the primary image
-across at publish time.
+Resolved by the multi-listing backend delivery (2026-09-23). `Giveaway_Post`
+now carries `item_id`, and `POST /giveaways` requires it — the composer
+(`app/(app)/post/post-composer.tsx`) sends the picked item's id, and the
+backend gates the giveaway's quantity against that item's real remaining
+stock (`available_quantity`) the same way a sale or trade post is gated.
 
-Consequences accepted:
-
-- The item's row is not marked as gone when the giveaway completes. An item that
-  has been given away still reads `Listed` or `Unlisted` in the inventory.
-- Editing the item afterwards does not update the giveaway.
+One narrower gap remains: the `GiveawayPost` response is still a flat
+`item_id`/`item_name` scalar pair, not a nested `item` relation with its own
+images/description. The composer therefore still copies the item's name,
+description and primary image across at publish time
+(`item_name` stays as an optional fallback label), and no read screen
+(`giveaway-detail.tsx`, `manage-giveaway.tsx`, `giveaway-browser.tsx`) fetches
+the linked item separately. Editing the item afterwards still does not
+update a giveaway already posted from it. Closing this fully would mean the
+backend returning the linked item's images/description on `GET
+/giveaways/{id}` — not done in this pass, since it wasn't required to make
+`item_id` linkage work end to end.
 
 ## 2. Giveaway capacity is explicit
 
@@ -355,3 +361,98 @@ A cross-device unread badge requires a backend field or endpoint that records
 the viewer's last-read message per room. The frontend must not infer that state
 from transaction workflow ownership (`needsYou`), because whose turn it is and
 whether a message was read are different facts.
+
+## Some flow steps stamp no reachable timestamp, so the inbox cannot order on them
+
+Recorded 2026-09-21 while fixing the conversation list, which floated a room to
+the top only on a new chat message and left every status change where it was.
+
+The inbox now orders on `lastActivityAt` (`transactionActivityAt` in
+`lib/rooms.ts`), assembled from the step columns `Transaction` and
+`Appointment_Card` already stamp: `created_at`, both `payment_confirmed_by_*_at`,
+both `item_received_confirmed_by_*_at`, `cancellation_requested_at`,
+`refund_submitted_at`, `item_return_confirmed_at`, and each appointment card's
+`created_at` and `deleted_at`. Neither table has an `updated_at`, so this
+assembly is the only way to ask "when did this deal last move".
+
+Six steps are invisible to it. Five write no timestamp at all:
+
+- **Confirming an appointment.** Responding flips `appointment_status` to
+  `Confirmed` and nothing else. (Rejecting is visible, because a rejected or
+  superseded card gets `deleted_at`.)
+- **Entering a tracking number.** `tracking_number` is set with no companion
+  column, and the status move to `Processing` is not stamped either.
+- **Answering a cancellation or return request.** Approving or rejecting sets
+  `cancellation_response` and, on a rejection, opens a dispute — none of it
+  stamped. Only the original request is, via `cancellation_requested_at`, so
+  the request floats the room for the other party but the answer never floats
+  it back for the requester.
+- **An administrator settling a cancellation dispute.** `settleCancellationDispute`
+  clears `active_report_id` and writes the final `cancellation_response` and
+  status. Nothing stamped, so neither party's inbox moves on the decision.
+- **Confirming a refund was received.** `confirmRefund` writes
+  `refund_confirmed_by_buyer`, a boolean, and moves the status to `Refunded`.
+  The seller's side of the deal ends with no timestamp anywhere. (The other
+  half of the same return, `item_return_confirmed_at`, is stamped — so a return
+  floats on the goods going back but not on the money arriving.)
+
+The sixth is stamped but not returned:
+
+- **A giveaway ticket moving.** `Giveaway_Ticket.updated_at` exists and covers
+  being selected, forfeiting and letting a pickup window lapse, but
+  `GET /giveaways/{id}/recipients` does not include it — `asRecipient` returns
+  `ticket_id`, `receiver_id`, `queue_number`, `status` and the receiver only.
+  `lib/api/giveaways.ts`'s `getMyTicket` fills `updated_at` from
+  `giveaway.created_at` to satisfy the `GiveawayTicket` type, so it is not a
+  real ticket timestamp and must not be treated as one. A giveaway room is
+  therefore ordered on its messages and on `Giveaway_Post.created_at` alone.
+
+What the UI does now: the person who performs either action floats the room on
+their own device through `markRoomActive` (`lib/chat-activity.ts`, browser-local).
+The other party's inbox does not move until the next event that does stamp
+something — usually the next message, the handover, or a cancellation.
+
+Closing the first five needs a backend column, which is outside this scope
+(`CLAUDE.md` 0). `Transaction.updated_at` and `Appointment_Card.updated_at`
+would close all five at once and let the whole derivation collapse to two
+fields; narrower columns (`appointment_responded_at`, `tracking_entered_at`,
+`cancellation_responded_at`, `refund_confirmed_at`) would work too but have to
+be added one per step and kept in step with every future one. The sixth needs
+no new column at all — only `updated_at` added to the recipients response,
+after which the ticket timestamp can be plumbed into `lastActivityAt` and
+`getMyTicket` can stop synthesizing it.
+
+A client-side fallback was considered and rejected: `RoomList` polls the whole
+transaction every 10s, so it could diff successive snapshots and stamp the
+moment it noticed a status field change. It would cover all six, but only
+while an inbox is mounted, and it would record when the change was noticed
+rather than when it happened. That is a different fact wearing the same name,
+and the inbox is not the place to invent it.
+
+## An item's fully-transferred state is not returned directly
+
+Recorded 2026-09-23 while wiring the multi-listing backend delivery's
+`available_quantity`/`channels` fields into the inventory and item detail
+screens.
+
+`Item.status` (`Unlisted`/`Listed`/`Transferred`) is gone from every API
+response — an item can now carry several open channels at once, so no single
+status word describes it. `GET /items/:id/history-summary` returns
+`available_quantity` and a `channels[]` array of currently open Post/Giveaway
+rows instead, but no `is_transferred` boolean.
+
+What the UI does: `lib/status.ts`'s `isItemTransferred(summary)` derives it
+as `available_quantity === 0 && channels.length === 0`. This is accurate for
+every case except one: `channels` only lists channels that are still
+`Active`. A Random/Manual giveaway that has closed registration but still has
+unclaimed tickets sitting with a receiver drops out of `channels` even though
+the item is not really "gone" yet. Such an item would read as fully
+transferred slightly early.
+
+The failure direction was chosen deliberately: reading an item as still
+active a little longer than strictly true (editable, shown in "the rest of
+your stuff") is harmless, where the reverse — locking an item read-only while
+a giveaway recipient still hasn't collected — would actively block the owner.
+Closing this properly needs the backend to return `is_transferred` directly,
+computed from all of an item's channels (open and recently closed), not just
+the open ones.

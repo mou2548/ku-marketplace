@@ -58,7 +58,8 @@ interface RawImage {
 
 interface RawGiveaway {
   giveaway_id: string;
-  item_name: string;
+  item_id: number | null;
+  item_name: string | null;
   description: string | null;
   pickup_location: string;
   giver_id: number;
@@ -133,6 +134,7 @@ function toGiveawayStatus(raw: string | null): GiveawayStatus {
 function toGiveawayPost(raw: RawGiveaway): GiveawayPost {
   return {
     giveaway_id: numFromLabel(raw.giveaway_id),
+    item_id: raw.item_id,
     item_name: raw.item_name,
     description: raw.description,
     pickup_location: raw.pickup_location,
@@ -213,7 +215,9 @@ function toRecipientRow(raw: RawRecipient): RecipientRow {
  * ------------------------------------------------------------------ */
 
 export interface CreateGiveawayInput {
-  item_name: string;
+  item_id: number;
+  /** Optional fallback label — the linked item's own name is authoritative. */
+  item_name?: string;
   quantity: number;
   description?: string;
   pickup_location: string;
@@ -264,6 +268,20 @@ export async function joinGiveaway(
     body: JSON.stringify({}),
   });
   return toGiveawayTicket(raw, giveaway);
+}
+
+/**
+ * `POST /giveaways/{id}/close-registration` — Random/Manual only. Moves
+ * `register_deadline` to now so the next `drawGiveaway`/`selectRecipients`
+ * call succeeds immediately, instead of waiting for the original deadline.
+ */
+export async function closeGiveawayRegistration(giveawayId: number): Promise<void> {
+  const init = await authedInit();
+  await apiFetch(`/giveaways/${giveawayId}/close-registration`, {
+    ...init,
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 /** `POST /giveaways/{id}/draw` — Random only. */
@@ -378,7 +396,14 @@ export async function generateTicketQr(
   };
 }
 
-/** `POST /giveaways/{id}/tickets/{ticket_id}/qr/scan` */
+/**
+ * `POST /giveaways/{id}/tickets/{ticket_id}/qr/scan` — validates only, never
+ * changes the ticket's status (the backend's own docstring: "ไม่เปลี่ยนสถานะ
+ * — แค่ตรวจสอบ"). Not used by any screen right now; `confirmTicketQr` below
+ * is what the giver-facing scanner actually needs, since a scan has to
+ * complete the handover, not just preview it. Kept for a future two-step
+ * "preview then confirm" flow if one gets built.
+ */
 export async function scanTicketQr(
   giveawayId: number,
   ticketId: number,
@@ -387,6 +412,24 @@ export async function scanTicketQr(
   const init = await authedInit();
   const raw = await apiFetch<{ valid: boolean }>(
     `/giveaways/${giveawayId}/tickets/${ticketId}/qr/scan`,
+    { ...init, method: "POST", body: JSON.stringify({ token }) },
+  );
+  return raw.valid;
+}
+
+/**
+ * `POST /giveaways/{id}/tickets/{ticket_id}/qr/confirm` — validates the
+ * token (fresh, matching, ticket still Waiting) and marks the ticket
+ * Received in the same call. This is what actually completes a handover.
+ */
+export async function confirmTicketQr(
+  giveawayId: number,
+  ticketId: number,
+  token: string,
+): Promise<boolean> {
+  const init = await authedInit();
+  const raw = await apiFetch<{ valid: boolean }>(
+    `/giveaways/${giveawayId}/tickets/${ticketId}/qr/confirm`,
     { ...init, method: "POST", body: JSON.stringify({ token }) },
   );
   return raw.valid;

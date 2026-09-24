@@ -42,6 +42,7 @@ function history(DateClass) {
     '@/lib/inbox': { deadlineFor: () => null },
     '@/lib/status': {
       TRANSACTION_STATUS: presentation, TICKET_STATUS: presentation,
+      transactionStatusPresentation: () => ({ labelKey: 'pending' }),
       resolveTransactionActor: () => ({ actor: 'seller', labelKey: 'waiting' }),
     },
     '@/lib/utils': { cn: (...values) => values.filter(Boolean).join(' ') },
@@ -63,7 +64,12 @@ async function pageProps() {
 test('history reuses server date text even when the browser would abbreviate September differently', async () => {
   const props = await pageProps();
   const label = props.transactions[0].created_date_label;
-  assert.equal(label, "11/09/26"); // Bangkok is already the following day.
+  // Bangkok is already the following day. `lib/date-format.ts` spells the
+  // month out from a fixed table rather than asking `Intl` for its name, so
+  // this is byte-identical everywhere regardless of the CLDR data a given
+  // Node/browser version ships (en-GB's abbreviated September in particular
+  // has shipped as both "Sep" and "Sept" across versions).
+  assert.equal(label, "11 Sep 2026");
   class BrowserDate extends Date {
     toLocaleDateString() { throw new Error('Browser date formatting must not run during hydration'); }
   }
@@ -76,6 +82,6 @@ test('history reuses server date text even when the browser would abbreviate Sep
 test('history uses Gregorian day-first dates in the marketplace timezone', async () => {
   const props = await pageProps();
   const label = props.transactions[0].created_date_label;
-  assert.equal(label, '11/09/26');
+  assert.equal(label, "11 Sep 2026");
   assert.ok(renderToStaticMarkup(React.createElement(history(Date), props)).includes(label));
 });

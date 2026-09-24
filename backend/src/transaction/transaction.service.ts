@@ -12,7 +12,6 @@ import { RedisService } from '../redis/redis.service';
 import {
   CancellationResponse,
   DeliveryMethod,
-  ItemStatus,
   TransactionStatus,
 } from '../common/enums/transaction.enums';
 import { ReportStatus, ReportType } from '../common/enums/report.enums';
@@ -107,7 +106,6 @@ export class TransactionService {
         category: string;
         condition: string;
         description: string | null;
-        status: string | null;
         courseName: string | null;
         brandModel: string | null;
         warrantyExpiry: Date | null;
@@ -182,7 +180,6 @@ export class TransactionService {
           category: item.category,
           condition: item.condition,
           description: item.description,
-          status: item.status,
           course_name: item.courseName,
           brand_model: item.brandModel,
           warranty_expiry: item.warrantyExpiry,
@@ -461,27 +458,16 @@ export class TransactionService {
         data: { status: TransactionStatus.Completed },
       });
 
-      // §8.2 — ownership has moved, so the item leaves the marketplace.
-      const post = await tx.post.findUnique({
-        where: { postId: completed.postId },
-        select: { itemId: true, quantityRemaining: true },
-      });
-      if (post) {
-        await tx.item.update({
-          where: { itemId: post.itemId },
-          data: {
-            status:
-              post.quantityRemaining > 0
-                ? ItemStatus.Listed
-                : ItemStatus.Transferred,
-          },
-        });
-      }
-
+      // §8.2 — an offered item is always single-channel by construction (it
+      // must be fully available before it can be offered — see createOffer's
+      // available === quantity check), so marking it Transferred here still
+      // holds even though the listing's own item (above) can now have other
+      // open channels. Unlike the listing's item, this one keeps its
+      // item_status write until the column itself is dropped in round 2.
       if (completed.offerId !== null) {
         await tx.item.updateMany({
           where: { offerItems: { some: { offerId: completed.offerId } } },
-          data: { status: ItemStatus.Transferred },
+          data: { status: 'Transferred' },
         });
       }
       return completed;
@@ -806,9 +792,11 @@ export class TransactionService {
    *  - the reserved stock. Buying decrements Post.quantityRemaining
    *    (posts.service.ts `buy`), so cancelling has to add the same amount back
    *    or the stock is lost for good.
-   *  - the item's Listed status, EXCEPT once it is Transferred — that is
-   *    terminal and never rewinds, even if the transaction is cancelled
-   *    afterwards (§8.2).
+   *
+   * Does not touch the item at all: `available` is derived on demand from
+   * every channel's quantity_total/quantity_remaining, so releasing this
+   * post's reservation is already reflected the moment quantityRemaining
+   * goes back up. There is no per-item status left to rewind.
    *
    * `quantity` is nullable in the schema, so callers pass `?? 1` to match the
    * column default.
@@ -818,25 +806,9 @@ export class TransactionService {
     postId: number,
     quantity: number,
   ) {
-    const post = await tx.post.findUnique({
-      where: { postId },
-      select: { itemId: true, item: { select: { status: true } } },
-    });
-    if (!post) {
-      return;
-    }
-
     await tx.post.update({
       where: { postId },
       data: { quantityRemaining: { increment: quantity } },
-    });
-
-    if (post.item.status === ItemStatus.Transferred) {
-      return;
-    }
-    await tx.item.update({
-      where: { itemId: post.itemId },
-      data: { status: ItemStatus.Listed },
     });
   }
 

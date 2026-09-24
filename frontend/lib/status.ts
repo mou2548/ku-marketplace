@@ -162,15 +162,33 @@ export const OFFER_STATUS: Record<OfferStatus, StatusPresentation> = {
  * Item + Post
  * ------------------------------------------------------------------ */
 
-export type ItemStatus = "Unlisted" | "Listed" | "Transferred";
-
-export const ITEM_STATUS: Record<ItemStatus, StatusPresentation> = {
-  // The schema's own word. "Not listed" read as a state nobody recognised
-  // next to the two the spec actually names.
-  Unlisted: { tone: "neutral", labelKey: "item.Unlisted.label", icon: "Package" },
-  Listed: { tone: "info", labelKey: "item.Listed.label", icon: "Store" },
-  Transferred: { tone: "success", labelKey: "item.Transferred.label", icon: "PackageCheck" },
+/**
+ * An item can now back several open channels at once (a sale post and a
+ * trade post together, say), so there is no single "Unlisted"/"Listed"
+ * state to name any more — only whether anything is still open at all.
+ * `Transferred` survives as the one terminal state: every unit has actually
+ * moved (sold, traded, or handed over via a giveaway), nothing left open.
+ */
+export const ITEM_TRANSFERRED_STATUS: StatusPresentation = {
+  tone: "success",
+  labelKey: "item.Transferred.label",
+  icon: "PackageCheck",
 };
+
+/**
+ * True once every unit this item ever had is gone: sold, traded, or given
+ * away, with nothing left in an open channel. Derived from
+ * `ItemHistorySummary` rather than a stored field — see
+ * docs/design/api-gaps.md for the one edge case this doesn't catch (a
+ * closed-but-not-fully-claimed giveaway won't appear in `channels`, so it
+ * won't register as fully transferred; the safe direction to be wrong in).
+ */
+export function isItemTransferred(summary: {
+  available_quantity: number;
+  channels: unknown[];
+}): boolean {
+  return summary.available_quantity === 0 && summary.channels.length === 0;
+}
 
 export type PostType = "SellOnly" | "TradeOnly" | "Both";
 
@@ -585,6 +603,28 @@ export type PromptAction =
 export function requiresPayment(tx: TransactionLike): boolean {
   if (tx.offer_id == null) return true; // a straight purchase always pays
   return (tx.additional_money ?? 0) > 0;
+}
+
+/**
+ * `TRANSACTION_STATUS.Pending`'s copy ("Awaiting payment" / "the buyer has
+ * not uploaded a transfer slip yet") assumes a paid sale — wrong for a
+ * cash-free trade, which has no slip step at all. Every other status's copy
+ * already reads correctly regardless of payment, so only this one needs a
+ * second version; every caller that renders a transaction's status badge
+ * should use this instead of indexing `TRANSACTION_STATUS` directly.
+ */
+export function transactionStatusPresentation(
+  tx: TransactionLike,
+): StatusPresentation {
+  if (tx.status === "Pending" && !requiresPayment(tx)) {
+    return {
+      tone: "warning",
+      labelKey: "transaction.PendingTrade.label",
+      icon: "Handshake",
+      hintKey: "transaction.PendingTrade.hint",
+    };
+  }
+  return TRANSACTION_STATUS[tx.status];
 }
 
 export function resolveTransactionActor(

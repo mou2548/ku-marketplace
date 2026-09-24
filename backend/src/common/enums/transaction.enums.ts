@@ -42,14 +42,3 @@ export const CancellationResponse = {
 } as const;
 export type CancellationResponse =
   (typeof CancellationResponse)[keyof typeof CancellationResponse];
-
-/**
- * §8.2 — Transferred is terminal: it stays even if the transaction is later
- * cancelled, so ownership history can't silently rewind.
- */
-export const ItemStatus = {
-  Unlisted: 'Unlisted',
-  Listed: 'Listed',
-  Transferred: 'Transferred',
-} as const;
-export type ItemStatus = (typeof ItemStatus)[keyof typeof ItemStatus];
