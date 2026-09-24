@@ -49,7 +49,7 @@ export interface ChatThreadProps {
    * after it, and `Infinity` puts one after the last message.
    */
   events?: Array<{ key: string; placeAt: number; node: React.ReactNode }>;
-  /** Cards interleaved by timestamp, e.g. accepted appointments. */
+  /**
    * Cards interleaved by timestamp, e.g. accepted appointments. `0` is a
    * sentinel for "before the first message" — a real `message_id` is never
    * 0 — for a deal event that predates every message in the room (or a room

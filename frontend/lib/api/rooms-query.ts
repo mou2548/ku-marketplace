@@ -93,7 +93,6 @@ export async function getRoomSummaries(viewerId: number): Promise<RoomSummary[]>
             (card) => card.transaction_id === transaction.transaction_id,
           ),
           appointments,
-          needsYou: resolveTransactionActor(transaction, viewer).actor === viewer,
         };
       }),
     ),

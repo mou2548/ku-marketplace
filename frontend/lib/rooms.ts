@@ -92,8 +92,6 @@ export interface TransactionRoomSource {
    * instead" leaves behind. Omitted for a Shipping deal, which has none.
    */
   appointments?: readonly AppointmentCardData[];
-  /** Whose turn it is — sorts this room to the top of the inbox. */
-  needsYou: boolean;
 }
 
 export interface GiveawayRoomSource {
@@ -217,48 +215,34 @@ export function buildRooms({
         lastMessageAt,
         lastMessageSenderId,
         appointmentCards,
+        appointments,
       }): RoomSummary => {
         const progress = describeDeal(transaction, viewerId, appointmentCards);
         return {
-        appointments,
-        needsYou,
-      }): RoomSummary => ({
-        room_id: roomId,
-        kind: roomKind(transaction),
-        counterparty: transaction.buyer_id === viewerId ? transaction.seller : transaction.buyer,
-        subject: transaction.post.item.name,
-        subjectImage:
-          transaction.post.item.images.find((image) => image.is_primary)?.image_url ??
-          transaction.post.item.images[0]?.image_url ??
-          null,
-        lastMessage,
-        lastMessageAt,
-        lastMessageSenderId,
-        // From the same derivation as the row's step line, so the "Your turn"
-        // chip can never contradict it (e.g. after proposing a meetup
-        // yourself). `both` counts: either side may propose a time.
-        needsYou: progress.waitingOn === "you" || progress.waitingOn === "both",
-        href: `/chat/${roomId}`,
-        transaction,
-        progress,
+          room_id: roomId,
+          kind: roomKind(transaction),
+          counterparty: transaction.buyer_id === viewerId ? transaction.seller : transaction.buyer,
+          subject: transaction.post.item.name,
+          subjectImage:
+            transaction.post.item.images.find((image) => image.is_primary)?.image_url ??
+            transaction.post.item.images[0]?.image_url ??
+            null,
+          lastMessage,
+          lastMessageAt,
+          lastMessageSenderId,
+          lastActivityAt: latestTimestamp([
+            lastMessageAt,
+            transactionActivityAt(transaction, appointments),
+          ]),
+          // From the same derivation as the row's step line, so the "Your turn"
+          // chip can never contradict it (e.g. after proposing a meetup
+          // yourself). `both` counts: either side may propose a time.
+          needsYou: progress.waitingOn === "you" || progress.waitingOn === "both",
+          href: `/chat/${roomId}`,
+          transaction,
+          progress,
         };
       },
-        lastActivityAt: latestTimestamp([
-          lastMessageAt,
-          transactionActivityAt(transaction, appointments),
-        ]),
-        needsYou,
-        href: `/chat/${roomId}`,
-        transaction,
-        // `cards` is `undefined` (not `[]`) when the source omitted it, so a
-        // Shipping deal's absent appointments never read as "no meetup
-        // agreed" for a Meetup deal — see `describeDeal`'s own doc comment.
-        progress: describeDeal(
-          transaction,
-          viewerId,
-          appointments ? [...appointments] : undefined,
-        ),
-      }),
     ),
     ...giveawayRooms.map(
       ({

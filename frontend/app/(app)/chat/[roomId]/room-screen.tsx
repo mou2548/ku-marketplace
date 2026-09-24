@@ -1051,6 +1051,7 @@ export function RoomScreen({
         showSenders={isGroupRoom}
         action={stepAction}
         events={progressEvents}
+        systemCards={systemCards}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
         onSend={handleSend}
@@ -1267,6 +1268,39 @@ function StatusCard({
         View details
       </button>
     </article>
+  );
+}
+
+/**
+ * One entry from `buildDealTimeline`, rendered as a centered system card —
+ * the same visual register as the day-divider pill in `ChatThread`, since
+ * this reports what the deal did, not what either party said.
+ */
+function DealEventCard({ event }: { event: DealEvent }) {
+  return (
+    <div className="flex justify-center">
+      <div
+        className={cn(
+          "flex max-w-[90%] items-start gap-3 rounded-control border px-3 py-2 text-caption",
+          TONE_CHIP[event.tone],
+        )}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{event.title}</p>
+          {event.detail ? (
+            <p className="mt-0.5 text-ink-muted">{event.detail}</p>
+          ) : null}
+        </div>
+        {event.at ? (
+          <time
+            dateTime={event.at}
+            className="shrink-0 text-meta text-ink-muted"
+          >
+            {formatDateTime(event.at)}
+          </time>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
