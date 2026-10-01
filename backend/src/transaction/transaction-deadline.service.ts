@@ -32,6 +32,7 @@ export function transactionDeadline(t: Transaction): FlowDeadline | null {
   if (
     t.status === 'Processing' &&
     t.paymentConfirmedByBuyerAt &&
+    t.slipImageUrl &&
     !t.paymentConfirmedBySellerAt
   ) {
     return {
@@ -44,8 +45,13 @@ export function transactionDeadline(t: Transaction): FlowDeadline | null {
       escalate: true,
     };
   }
+  // A rejected slip (Processing, buyer's claim on record, no slip on file) puts
+  // the seller's refund in front of the buyer on the same clock as any other.
+  const slipRejected =
+    t.status === 'Processing' && t.paymentConfirmedByBuyerAt && !t.slipImageUrl;
   if (
-    ['Pending Refund', 'Cancelled'].includes(t.status ?? '') &&
+    (['Pending Refund', 'Cancelled'].includes(t.status ?? '') ||
+      slipRejected) &&
     t.refundSubmittedAt &&
     !t.refundConfirmedByBuyer
   ) {
