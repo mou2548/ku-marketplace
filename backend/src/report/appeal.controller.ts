@@ -56,6 +56,17 @@ export class AppealController {
     return this.appealService.findAll();
   }
 
+  /** Opening the appeal is taking it on — see `AppealService.open`. */
+  @Post('admin/appeals/:id/open')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  open(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.appealService.open(id, user.userId);
+  }
+
   @Post('admin/appeals/:id/decide')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard, AdminGuard)

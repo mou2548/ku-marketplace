@@ -13,8 +13,11 @@ import {
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
 import { ReportService } from './report.service';
-
-const APPEAL_WINDOW_DAYS = 7;
+import {
+  APPEAL_WINDOW_DAYS,
+  notifyAdminsOfAppeal,
+  notifyAppealDecided,
+} from './moderation-notifications';
 
 @Injectable()
 export class AppealService {
@@ -113,6 +116,55 @@ export class AppealService {
 
   private readonly appealInclude = { appellant: true } as const;
 
+  private readonly adminAppealInclude = {
+    appellant: true,
+    report: { include: { handler: true } },
+  } as const;
+
+  /**
+   * Admin view: the appeal plus the verdict it contests, so the reviewer sees
+   * the original reasoning, sanction and evidence without a second lookup.
+   */
+  private serializeAdminAppeal(
+    appeal: Parameters<AppealService['serializeAppeal']>[0] & {
+      report: {
+        reportId: number;
+        reportType: string;
+        targetId: number;
+        reasonCategory: string;
+        details: string | null;
+        evidenceUrls: unknown;
+        status: string | null;
+        sanction: string | null;
+        resolutionNote: string | null;
+        handledBy: number | null;
+        handledAt: Date | null;
+        handler: Parameters<AppealService['serializeUserSummary']>[0] | null;
+      };
+    },
+  ) {
+    const { report } = appeal;
+    return {
+      ...this.serializeAppeal(appeal),
+      report: {
+        report_id: report.reportId,
+        report_type: report.reportType,
+        target_id: report.targetId,
+        reason_category: report.reasonCategory,
+        details: report.details,
+        evidence_urls: report.evidenceUrls,
+        status: report.status,
+        sanction: report.sanction,
+        resolution_note: report.resolutionNote,
+        handled_by: report.handledBy,
+        handler: report.handler
+          ? this.serializeUserSummary(report.handler)
+          : null,
+        handled_at: report.handledAt,
+      },
+    };
+  }
+
   async findEligible(userId: number) {
     const reports = await this.prisma.report.findMany({
       where: {
@@ -159,10 +211,35 @@ export class AppealService {
 
   async findAll() {
     const appeals = await this.prisma.appeal.findMany({
-      include: this.appealInclude,
+      include: this.adminAppealInclude,
       orderBy: { createdAt: 'desc' },
     });
-    return appeals.map((appeal) => this.serializeAppeal(appeal));
+    return appeals.map((appeal) => this.serializeAdminAppeal(appeal));
+  }
+
+  /**
+   * Opening an appeal is taking it on, same as `ReportService.open`: opening
+   * a Pending appeal moves it to Under_Review and records the admin in
+   * `handledBy` (`handledAt` stays null until the decision). The flow has a
+   * single admin lane, so the admin who decided the report also reviews the
+   * appeal.
+   */
+  async open(appealId: number, adminId: number) {
+    const appeal = await this.prisma.appeal.findUnique({
+      where: { appealId },
+    });
+    if (!appeal) {
+      throw new NotFoundException(`Appeal ${appealId} not found`);
+    }
+    await this.prisma.appeal.updateMany({
+      where: { appealId, status: AppealStatus.Pending },
+      data: { status: AppealStatus.Under_Review, handledBy: adminId },
+    });
+    const opened = await this.prisma.appeal.findUniqueOrThrow({
+      where: { appealId },
+      include: this.adminAppealInclude,
+    });
+    return this.serializeAdminAppeal(opened);
   }
 
   async create(appellantId: number, dto: CreateAppealDto) {
@@ -222,21 +299,16 @@ export class AppealService {
       },
       include: this.appealInclude,
     });
+    await notifyAdminsOfAppeal(this.prisma, created);
     return this.serializeAppeal(created);
   }
 
   async decide(appealId: number, adminId: number, dto: DecideAppealDto) {
     const appeal = await this.prisma.appeal.findUnique({
       where: { appealId },
-      include: { report: true },
     });
     if (!appeal) {
       throw new NotFoundException(`Appeal ${appealId} not found`);
-    }
-    if (appeal.report.handledBy === adminId) {
-      throw new BadRequestException(
-        'Appeal must be decided by a different admin than the one who resolved the original report',
-      );
     }
     if (
       appeal.status !== AppealStatus.Pending &&
@@ -279,6 +351,11 @@ export class AppealService {
     if (dto.status === AppealStatus.Approved) {
       await this.reportService.undoConsequences(appeal.reportId);
     }
+    await notifyAppealDecided(
+      this.prisma,
+      updatedAppeal,
+      dto.status === AppealStatus.Approved,
+    );
 
     return this.serializeAppeal(updatedAppeal);
   }

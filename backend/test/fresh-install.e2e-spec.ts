@@ -365,10 +365,9 @@ describe('Fresh clone database', () => {
       report_id: first.report_id,
       reason: 'Please review the evidence again',
     });
-    await expect(
-      appeals.decide(appeal.appeal_id, 1, { status: 'Approved' }),
-    ).rejects.toThrow();
-    await appeals.decide(appeal.appeal_id, 2, { status: 'Approved' });
+    // One admin lane in the flow: the admin who decided the report also
+    // decides its appeal.
+    await appeals.decide(appeal.appeal_id, 1, { status: 'Approved' });
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { userId: targetId } }))
         .status,
@@ -377,7 +376,7 @@ describe('Fresh clone database', () => {
       report_id: second.report_id,
       reason: 'Independent review',
     });
-    await appeals.decide(other.appeal_id, 2, { status: 'Approved' });
+    await appeals.decide(other.appeal_id, 1, { status: 'Approved' });
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { userId: targetId } }))
         .status,

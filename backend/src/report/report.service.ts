@@ -14,6 +14,10 @@ import {
 import { CreateReportDto } from './dto/create-report.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
 import { TransactionService } from '../transaction/transaction.service';
+import {
+  notifyAdminsOfReport,
+  notifySanctioned,
+} from './moderation-notifications';
 
 /** §7.3 — block further reports once a user has filed more than 5 within
  * this window, so a bot or a stuck button can't flood the admin queue. */
@@ -101,6 +105,26 @@ export class ReportService {
     };
   }
 
+  /**
+   * The reporter's own view (ruling of 2026-10-05): they see what they filed,
+   * never the outcome — no status, verdict note, handler or decision time.
+   */
+  private serializeReporterView(
+    report: Parameters<ReportService['serializeReport']>[0],
+  ) {
+    return {
+      report_id: report.reportId,
+      reporter_id: report.reporterId,
+      reporter: this.serializeUserSummary(report.reporter),
+      report_type: report.reportType,
+      target_id: report.targetId,
+      reason_category: report.reasonCategory,
+      details: report.details,
+      evidence_urls: report.evidenceUrls,
+      created_at: report.createdAt,
+    };
+  }
+
   private readonly reportInclude = { reporter: true, handler: true } as const;
 
   async create(reporterId: number, dto: CreateReportDto) {
@@ -137,7 +161,8 @@ export class ReportService {
       },
       include: this.reportInclude,
     });
-    return this.serializeReport(report);
+    await notifyAdminsOfReport(this.prisma, report);
+    return this.serializeReporterView(report);
   }
 
   async findAll() {
@@ -154,7 +179,7 @@ export class ReportService {
       include: this.reportInclude,
       orderBy: { createdAt: 'desc' },
     });
-    return reports.map((report) => this.serializeReport(report));
+    return reports.map((report) => this.serializeReporterView(report));
   }
 
   async findOneForUser(reportId: number, userId: number) {
@@ -168,6 +193,27 @@ export class ReportService {
     if (report.reporterId !== userId) {
       throw new ForbiddenException('This report does not belong to you');
     }
+    return this.serializeReporterView(report);
+  }
+
+  /**
+   * Opening a case is how an admin takes it on (ruling of 2026-10-05: no
+   * separate claim button). The first admin to open a Pending report moves it
+   * to Under_Investigation and is recorded in `handledBy`; `handledAt` stays
+   * null until the verdict, which is what tells "opened by" from "decided by".
+   * The conditional update keeps two admins opening at once from both
+   * claiming it. Opening an already claimed or decided report changes nothing.
+   */
+  async open(reportId: number, adminId: number) {
+    await this.findOneOrThrow(reportId);
+    await this.prisma.report.updateMany({
+      where: { reportId, status: ReportStatus.Pending },
+      data: { status: ReportStatus.Under_Investigation, handledBy: adminId },
+    });
+    const report = await this.prisma.report.findUniqueOrThrow({
+      where: { reportId },
+      include: this.reportInclude,
+    });
     return this.serializeReport(report);
   }
 
@@ -347,8 +393,19 @@ export class ReportService {
     });
 
     if (dto.status === ReportStatus.Violation_Confirmed) {
+      const sanction = dto.sanction ?? Sanction.None;
       await this.setPostVisibility(report, false);
-      await this.applySanction(report, dto.sanction ?? Sanction.None);
+      await this.applySanction(report, sanction);
+      const userId = await this.resolveReportedUserId(report);
+      if (userId !== undefined && resolved.handledAt) {
+        await notifySanctioned(this.prisma, userId, {
+          reportId,
+          reasonCategory: resolved.reasonCategory,
+          resolutionNote: resolved.resolutionNote,
+          sanction,
+          handledAt: resolved.handledAt,
+        });
+      }
     }
 
     // §8.7 — if this report is a rejected cancellation, the ruling has to move

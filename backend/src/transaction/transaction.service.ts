@@ -21,6 +21,7 @@ import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
 import { RequestCancellationDto } from './dto/request-cancellation.dto';
 import { RespondCancellationDto } from './dto/respond-cancellation.dto';
+import { notifyAdminsOfReport } from '../report/moderation-notifications';
 
 type TransactionRow = Transaction;
 
@@ -942,6 +943,7 @@ export class TransactionService {
           status: ReportStatus.Pending,
         },
       });
+      await notifyAdminsOfReport(tx, report);
       return tx.transaction.update({
         where: { transactionId },
         data: {

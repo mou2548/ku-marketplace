@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import type { Transaction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { notifyAdminsOfReport } from '../report/moderation-notifications';
 
 const HOUR = 60 * 60 * 1000;
 export interface FlowDeadline {
@@ -151,6 +152,7 @@ export class TransactionDeadlineService implements OnApplicationBootstrap {
               details: `No response before ${new Date(deadline.startedAt.getTime() + deadline.limit).toISOString()}.`,
             },
           });
+          await notifyAdminsOfReport(tx, report);
           await tx.transaction.update({
             where: { transactionId: t.transactionId },
             data: {
