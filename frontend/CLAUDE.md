@@ -44,6 +44,10 @@ Design and behaviour derive from `fornewdesign/` (git-ignored, local only):
 
 There is no legacy design system to preserve. The previous UI is being replaced.
 
+**Update 2026-10-05:** `fornewdesign/` and `API_Marketplace.pdf` were removed. The flow (`docs/activity diagram.pdf`) is the source of truth and the backend code is the API reference. Read `../backend/docs/admin-moderation-handoff.md` before working on reports, appeals or the admin area.
+
+**Update 2026-10-05:** `fornewdesign/` and `API_Marketplace.pdf` were removed. The flow (`docs/activity diagram.pdf`) is the source of truth and the backend code is the API reference. Read `../backend/docs/admin-moderation-handoff.md` before working on reports, appeals or the admin area.
+
 **Response envelope** — every endpoint except `DELETE` returns:
 
 ```json
