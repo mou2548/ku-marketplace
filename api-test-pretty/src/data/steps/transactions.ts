@@ -43,6 +43,14 @@ export const transactionsStep: StepGroup = {
       params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
     },
     {
+      id: 'tx-reject-payment-slip',
+      method: 'POST',
+      path: '/transactions/:id/reject-payment-slip',
+      label: 'ผู้ขายปฏิเสธสลิป (ยังเป็น Processing จนกว่าจะส่งสลิปใหม่หรือคืนเงิน)',
+      needsAuth: true,
+      params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
+    },
+    {
       id: 'tx-ship',
       method: 'POST',
       path: '/transactions/:id/ship',

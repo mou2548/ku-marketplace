@@ -40,7 +40,8 @@ export class TransactionController {
     return this.transactionService.findOneForUser(id, user.userId);
   }
 
-  /** §8.6 — buyer uploads the transfer slip and confirms: Pending → Processing */
+  /** §8.6 — buyer uploads the transfer slip and confirms: Pending → Processing.
+   * Also replaces a slip the seller rejected. */
   @Post(':id/payment-slip')
   @HttpCode(200)
   uploadPaymentSlip(
@@ -59,6 +60,19 @@ export class TransactionController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.transactionService.confirmPaymentReceived(id, user.userId);
+  }
+
+  /**
+   * §8.6 — seller rejects a slip that does not match. Stays Processing until
+   * the buyer sends a new slip or confirms the seller's refund.
+   */
+  @Post(':id/reject-payment-slip')
+  @HttpCode(200)
+  rejectPaymentSlip(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.transactionService.rejectPaymentSlip(id, user.userId);
   }
 
   /** §8.6 Shipping — seller records the tracking number (stays Processing) */
