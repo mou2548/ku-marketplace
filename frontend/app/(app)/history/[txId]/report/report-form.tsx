@@ -177,7 +177,7 @@ export function ReportForm({
         details,
         evidence_urls: evidence_urls.length ? evidence_urls : undefined,
       });
-      toast.success("Report submitted. An admin will review it and let you know.");
+      toast.success("Report submitted. An admin will review it.");
       router.push(`/history/${transactionId}`);
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not submit the report.");

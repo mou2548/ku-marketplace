@@ -1,6 +1,6 @@
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
-import type { Appeal } from "./types";
+import type { AdminAppeal, Appeal } from "./types";
 
 /**
  * Wires §7.4's appeal flow to `appeal.service.ts`'s real shapes. Same
@@ -41,10 +41,24 @@ export async function getMyAppeals(): Promise<Appeal[]> {
   return apiFetch<Appeal[]>("/appeals", init);
 }
 
-/** GET /admin/appeals — every appeal. */
-export async function adminListAppeals(): Promise<Appeal[]> {
+/** GET /admin/appeals — every appeal, each with the verdict it contests. */
+export async function adminListAppeals(): Promise<AdminAppeal[]> {
   const init = await authedInit();
-  return apiFetch<Appeal[]>("/admin/appeals", init);
+  return apiFetch<AdminAppeal[]>("/admin/appeals", init);
+}
+
+/**
+ * POST /admin/appeals/{id}/open. Opening is taking it on: opening a Pending
+ * appeal moves it to Under_Review under this admin. Returns the appeal either
+ * way.
+ */
+export async function adminOpenAppeal(appealId: number): Promise<AdminAppeal> {
+  const init = await authedInit();
+  return apiFetch<AdminAppeal>(`/admin/appeals/${appealId}/open`, {
+    ...init,
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 /** POST /admin/appeals/{id}/decide — the backend rejects this if the caller

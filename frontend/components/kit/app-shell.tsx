@@ -212,7 +212,7 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
             {user?.isAdmin && (
               <Link
-                href="/admin/reports"
+                href="/admin"
                 aria-label="Switch to admin mode"
                 title="Switch to admin mode"
                 className="flex min-h-11 items-center gap-1.5 rounded-control px-2 text-body-sm font-semibold text-ink-brand hover:bg-brand-subtle"

@@ -53,7 +53,7 @@ each row must finish as `Pass` or as an owner-approved `Blocked` item.
 | 2.4 | Admin confirms violation | `POST /admin/reports/:id/resolve` | Report verdict form | `Violation_Confirmed`; sanction applied | Sanction validation and error | Mapped |
 | 2.5 | Sanctioned user does not appeal | No transition required | `/account/appeals` | Sanction remains | Empty list | Mapped |
 | 2.6 | Sanctioned user appeals in time | `POST /appeals` | `/account/appeals/new` | Appeal `Pending` | Eligibility and submit error | Mapped |
-| 2.7 | Different admin reviews appeal | `GET /admin/appeals` | `/admin/appeals` | Appeal `Under_Review`/decision-ready | Same-admin denial and empty queue | Mapped |
+| 2.7 | Admin opens and reviews appeal (one admin lane; the admin who decided the report decides the appeal) | `GET /admin/appeals`, `POST /admin/appeals/:id/open` | `/admin/appeals`, `/admin/appeals/:appealId` | Appeal `Under_Review`/decision-ready | Empty queue | Mapped |
 | 2.8 | Admin rejects appeal | `POST /admin/appeals/:id/decide` | Appeal decision panel | `Appeal_Rejected`; sanction remains | Busy/error | Mapped |
 | 2.9 | Admin upholds appeal | `POST /admin/appeals/:id/decide` | Appeal decision panel | `Appeal_Upheld`; sanction reversed | Busy/error | Mapped |
 

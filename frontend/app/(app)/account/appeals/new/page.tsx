@@ -29,7 +29,7 @@ export default function NewAppealPage() {
     setBusy(true);
     try {
       await createAppeal({ report_id: Number(reportId), reason });
-      toast.success("Appeal submitted. A different admin will review it.");
+      toast.success("Appeal submitted. An admin will review it.");
       router.push("/account/appeals");
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not submit the appeal.");
@@ -86,8 +86,7 @@ export default function NewAppealPage() {
 
       <Notice tone="info" className="max-w-xl">
         <p className="text-body-sm text-ink-secondary">
-          A different admin from the one who made the original decision reviews
-          your appeal. Say what the decision got wrong and what evidence has not
+          An admin reviews your appeal. Say what the decision got wrong and what evidence has not
           been considered yet — restating the original complaint does not help
           them.
         </p>

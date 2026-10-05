@@ -67,8 +67,8 @@ export default async function MyAppealsPage() {
         })}
       </ol>
       <p className="border-t border-line pt-3 text-meta leading-[1.6] text-ink-muted">
-        A different admin from the one who made the original decision reviews
-        every appeal.
+        An admin reviews every appeal against the original reasoning and your
+        new evidence.
       </p>
     </Surface>
   );
@@ -108,8 +108,7 @@ export default async function MyAppealsPage() {
               </p>
 
               <p className="border-t border-line pt-3 text-caption leading-[1.6] text-ink-muted">
-                A different admin from the one who made the original decision
-                reviews this. Original verdict:{" "}
+                An admin reviews this. Original verdict:{" "}
                 {tStatus(REPORT_STATUS.Violation_Confirmed.labelKey)}.
               </p>
             </Surface>

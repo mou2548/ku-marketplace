@@ -3,21 +3,19 @@ import { authHeader } from "./session";
 import { getCopy } from "@/lib/copy";
 import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getMyOffers } from "@/lib/api/offers";
-import { getMyAppeals } from "@/lib/api/appeals";
-import { getMyReports } from "@/lib/api/reports";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
-import {
-  APPEAL_STATUS,
-  REPORT_STATUS,
-  TICKET_STATUS,
-  transactionStatusPresentation,
-} from "@/lib/status";
+import { TICKET_STATUS, transactionStatusPresentation } from "@/lib/status";
 
 /**
- * Persisted appointment/deadline events are combined with activity derived
- * from the viewer's deals, offers, moderation cases and giveaway tickets.
+ * Persisted events (appointments, deadlines, moderation) are combined with
+ * activity derived from the viewer's deals, offers and giveaway tickets.
  * Derived activity uses terminal resource state as a read heuristic.
+ *
+ * Moderation is persisted only, never derived (ruling of 2026-10-05): the
+ * backend writes it for the people who should hear it, which is admins about
+ * new cases and the penalised user about the verdict and the appeal result.
+ * The reporter hears nothing about the outcome.
  */
 export interface Notification {
   notification_id: number;
@@ -33,8 +31,6 @@ export interface Notification {
 const OFFSET: Record<string, number> = {
   deal: 1_000_000,
   offer: 2_000_000,
-  "mod-report": 3_000_000,
-  "mod-appeal": 4_000_000,
   giveaway: 5_000_000,
 };
 const nid = (bucket: keyof typeof OFFSET | string, id: number) =>
@@ -51,11 +47,9 @@ export async function getNotifications(): Promise<Notification[]> {
   const viewerId = await getCurrentUserId();
   if (!viewerId) return [];
 
-  const [offers, transactions, reports, appeals, giveaways] = await Promise.all([
+  const [offers, transactions, giveaways] = await Promise.all([
     getMyOffers().catch(() => []),
     getTransactions().catch(() => []),
-    getMyReports().catch(() => []),
-    getMyAppeals().catch(() => []),
     getGiveaways().catch(() => []),
   ]);
 
@@ -105,35 +99,6 @@ export async function getNotifications(): Promise<Notification[]> {
     });
   }
 
-  for (const r of reports) {
-    const pres = REPORT_STATUS[r.status];
-    out.push({
-      notification_id: nid("mod-report", r.report_id),
-      kind: "moderation",
-      title: `Report #${r.report_id}: ${pres ? tr(pres.labelKey) : r.status}`,
-      body:
-        r.resolution_note ??
-        `Your report about ${r.report_type.toLowerCase()} #${r.target_id}.`,
-      href: "/history",
-      created_at: r.handled_at ?? r.created_at,
-      read:
-        r.status === "Report_Dismissed" || r.status === "Violation_Confirmed",
-    });
-  }
-
-  for (const a of appeals) {
-    const pres = APPEAL_STATUS[a.status];
-    out.push({
-      notification_id: nid("mod-appeal", a.appeal_id),
-      kind: "moderation",
-      title: `Appeal on report #${a.report_id}: ${pres ? tr(pres.labelKey) : a.status}`,
-      body: a.resolution_note ?? "Your appeal is being handled.",
-      href: "/account/appeals",
-      created_at: a.handled_at ?? a.created_at,
-      read: a.status === "Approved" || a.status === "Rejected",
-    });
-  }
-
   const tickets = (
     await Promise.all(
       giveaways.map((g) =>
@@ -168,4 +133,16 @@ export async function getNotifications(): Promise<Notification[]> {
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
+}
+
+/**
+ * The viewer's persisted moderation notifications only, for the admin
+ * dashboard's Activity list. Same rows as the bell, without the derived deal
+ * and giveaway activity the bell also assembles.
+ */
+export async function getModerationActivity(limit = 6): Promise<Notification[]> {
+  const rows = await apiFetch<Notification[]>("/notifications", {
+    headers: await authHeader(),
+  });
+  return rows.filter((row) => row.kind === "moderation").slice(0, limit);
 }

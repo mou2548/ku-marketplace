@@ -45,7 +45,7 @@ export async function login(
   const requestedReturn = String(formData.get("returnTo") ?? "");
   const returnTo = /^\/sellers\/[1-9]\d{0,9}$/.test(requestedReturn) && Number(requestedReturn.split("/").pop()) <= 2147483647 ? requestedReturn : undefined;
   redirect(
-    restricted ? "/account/appeals" : returnTo ?? (isAdmin ? "/admin/reports" : "/feed"),
+    restricted ? "/account/appeals" : returnTo ?? (isAdmin ? "/admin" : "/feed"),
   );
 }
 

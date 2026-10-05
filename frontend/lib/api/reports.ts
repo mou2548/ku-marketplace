@@ -2,7 +2,14 @@ import { apiFetch } from "./client";
 import { getAdminAppointmentCards, getAdminChatHistory } from "./chat";
 import { authHeader } from "./session";
 import { adminGetTransaction } from "./transactions";
-import type { AppointmentCardData, ChatMessage, Report, Transaction } from "./types";
+import type {
+  AppointmentCardData,
+  ChatMessage,
+  Report,
+  Sanction,
+  SubmittedReport,
+  Transaction,
+} from "./types";
 
 /**
  * Wires §7's Report & Moderation table to `report.service.ts`/
@@ -14,7 +21,7 @@ import type { AppointmentCardData, ChatMessage, Report, Transaction } from "./ty
  * one place to adapt from if that ever changes.
  */
 
-export type Sanction = "none" | "warn" | "suspend_temporary" | "suspend_permanent";
+export type { Sanction };
 
 export interface CreateReportInput {
   report_type: "Post" | "User" | "Transaction";
@@ -35,31 +42,46 @@ async function authedInit(): Promise<RequestInit> {
 }
 
 /** POST /reports — §7.3's 5-per-10-minutes rate limit is enforced server-side. */
-export async function createReport(input: CreateReportInput): Promise<Report> {
+export async function createReport(input: CreateReportInput): Promise<SubmittedReport> {
   const init = await authedInit();
-  return apiFetch<Report>("/reports", {
+  return apiFetch<SubmittedReport>("/reports", {
     ...init,
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
-/** GET /reports — the signed-in user's own reports. */
-export async function getMyReports(): Promise<Report[]> {
+/** GET /reports — the signed-in user's own reports, without their outcome. */
+export async function getMyReports(): Promise<SubmittedReport[]> {
   const init = await authedInit();
-  return apiFetch<Report[]>("/reports", init);
+  return apiFetch<SubmittedReport[]>("/reports", init);
 }
 
-/** GET /reports/{id} */
-export async function getReport(reportId: number): Promise<Report> {
+/** GET /reports/{id} — one of the user's own reports, without its outcome. */
+export async function getReport(reportId: number): Promise<SubmittedReport> {
   const init = await authedInit();
-  return apiFetch<Report>(`/reports/${reportId}`, init);
+  return apiFetch<SubmittedReport>(`/reports/${reportId}`, init);
 }
 
 /** GET /admin/reports — every report, oldest-first is the caller's job. */
 export async function adminListReports(): Promise<Report[]> {
   const init = await authedInit();
   return apiFetch<Report[]>("/admin/reports", init);
+}
+
+/**
+ * POST /admin/reports/{id}/open. Opening a case is taking it on: the first
+ * admin to open a Pending report moves it to Under_Investigation and becomes
+ * its `handled_by`. Returns the report either way, so it doubles as the
+ * single-report read.
+ */
+export async function adminOpenReport(reportId: number): Promise<Report> {
+  const init = await authedInit();
+  return apiFetch<Report>(`/admin/reports/${reportId}/open`, {
+    ...init,
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 /**
@@ -75,17 +97,6 @@ export async function adminResolveReport(
     ...init,
     method: "POST",
     body: JSON.stringify(input),
-  });
-}
-
-/** POST /admin/reports/{id}/restore — dismisses the report and, for a Post
- * report, un-hides the post (§7.1). */
-export async function adminRestoreReport(reportId: number): Promise<Report> {
-  const init = await authedInit();
-  return apiFetch<Report>(`/admin/reports/${reportId}/restore`, {
-    ...init,
-    method: "POST",
-    body: JSON.stringify({}),
   });
 }
 

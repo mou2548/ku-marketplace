@@ -2,107 +2,142 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Crown, Scale, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  CreditCard,
+  Flag,
+  LayoutDashboard,
+  Scale,
+} from "lucide-react";
 
+import type { AdminQueueCounts } from "@/lib/admin-labels";
 import { cn } from "@/lib/utils";
 
-const QUEUES = [
-  { href: "/admin/reports", label: "Reports", icon: ShieldAlert },
-  { href: "/admin/appeals", label: "Appeals", icon: Scale },
-  { href: "/admin/memberships", label: "Memberships", icon: Crown },
-] as const;
+const SECTIONS = [
+  {
+    href: "/admin",
+    label: "Dashboard",
+    short: "Dashboard",
+    icon: LayoutDashboard,
+    count: null,
+  },
+  {
+    href: "/admin/reports",
+    label: "Reports",
+    short: "Reports",
+    icon: Flag,
+    count: "reports",
+  },
+  {
+    href: "/admin/appeals",
+    label: "Appeals",
+    short: "Appeals",
+    icon: Scale,
+    count: "appeals",
+  },
+  {
+    href: "/admin/memberships",
+    label: "Memberships",
+    short: "Members",
+    icon: CreditCard,
+    count: "memberships",
+  },
+] as const satisfies ReadonlyArray<{
+  href: string;
+  label: string;
+  short: string;
+  icon: typeof Flag;
+  count: keyof AdminQueueCounts | null;
+}>;
 
-export interface AdminQueueCounts {
-  reports: number;
-  appeals: number;
-  memberships: number;
+/** Dashboard is the workspace root, so it is active only on itself. */
+function isActive(pathname: string, href: string) {
+  return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-function countFor(href: (typeof QUEUES)[number]["href"], counts: AdminQueueCounts) {
-  if (href.endsWith("reports")) return counts.reports;
-  if (href.endsWith("appeals")) return counts.appeals;
-  return counts.memberships;
-}
-
-export function AdminNavigation({ counts }: { counts: AdminQueueCounts }) {
+/** Desktop: the left rail. Counts are plain grey numbers, not alarms. */
+export function AdminSidebar({ counts }: { counts: AdminQueueCounts }) {
   const pathname = usePathname();
-
   return (
-    <>
-      <nav
-        aria-label="Moderation queues"
-        className="hidden h-full items-stretch gap-5 lg:flex"
-      >
-        {QUEUES.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          const count = countFor(href, counts);
+    <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line px-3.5 py-5 lg:flex">
+      <p className="flex items-baseline gap-2 px-2 font-semibold tracking-[-0.01em]">
+        KU Marketplace{" "}
+        <span className="text-caption font-normal text-ink-muted">Admin</span>
+      </p>
+      <nav aria-label="Admin sections" className="flex flex-col gap-0.5">
+        {SECTIONS.map(({ href, label, icon: Icon, count }) => {
+          const active = isActive(pathname, href);
+          const n = count ? counts[count] : 0;
           return (
             <Link
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-full items-center gap-2 border-b-2 px-0.5 text-body-sm transition-colors",
+                "flex min-h-9 items-center gap-2.5 rounded-[8px] px-2.5 text-body-sm transition-colors",
                 active
-                  ? "border-white font-semibold text-white"
-                  : "border-transparent text-white/70 hover:text-white",
+                  ? "bg-surface-sunken font-medium text-ink"
+                  : "text-ink-secondary hover:bg-surface-sunken hover:text-ink",
               )}
             >
               <Icon aria-hidden className="size-4" />
               {label}
-              {count > 0 ? <QueueDot count={count} /> : null}
+              {n > 0 ? (
+                <span data-numeric className="ml-auto text-meta text-ink-muted">
+                  {n}
+                  <span className="sr-only"> waiting</span>
+                </span>
+              ) : null}
             </Link>
           );
         })}
       </nav>
-
-      <nav
-        aria-label="Moderation queues"
-        className="fixed inset-x-0 bottom-0 z-[60] grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-3 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      <Link
+        href="/feed"
+        className="mt-auto flex min-h-9 items-center gap-2.5 rounded-[8px] px-2.5 text-body-sm text-ink-secondary hover:bg-surface-sunken hover:text-ink"
       >
-        {QUEUES.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          const count = countFor(href, counts);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "relative flex min-w-0 flex-col items-center justify-center gap-0.5 text-meta",
-                active ? "font-semibold text-ink-brand" : "text-ink-muted",
-              )}
-            >
-              <span className="relative">
-                <Icon aria-hidden className="size-5" />
-                {count > 0 ? (
-                  <QueueDot
-                    count={count}
-                    className="absolute -top-0.5 -right-1.5 ring-2 ring-surface"
-                  />
-                ) : null}
-              </span>
-              <span className="max-w-full truncate px-1">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-    </>
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to marketplace
+      </Link>
+    </aside>
   );
 }
 
-/**
- * A dot, not a number — same reason as the consumer nav: the queue link only
- * has to say that the queue is not empty. The count stays for screen readers.
- */
-function QueueDot({ count, className }: { count: number; className?: string }) {
+/** Phone and tablet: the bottom tab bar. */
+export function AdminTabBar({ counts }: { counts: AdminQueueCounts }) {
+  const pathname = usePathname();
   return (
-    <>
-      <span
-        aria-hidden
-        className={cn("size-2 shrink-0 rounded-pill bg-tone-danger-solid", className)}
-      />
-      <span className="sr-only">{count} waiting</span>
-    </>
+    <nav
+      aria-label="Admin sections"
+      className="fixed inset-x-0 bottom-0 z-[40] flex justify-around border-t border-line bg-page px-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 lg:hidden"
+    >
+      {SECTIONS.map(({ href, short, icon: Icon, count }) => {
+        const active = isActive(pathname, href);
+        const n = count ? counts[count] : 0;
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "relative flex min-h-12 min-w-11 flex-col items-center justify-center gap-0.5 px-1.5 text-[0.66rem]",
+              active ? "font-medium text-ink" : "text-ink-muted",
+            )}
+          >
+            <Icon aria-hidden className="size-5" />
+            {short}
+            {n > 0 ? (
+              <span
+                data-numeric
+                className="absolute right-0 top-1 rounded-pill bg-surface-sunken px-1.5 text-[0.6rem] leading-normal text-ink-secondary"
+              >
+                {n}
+                <span className="sr-only"> waiting</span>
+              </span>
+            ) : null}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

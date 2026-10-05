@@ -307,3 +307,44 @@ export interface Appeal {
   created_at: string;
   handled_at?: string | null;
 }
+
+/**
+ * The reporter's own view of a report. The backend never returns the outcome
+ * to the person who filed it (ruling of 2026-10-05), so there is no status,
+ * verdict note or handler here to render.
+ */
+export type SubmittedReport = Pick<
+  Report,
+  | "report_id"
+  | "reporter_id"
+  | "reporter"
+  | "report_type"
+  | "target_id"
+  | "reason_category"
+  | "details"
+  | "evidence_urls"
+  | "created_at"
+>;
+
+/** Stored on a confirmed report; `suspend_*` restricts the account. */
+export type Sanction = "none" | "warn" | "suspend_temporary" | "suspend_permanent";
+
+/** The verdict an appeal contests, as the admin appeal endpoints embed it. */
+export interface AppealReportContext {
+  report_id: number;
+  report_type: Report["report_type"];
+  target_id: number;
+  reason_category: string;
+  details?: string | null;
+  evidence_urls?: string[] | null;
+  status: ReportStatus;
+  sanction: Sanction | null;
+  resolution_note?: string | null;
+  handled_by?: number | null;
+  handler?: UserSummary | null;
+  handled_at?: string | null;
+}
+
+export interface AdminAppeal extends Appeal {
+  report: AppealReportContext;
+}

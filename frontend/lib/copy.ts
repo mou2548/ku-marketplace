@@ -868,7 +868,7 @@ const COPY: { [key: string]: CopyNode } = {
       "close": "Close",
       "cancel": "Cancel",
       "submit": "Submit report",
-      "submitted": "Report submitted. An admin will review it and let you know.",
+      "submitted": "Report submitted. An admin will review it.",
       "reason": "Reason",
       "details": "Details",
       "placeholder": "Describe what happened",

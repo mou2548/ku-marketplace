@@ -3,10 +3,10 @@
 import { formatDateTime } from "@/lib/date-format";
 
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gavel } from "lucide-react";
+import { ArrowLeft, ExternalLink, Gavel } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
@@ -17,7 +17,7 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
-import { adminResolveReport, adminRestoreReport } from "@/lib/actions/reports";
+import { adminOpenReport, adminResolveReport } from "@/lib/actions/reports";
 import type { ApiError } from "@/lib/api/client";
 import type { AdminTransactionEvidence, Sanction } from "@/lib/api/reports";
 import type { Report } from "@/lib/api/types";
@@ -27,8 +27,7 @@ const VERDICTS = [
   {
     id: "dismiss",
     label: "Dismiss the report",
-    description:
-      "No violation found. Any post taken down over this report is restored.",
+    description: "No violation found. Nobody is notified and nothing changes.",
   },
   {
     id: "warn",
@@ -58,26 +57,58 @@ const SANCTION_BY_VERDICT: Record<VerdictId, Sanction> = {
 };
 
 const APPEAL_WINDOW_DAYS = 7;
+
+/** Where an admin can see what was reported. Transaction reports carry their
+ * evidence inline instead (see `TransactionEvidence`). */
+const TARGET_HREF: Record<Report["report_type"], ((id: number) => string) | null> = {
+  Post: (id) => `/market/${id}`,
+  User: (id) => `/sellers/${id}`,
+  Transaction: null,
+};
 const MIN_NOTE = 30;
 
 /**
- * The note is mandatory and long-form on purpose. It is sent to both parties
- * and becomes the basis of any appeal (flow 2), so a verdict recorded without
- * reasoning leaves the next admin with nothing to review.
+ * The note is mandatory and long-form on purpose. On an upheld report it is
+ * sent to the penalised user and becomes the basis of any appeal (flow 2), so
+ * a verdict recorded without reasoning leaves the next admin with nothing to
+ * review. The reporter never sees it (ruling of 2026-10-05).
+ *
+ * Opening this screen is taking the case on: on mount it calls
+ * `POST /admin/reports/{id}/open`, which moves a Pending report to
+ * Under_Investigation under this admin. It runs from an effect rather than
+ * during render so a link prefetch can never claim a case.
  */
 export function VerdictForm({
-  report,
+  report: initialReport,
   evidence,
+  viewerId,
 }: {
   report: Report;
   evidence?: AdminTransactionEvidence;
+  viewerId?: number;
 }) {
+  const [report, setReport] = useState(initialReport);
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const [verdict, setVerdict] = useState<VerdictId>("warn");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    adminOpenReport(initialReport.report_id)
+      .then((opened) => {
+        if (live) setReport(opened);
+      })
+      .catch(() => {
+        // The verdict form still works on the report as listed; the claim
+        // is retried the next time the case is opened.
+      });
+    return () => {
+      live = false;
+    };
+  }, [initialReport.report_id]);
 
   const tooShort = note.trim().length < MIN_NOTE;
   const alreadyDecided = report.status !== "Pending" && report.status !== "Under_Investigation";
@@ -86,15 +117,19 @@ export function VerdictForm({
     setBusy(true);
     try {
       if (verdict === "dismiss") {
-        await adminRestoreReport(report.report_id);
+        await adminResolveReport(report.report_id, {
+          status: "Report_Dismissed",
+          resolution_note: note,
+        });
+        toast.success("Report dismissed. Nobody is notified.");
       } else {
         await adminResolveReport(report.report_id, {
           status: "Violation_Confirmed",
           sanction: SANCTION_BY_VERDICT[verdict],
           resolution_note: note,
         });
+        toast.success("Decision recorded. The reported user is notified and can appeal.");
       }
-      toast.success("Decision recorded and sent to both parties.");
       router.push("/admin/reports");
     } catch (error) {
       toast.error((error as ApiError).message ?? "Could not record the decision.");
@@ -124,6 +159,22 @@ export function VerdictForm({
             <dd className="text-right font-medium">{report.reason_category}</dd>
           </div>
         </dl>
+        {TARGET_HREF[report.report_type] ? (
+          <a
+            href={TARGET_HREF[report.report_type]!(report.target_id)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+          >
+            Open the reported {report.report_type.toLowerCase()}
+            <ExternalLink aria-hidden className="size-4" />
+          </a>
+        ) : null}
+        {report.status === "Under_Investigation" && report.handler ? (
+          <p className="text-caption text-ink-muted">
+            Opened by {report.handled_by === viewerId ? "you" : report.handler.name}
+          </p>
+        ) : null}
         <div className="border-t border-line pt-3">
           <p className="mb-2 text-overline text-ink-muted uppercase">
             Reported by
@@ -167,6 +218,10 @@ export function VerdictForm({
         <StatusBadge status={REPORT_STATUS[report.status]} />
       </header>
 
+      {report.evidence_urls?.length ? (
+        <ReporterEvidence urls={report.evidence_urls} />
+      ) : null}
+
       {report.report_type === "Transaction" ? (
         <TransactionEvidence evidence={evidence} />
       ) : null}
@@ -196,8 +251,8 @@ export function VerdictForm({
             placeholder="What the evidence shows and why it leads to this decision"
             hint={
               tooShort
-                ? `At least ${MIN_NOTE} characters. Both parties receive this, and it is what an appeal is judged against.`
-                : `Both parties receive this. The accused can appeal within ${APPEAL_WINDOW_DAYS} days.`
+                ? `At least ${MIN_NOTE} characters. It is what an appeal is judged against.`
+                : `If upheld, the reported user receives this and can appeal within ${APPEAL_WINDOW_DAYS} days. The reporter never sees it.`
             }
           />
 
@@ -327,6 +382,32 @@ function TransactionEvidence({ evidence }: { evidence?: AdminTransactionEvidence
           ))}
         </div>
       </div>
+    </Surface>
+  );
+}
+
+/** Photos the reporter attached when filing. */
+function ReporterEvidence({ urls }: { urls: string[] }) {
+  return (
+    <Surface shape="card" className="flex flex-col gap-3 p-4">
+      <p className="text-overline text-ink-muted uppercase">
+        Reporter&apos;s evidence ({urls.length})
+      </p>
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {urls.map((url, index) => (
+          <li key={url}>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="block aspect-square overflow-hidden rounded-control bg-surface-sunken"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- admin-only evidence view, arbitrary host */}
+              <img src={url} alt={`Evidence photo ${index + 1}`} className="size-full object-cover" />
+            </a>
+          </li>
+        ))}
+      </ul>
     </Surface>
   );
 }
