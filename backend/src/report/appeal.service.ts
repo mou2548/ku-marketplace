@@ -233,11 +233,11 @@ export class AppealService {
     if (!appeal) {
       throw new NotFoundException(`Appeal ${appealId} not found`);
     }
-    if (appeal.report.handledBy === adminId) {
-      throw new BadRequestException(
-        'Appeal must be decided by a different admin than the one who resolved the original report',
-      );
-    }
+    // if (appeal.report.handledBy === adminId) {
+    //   throw new BadRequestException(
+    //     'Appeal must be decided by a different admin than the one who resolved the original report',
+    //   );
+    // }
     if (
       appeal.status !== AppealStatus.Pending &&
       appeal.status !== AppealStatus.Under_Review
