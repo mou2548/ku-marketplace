@@ -28,7 +28,7 @@ import { offersNeedingAnswer } from "@/lib/inbox";
 import { getMembership } from "@/lib/api/membership";
 import { getMyOffers } from "@/lib/api/offers";
 import { getSeller } from "@/lib/api/sellers";
-import { getAccessToken } from "@/lib/api/session";
+import { getAccessToken, getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
 import { getMe } from "@/lib/api/users";
 
@@ -49,15 +49,18 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  const [me, membership, transactions, offers] = await Promise.all([
-    getMe(),
-    getMembership(),
-    getTransactions().catch(() => []),
-    getMyOffers().catch(() => []),
-  ]);
-  // The public profile only serves active accounts; a restricted one still
-  // gets its page, just without the public counts.
-  const publicProfile = await getSeller(me.userId).catch(() => null);
+  const viewerId = await getCurrentUserId();
+  // One round of requests, all at once. The public profile only serves
+  // active accounts; a restricted one still gets its page, just without the
+  // public counts.
+  const [me, membership, transactions, offers, publicProfile] =
+    await Promise.all([
+      getMe(),
+      getMembership(),
+      getTransactions().catch(() => []),
+      getMyOffers().catch(() => []),
+      viewerId ? getSeller(viewerId).catch(() => null) : null,
+    ]);
   const name =
     [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
   // The Thai name is the part you can edit, so the page leads with it; the

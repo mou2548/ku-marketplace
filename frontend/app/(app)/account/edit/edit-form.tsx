@@ -47,10 +47,9 @@ export function EditProfileForm({ profile }: { profile: User }) {
       return;
     }
     toast.success("Profile saved");
-    startNavigation(() => {
-      router.push("/account");
-      router.refresh();
-    });
+    // /account is rendered fresh on arrival; refreshing on top of the push
+    // rendered it twice.
+    startNavigation(() => router.push("/account"));
     setBusy(false);
   }
 
@@ -105,12 +104,12 @@ export function EditProfileForm({ profile }: { profile: User }) {
 
       <div className="grid max-w-xl gap-4 sm:grid-cols-2">
         <TextInput
-          label="First name (Thai)"
+          label="First name"
           value={firstNameTh}
           onChange={setFirstNameTh}
         />
         <TextInput
-          label="Last name (Thai)"
+          label="Last name"
           value={lastNameTh}
           onChange={setLastNameTh}
         />
