@@ -2,25 +2,32 @@ import Link from "next/link";
 import { getCopy } from "@/lib/copy";
 import { redirect } from "next/navigation";
 import {
+  CheckCircle2,
   ChevronRight,
   Crown,
   Eye,
+  Gift,
   Handshake,
+  Hourglass,
   LogOut,
+  Package,
   Pencil,
+  Plus,
+  RotateCcw,
   Scale,
+  ShieldCheck,
+  Store,
   Trash2,
+  Truck,
   Users,
 } from "lucide-react";
 
-import {
-  parseSellerQuery,
-  SellerProfileView,
-} from "@/components/features/sellers/seller-profile-view";
 import { Surface } from "@/components/kit/surface";
 import { logout } from "@/lib/actions/auth";
+import { offersNeedingAnswer } from "@/lib/inbox";
 import { getMembership } from "@/lib/api/membership";
-import { getSeller, getSellerPosts, type SellerProfile } from "@/lib/api/sellers";
+import { getMyOffers } from "@/lib/api/offers";
+import { getSeller } from "@/lib/api/sellers";
 import { getAccessToken } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
 import { getMe } from "@/lib/api/users";
@@ -29,191 +36,270 @@ import { HeroAvatar } from "./hero-avatar";
 
 export const metadata = { title: "Account - KU Marketplace" };
 
-const ownerLinkClass =
-  "inline-flex min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-brand hover:bg-brand-subtle";
-
 /**
- * Your own profile, laid out exactly as other students see it on
- * `/sellers/:id`, with your account settings between the header and your
- * listings. Seeing yourself the way others do is the point: verification and
- * your listings are what another student checks before trading with you.
+ * The "Me" page, in the shape students already know from Shopee and Lazada:
+ * who you are in a coloured header, your deals as a row of status shortcuts
+ * with counts, your selling tools as a second row, membership as a banner,
+ * then the account settings as a plain list. On a wide screen the header and
+ * settings become a left rail, like those sites' web account pages.
  */
-export default async function AccountPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function AccountPage() {
   const t = await getCopy();
   if (!(await getAccessToken())) {
     redirect("/login");
   }
 
-  const [me, membership, transactions, raw] = await Promise.all([
+  const [me, membership, transactions, offers] = await Promise.all([
     getMe(),
     getMembership(),
     getTransactions().catch(() => []),
-    searchParams,
+    getMyOffers().catch(() => []),
   ]);
-  const query = parseSellerQuery(raw);
+  // The public profile only serves active accounts; a restricted one still
+  // gets its page, just without the public counts.
+  const publicProfile = await getSeller(me.userId).catch(() => null);
   const name =
     [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
 
-  // The public profile only serves active accounts. A restricted account
-  // still reaches its own page, built from what /users/me already says.
-  const fallback: SellerProfile = {
-    user_id: me.userId,
-    name,
-    // Every account is a verified @ku.th address.
-    is_verified: true,
-    member_since: me.createdAt,
-    active_listing_count: 0,
-    follower_count: 0,
-  };
-  const [profile, listings] = await Promise.all([
-    getSeller(me.userId).catch(() => fallback),
-    getSellerPosts(me.userId, query).catch(() => ({
-      data: [],
-      meta: { page: 1, limit: 20, total: 0, totalPages: 0 },
-    })),
-  ]);
+  const mine = transactions.filter(
+    (tx) => tx.buyer_id === me.userId || tx.seller_id === me.userId,
+  );
+  const count = (...statuses: string[]) =>
+    mine.filter((tx) => statuses.includes(tx.status)).length;
 
-  const completed = transactions.filter(
-    (tx) =>
-      tx.status === "Completed" &&
-      (tx.buyer_id === me.userId || tx.seller_id === me.userId),
-  ).length;
-
-  const settings = [
+  const deals = [
+    { label: "Waiting to pay", icon: Hourglass, count: count("Pending") },
+    { label: "In progress", icon: Truck, count: count("Processing") },
+    { label: "Completed", icon: CheckCircle2, count: count("Completed") },
     {
-      href: "/account/edit",
-      label: t("account.editProfile"),
-      hint: "Thai name, phone number and photo",
-      icon: Pencil,
-      iconClass: "bg-brand-subtle text-ink-brand",
-    },
-    {
-      href: "/account/following",
-      label: t("seller.directory"),
-      hint: "Sellers you saved to find again",
-      icon: Users,
-      iconClass: "bg-brand-subtle text-ink-brand",
-    },
-    {
-      href: "/account/membership",
-      label: t("account.membership"),
-      hint:
-        membership.tier === "Free"
-          ? "Free plan. Upgrade for more listings"
-          : `${membership.tier} plan`,
-      icon: Crown,
-      iconClass: "bg-tone-warning-bg text-tone-warning-fg",
-    },
-    {
-      href: "/account/appeals",
-      label: t("account.appeals"),
-      hint: "Decisions about your account",
-      icon: Scale,
-      iconClass: "bg-tone-trade-bg text-tone-trade-fg",
-    },
-    {
-      href: "/account/delete",
-      label: t("account.close"),
-      hint: "Your history is kept",
-      icon: Trash2,
-      iconClass: "bg-tone-danger-bg text-tone-danger-fg",
+      label: "Cancelled & refunds",
+      icon: RotateCcw,
+      count: count("Cancelled", "Pending Refund", "Refunded"),
     },
   ];
 
-  return (
-    <SellerProfileView
-      profile={profile}
-      listings={listings}
-      query={query}
-      pathname="/account"
-      signedIn
-      following={null}
-      mine
-      avatar={<HeroAvatar name={name} avatarUrl={me.avatarUrl} />}
-      ownerActions={
-        <>
-          <Link className={ownerLinkClass} href="/account/edit">
-            <Pencil aria-hidden className="size-4" />
-            {t("seller.edit")}
-          </Link>
-          <Link className={ownerLinkClass} href={`/sellers/${me.userId}`}>
-            <Eye aria-hidden className="size-4" />
-            View as others
-          </Link>
-        </>
-      }
-      extraFacts={
-        <>
-          <div className="flex items-center gap-3 text-body-sm">
-            <Handshake
-              aria-hidden
-              className="size-5 shrink-0 text-ink-muted"
-            />
-            <dt>Completed deals</dt>
-            <dd data-numeric className="font-semibold text-ink-brand">
-              {completed.toLocaleString("en-GB")}
-            </dd>
+  const selling = [
+    { href: "/post", label: "Post an item", icon: Plus, count: 0 },
+    { href: "/inventory", label: "My inventory", icon: Package, count: 0 },
+    {
+      href: "/offers",
+      label: "Offers to answer",
+      icon: Handshake,
+      count: offersNeedingAnswer(offers, me.userId),
+    },
+    { href: "/giveaway", label: "Giveaways", icon: Gift, count: 0 },
+  ];
+
+  const settings = [
+    { href: "/account/edit", label: t("account.editProfile"), icon: Pencil },
+    { href: "/account/following", label: t("seller.directory"), icon: Users },
+    { href: "/account/membership", label: t("account.membership"), icon: Crown },
+    { href: "/account/appeals", label: t("account.appeals"), icon: Scale },
+    { href: "/account/delete", label: t("account.close"), icon: Trash2 },
+  ];
+
+  const header = (
+    <Surface shape="panel" className="overflow-hidden p-0">
+      <div className="relative overflow-hidden bg-brand-strong px-5 pb-5 pt-6 text-on-brand-strong">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-12 -top-16 size-48 rounded-full border-[22px] border-on-brand-strong/5"
+        />
+        <div className="relative flex items-center gap-4">
+          <HeroAvatar name={name} avatarUrl={me.avatarUrl} />
+          <div className="min-w-0">
+            <h1 className="break-words text-h3 font-semibold">{name}</h1>
+            <p className="mt-1 flex items-center gap-1.5 text-meta text-on-brand-strong/85">
+              <ShieldCheck aria-hidden className="size-4 shrink-0" />
+              {t("account.verified")}
+            </p>
+            {membership.tier !== "Free" ? (
+              <p className="mt-1.5 inline-flex items-center gap-1 rounded-pill bg-on-brand-strong/15 px-2 py-0.5 text-meta font-medium">
+                <Crown aria-hidden className="size-3.5" />
+                {membership.tier}
+              </p>
+            ) : null}
           </div>
-          <div className="flex items-center gap-3 text-body-sm">
-            <Crown aria-hidden className="size-5 shrink-0 text-ink-muted" />
-            <dt>{t("account.membership")}</dt>
-            <dd className="font-semibold text-ink-brand">{membership.tier}</dd>
-          </div>
-        </>
-      }
-    >
-      <section aria-labelledby="account-settings">
-        <h2 id="account-settings" className="mb-3 text-h2">
-          {t("account.settings")}
-        </h2>
-        <Surface shape="card" className="overflow-hidden p-0">
-          <ul className="grid divide-y divide-line sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-3">
-            {settings.map(({ href, label, hint, icon: Icon, iconClass }) => (
-              <li key={href} className="sm:border-b sm:border-line">
-                <Link
-                  href={href}
-                  className="flex min-h-16 items-center gap-4 px-5 py-3 transition-colors hover:bg-gray-50"
-                >
-                  <span
-                    className={`grid size-9 shrink-0 place-items-center rounded-pill ${iconClass}`}
-                  >
-                    <Icon aria-hidden className="size-4" />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-[1rem] font-medium">{label}</span>
-                    <span className="truncate text-meta text-ink-muted">
-                      {hint}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    aria-hidden
-                    className="size-4 shrink-0 text-ink-muted"
-                  />
-                </Link>
-              </li>
-            ))}
-            <li className="sm:border-b sm:border-line">
-              <form action={logout} className="h-full">
-                <button
-                  type="submit"
-                  className="flex min-h-16 w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-gray-50"
-                >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-tone-danger-bg text-tone-danger-fg">
-                    <LogOut aria-hidden className="size-4" />
-                  </span>
-                  <span className="flex-1 text-[1rem] font-medium text-tone-danger-fg">
-                    {t("account.signOut")}
-                  </span>
-                </button>
-              </form>
+        </div>
+        <dl className="relative mt-5 grid grid-cols-3 text-center">
+          {[
+            ["Listings", publicProfile?.active_listing_count ?? 0],
+            ["Followers", publicProfile?.follower_count ?? 0],
+            ["Completed", count("Completed")],
+          ].map(([label, value]) => (
+            <div key={label} className="flex flex-col-reverse">
+              <dt className="text-meta text-on-brand-strong/80">{label}</dt>
+              <dd data-numeric className="text-h3 font-semibold">
+                {Number(value).toLocaleString("en-GB")}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-line">
+        <Link
+          href="/account/edit"
+          className="flex min-h-12 items-center justify-center gap-2 text-body-sm font-medium text-ink-brand hover:bg-brand-subtle"
+        >
+          <Pencil aria-hidden className="size-4" />
+          {t("account.editProfile")}
+        </Link>
+        <Link
+          href={`/sellers/${me.userId}`}
+          className="flex min-h-12 items-center justify-center gap-2 text-body-sm font-medium text-ink-brand hover:bg-brand-subtle"
+        >
+          <Store aria-hidden className="size-4" />
+          My shop page
+        </Link>
+      </div>
+    </Surface>
+  );
+
+  const settingsList = (
+    <nav aria-label={t("account.settings")}>
+      <h2 className="mb-2 px-1 text-body-sm font-semibold text-ink-secondary">
+        {t("account.settings")}
+      </h2>
+      <Surface shape="card" className="overflow-hidden p-0">
+        <ul className="divide-y divide-line">
+          {settings.map(({ href, label, icon: Icon }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className="flex min-h-13 items-center gap-3 px-4 text-body transition-colors hover:bg-gray-50"
+              >
+                <Icon aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                <span className="flex-1">{label}</span>
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 shrink-0 text-ink-muted"
+                />
+              </Link>
             </li>
-          </ul>
-        </Surface>
-      </section>
-    </SellerProfileView>
+          ))}
+          <li>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="flex min-h-13 w-full items-center gap-3 px-4 text-left text-body text-tone-danger-fg transition-colors hover:bg-tone-danger-bg"
+              >
+                <LogOut aria-hidden className="size-5 shrink-0" />
+                {t("account.signOut")}
+              </button>
+            </form>
+          </li>
+        </ul>
+      </Surface>
+    </nav>
+  );
+
+  return (
+    <div className="mx-auto grid w-full max-w-6xl gap-5 pb-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-5 lg:sticky lg:top-24">
+        {header}
+        <div className="hidden lg:block">{settingsList}</div>
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-5">
+        <ShortcutCard
+          title="My deals"
+          action={{ href: "/history", label: "View all" }}
+          items={deals.map((deal) => ({ ...deal, href: "/history" }))}
+        />
+        <ShortcutCard title="My selling" items={selling} />
+
+        <Link
+          href="/account/membership"
+          className="flex items-center gap-4 rounded-card bg-[var(--membership-bg)] px-5 py-4 text-[var(--membership-fg)] transition-[filter] hover:brightness-[0.98]"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface/60">
+            <Crown aria-hidden className="size-5" />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="font-semibold">
+              {membership.tier === "Free"
+                ? "Upgrade your membership"
+                : `${membership.tier} member`}
+            </span>
+            <span className="text-body-sm opacity-85">
+              {membership.tier === "Free"
+                ? "List more items every month"
+                : "See your plan and listing quota"}
+            </span>
+          </span>
+          <ChevronRight aria-hidden className="size-5 shrink-0" />
+        </Link>
+
+        <Link
+          href={`/sellers/${me.userId}`}
+          className="flex items-center gap-3 rounded-card border border-line px-5 py-3.5 text-body-sm text-ink-secondary transition-colors hover:bg-gray-50"
+        >
+          <Eye aria-hidden className="size-4 shrink-0 text-ink-muted" />
+          <span className="flex-1">See your profile the way other students do</span>
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
+        </Link>
+
+        <div className="lg:hidden">{settingsList}</div>
+      </div>
+    </div>
+  );
+}
+
+/** A titled row of icon shortcuts with counts, like a shop app's order row. */
+function ShortcutCard({
+  title,
+  action,
+  items,
+}: {
+  title: string;
+  action?: { href: string; label: string };
+  items: Array<{
+    href: string;
+    label: string;
+    icon: typeof Package;
+    count: number;
+  }>;
+}) {
+  return (
+    <Surface as="section" shape="card" className="overflow-hidden p-0">
+      <div className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4">
+        <h2 className="text-body font-semibold">{title}</h2>
+        {action ? (
+          <Link
+            href={action.href}
+            className="flex items-center gap-0.5 text-body-sm text-ink-muted hover:text-ink-brand"
+          >
+            {action.label}
+            <ChevronRight aria-hidden className="size-4" />
+          </Link>
+        ) : null}
+      </div>
+      <ul className="grid grid-cols-4">
+        {items.map(({ href, label, icon: Icon, count }) => (
+          <li key={label}>
+            <Link
+              href={href}
+              className="flex min-h-24 flex-col items-center justify-center gap-2 px-1 py-3 text-center transition-colors hover:bg-gray-50"
+            >
+              <span className="relative">
+                <Icon aria-hidden className="size-7 text-ink-secondary" strokeWidth={1.6} />
+                {count > 0 ? (
+                  <span
+                    data-numeric
+                    className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-pill bg-tone-danger-solid px-1 text-[0.66rem] font-semibold leading-none text-white"
+                  >
+                    {count > 99 ? "99+" : count}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-meta leading-tight text-ink-secondary">
+                {label}
+                {count > 0 ? <span className="sr-only"> ({count})</span> : null}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Surface>
   );
 }

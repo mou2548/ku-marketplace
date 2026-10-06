@@ -58,9 +58,7 @@ export function parseSellerQuery(
  * seller page and the owner's own `/account` both render this, so what you
  * see of yourself is what other students see of you.
  *
- * `mine` swaps Follow for the owner's own actions; `avatar`, `ownerActions`,
- * `extraFacts` and `children` let `/account` add its photo upload, account
- * facts and settings without forking the layout.
+ * `mine` swaps Follow for the owner's own actions.
  */
 export async function SellerProfileView({
   profile,
@@ -70,11 +68,6 @@ export async function SellerProfileView({
   signedIn,
   following,
   mine,
-  avatarUrl,
-  avatar,
-  ownerActions,
-  extraFacts,
-  children,
 }: {
   profile: SellerProfile;
   listings: Listings;
@@ -83,11 +76,6 @@ export async function SellerProfileView({
   signedIn: boolean;
   following: boolean | null;
   mine: boolean;
-  avatarUrl?: string | null;
-  avatar?: React.ReactNode;
-  ownerActions?: React.ReactNode;
-  extraFacts?: React.ReactNode;
-  children?: React.ReactNode;
 }) {
   const t = await getCopy("seller");
   const id = profile.user_id;
@@ -130,14 +118,11 @@ export async function SellerProfileView({
               className="pointer-events-none absolute -right-10 -top-16 size-56 rounded-full border-[24px] border-on-brand-strong/5"
             />
             <div className="relative flex min-w-0 items-center gap-4">
-              {avatar ?? (
-                <UserAvatar
-                  name={profile.name}
-                  avatarUrl={avatarUrl}
-                  size="lg"
-                  className="border-2 border-on-brand-strong/40 bg-on-brand-strong/10 text-on-brand-strong"
-                />
-              )}
+              <UserAvatar
+                name={profile.name}
+                size="lg"
+                className="border-2 border-on-brand-strong/40 bg-on-brand-strong/10 text-on-brand-strong"
+              />
               <div className="min-w-0">
                 <p className="mb-1 text-meta text-on-brand-strong/80">
                   {t("profile")}
@@ -157,16 +142,14 @@ export async function SellerProfileView({
               className={`relative mt-5 flex flex-wrap items-center gap-2 [&>div]:w-full ${mine ? "rounded-control bg-surface p-2 text-ink" : ""}`}
             >
               {mine ? (
-                (ownerActions ?? (
-                  <>
-                    <Link className={linkClass} href="/account/edit">
-                      {t("edit")}
-                    </Link>
-                    <Link className={linkClass} href="/inventory">
-                      {t("manage")}
-                    </Link>
-                  </>
-                ))
+                <>
+                  <Link className={linkClass} href="/account/edit">
+                    {t("edit")}
+                  </Link>
+                  <Link className={linkClass} href="/inventory">
+                    {t("manage")}
+                  </Link>
+                </>
               ) : (
                 <FollowButton
                   sellerId={id}
@@ -201,7 +184,6 @@ export async function SellerProfileView({
                   </span>
                 </dd>
               </div>
-              {extraFacts}
               {profile.member_since ? (
                 <div className="flex flex-wrap items-center gap-3 text-body-sm sm:col-span-2">
                   <CalendarDays
@@ -221,7 +203,6 @@ export async function SellerProfileView({
           </div>
         </header>
       </Surface>
-      {children}
       <div className="grid min-w-0 gap-6 lg:grid-cols-[190px_minmax(0,1fr)]">
         <aside aria-label={t("category")} className="min-w-0">
           <h2 className="mb-3 flex min-h-11 items-center gap-2 border-b border-line pb-3 text-body font-semibold">
