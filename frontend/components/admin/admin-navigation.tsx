@@ -59,8 +59,10 @@ function isActive(pathname: string, href: string) {
 export function AdminSidebar({ counts }: { counts: AdminQueueCounts }) {
   const pathname = usePathname();
   return (
-    <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line px-3.5 py-5 lg:flex">
-      <p className="flex items-baseline gap-2 px-2 font-semibold tracking-[-0.01em]">
+    <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line px-3.5 pb-5 lg:flex">
+      {/* As tall as the top bar, with the same bottom rule, so the two read
+          as one line across the page. */}
+      <p className="-mx-3.5 flex h-[4.25rem] shrink-0 items-center gap-2 border-b border-line px-5.5 font-semibold tracking-[-0.01em]">
         KU Marketplace{" "}
         <span className="text-caption font-normal text-ink-muted">Admin</span>
       </p>

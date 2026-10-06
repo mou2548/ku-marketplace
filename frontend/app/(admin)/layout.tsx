@@ -37,7 +37,9 @@ export default async function AdminLayout({
         <AdminSidebar counts={counts} />
 
         <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-[50] flex h-15 items-center gap-2 border-b border-line bg-page px-4 lg:px-8">
+          {/* Same height as the marketplace navbar (app-shell.tsx), so switching
+              between User mode and admin does not shift the page. */}
+          <header className="sticky top-0 z-[50] flex h-[4.25rem] items-center gap-2 border-b border-line bg-page px-4 lg:px-8">
             <p className="flex items-baseline gap-2 font-semibold tracking-[-0.01em] lg:hidden">
               KU Marketplace{" "}
               <span className="text-caption font-normal text-ink-muted">
