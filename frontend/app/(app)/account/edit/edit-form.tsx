@@ -70,8 +70,8 @@ export function EditProfileForm({ profile }: { profile: User }) {
         avatarUrl={profile.avatar_url}
       />
       <p className="text-caption leading-[1.6] text-ink-muted">
-        Your Thai name heads your account page. On posts, offers and chats
-        other students see your English name and KU badge.
+        This is the name and photo other students see on your posts, offers
+        and chats, next to your KU badge.
       </p>
     </Surface>
   );

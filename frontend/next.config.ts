@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
   // hydration never completes, so nothing is clickable.
   allowedDevOrigins: ["10.31.223.158"],
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // Photos go to the API through a Server Action (lib/actions/uploads.ts),
+      // and the 1MB default rejected most phone photos before they reached
+      // it. The API accepts up to 5MB; this leaves room for the form wrapper.
+      bodySizeLimit: "6mb",
+    },
+  },
   images: {
     remotePatterns: [
       // Legacy local volumes can still contain the original object-storage

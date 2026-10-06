@@ -561,6 +561,7 @@ function renderCard(post: Post) {
         name: post.seller.name,
         isVerified: post.seller.isVerified,
         faculty: post.seller.faculty,
+        avatar_url: post.seller.avatar_url,
       }}
     />
   );

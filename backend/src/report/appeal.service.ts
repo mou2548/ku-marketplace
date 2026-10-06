@@ -20,6 +20,7 @@ import {
   notifyAppealDecided,
 } from './moderation-notifications';
 import { suspensionEndsAt } from './account-standing';
+import { displayName } from '../common/utils/display-name';
 
 @Injectable()
 export class AppealService {
@@ -74,12 +75,14 @@ export class AppealService {
     userId: number;
     firstNameEn: string;
     lastNameEn: string;
+    firstNameTh?: string | null;
+    lastNameTh?: string | null;
     emailVerifiedAt: Date | null;
     avatarUrl?: string | null;
   }) {
     return {
       user_id: user.userId,
-      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      name: displayName(user),
       isVerified: user.emailVerifiedAt !== null,
       avatar_url: user.avatarUrl ?? null,
     };

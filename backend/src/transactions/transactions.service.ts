@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { displayName } from '../common/utils/display-name';
 
 /** §6.2 — รูปในแชทมีอายุการแสดงผล 7 วัน ก่อนถูกแทนที่ด้วยข้อความแจ้งเตือน */
 const IMAGE_DISPLAY_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
@@ -19,12 +20,14 @@ export class TransactionsService {
     userId: number;
     firstNameEn: string;
     lastNameEn: string;
+    firstNameTh?: string | null;
+    lastNameTh?: string | null;
     emailVerifiedAt: Date | null;
     avatarUrl?: string | null;
   }) {
     return {
       user_id: user.userId,
-      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      name: displayName(user),
       isVerified: user.emailVerifiedAt !== null,
       avatar_url: user.avatarUrl ?? null,
     };

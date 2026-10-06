@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageOverride } from '../dto/message-override.dto';
 import { getItemAvailability } from '../items/item-availability';
+import { displayName } from '../common/utils/display-name';
 
 export interface GiveawayImage {
   image_url: string;
@@ -74,12 +75,14 @@ export class GiveawaysService {
     userId: number;
     firstNameEn: string;
     lastNameEn: string;
+    firstNameTh?: string | null;
+    lastNameTh?: string | null;
     emailVerifiedAt: Date | null;
     avatarUrl?: string | null;
   }) {
     return {
       user_id: user.userId,
-      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      name: displayName(user),
       isVerified: user.emailVerifiedAt !== null,
       avatar_url: user.avatarUrl ?? null,
     };

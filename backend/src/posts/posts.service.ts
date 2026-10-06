@@ -13,6 +13,7 @@ import {
 } from '../common/constants/membership.constant';
 import { getItemAvailability } from '../items/item-availability';
 import { PrismaService } from '../prisma/prisma.service';
+import { displayName } from '../common/utils/display-name';
 
 export interface CreatePostPayload {
   item_id?: number;
@@ -99,6 +100,8 @@ export class PostsService {
         userId: number;
         firstNameEn: string;
         lastNameEn: string;
+        firstNameTh?: string | null;
+        lastNameTh?: string | null;
         emailVerifiedAt?: Date | null;
         avatarUrl?: string | null;
       } | null;
@@ -148,10 +151,7 @@ export class PostsService {
       seller: owner
         ? {
             user_id: owner.userId,
-            name: [owner.firstNameEn, owner.lastNameEn]
-              .filter(Boolean)
-              .join(' ')
-              .trim(),
+            name: displayName(owner),
             isVerified: Boolean(owner.emailVerifiedAt),
             avatar_url: owner.avatarUrl ?? null,
           }
@@ -305,6 +305,8 @@ export class PostsService {
                 userId: true,
                 firstNameEn: true,
                 lastNameEn: true,
+                firstNameTh: true,
+                lastNameTh: true,
                 emailVerifiedAt: true,
                 avatarUrl: true,
               },
@@ -335,6 +337,8 @@ export class PostsService {
                 userId: true,
                 firstNameEn: true,
                 lastNameEn: true,
+                firstNameTh: true,
+                lastNameTh: true,
                 emailVerifiedAt: true,
                 avatarUrl: true,
               },
@@ -519,6 +523,8 @@ export class PostsService {
                   userId: true,
                   firstNameEn: true,
                   lastNameEn: true,
+                  firstNameTh: true,
+                  lastNameTh: true,
                   emailVerifiedAt: true,
                   avatarUrl: true,
                 },
@@ -617,6 +623,8 @@ export class PostsService {
                 userId: true,
                 firstNameEn: true,
                 lastNameEn: true,
+                firstNameTh: true,
+                lastNameTh: true,
                 emailVerifiedAt: true,
                 avatarUrl: true,
                 status: true,
@@ -942,6 +950,8 @@ export class PostsService {
             userId: true,
             firstNameEn: true,
             lastNameEn: true,
+            firstNameTh: true,
+            lastNameTh: true,
             emailVerifiedAt: true,
             avatarUrl: true,
           },
@@ -959,6 +969,8 @@ export class PostsService {
             userId: true,
             firstNameEn: true,
             lastNameEn: true,
+            firstNameTh: true,
+            lastNameTh: true,
             emailVerifiedAt: true,
             avatarUrl: true,
           },
@@ -984,10 +996,7 @@ export class PostsService {
       transaction_id: offer.transactions[0]?.transactionId ?? null,
       proposer: {
         user_id: offer.proposer.userId,
-        name: [offer.proposer.firstNameEn, offer.proposer.lastNameEn]
-          .filter(Boolean)
-          .join(' ')
-          .trim(),
+        name: displayName(offer.proposer),
         isVerified: true,
         avatar_url: offer.proposer.avatarUrl ?? null,
       },

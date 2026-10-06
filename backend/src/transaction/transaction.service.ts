@@ -22,6 +22,7 @@ import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
 import { RequestCancellationDto } from './dto/request-cancellation.dto';
 import { RespondCancellationDto } from './dto/respond-cancellation.dto';
 import { notifyAdminsOfReport } from '../report/moderation-notifications';
+import { displayName } from '../common/utils/display-name';
 
 type TransactionRow = Transaction;
 
@@ -40,12 +41,14 @@ export class TransactionService {
     userId: number;
     firstNameEn: string;
     lastNameEn: string;
+    firstNameTh?: string | null;
+    lastNameTh?: string | null;
     emailVerifiedAt: Date | null;
     avatarUrl?: string | null;
   }) {
     return {
       user_id: user.userId,
-      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      name: displayName(user),
       isVerified: user.emailVerifiedAt !== null,
       avatar_url: user.avatarUrl ?? null,
     };

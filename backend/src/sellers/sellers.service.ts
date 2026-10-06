@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PostsService } from '../posts/posts.service';
 import { publicListing, publicPostInclude } from '../posts/public-listing';
 import { Paginated } from '../dto/paginated.dto';
+import { displayName } from '../common/utils/display-name';
 
 const pagination = z.object({
   page: z.coerce.number().int().min(1).max(100000).default(1),
@@ -25,6 +26,8 @@ const profileSelect = {
   userId: true,
   firstNameEn: true,
   lastNameEn: true,
+  firstNameTh: true,
+  lastNameTh: true,
   emailVerifiedAt: true,
   avatarUrl: true,
   createdAt: true,
@@ -40,9 +43,7 @@ type ProfileRow = Prisma.UserGetPayload<{ select: typeof profileSelect }>;
 function summary(user: ProfileRow) {
   return {
     user_id: user.userId,
-    name:
-      [user.firstNameEn, user.lastNameEn].filter(Boolean).join(' ').trim() ||
-      'KU member',
+    name: displayName(user) || 'KU member',
     is_verified: Boolean(user.emailVerifiedAt),
     avatar_url: user.avatarUrl,
     member_since: user.createdAt,

@@ -19,6 +19,7 @@ import {
   notifySanctioned,
 } from './moderation-notifications';
 import { reportedUserId, standingFromVerdicts } from './account-standing';
+import { displayName } from '../common/utils/display-name';
 
 /** §7.3 — block further reports once a user has filed more than 5 within
  * this window, so a bot or a stuck button can't flood the admin queue. */
@@ -51,12 +52,14 @@ export class ReportService {
     userId: number;
     firstNameEn: string;
     lastNameEn: string;
+    firstNameTh?: string | null;
+    lastNameTh?: string | null;
     emailVerifiedAt: Date | null;
     avatarUrl?: string | null;
   }) {
     return {
       user_id: user.userId,
-      name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
+      name: displayName(user),
       isVerified: user.emailVerifiedAt !== null,
       avatar_url: user.avatarUrl ?? null,
     };
