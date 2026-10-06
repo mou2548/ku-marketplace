@@ -45,6 +45,7 @@ export function EditProfileForm({ profile }: { profile: User }) {
     setBusy(false);
     toast.success("Profile saved");
     router.push("/account");
+    router.refresh();
   }
 
   /**
@@ -64,8 +65,8 @@ export function EditProfileForm({ profile }: { profile: User }) {
         avatarUrl={profile.avatar_url}
       />
       <p className="text-caption leading-[1.6] text-ink-muted">
-        This is the name and badge shown on your posts, your offers, and every
-        chat room you are in.
+        Your Thai name heads your account page. On posts, offers and chats
+        other students see your English name and KU badge.
       </p>
     </Surface>
   );

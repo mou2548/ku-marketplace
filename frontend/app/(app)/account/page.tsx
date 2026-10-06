@@ -60,6 +60,9 @@ export default async function AccountPage() {
   const publicProfile = await getSeller(me.userId).catch(() => null);
   const name =
     [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
+  // The Thai name is the part you can edit, so the page leads with it; the
+  // English name from the university system sits under it.
+  const thaiName = [me.firstNameTh, me.lastNameTh].filter(Boolean).join(" ");
 
   const mine = transactions.filter(
     (tx) => tx.buyer_id === me.userId || tx.seller_id === me.userId,
@@ -91,7 +94,6 @@ export default async function AccountPage() {
   ];
 
   const settings = [
-    { href: "/account/edit", label: t("account.editProfile"), icon: Pencil },
     { href: "/account/following", label: t("seller.directory"), icon: Users },
     { href: "/account/membership", label: t("account.membership"), icon: Crown },
     { href: "/account/appeals", label: t("account.appeals"), icon: Scale },
@@ -108,7 +110,14 @@ export default async function AccountPage() {
         <div className="relative flex items-center gap-4">
           <HeroAvatar name={name} avatarUrl={me.avatarUrl} />
           <div className="min-w-0">
-            <h1 className="break-words text-h3 font-semibold">{name}</h1>
+            <h1 className="break-words text-h3 font-semibold">
+              {thaiName || name}
+            </h1>
+            {thaiName ? (
+              <p className="break-words text-body-sm text-on-brand-strong/85">
+                {name}
+              </p>
+            ) : null}
             <p className="mt-1 flex items-center gap-1.5 text-meta text-on-brand-strong/85">
               <ShieldCheck aria-hidden className="size-4 shrink-0" />
               {t("account.verified")}
