@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Lock, Save } from "lucide-react";
@@ -28,6 +28,10 @@ export function EditProfileForm({ profile }: { profile: User }) {
   const [lastNameTh, setLastNameTh] = useState(profile.last_name_th);
   const [phone, setPhone] = useState(profile.phone_number ?? "");
   const [busy, setBusy] = useState(false);
+  // Keeps the spinner going after the save, until /account has rendered with
+  // the new name, so there is no dead moment between "saved" and the page.
+  const [navigating, startNavigation] = useTransition();
+  const saving = busy || navigating;
 
   async function save() {
     setBusy(true);
@@ -42,10 +46,12 @@ export function EditProfileForm({ profile }: { profile: User }) {
       toast.error(err instanceof Error ? err.message : "Could not save profile");
       return;
     }
-    setBusy(false);
     toast.success("Profile saved");
-    router.push("/account");
-    router.refresh();
+    startNavigation(() => {
+      router.push("/account");
+      router.refresh();
+    });
+    setBusy(false);
   }
 
   /**
@@ -121,12 +127,16 @@ export function EditProfileForm({ profile }: { profile: User }) {
       />
 
       <div className="flex max-w-xl flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="ghost" onPress={() => router.back()}>
+        <Button
+          variant="ghost"
+          isDisabled={saving}
+          onPress={() => router.back()}
+        >
           Cancel
         </Button>
-        <Button isLoading={busy} onPress={save}>
-          <Save className="size-4" />
-          Save
+        <Button isLoading={saving} loadingLabel="Saving" onPress={save}>
+          {saving ? null : <Save className="size-4" />}
+          {saving ? "Saving..." : "Save"}
         </Button>
       </div>
     </TwoColumn>
