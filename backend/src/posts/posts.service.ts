@@ -100,6 +100,7 @@ export class PostsService {
         firstNameEn: string;
         lastNameEn: string;
         emailVerifiedAt?: Date | null;
+        avatarUrl?: string | null;
       } | null;
     };
   }) {
@@ -152,6 +153,7 @@ export class PostsService {
               .join(' ')
               .trim(),
             isVerified: Boolean(owner.emailVerifiedAt),
+            avatar_url: owner.avatarUrl ?? null,
           }
         : null,
     };
@@ -304,6 +306,7 @@ export class PostsService {
                 firstNameEn: true,
                 lastNameEn: true,
                 emailVerifiedAt: true,
+                avatarUrl: true,
               },
             },
           },
@@ -333,6 +336,7 @@ export class PostsService {
                 firstNameEn: true,
                 lastNameEn: true,
                 emailVerifiedAt: true,
+                avatarUrl: true,
               },
             },
           },
@@ -516,6 +520,7 @@ export class PostsService {
                   firstNameEn: true,
                   lastNameEn: true,
                   emailVerifiedAt: true,
+                  avatarUrl: true,
                 },
               },
             },
@@ -613,6 +618,7 @@ export class PostsService {
                 firstNameEn: true,
                 lastNameEn: true,
                 emailVerifiedAt: true,
+                avatarUrl: true,
                 status: true,
               },
             },
@@ -937,6 +943,7 @@ export class PostsService {
             firstNameEn: true,
             lastNameEn: true,
             emailVerifiedAt: true,
+            avatarUrl: true,
           },
         },
       },
@@ -953,6 +960,7 @@ export class PostsService {
             firstNameEn: true,
             lastNameEn: true,
             emailVerifiedAt: true,
+            avatarUrl: true,
           },
         },
         items: { include: { item: includeItem } },
@@ -981,6 +989,7 @@ export class PostsService {
           .join(' ')
           .trim(),
         isVerified: true,
+        avatar_url: offer.proposer.avatarUrl ?? null,
       },
       items: offer.items.map((oi) => this.serializeInlineItem(oi.item)),
       post: this.serializePost(offer.post),

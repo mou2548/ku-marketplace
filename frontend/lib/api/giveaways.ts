@@ -34,10 +34,18 @@ interface RawUserSummary {
   user_id: number;
   name: string;
   isVerified: boolean;
+  avatar_url?: string | null;
 }
 
 function toUserSummary(raw: RawUserSummary | undefined, fallbackId: number): UserSummary {
-  return raw ? { user_id: raw.user_id, name: raw.name, isVerified: raw.isVerified } : placeholderUser(fallbackId);
+  return raw
+    ? {
+        user_id: raw.user_id,
+        name: raw.name,
+        isVerified: raw.isVerified,
+        avatar_url: raw.avatar_url ?? null,
+      }
+    : placeholderUser(fallbackId);
 }
 
 async function authedInit(): Promise<RequestInit> {

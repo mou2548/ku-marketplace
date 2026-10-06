@@ -192,6 +192,7 @@ export default async function PostDetailPage({
                 <Link href={`/sellers/${post.seller.user_id}`} className="block min-h-11 rounded-control">
                 <TrustBadge
                   name={post.seller.name}
+                  avatarUrl={post.seller.avatar_url}
                   isVerified={post.seller.isVerified}
                   faculty={post.seller.faculty}
                   year={post.seller.year}

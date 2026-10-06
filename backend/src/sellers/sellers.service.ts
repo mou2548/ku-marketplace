@@ -26,6 +26,7 @@ const profileSelect = {
   firstNameEn: true,
   lastNameEn: true,
   emailVerifiedAt: true,
+  avatarUrl: true,
   createdAt: true,
   status: true,
   _count: {
@@ -43,6 +44,7 @@ function summary(user: ProfileRow) {
       [user.firstNameEn, user.lastNameEn].filter(Boolean).join(' ').trim() ||
       'KU member',
     is_verified: Boolean(user.emailVerifiedAt),
+    avatar_url: user.avatarUrl,
     member_since: user.createdAt,
     follower_count: user._count.followers,
     active_listing_count: user._count.items,

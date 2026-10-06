@@ -40,7 +40,12 @@ interface RawMyOffer {
   status: OfferStatus | null;
   created_at: string | null;
   transaction_id: number | null;
-  proposer: { user_id: number; name: string; isVerified: boolean };
+  proposer: {
+    user_id: number;
+    name: string;
+    isVerified: boolean;
+    avatar_url?: string | null;
+  };
   items: RawOfferItem[];
   post: RawPost;
 }
@@ -83,6 +88,7 @@ function toOffer(raw: RawMyOffer): Offer {
       user_id: raw.proposer.user_id,
       name: raw.proposer.name,
       isVerified: raw.proposer.isVerified,
+      avatar_url: raw.proposer.avatar_url ?? null,
       faculty: null,
       year: null,
     },

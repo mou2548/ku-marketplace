@@ -38,6 +38,7 @@ export interface PostCardProps {
     name: string;
     isVerified?: boolean;
     faculty?: string | null;
+    avatar_url?: string | null;
   };
   className?: string;
   hoverEffects?: boolean;
@@ -138,6 +139,7 @@ export function PostCard({
         >
           <TrustBadge
             name={seller.name}
+            avatarUrl={seller.avatar_url}
             isVerified={seller.isVerified}
             faculty={seller.faculty}
             size="sm"

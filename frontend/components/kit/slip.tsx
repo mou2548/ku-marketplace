@@ -401,7 +401,7 @@ export function SlipUploader({
 export interface SlipReviewerProps {
   slipUrl: string;
   amount: number;
-  buyer: { name: string; isVerified?: boolean };
+  buyer: { name: string; isVerified?: boolean; avatar_url?: string | null };
   uploadedAt: string;
   onConfirm: () => void;
   onReject: () => void;
@@ -431,7 +431,7 @@ export function SlipReviewer({
     <Surface shape="card" className={cn("p-4", className)}>
       <header className="mb-3 flex flex-col gap-2">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("slip.check")}</h4>
-        <TrustBadge name={buyer.name} isVerified={buyer.isVerified} size="sm" />
+        <TrustBadge name={buyer.name} isVerified={buyer.isVerified} avatarUrl={buyer.avatar_url} size="sm" />
       </header>
 
       <SlipFrame

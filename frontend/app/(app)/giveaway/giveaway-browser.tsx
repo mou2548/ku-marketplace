@@ -313,6 +313,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
 
           <TrustBadge
             name={giveaway.giver.name}
+            avatarUrl={giveaway.giver.avatar_url}
             isVerified={giveaway.giver.isVerified}
             size="sm"
           />

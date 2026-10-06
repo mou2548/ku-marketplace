@@ -154,6 +154,7 @@ function OfferList({
                       </span>
                       <TrustBadge
                         name={sides.counterparty.name}
+                        avatarUrl={sides.counterparty.avatar_url}
                         isVerified={sides.counterparty.isVerified}
                         faculty={sides.counterparty.faculty}
                         size="sm"

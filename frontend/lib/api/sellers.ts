@@ -5,6 +5,7 @@ export interface SellerProfile {
   user_id: number;
   name: string;
   is_verified: boolean;
+  avatar_url?: string | null;
   member_since: string | null;
   active_listing_count: number;
   follower_count: number;

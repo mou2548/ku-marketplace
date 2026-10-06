@@ -76,6 +76,7 @@ export interface RawPost extends PostSummary {
     isVerified: boolean;
     faculty?: string | null;
     year?: number | null;
+    avatar_url?: string | null;
   } | null;
 }
 
@@ -141,6 +142,7 @@ export function toPost(raw: RawPost): Post {
       user_id: raw.seller?.user_id ?? item.owner_id,
       name: raw.seller?.name ?? "KU student",
       isVerified: raw.seller?.isVerified ?? false,
+      avatar_url: raw.seller?.avatar_url ?? null,
       faculty: raw.seller?.faculty ?? null,
       year: raw.seller?.year ?? null,
     },

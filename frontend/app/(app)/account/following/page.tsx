@@ -55,6 +55,7 @@ export default async function FollowingPage({
                   >
                     <TrustBadge
                       name={entry.profile.name}
+                      avatarUrl={entry.profile.avatar_url}
                       isVerified={entry.profile.is_verified}
                     />
                     <p className="mt-3 text-body-sm text-ink-secondary">

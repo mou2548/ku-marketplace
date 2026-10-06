@@ -76,6 +76,7 @@ export function AppealCase({ appeal: initialAppeal }: { appeal: AdminAppeal }) {
           </h2>
           <TrustBadge
             name={appeal.appellant.name}
+            avatarUrl={appeal.appellant.avatar_url}
             isVerified={appeal.appellant.isVerified}
             size="sm"
           />

@@ -120,6 +120,7 @@ export async function SellerProfileView({
             <div className="relative flex min-w-0 items-center gap-4">
               <UserAvatar
                 name={profile.name}
+                avatarUrl={profile.avatar_url}
                 size="lg"
                 className="border-2 border-on-brand-strong/40 bg-on-brand-strong/10 text-on-brand-strong"
               />

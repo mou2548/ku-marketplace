@@ -93,6 +93,7 @@ export function ReportCase({
           </h2>
           <TrustBadge
             name={report.reporter.name}
+            avatarUrl={report.reporter.avatar_url}
             isVerified={report.reporter.isVerified}
             size="sm"
           />

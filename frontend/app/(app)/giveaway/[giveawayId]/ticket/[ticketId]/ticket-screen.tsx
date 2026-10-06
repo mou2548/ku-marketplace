@@ -122,6 +122,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           ) : null}
           <TrustBadge
             name={giveaway.giver.name}
+            avatarUrl={giveaway.giver.avatar_url}
             isVerified={giveaway.giver.isVerified}
             faculty={giveaway.giver.faculty}
             size="sm"

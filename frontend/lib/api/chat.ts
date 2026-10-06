@@ -25,10 +25,16 @@ interface RawUserSummary {
   user_id: number;
   name: string;
   isVerified: boolean;
+  avatar_url?: string | null;
 }
 
 function toUserSummary(raw: RawUserSummary): UserSummary {
-  return { user_id: raw.user_id, name: raw.name, isVerified: raw.isVerified };
+  return {
+    user_id: raw.user_id,
+    name: raw.name,
+    isVerified: raw.isVerified,
+    avatar_url: raw.avatar_url ?? null,
+  };
 }
 
 interface RawChatMessage {

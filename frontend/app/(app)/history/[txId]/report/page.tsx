@@ -105,6 +105,7 @@ export default async function ReportPage({
         </p>
         <TrustBadge
           name={other.name}
+          avatarUrl={other.avatar_url}
           isVerified={other.isVerified}
         />
       </div>

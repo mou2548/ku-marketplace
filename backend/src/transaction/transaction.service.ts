@@ -41,11 +41,13 @@ export class TransactionService {
     firstNameEn: string;
     lastNameEn: string;
     emailVerifiedAt: Date | null;
+    avatarUrl?: string | null;
   }) {
     return {
       user_id: user.userId,
       name: `${user.firstNameEn} ${user.lastNameEn}`.trim(),
       isVerified: user.emailVerifiedAt !== null,
+      avatar_url: user.avatarUrl ?? null,
     };
   }
 

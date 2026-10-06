@@ -27,6 +27,7 @@ export const publicPostInclude = {
           firstNameEn: true,
           lastNameEn: true,
           emailVerifiedAt: true,
+          avatarUrl: true,
         },
       },
     },

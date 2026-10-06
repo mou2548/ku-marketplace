@@ -188,6 +188,7 @@ export function ManageGiveaway({
                     <div className="min-w-0 flex-1">
                       <TrustBadge
                         name={e.user.name}
+                        avatarUrl={e.user.avatar_url}
                         isVerified={e.user.isVerified}
                         faculty={e.user.faculty}
                         year={e.user.year}
