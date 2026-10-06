@@ -26,7 +26,9 @@ export default async function AppLayout({
 }) {
   const viewerId = await getCurrentUserId();
 
-  let user: { name: string; isAdmin: boolean } | undefined;
+  let user:
+    | { name: string; avatarUrl: string | null; isAdmin: boolean }
+    | undefined;
   let restricted = false;
   let badges = { actions: 0, offers: 0, deals: 0 };
 
@@ -40,6 +42,7 @@ export default async function AppLayout({
       restricted = me.status === "Suspended" || me.status === "Banned";
       user = {
         name: [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email,
+        avatarUrl: me.avatarUrl,
         isAdmin: me.isAdmin === true && !restricted,
       };
     }

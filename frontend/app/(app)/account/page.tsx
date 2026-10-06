@@ -4,208 +4,216 @@ import { redirect } from "next/navigation";
 import {
   ChevronRight,
   Crown,
+  Eye,
+  Handshake,
   LogOut,
   Pencil,
   Scale,
-  ShieldCheck,
   Trash2,
   Users,
-  Store,
 } from "lucide-react";
 
-import { AvatarUploader } from "@/components/kit/avatar-uploader";
+import {
+  parseSellerQuery,
+  SellerProfileView,
+} from "@/components/features/sellers/seller-profile-view";
 import { Surface } from "@/components/kit/surface";
-import { TwoColumn } from "@/components/kit/two-column";
 import { logout } from "@/lib/actions/auth";
 import { getMembership } from "@/lib/api/membership";
+import { getSeller, getSellerPosts, type SellerProfile } from "@/lib/api/sellers";
 import { getAccessToken } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
-import { getMe, toUser } from "@/lib/api/users";
+import { getMe } from "@/lib/api/users";
 
-import { ProfileFields } from "./profile-fields";
+import { HeroAvatar } from "./hero-avatar";
 
 export const metadata = { title: "Account - KU Marketplace" };
 
+const ownerLinkClass =
+  "inline-flex min-h-11 items-center gap-2 rounded-control px-3 font-medium text-ink-brand hover:bg-brand-subtle";
+
 /**
- * Trust gap T1, design principle 3: verification is the product. The profile
- * leads with the KU verification and the completed-deal count, because those
- * two facts are what another student is actually asking about when they open
- * someone's profile.
- *
- * Everything else here is settings, and settings are a list.
+ * Your own profile, laid out exactly as other students see it on
+ * `/sellers/:id`, with your account settings between the header and your
+ * listings. Seeing yourself the way others do is the point: verification and
+ * your listings are what another student checks before trading with you.
  */
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const t = await getCopy();
   if (!(await getAccessToken())) {
     redirect("/login");
   }
 
-  const [me, membership, transactions] = await Promise.all([
+  const [me, membership, transactions, raw] = await Promise.all([
     getMe(),
     getMembership(),
-    getTransactions(),
+    getTransactions().catch(() => []),
+    searchParams,
   ]);
-
-  const profile = toUser(me);
-  const displayName =
+  const query = parseSellerQuery(raw);
+  const name =
     [me.firstNameEn, me.lastNameEn].filter(Boolean).join(" ") || me.email;
 
-  // faculty / year are not on `GET /users/me` (docs/design/api-gaps.md §3).
-  // Every account is a verified `@ku.th` address, so `isVerified` is a fact,
-  // not a guess.
-  const viewer = {
-    name: displayName,
-    isVerified: true,
-    faculty: null as string | null,
-    year: null as number | null,
-    avatar_url: profile.avatar_url ?? null,
+  // The public profile only serves active accounts. A restricted account
+  // still reaches its own page, built from what /users/me already says.
+  const fallback: SellerProfile = {
+    user_id: me.userId,
+    name,
+    // Every account is a verified @ku.th address.
+    is_verified: true,
+    member_since: me.createdAt,
+    active_listing_count: 0,
+    follower_count: 0,
   };
+  const [profile, listings] = await Promise.all([
+    getSeller(me.userId).catch(() => fallback),
+    getSellerPosts(me.userId, query).catch(() => ({
+      data: [],
+      meta: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    })),
+  ]);
 
   const completed = transactions.filter(
-    (t) =>
-      t.status === "Completed" &&
-      (t.buyer_id === me.userId || t.seller_id === me.userId),
+    (tx) =>
+      tx.status === "Completed" &&
+      (tx.buyer_id === me.userId || tx.seller_id === me.userId),
   ).length;
 
-  /** Shown at every width. */
-  const rows = [
-    { href: `/sellers/${me.userId}`, label: t("seller.publicProfile"), icon: Store, iconClass: "bg-brand-subtle text-ink-brand" },
-    { href: "/account/following", label: t("seller.directory"), icon: Users, iconClass: "bg-brand-subtle text-ink-brand" },
+  const settings = [
+    {
+      href: "/account/edit",
+      label: t("account.editProfile"),
+      hint: "Thai name, phone number and photo",
+      icon: Pencil,
+      iconClass: "bg-brand-subtle text-ink-brand",
+    },
+    {
+      href: "/account/following",
+      label: t("seller.directory"),
+      hint: "Sellers you saved to find again",
+      icon: Users,
+      iconClass: "bg-brand-subtle text-ink-brand",
+    },
     {
       href: "/account/membership",
       label: t("account.membership"),
+      hint:
+        membership.tier === "Free"
+          ? "Free plan. Upgrade for more listings"
+          : `${membership.tier} plan`,
       icon: Crown,
       iconClass: "bg-tone-warning-bg text-tone-warning-fg",
     },
     {
       href: "/account/appeals",
       label: t("account.appeals"),
+      hint: "Decisions about your account",
       icon: Scale,
       iconClass: "bg-tone-trade-bg text-tone-trade-fg",
     },
     {
       href: "/account/delete",
       label: t("account.close"),
+      hint: "Your history is kept",
       icon: Trash2,
       iconClass: "bg-tone-danger-bg text-tone-danger-fg",
     },
   ];
 
-  /**
-   * Who you are on the left, what you can change on the right. As one centred
-   * column this screen used 47% of a 1440px window; the two facts another
-   * student is actually asking about now hold the rail instead of scrolling
-   * past above a list of four links.
-   */
-  const rail = (
-    <Surface shape="panel" className="overflow-hidden p-0">
-      <div aria-hidden className="h-1 bg-brand" />
-      <div className="flex flex-col gap-5 p-6">
-      <p className="text-overline text-ink-muted uppercase">
-        {t("account.yourProfile")}
-      </p>
-
-      <AvatarUploader
-        name={viewer.name}
-        isVerified={viewer.isVerified}
-        faculty={viewer.faculty}
-        year={viewer.year}
-        avatarUrl={viewer.avatar_url}
-      />
-
-      <div className="flex flex-wrap gap-2.5">
-        <span className="flex items-center gap-1.5 rounded-pill bg-tone-success-bg px-3 py-1.5 text-body-sm font-medium text-tone-success-fg">
-          <ShieldCheck aria-hidden className="size-4" />
-          {t("account.verified")}
-        </span>
-        <span
-          data-numeric
-          className="rounded-pill bg-gray-100 px-3 py-1.5 text-body-sm font-medium text-ink-secondary"
-        >
-          {t("account.completedDeals", { count: completed })}
-        </span>
-        {membership.tier !== "Free" ? (
-          <span className="flex items-center gap-1.5 rounded-pill bg-[var(--membership-bg)] px-3 py-1.5 text-body-sm font-medium text-[var(--membership-fg)]">
-            <Crown aria-hidden className="size-4" />
-            {membership.tier}
-          </span>
-        ) : null}
-      </div>
-      </div>
-    </Surface>
-  );
-
   return (
-    <TwoColumn rail={rail} railSide="left" railFirst>
-      <header>
-        <p className="text-overline font-semibold text-ink-brand uppercase">
+    <SellerProfileView
+      profile={profile}
+      listings={listings}
+      query={query}
+      pathname="/account"
+      signedIn
+      following={null}
+      mine
+      avatar={<HeroAvatar name={name} avatarUrl={me.avatarUrl} />}
+      ownerActions={
+        <>
+          <Link className={ownerLinkClass} href="/account/edit">
+            <Pencil aria-hidden className="size-4" />
+            {t("seller.edit")}
+          </Link>
+          <Link className={ownerLinkClass} href={`/sellers/${me.userId}`}>
+            <Eye aria-hidden className="size-4" />
+            View as others
+          </Link>
+        </>
+      }
+      extraFacts={
+        <>
+          <div className="flex items-center gap-3 text-body-sm">
+            <Handshake
+              aria-hidden
+              className="size-5 shrink-0 text-ink-muted"
+            />
+            <dt>Completed deals</dt>
+            <dd data-numeric className="font-semibold text-ink-brand">
+              {completed.toLocaleString("en-GB")}
+            </dd>
+          </div>
+          <div className="flex items-center gap-3 text-body-sm">
+            <Crown aria-hidden className="size-5 shrink-0 text-ink-muted" />
+            <dt>{t("account.membership")}</dt>
+            <dd className="font-semibold text-ink-brand">{membership.tier}</dd>
+          </div>
+        </>
+      }
+    >
+      <section aria-labelledby="account-settings">
+        <h2 id="account-settings" className="mb-3 text-h2">
           {t("account.settings")}
-        </p>
-        <h1 className="mt-1 text-h1">{t("account.title")}</h1>
-      </header>
-
-      {/* The two form factors diverge here, and only here. A wide screen has
-          room to show the whole profile and change one line in place; a phone
-          gets the link out to a full-width form. */}
-      <section className="hidden flex-col gap-3 lg:flex">
-        <h2 className="text-overline text-ink-muted uppercase">
-          {t("account.profile")}
         </h2>
-        <ProfileFields
-          profile={profile}
-          faculty={viewer.faculty}
-          year={viewer.year}
-        />
-      </section>
-
-      <nav aria-label={t("account.settings")}>
         <Surface shape="card" className="overflow-hidden p-0">
-        <ul className="divide-y divide-line">
-          <li className="lg:hidden">
-            <Link href="/account/edit">
-              <span className="flex min-h-16 items-center gap-4 px-5 transition-colors hover:bg-gray-50">
-                <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-brand-subtle text-ink-brand">
-                  <Pencil aria-hidden className="size-4" />
-                </span>
-                <span className="flex-1 text-[1rem] font-medium">
-                  {t("account.editProfile")}
-                </span>
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 shrink-0 text-ink-muted"
-                />
-              </span>
-            </Link>
-          </li>
-          {rows.map(({ href, label, icon: Icon, iconClass }) => (
-            <li key={href}>
-              <Link href={href}>
-                <span className="flex min-h-16 items-center gap-4 px-5 transition-colors hover:bg-gray-50">
-                  <span className={`grid size-9 shrink-0 place-items-center rounded-pill ${iconClass}`}>
+          <ul className="grid divide-y divide-line sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-3">
+            {settings.map(({ href, label, hint, icon: Icon, iconClass }) => (
+              <li key={href} className="sm:border-b sm:border-line">
+                <Link
+                  href={href}
+                  className="flex min-h-16 items-center gap-4 px-5 py-3 transition-colors hover:bg-gray-50"
+                >
+                  <span
+                    className={`grid size-9 shrink-0 place-items-center rounded-pill ${iconClass}`}
+                  >
                     <Icon aria-hidden className="size-4" />
                   </span>
-                  <span className="flex-1 text-[1rem] font-medium">{label}</span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-[1rem] font-medium">{label}</span>
+                    <span className="truncate text-meta text-ink-muted">
+                      {hint}
+                    </span>
+                  </span>
                   <ChevronRight
                     aria-hidden
                     className="size-4 shrink-0 text-ink-muted"
                   />
-                </span>
-              </Link>
+                </Link>
+              </li>
+            ))}
+            <li className="sm:border-b sm:border-line">
+              <form action={logout} className="h-full">
+                <button
+                  type="submit"
+                  className="flex min-h-16 w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-gray-50"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-tone-danger-bg text-tone-danger-fg">
+                    <LogOut aria-hidden className="size-4" />
+                  </span>
+                  <span className="flex-1 text-[1rem] font-medium text-tone-danger-fg">
+                    {t("account.signOut")}
+                  </span>
+                </button>
+              </form>
             </li>
-          ))}
-        </ul>
+          </ul>
         </Surface>
-      </nav>
-
-      <form action={logout}>
-        <button
-          type="submit"
-          className="flex min-h-12 w-full items-center justify-center gap-2 text-body font-medium text-tone-danger-fg"
-        >
-          <LogOut aria-hidden className="size-4" />
-          {t("account.signOut")}
-        </button>
-      </form>
-    </TwoColumn>
+      </section>
+    </SellerProfileView>
   );
 }

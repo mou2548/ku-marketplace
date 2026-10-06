@@ -16,7 +16,6 @@ import {
   Plus,
   ShieldCheck,
   Store,
-  User,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -25,6 +24,7 @@ import { Button, LinkButton } from "./button";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
+import { UserAvatar } from "./user-avatar";
 
 /**
  * White/black consumer chrome with KU green reserved for identity, active
@@ -235,14 +235,15 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
               href="/account"
               aria-label={t("nav.account")}
               aria-current={isActive(pathname, "/account") ? "page" : undefined}
+              title={user?.name}
               className={cn(
-                "touch-target grid size-10 place-items-center rounded-pill transition-colors",
+                "touch-target grid size-10 place-items-center rounded-pill transition-shadow",
                 isActive(pathname, "/account")
-                  ? "bg-brand text-on-brand"
-                  : "bg-brand-subtle text-ink-brand hover:bg-[var(--brand-subtle-hover)]",
+                  ? "ring-2 ring-brand ring-offset-2 ring-offset-surface"
+                  : "hover:ring-2 hover:ring-[var(--brand-subtle-hover)]",
               )}
             >
-              <User aria-hidden className="size-4" />
+              <UserAvatar name={user?.name ?? "?"} avatarUrl={user?.avatarUrl} />
             </Link>
           </div>
         </div>
@@ -327,7 +328,7 @@ function MobileMenu({
 }: {
   pathname: string;
   badges: NavBadges;
-  user?: { name: string };
+  user?: { name: string; avatarUrl?: string | null };
   onNavigate: () => void;
 }) {
   const t = getCopy();
@@ -377,12 +378,11 @@ function MobileMenu({
           onClick={onNavigate}
           className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
-          <span
-            aria-hidden
-            className="grid size-6 place-items-center rounded-pill bg-brand-subtle text-meta font-semibold text-ink-brand"
-          >
-            {user?.name?.slice(0, 2) ?? "?"}
-          </span>
+          <UserAvatar
+            name={user?.name ?? "?"}
+            avatarUrl={user?.avatarUrl}
+            size="sm"
+          />
           {user?.name ?? "Account"}
         </Link>
       </div>

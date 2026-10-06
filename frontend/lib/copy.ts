@@ -826,6 +826,8 @@ const COPY: { [key: string]: CopyNode } = {
       "noMatchesHint": "Try another search or clear your filters.",
       "empty": "No available listings",
       "emptyHint": "You can follow this seller and find their profile again later.",
+      "emptyMine": "You have nothing listed",
+      "emptyMineHint": "List something from your inventory and it appears here for other students.",
       "stateError": "Could not load your follow status.",
       "actionError": "Could not update following. Please try again.",
       "retry": "Try again",

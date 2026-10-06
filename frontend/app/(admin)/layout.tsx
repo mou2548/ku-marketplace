@@ -2,10 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Bell } from "lucide-react";
 
-import { AdminInitials } from "@/components/admin/admin-ui";
 import { AdminSidebar, AdminTabBar } from "@/components/admin/admin-navigation";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 import { ToastProvider } from "@/components/kit/toast";
+import { UserAvatar } from "@/components/kit/user-avatar";
 import { loadAdminQueues, queueCounts } from "@/lib/admin";
 import { getAccessToken } from "@/lib/api/session";
 import { getMe } from "@/lib/api/users";
@@ -62,10 +62,14 @@ export default async function AdminLayout({
               >
                 <Bell aria-hidden className="size-5" />
               </Link>
-              <span title={name} className="ml-1">
-                <AdminInitials name={name} />
-                <span className="sr-only">Signed in as {name}</span>
-              </span>
+              <Link
+                href="/account"
+                title={name}
+                className="touch-target ml-1 grid size-10 place-items-center rounded-full hover:ring-2 hover:ring-[var(--brand-subtle-hover)]"
+              >
+                <UserAvatar name={name} avatarUrl={viewer.avatarUrl} />
+                <span className="sr-only">Your account, signed in as {name}</span>
+              </Link>
             </div>
           </header>
 
