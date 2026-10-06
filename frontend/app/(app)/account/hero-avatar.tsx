@@ -4,14 +4,15 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 
+import { AvatarCropDialog } from "@/components/kit/avatar-crop-dialog";
 import { useToast } from "@/components/kit/toast";
 import { UserAvatar } from "@/components/kit/user-avatar";
 import { updateProfile } from "@/lib/actions/account";
 import { uploadFile } from "@/lib/actions/uploads";
 
 /**
- * The profile header's photo, with a camera button for the owner. Upload then
- * save, as `AvatarUploader` does on the edit screen; the refresh carries the
+ * The profile header's photo, with a camera button for the owner. Pick, crop,
+ * upload, save, as `AvatarUploader` does on the edit screen; the refresh carries the
  * new photo into the navbar too.
  */
 export function HeroAvatar({
@@ -26,6 +27,7 @@ export function HeroAvatar({
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(avatarUrl);
   const [busy, setBusy] = useState(false);
+  const [picked, setPicked] = useState<File | null>(null);
 
   async function pick(file: File) {
     setBusy(true);
@@ -67,8 +69,16 @@ export function HeroAvatar({
         tabIndex={-1}
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) void pick(file);
+          if (file) setPicked(file);
           event.target.value = "";
+        }}
+      />
+      <AvatarCropDialog
+        file={picked}
+        onCancel={() => setPicked(null)}
+        onConfirm={async (cropped) => {
+          await pick(cropped);
+          setPicked(null);
         }}
       />
     </span>

@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 
+import { AvatarCropDialog } from "@/components/kit/avatar-crop-dialog";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { uploadFile } from "@/lib/actions/uploads";
@@ -28,9 +30,11 @@ export function AvatarUploader({
   avatarUrl?: string | null;
 }) {
   const toast = useToast();
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(avatarUrl ?? null);
   const [busy, setBusy] = useState(false);
+  const [picked, setPicked] = useState<File | null>(null);
 
   async function pick(file: File) {
     setBusy(true);
@@ -39,6 +43,7 @@ export function AvatarUploader({
       await updateProfile({ avatar_url: uploaded });
       setUrl(uploaded);
       toast.success("Profile photo saved");
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save photo");
     } finally {
@@ -68,7 +73,15 @@ export function AvatarUploader({
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = "";
-          if (file) void pick(file);
+          if (file) setPicked(file);
+        }}
+      />
+      <AvatarCropDialog
+        file={picked}
+        onCancel={() => setPicked(null)}
+        onConfirm={async (cropped) => {
+          await pick(cropped);
+          setPicked(null);
         }}
       />
     </span>
