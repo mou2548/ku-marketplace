@@ -9,7 +9,6 @@ import {
 import { EmptyState } from "@/components/kit/empty-state";
 import { ADMIN_REPORT_STATUS, isOpenReport, waitingFor } from "@/lib/admin-labels";
 import { loadAdminQueues, requestTime } from "@/lib/admin";
-import { getCurrentUserId } from "@/lib/api/session";
 import { formatDate } from "@/lib/date-format";
 
 export const metadata = { title: "Reports - Admin" };
@@ -17,13 +16,10 @@ export const metadata = { title: "Reports - Admin" };
 /**
  * Flow 2, the admin's side. Open reports oldest first, because the queue's job
  * is to stop anything from being forgotten; decided ones below, newest first.
- * Opening a report takes it on.
+ * A report is taken from its case screen.
  */
 export default async function AdminReportsPage() {
-  const [{ reports }, viewerId] = await Promise.all([
-    loadAdminQueues(),
-    getCurrentUserId(),
-  ]);
+  const { reports } = await loadAdminQueues();
 
   if (reports.length === 0) {
     return (
@@ -62,12 +58,6 @@ export default async function AdminReportsPage() {
             <h2 className="px-4 py-3 text-body font-medium">{title}</h2>
             <ul className="border-t border-line">
               {rows.map((r) => {
-                const opener =
-                  r.status === "Under_Investigation" && r.handled_by != null
-                    ? r.handled_by === viewerId
-                      ? "you"
-                      : (r.handler?.name ?? "another admin")
-                    : null;
                 return (
                   <li
                     key={r.report_id}
@@ -83,7 +73,6 @@ export default async function AdminReportsPage() {
                         </span>
                         <span className="block truncate text-meta text-ink-muted">
                           {r.report_type} #{r.target_id} · by {r.reporter.name}
-                          {opener ? ` · opened by ${opener}` : ""}
                         </span>
                       </span>
                       <span className="flex flex-col items-end gap-1">

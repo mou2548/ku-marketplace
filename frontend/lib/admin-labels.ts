@@ -54,8 +54,6 @@ export interface QueueRow {
   href: string;
   title: string;
   detail: string;
-  /** Who has taken the case on; null while nobody has opened it. */
-  openedBy: string | null;
   status: AdminLabel;
   createdAt: string;
 }

@@ -10,7 +10,6 @@ import { QueueTable } from "@/components/admin/queue-table";
 import { waitingFor, waitingForLong } from "@/lib/admin-labels";
 import { buildQueueRows, loadAdminQueues, requestTime } from "@/lib/admin";
 import { getModerationActivity } from "@/lib/api/notifications";
-import { getCurrentUserId } from "@/lib/api/session";
 import { getMe } from "@/lib/api/users";
 
 export const metadata = { title: "Dashboard - Admin" };
@@ -42,14 +41,13 @@ function greeting(now: Date) {
  * activity the bell also shows. Built only on the existing admin endpoints.
  */
 export default async function AdminDashboardPage() {
-  const [queues, viewerId, me, activity] = await Promise.all([
+  const [queues, me, activity] = await Promise.all([
     loadAdminQueues(),
-    getCurrentUserId(),
     getMe(),
     getModerationActivity().catch(() => []),
   ]);
   const now = requestTime();
-  const rows = buildQueueRows(queues, viewerId);
+  const rows = buildQueueRows(queues);
   const oldest = rows[0];
 
   return (

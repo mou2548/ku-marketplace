@@ -40,21 +40,11 @@ export function queueCounts(queues: AdminQueues): AdminQueueCounts {
   };
 }
 
-function openerName(
-  handlerId: number | null | undefined,
-  viewerId: number | undefined,
-  name?: string,
-) {
-  if (handlerId == null) return null;
-  if (handlerId === viewerId) return "You";
-  return name ?? "Another admin";
-}
-
-/** Every open case across the three queues, oldest first. */
-export function buildQueueRows(
-  queues: AdminQueues,
-  viewerId: number | undefined,
-): QueueRow[] {
+/**
+ * Every open case across the three queues, oldest first. There is one admin,
+ * so a row never says who holds it; its status says whether it was taken.
+ */
+export function buildQueueRows(queues: AdminQueues): QueueRow[] {
   const reports: QueueRow[] = queues.reports
     .filter(isOpenReport)
     .map((report) => ({
@@ -63,10 +53,6 @@ export function buildQueueRows(
       href: `/admin/reports/${report.report_id}`,
       title: `Report #${report.report_id}`,
       detail: `${report.reason_category} · ${report.report_type} #${report.target_id}`,
-      openedBy:
-        report.status === "Under_Investigation"
-          ? openerName(report.handled_by, viewerId, report.handler?.name)
-          : null,
       status: ADMIN_REPORT_STATUS[report.status],
       createdAt: report.created_at,
     }));
@@ -79,10 +65,6 @@ export function buildQueueRows(
       href: `/admin/appeals/${appeal.appeal_id}`,
       title: `Appeal #${appeal.appeal_id}`,
       detail: `Against report #${appeal.report_id} · ${appeal.appellant.name}`,
-      openedBy:
-        appeal.status === "Under_Review"
-          ? openerName(appeal.handled_by, viewerId)
-          : null,
       status: ADMIN_APPEAL_STATUS[appeal.status],
       createdAt: appeal.created_at,
     }));
@@ -95,7 +77,6 @@ export function buildQueueRows(
     // the row names the slip rather than a tier it cannot know.
     title: "Membership slip",
     detail: `${request.user.name} · ฿${request.amount.toLocaleString("en-GB")} slip`,
-    openedBy: null,
     status: { label: "Slip to check", tone: "warning" },
     createdAt: request.created_at,
   }));

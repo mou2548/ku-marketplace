@@ -9,7 +9,6 @@ import {
   Flag,
   Loader,
   Scale,
-  User,
 } from "lucide-react";
 
 import {
@@ -20,7 +19,7 @@ import {
 } from "@/lib/admin-labels";
 import { cn } from "@/lib/utils";
 
-import { AdminInitials, AdminPill } from "./admin-ui";
+import { AdminPill } from "./admin-ui";
 
 const KIND_ICON: Record<QueueKind, typeof Flag> = {
   report: Flag,
@@ -78,11 +77,10 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
             Nothing waiting here. New cases appear as soon as they are filed.
           </p>
         ) : (
-          <table className="w-full min-w-[640px] border-collapse text-body-sm">
+          <table className="w-full min-w-[520px] border-collapse text-body-sm">
             <thead>
               <tr className="bg-surface-sunken text-left text-meta text-ink-secondary">
                 <Th icon={<FileText />}>Case</Th>
-                <Th icon={<User />}>Opened by</Th>
                 <Th icon={<Loader />}>Status</Th>
                 <Th icon={<Clock />}>Waiting</Th>
               </tr>
@@ -115,16 +113,6 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
                           </p>
                         </div>
                       </div>
-                    </td>
-                    <td className="border-l border-line px-4 py-2.5">
-                      {row.openedBy ? (
-                        <span className="flex items-center gap-2 whitespace-nowrap text-ink-secondary">
-                          <AdminInitials name={row.openedBy} size="sm" />
-                          {row.openedBy}
-                        </span>
-                      ) : (
-                        <span className="text-ink-muted">Nobody yet</span>
-                      )}
                     </td>
                     <td className="border-l border-line px-4 py-2.5">
                       <AdminPill status={row.status} />
