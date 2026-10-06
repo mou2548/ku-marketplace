@@ -15,13 +15,16 @@ import {
   Plus,
   RotateCcw,
   Scale,
-  ShieldCheck,
   Store,
   Trash2,
   Truck,
   Users,
 } from "lucide-react";
 
+import {
+  ProfileCard,
+  ProfileCardLink,
+} from "@/components/features/sellers/profile-card";
 import { Surface } from "@/components/kit/surface";
 import { logout } from "@/lib/actions/auth";
 import { offersNeedingAnswer } from "@/lib/inbox";
@@ -104,67 +107,30 @@ export default async function AccountPage() {
   ];
 
   const header = (
-    <Surface shape="panel" className="overflow-hidden p-0">
-      <div className="relative overflow-hidden bg-brand-strong px-5 pb-5 pt-6 text-on-brand-strong">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-12 -top-16 size-48 rounded-full border-[22px] border-on-brand-strong/5"
-        />
-        <div className="relative flex items-center gap-4">
-          <HeroAvatar name={name} avatarUrl={me.avatarUrl} />
-          <div className="min-w-0">
-            <h1 className="break-words text-h3 font-semibold">
-              {thaiName || name}
-            </h1>
-            {thaiName ? (
-              <p className="break-words text-body-sm text-on-brand-strong/85">
-                {name}
-              </p>
-            ) : null}
-            <p className="mt-1 flex items-center gap-1.5 text-meta text-on-brand-strong/85">
-              <ShieldCheck aria-hidden className="size-4 shrink-0" />
-              {t("account.verified")}
-            </p>
-            {membership.tier !== "Free" ? (
-              <p className="mt-1.5 inline-flex items-center gap-1 rounded-pill bg-on-brand-strong/15 px-2 py-0.5 text-meta font-medium">
-                <Crown aria-hidden className="size-3.5" />
-                {membership.tier}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <dl className="relative mt-5 grid grid-cols-3 text-center">
-          {[
-            ["Listings", publicProfile?.active_listing_count ?? 0],
-            ["Followers", publicProfile?.follower_count ?? 0],
-            ["Completed", count("Completed")],
-          ].map(([label, value]) => (
-            <div key={label} className="flex flex-col-reverse">
-              <dt className="text-meta text-on-brand-strong/80">{label}</dt>
-              <dd data-numeric className="text-h3 font-semibold">
-                {Number(value).toLocaleString("en-GB")}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <div className="grid grid-cols-2 divide-x divide-line">
-        <Link
-          href="/account/edit"
-          className="flex min-h-12 items-center justify-center gap-2 text-body-sm font-medium text-ink-brand hover:bg-brand-subtle"
-        >
-          <Pencil aria-hidden className="size-4" />
-          {t("account.editProfile")}
-        </Link>
-        <Link
-          href={`/sellers/${me.userId}`}
-          className="flex min-h-12 items-center justify-center gap-2 text-body-sm font-medium text-ink-brand hover:bg-brand-subtle"
-        >
-          <Store aria-hidden className="size-4" />
-          My shop page
-        </Link>
-      </div>
-    </Surface>
+    <ProfileCard
+      name={thaiName || name}
+      subtitle={thaiName ? name : null}
+      avatar={<HeroAvatar name={name} avatarUrl={me.avatarUrl} />}
+      tier={membership.tier}
+      stats={[
+        { label: "Listings", value: publicProfile?.active_listing_count ?? 0 },
+        { label: "Followers", value: publicProfile?.follower_count ?? 0 },
+        { label: "Completed", value: count("Completed") },
+      ]}
+      actions={
+        <>
+          <ProfileCardLink href="/account/edit" icon={<Pencil aria-hidden />}>
+            {t("account.editProfile")}
+          </ProfileCardLink>
+          <ProfileCardLink
+            href={`/sellers/${me.userId}`}
+            icon={<Store aria-hidden />}
+          >
+            My shop page
+          </ProfileCardLink>
+        </>
+      }
+    />
   );
 
   const settingsList = (

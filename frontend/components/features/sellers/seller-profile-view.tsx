@@ -1,19 +1,20 @@
-import { formatDate } from "@/lib/date-format";
 import Link from "next/link";
 import { getCopy } from "@/lib/copy";
 import {
   ArrowLeft,
   Package,
-  ShieldCheck,
-  Users,
-  CalendarDays,
+  Pencil,
+  UserRound,
   List,
   ChevronLeft,
   ChevronRight,
   Search,
 } from "lucide-react";
 import { Surface } from "@/components/kit/surface";
-import { UserAvatar } from "@/components/kit/user-avatar";
+import {
+  ProfileCard,
+  ProfileCardLink,
+} from "@/components/features/sellers/profile-card";
 import { SellerFilterSelect } from "@/components/features/sellers/filter-select";
 import { PostCard } from "@/components/kit/post-card";
 import {
@@ -110,101 +111,52 @@ export async function SellerProfileView({
         <ArrowLeft aria-hidden className="size-4" />
         {t("back")}
       </Link>
-      <Surface shape="panel" className="p-4 sm:p-5">
-        <header className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:items-center lg:gap-8">
-          <div className="relative min-w-0 overflow-hidden rounded-control bg-brand-strong p-5 text-on-brand-strong">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-10 -top-16 size-56 rounded-full border-[24px] border-on-brand-strong/5"
-            />
-            <div className="relative flex min-w-0 items-center gap-4">
-              <UserAvatar
-                name={profile.name}
-                avatarUrl={profile.avatar_url}
-                size="lg"
-                className="border-2 border-on-brand-strong/40 bg-on-brand-strong/10 text-on-brand-strong"
-              />
-              <div className="min-w-0">
-                <p className="mb-1 text-meta text-on-brand-strong/80">
-                  {t("profile")}
-                </p>
-                <h1 className="break-words text-h3 font-semibold">
-                  {profile.name}
-                </h1>
-                {profile.is_verified ? (
-                  <p className="mt-2 flex items-center gap-1.5 text-meta">
-                    <ShieldCheck aria-hidden className="size-4 shrink-0" />
-                    {t("verified")}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div
-              className={`relative mt-5 flex flex-wrap items-center gap-2 [&>div]:w-full ${mine ? "rounded-control bg-surface p-2 text-ink" : ""}`}
-            >
-              {mine ? (
-                <>
-                  <Link className={linkClass} href="/account/edit">
-                    {t("edit")}
-                  </Link>
-                  <Link className={linkClass} href="/inventory">
-                    {t("manage")}
-                  </Link>
-                </>
-              ) : (
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-24">
+          <ProfileCard
+            name={profile.name}
+            avatarUrl={profile.avatar_url}
+            verified={profile.is_verified}
+            stats={[
+              { label: "Listings", value: profile.active_listing_count },
+              { label: t("followersLabel"), value: profile.follower_count },
+              {
+                label: t("joinedLabel"),
+                value: profile.member_since
+                  ? new Date(profile.member_since).toLocaleDateString("en-GB", {
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "-",
+              },
+            ]}
+            headerAction={
+              mine ? null : (
                 <FollowButton
                   sellerId={id}
                   appearance="profile"
                   signedIn={signedIn}
                   following={following}
                 />
-              )}
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-col gap-5">
-            <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-              <div className="flex items-center gap-3 text-body-sm">
-                <Package
-                  aria-hidden
-                  className="size-5 shrink-0 text-ink-muted"
-                />
-                <dt>{t("productsLabel")}</dt>
-                <dd className="font-semibold text-ink-brand">
-                  {profile.active_listing_count.toLocaleString("en-GB")}
-                </dd>
-              </div>
-              <div className="flex items-center gap-3 text-body-sm">
-                <Users aria-hidden className="size-5 shrink-0 text-ink-muted" />
-                <dt>{t("followersLabel")}</dt>
-                <dd className="font-semibold text-ink-brand">
-                  <span aria-hidden>
-                    {profile.follower_count.toLocaleString("en-GB")}
-                  </span>
-                  <span className="sr-only">
-                    {t("followers", { count: profile.follower_count })}
-                  </span>
-                </dd>
-              </div>
-              {profile.member_since ? (
-                <div className="flex flex-wrap items-center gap-3 text-body-sm sm:col-span-2">
-                  <CalendarDays
-                    aria-hidden
-                    className="size-5 shrink-0 text-ink-muted"
-                  />
-                  <dt>{t("joinedLabel")}</dt>
-                  <dd className="text-ink-brand">
-                    {formatDate(new Date(profile.member_since))}
-                  </dd>
+              )
+            }
+            actions={
+              mine ? (
+                <>
+                  <ProfileCardLink href="/account/edit" icon={<Pencil aria-hidden />}>
+                    {t("edit")}
+                  </ProfileCardLink>
+                  <ProfileCardLink href="/account" icon={<UserRound aria-hidden />}>
+                    My account
+                  </ProfileCardLink>
+                </>
+              ) : (
+                <div className="flex justify-center px-2 py-1">
+                  <SellerActions sellerId={id} report={signedIn} />
                 </div>
-              ) : null}
-            </dl>
-            <div className="border-t border-line pt-3">
-              <SellerActions sellerId={id} report={signedIn && !mine} />
-            </div>
-          </div>
-        </header>
-      </Surface>
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[190px_minmax(0,1fr)]">
+              )
+            }
+          />
         <aside aria-label={t("category")} className="min-w-0">
           <h2 className="mb-3 flex min-h-11 items-center gap-2 border-b border-line pb-3 text-body font-semibold">
             <List aria-hidden className="size-4" />
@@ -240,6 +192,7 @@ export async function SellerProfileView({
             className={`${fieldClass} lg:hidden`}
           />
         </aside>
+        </div>
         <section
           aria-labelledby="seller-listings"
           className="flex min-w-0 flex-col gap-4"

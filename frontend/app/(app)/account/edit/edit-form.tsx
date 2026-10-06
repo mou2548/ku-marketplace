@@ -7,12 +7,13 @@ import { ArrowLeft, Lock, Save } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
-import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
-import { AvatarUploader } from "@/components/kit/avatar-uploader";
+import { ProfileCard } from "@/components/features/sellers/profile-card";
+
+import { HeroAvatar } from "../hero-avatar";
 import { TwoColumn } from "@/components/kit/two-column";
 
 /**
@@ -58,22 +59,24 @@ export function EditProfileForm({ profile }: { profile: User }) {
    * another student ever sees, and until now you typed it blind — the form sat
    * alone in a 42% column with the rest of the window empty.
    */
+  const englishName = `${profile.first_name_en} ${profile.last_name_en}`.trim();
+  const shownName = `${firstNameTh} ${lastNameTh}`.trim();
   const preview = (
-    <Surface shape="card" className="flex flex-col gap-4 p-5">
+    <div className="flex flex-col gap-3">
       <p className="text-overline text-ink-muted uppercase">How you appear</p>
-      <AvatarUploader
-        name={
-          `${firstNameTh} ${lastNameTh}`.trim() ||
-          `${profile.first_name_en} ${profile.last_name_en}`
+      <ProfileCard
+        as="p"
+        name={shownName || englishName}
+        subtitle={shownName ? englishName : null}
+        avatar={
+          <HeroAvatar name={englishName} avatarUrl={profile.avatar_url ?? null} />
         }
-        isVerified
-        avatarUrl={profile.avatar_url}
       />
       <p className="text-caption leading-[1.6] text-ink-muted">
         This is the name and photo other students see on your posts, offers
         and chats, next to your KU badge.
       </p>
-    </Surface>
+    </div>
   );
 
   return (

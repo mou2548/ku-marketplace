@@ -11,9 +11,9 @@ import { updateProfile } from "@/lib/actions/account";
 import { uploadFile } from "@/lib/actions/uploads";
 
 /**
- * The profile header's photo, with a camera button for the owner. Pick, crop,
- * upload, save, as `AvatarUploader` does on the edit screen; the refresh carries the
- * new photo into the navbar too.
+ * The profile card's photo, with a camera button for the owner: pick, crop,
+ * upload, save. Used on the account page and the edit-profile preview; the
+ * refresh carries the new photo into the navbar too.
  */
 export function HeroAvatar({
   name,
