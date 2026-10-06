@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 
 import { Button } from "./button";
@@ -44,10 +44,27 @@ export function AvatarCropDialog(props: CropProps) {
 }
 
 function CropDialog({ file, onCancel, onConfirm }: CropProps) {
-  const src = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
-  useEffect(() => () => {
-    if (src) URL.revokeObjectURL(src);
-  }, [src]);
+  // Read as a data URL. An object URL created in render and revoked in an
+  // effect cleanup is dead after React's dev double-mount, and the photo
+  // never appeared.
+  const [src, setSrc] = useState<string | null>(null);
+  const [unreadable, setUnreadable] = useState(false);
+  useEffect(() => {
+    if (!file) return;
+    let live = true;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (live && typeof reader.result === "string") setSrc(reader.result);
+    };
+    reader.onerror = () => {
+      if (live) setUnreadable(true);
+    };
+    reader.readAsDataURL(file);
+    return () => {
+      live = false;
+      reader.abort();
+    };
+  }, [file]);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [frame, setFrame] = useState<Frame>(START);
   const [busy, setBusy] = useState(false);
@@ -184,6 +201,7 @@ function CropDialog({ file, onCancel, onConfirm }: CropProps) {
                   h: e.currentTarget.naturalHeight,
                 })
               }
+              onError={() => setUnreadable(true)}
               className="pointer-events-none absolute left-1/2 top-1/2 max-w-none"
               style={
                 size
@@ -194,6 +212,19 @@ function CropDialog({ file, onCancel, onConfirm }: CropProps) {
                     }
                   : { opacity: 0 }
               }
+            />
+          ) : null}
+          {unreadable ? (
+            <p
+              role="alert"
+              className="absolute inset-x-6 top-1/2 z-[1] -translate-y-1/2 rounded-control bg-surface p-3 text-center text-body-sm text-tone-danger-fg"
+            >
+              This photo cannot be opened here. Choose a JPG or PNG.
+            </p>
+          ) : !size ? (
+            <span
+              aria-hidden
+              className="absolute left-1/2 top-1/2 z-[1] size-8 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
             />
           ) : null}
           {/* Everything outside the circle is dimmed. */}
