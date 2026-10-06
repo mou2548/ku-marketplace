@@ -110,12 +110,11 @@ Frontend (`frontend/`):
    receives the same admin notifications. Code and screens assume one admin.
    If it is ever retired, set `isAdmin = false` rather than deleting it:
    reports and appeals reference it through `handled_by`.
-3. **Frontend tests were removed** (`frontend/tests/` deleted on purpose, to be
-   rewritten). `npm test` in `frontend/` currently finds no files. Old tests can
-   be read back with `git log --diff-filter=D --name-only -- frontend/tests`
-   then `git show <commit>^:frontend/tests/<file>`. Cover at least: the bell
-   has no derived moderation rows, admin login redirects to `/admin`,
-   `buildQueueRows` ordering and labels, `waitingFor`.
+3. **Frontend tests rewritten for admin only** (2026-10-06, `frontend/tests/`):
+   the bell, admin login redirect, `buildQueueRows`, `waitingFor`. Tests for
+   the rest of the app that were deleted can be read back with
+   `git log --diff-filter=D --name-only -- frontend/tests` then
+   `git show <commit>^:frontend/tests/<file>`.
 4. **`frontend/fornewdesign/` was removed** from the repository, including the
    outdated `API_Marketplace.pdf`. `frontend/CLAUDE.md` §1 still names that
    folder as the source of truth. The flow images and schema PDF can be read
