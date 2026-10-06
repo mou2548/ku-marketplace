@@ -1,5 +1,9 @@
-import type { AdminAppeal, Report } from "@/lib/api/types";
-import type { AppealStatus, ReportStatus } from "@/lib/status";
+import type { AdminAppeal, Report, Sanction } from "@/lib/api/types";
+import type {
+  AppealStatus,
+  AppointmentStatus,
+  ReportStatus,
+} from "@/lib/status";
 
 /**
  * The admin workspace's vocabulary: labels, predicates and time formatting.
@@ -30,6 +34,25 @@ export const ADMIN_APPEAL_STATUS: Record<AppealStatus, AdminLabel> = {
   Under_Review: { label: "Under review", tone: "info" },
   Approved: { label: "Upheld", tone: "success" },
   Rejected: { label: "Rejected", tone: "danger" },
+};
+
+export const ADMIN_APPOINTMENT_STATUS: Record<AppointmentStatus, AdminLabel> = {
+  Pending: { label: "Proposed", tone: "warning" },
+  Confirmed: { label: "Confirmed", tone: "success" },
+  Rejected: { label: "Rejected", tone: "neutral" },
+};
+
+/** Mirrors `TEMPORARY_SUSPENSION_DAYS` in `backend/src/report/account-standing.ts`. */
+export const TEMPORARY_SUSPENSION_DAYS = 3;
+
+/** Mirrors `APPEAL_WINDOW_DAYS` in `backend/src/report/moderation-notifications.ts`. */
+export const APPEAL_WINDOW_DAYS = 7;
+
+export const ADMIN_SANCTION: Record<Sanction, string> = {
+  none: "No sanction",
+  warn: "Warning",
+  suspend_temporary: `Suspended for ${TEMPORARY_SUSPENSION_DAYS} days`,
+  suspend_permanent: "Permanent ban",
 };
 
 export const isOpenReport = (report: Pick<Report, "status">) =>

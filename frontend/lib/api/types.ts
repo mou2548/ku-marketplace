@@ -287,6 +287,8 @@ export interface Report {
   details?: string | null;
   evidence_urls?: string[] | null;
   status: ReportStatus;
+  /** Admin endpoints only; null until a violation is confirmed. */
+  sanction?: Sanction | null;
   handled_by?: number | null;
   handler?: UserSummary | null;
   resolution_note?: string | null;

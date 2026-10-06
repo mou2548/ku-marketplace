@@ -228,10 +228,10 @@ export class AppealService {
   }
 
   /**
-   * Opening an appeal is taking it on, same as `ReportService.open`: opening
-   * a Pending appeal moves it to Under_Review and records the admin in
-   * `handledBy` (`handledAt` stays null until the decision). The flow has a
-   * single admin lane, so the admin who decided the report also reviews the
+   * The flow's "กดรับยื่นอุทธรณ์": the admin presses Take this appeal, same as
+   * `ReportService.open`. A Pending appeal moves to Under_Review and the admin
+   * is recorded in `handledBy` (`handledAt` stays null until the decision).
+   * There is one admin, so the admin who decided the report also reviews the
    * appeal.
    */
   async open(appealId: number, adminId: number) {

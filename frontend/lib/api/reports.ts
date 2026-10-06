@@ -70,9 +70,8 @@ export async function adminListReports(): Promise<Report[]> {
 }
 
 /**
- * POST /admin/reports/{id}/open. Opening a case is taking it on: the first
- * admin to open a Pending report moves it to Under_Investigation and becomes
- * its `handled_by`. Returns the report either way, so it doubles as the
+ * POST /admin/reports/{id}/open — the Take this report button. A Pending
+ * report moves to Under_Investigation with the admin as its `handled_by`. Returns the report either way, so it doubles as the
  * single-report read.
  */
 export async function adminOpenReport(reportId: number): Promise<Report> {

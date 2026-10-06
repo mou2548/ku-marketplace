@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { adminGetTransactionEvidence, adminListReports } from "@/lib/api/reports";
-import { getCurrentUserId } from "@/lib/api/session";
 
-import { VerdictForm } from "./verdict-form";
+import { ReportCase } from "./report-case";
 
 export default async function AdminReportPage({
   params,
@@ -23,7 +22,5 @@ export default async function AdminReportPage({
       ? await adminGetTransactionEvidence(report.target_id).catch(() => undefined)
       : undefined;
 
-  return (
-    <VerdictForm report={report} evidence={evidence} viewerId={await getCurrentUserId()} />
-  );
+  return <ReportCase report={report} evidence={evidence} />;
 }

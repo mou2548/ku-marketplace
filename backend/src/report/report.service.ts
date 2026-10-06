@@ -69,6 +69,7 @@ export class ReportService {
     details: string | null;
     evidenceUrls: unknown;
     status: string | null;
+    sanction: string | null;
     handledBy: number | null;
     resolutionNote: string | null;
     handledAt: Date | null;
@@ -96,6 +97,7 @@ export class ReportService {
       details: report.details,
       evidence_urls: report.evidenceUrls,
       status: report.status,
+      sanction: report.sanction,
       handled_by: report.handledBy,
       handler: report.handler
         ? this.serializeUserSummary(report.handler)
@@ -198,12 +200,11 @@ export class ReportService {
   }
 
   /**
-   * Opening a case is how an admin takes it on (ruling of 2026-10-05: no
-   * separate claim button). The first admin to open a Pending report moves it
-   * to Under_Investigation and is recorded in `handledBy`; `handledAt` stays
-   * null until the verdict, which is what tells "opened by" from "decided by".
-   * The conditional update keeps two admins opening at once from both
-   * claiming it. Opening an already claimed or decided report changes nothing.
+   * The flow's "กดรับการรายงาน": the admin presses Take this report on the case
+   * screen. A Pending report moves to Under_Investigation and the admin is
+   * recorded in `handledBy`; `handledAt` stays null until the verdict. The
+   * conditional update makes a repeated press harmless, and taking an already
+   * taken or decided report changes nothing.
    */
   async open(reportId: number, adminId: number) {
     await this.findOneOrThrow(reportId);

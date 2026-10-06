@@ -48,8 +48,8 @@ export async function adminListAppeals(): Promise<AdminAppeal[]> {
 }
 
 /**
- * POST /admin/appeals/{id}/open. Opening is taking it on: opening a Pending
- * appeal moves it to Under_Review under this admin. Returns the appeal either
+ * POST /admin/appeals/{id}/open — the Take this appeal button. A Pending
+ * appeal moves to Under_Review under this admin. Returns the appeal either
  * way.
  */
 export async function adminOpenAppeal(appealId: number): Promise<AdminAppeal> {

@@ -149,3 +149,58 @@ export function AdminPageHeader({
     </header>
   );
 }
+
+/** Photos attached to a report or an appeal, opened full size in a new tab. */
+export function EvidenceGrid({
+  urls,
+  label,
+}: {
+  urls?: string[] | null;
+  label: string;
+}) {
+  if (!urls?.length) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-meta text-ink-muted">
+        {label} ({urls.length})
+      </p>
+      <ul className="grid grid-cols-3 gap-2">
+        {urls.map((url, index) => (
+          <li key={url}>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="block aspect-square overflow-hidden rounded-[8px] bg-surface-sunken"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- admin-only evidence view, arbitrary host */}
+              <img
+                src={url}
+                alt={`${label}, photo ${index + 1}`}
+                className="size-full object-cover"
+              />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Label/value pairs in two columns. */
+export function AdminFacts({
+  facts,
+}: {
+  facts: Array<[label: string, value: React.ReactNode]>;
+}) {
+  return (
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-body-sm">
+      {facts.map(([label, value]) => (
+        <div key={label} className="contents">
+          <dt className="text-ink-muted">{label}</dt>
+          <dd className="min-w-0 text-ink">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
