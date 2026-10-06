@@ -13,6 +13,7 @@ export const AllowRestrictedAccount = () =>
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
+import { liftExpiredSuspension } from '../../report/account-standing';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -47,6 +48,8 @@ export class JwtAuthGuard implements CanActivate {
           passwordHash: true,
         },
       });
+      if (user?.status === 'Suspended')
+        user.status = await liftExpiredSuspension(this.prisma, user);
       const restricted =
         user?.status === 'Suspended' || user?.status === 'Banned';
       const mayAppeal =

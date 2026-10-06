@@ -80,6 +80,11 @@ export default async function MyAppealsPage() {
         <Surface key={report.report_id} shape="card" className="flex flex-col gap-2 p-4">
           <h2 className="font-semibold">Report #{report.report_id}: {report.reason_category}</h2>
           <p>{report.resolution_note}</p>
+          {report.suspended_until ? (
+            <p className="text-body-sm text-ink-secondary">
+              Your account is suspended until {formatDateTime(new Date(report.suspended_until))}. Access returns automatically then.
+            </p>
+          ) : null}
           <p className="text-caption text-ink-muted">Appeal by {formatDateTime(new Date(report.deadline))}. Use this report number in the appeal form.</p>
           <LinkButton href="/account/appeals/new" variant="secondary">Appeal this decision</LinkButton>
         </Surface>

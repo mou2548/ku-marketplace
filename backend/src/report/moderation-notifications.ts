@@ -1,5 +1,9 @@
 import type { Prisma } from '@prisma/client';
 import { Sanction } from '../common/enums/report.enums';
+import {
+  suspensionEndsAt,
+  TEMPORARY_SUSPENSION_DAYS,
+} from './account-standing';
 
 /**
  * Persisted moderation notifications (rulings of 2026-10-05):
@@ -74,7 +78,7 @@ export async function notifyAdminsOfAppeal(
 const SANCTION_TITLE: Record<Sanction, string> = {
   [Sanction.None]: 'A report against you was upheld',
   [Sanction.Warn]: 'You received a warning',
-  [Sanction.Suspend_Temporary]: 'Your account is suspended',
+  [Sanction.Suspend_Temporary]: `Your account is suspended for ${TEMPORARY_SUSPENSION_DAYS} days`,
   [Sanction.Suspend_Permanent]: 'Your account is banned',
 };
 
@@ -101,6 +105,9 @@ export async function notifySanctioned(
         body: [
           `Report #${report.reportId}: ${report.reasonCategory}.`,
           report.resolutionNote,
+          report.sanction === Sanction.Suspend_Temporary
+            ? `Your account is restored on ${isoDate(suspensionEndsAt(report.handledAt))}.`
+            : null,
           `You can appeal until ${isoDate(deadline)}.`,
         ]
           .filter(Boolean)

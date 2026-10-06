@@ -18,6 +18,7 @@ import {
   notifyAdminsOfReport,
   notifySanctioned,
 } from './moderation-notifications';
+import { reportedUserId, standingFromVerdicts } from './account-standing';
 
 /** §7.3 — block further reports once a user has filed more than 5 within
  * this window, so a bot or a stuck button can't flood the admin queue. */
@@ -246,42 +247,22 @@ export class ReportService {
    * here rather than shared (matches this codebase's existing per-module
    * convention, e.g. `serializeUserSummary` appears in several services).
    */
-  private async resolveReportedUserId(report: {
+  private resolveReportedUserId(report: {
     reportType: string;
     targetId: number;
     reporterId: number;
   }): Promise<number | undefined> {
-    if (report.reportType === ReportType.User) {
-      return report.targetId;
-    }
-    if (report.reportType === ReportType.Post) {
-      const post = await this.prisma.post.findUnique({
-        where: { postId: report.targetId },
-        select: { item: { select: { ownerId: true } } },
-      });
-      return post?.item.ownerId;
-    }
-    if (report.reportType === ReportType.Transaction) {
-      const transaction = await this.prisma.transaction.findUnique({
-        where: { transactionId: report.targetId },
-        select: { buyerId: true, sellerId: true },
-      });
-      if (!transaction) return undefined;
-      return transaction.buyerId === report.reporterId
-        ? transaction.sellerId
-        : transaction.buyerId;
-    }
-    return undefined;
+    return reportedUserId(this.prisma, report);
   }
 
   /**
    * §7.1 — turns the admin's chosen sanction into an actual account effect.
    * `Warn`/`None` write nothing here; the verdict itself (`resolution_note`,
    * visible via `GET /reports`) is the warning. No new column for a
-   * suspension's end date — `User.status` already distinguishes `Suspended`
-   * (temporary, lifted manually) from `Banned` (permanent), and
-   * `auth.service.ts`'s login already rejects both, so this is the entire
-   * enforcement.
+   * suspension's end date — `User.status` distinguishes `Suspended`
+   * (temporary, ends `TEMPORARY_SUSPENSION_DAYS` after the verdict, see
+   * `account-standing.ts`) from `Banned` (permanent), and `JwtAuthGuard`
+   * blocks both outside the appeal routes.
    */
   private async applySanction(
     report: { reportType: string; targetId: number; reporterId: number },
@@ -351,25 +332,13 @@ export class ReportService {
     if (userId === undefined) return;
     const user = await this.prisma.user.findUnique({ where: { userId } });
     if (user?.status === 'Suspended' || user?.status === 'Banned') {
-      const decisions = await this.prisma.report.findMany({
-        where: {
-          reportId: { not: reportId },
-          status: ReportStatus.Violation_Confirmed,
-        },
-      });
-      const remaining = [] as Array<string | null>;
-      for (const decision of decisions) {
-        if ((await this.resolveReportedUserId(decision)) === userId)
-          remaining.push(decision.sanction);
-      }
-      // A legacy verdict has no recorded sanction; do not guess that it is safe to lift it.
-      const status = remaining.includes(null)
-        ? user.status
-        : remaining.includes(Sanction.Suspend_Permanent)
-          ? 'Banned'
-          : remaining.includes(Sanction.Suspend_Temporary)
-            ? 'Suspended'
-            : 'Active';
+      // Whatever other verdicts still call for; an expired temporary
+      // suspension no longer counts. A legacy verdict with no recorded
+      // sanction (null) is not guessed safe to lift.
+      const status =
+        (await standingFromVerdicts(this.prisma, userId, {
+          excludeReportId: reportId,
+        })) ?? user.status;
       await this.prisma.user.update({ where: { userId }, data: { status } });
     }
   }

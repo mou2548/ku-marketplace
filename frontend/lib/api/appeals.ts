@@ -1,6 +1,6 @@
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
-import type { AdminAppeal, Appeal } from "./types";
+import type { AdminAppeal, Appeal, Sanction } from "./types";
 
 /**
  * Wires §7.4's appeal flow to `appeal.service.ts`'s real shapes. Same
@@ -75,6 +75,16 @@ export async function adminDecideAppeal(
   });
 }
 
-export async function getEligibleAppeals(): Promise<Array<{ report_id: number; reason_category: string; resolution_note: string | null; deadline: string }>> {
+export interface EligibleAppeal {
+  report_id: number;
+  reason_category: string;
+  resolution_note: string | null;
+  sanction: Sanction | null;
+  /** When a temporary suspension ends; null for any other sanction. */
+  suspended_until: string | null;
+  deadline: string;
+}
+
+export async function getEligibleAppeals(): Promise<EligibleAppeal[]> {
   return apiFetch("/appeals/eligible", await authedInit());
 }

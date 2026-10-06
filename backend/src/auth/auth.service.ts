@@ -16,6 +16,7 @@ import type {
   ForgotPasswordPayload,
   ResetPasswordPayload,
 } from './validation/register.validation';
+import { liftExpiredSuspension } from '../report/account-standing';
 
 @Injectable()
 export class AuthService {
@@ -121,6 +122,7 @@ export class AuthService {
     }
 
     // Restricted accounts can sign in to appeal; JwtAuthGuard blocks marketplace actions.
+    user.status = await liftExpiredSuspension(this.prisma, user);
     if (!['Active', 'Suspended', 'Banned'].includes(user.status ?? '')) {
       throw new UnauthorizedException('บัญชีนี้ถูกลบไปแล้ว');
     }

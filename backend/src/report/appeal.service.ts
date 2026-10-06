@@ -9,6 +9,7 @@ import {
   AppealStatus,
   ReportStatus,
   ReportType,
+  Sanction,
 } from '../common/enums/report.enums';
 import { CreateAppealDto } from './dto/create-appeal.dto';
 import { DecideAppealDto } from './dto/decide-appeal.dto';
@@ -18,6 +19,7 @@ import {
   notifyAdminsOfAppeal,
   notifyAppealDecided,
 } from './moderation-notifications';
+import { suspensionEndsAt } from './account-standing';
 
 @Injectable()
 export class AppealService {
@@ -180,6 +182,9 @@ export class AppealService {
       report_id: number;
       reason_category: string;
       resolution_note: string | null;
+      sanction: string | null;
+      /** When a temporary suspension ends; null for any other sanction. */
+      suspended_until: Date | null;
       deadline: Date;
     }> = [];
     for (const report of reports) {
@@ -191,6 +196,11 @@ export class AppealService {
           report_id: report.reportId,
           reason_category: report.reasonCategory,
           resolution_note: report.resolutionNote,
+          sanction: report.sanction,
+          suspended_until:
+            report.sanction === Sanction.Suspend_Temporary
+              ? suspensionEndsAt(report.handledAt)
+              : null,
           deadline: new Date(
             report.handledAt.getTime() + APPEAL_WINDOW_DAYS * 86400000,
           ),
