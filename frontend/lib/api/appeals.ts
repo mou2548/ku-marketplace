@@ -61,8 +61,8 @@ export async function adminOpenAppeal(appealId: number): Promise<AdminAppeal> {
   });
 }
 
-/** POST /admin/appeals/{id}/decide — the backend rejects this if the caller
- * is the same admin who resolved the original report (§7.4). */
+/** POST /admin/appeals/{id}/decide — the one admin decides the appeal,
+ * including against a report they resolved themselves. */
 export async function adminDecideAppeal(
   appealId: number,
   input: DecideAppealInput,

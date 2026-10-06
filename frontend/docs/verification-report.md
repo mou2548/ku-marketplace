@@ -101,7 +101,7 @@ which branches have evidence instead of marking a whole domain passed.
 | CHAT-01 | Private transaction conversation; seller and buyer | Seller sent local test text; buyer reopened the same chat 14 and saw it; browser |
 | CHAT-02 | Giveaway shared chat; eligibility changes | Expired/nonselected rooms omitted, selected rooms retained; frontend regression and browser inbox checks |
 | REPORT-01 | Upper/lower report and appeal; outsider/target/admin | Private transaction reporting and unrelated report access rejected; only target may appeal; DB/API |
-| APPEAL-01 | Independent review and sanction reversal | Original admin cannot decide; other admin reverses one verdict without removing another ban; DB/API |
+| APPEAL-01 | Appeal review and sanction reversal | Upheld appeal reverses one verdict without removing another ban; DB/API. Executed 2026-09-09 under the old two-admin rule; since 2026-10-06 one admin decides both the report and its appeal |
 | APPEAL-02 | Sanctioned user's appeal entry | Restricted login reaches `/account/appeals`; allowed profile/appeal API and blocked marketplace/admin API; browser + HTTP |
 | TIMER-01 | Payment review/cancellation/return/refund/delivery timers | Unit checks cover trigger/interval differences; DB test covers before/exact cancellation deadline and concurrent-worker idempotency |
 | AUTH-01 | Additional scope: validation and OTP | Invalid inputs rejected, OTP single-use/expiry enforced by real Redis; demo login and restricted/old-token permissions tested |

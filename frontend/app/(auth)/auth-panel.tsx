@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
  * still land in the right place.
  *
  * The visual design of this screen is deliberately unchanged — it is the one
- * part of the product the team asked to keep (docs/PLAN.md §3).
+ * part of the product the team asked to keep.
  */
 export function AuthPanel({ returnTo }: { returnTo?: string }) {
   const [mode, setMode] = useState<"login" | "register">("login");

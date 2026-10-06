@@ -1,7 +1,7 @@
 # Information Architecture
 
 Phase 3 deliverable. Plan only — no code in this phase.
-Inputs: [`../ux/research.md`](../ux/research.md), [`../PLAN.md`](../PLAN.md), `fornewdesign/flow1-4.png`.
+Inputs: [`../ux/research.md`](../ux/research.md), `fornewdesign/flow1-4.png`.
 
 ---
 

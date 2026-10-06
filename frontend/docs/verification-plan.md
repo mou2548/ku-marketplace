@@ -93,7 +93,8 @@ platforms are in the intended audience; otherwise record the untested platform.
 ## 3–4. Functional and permission matrix
 
 Use at least three regular accounts (seller A, buyer/proposer B, unrelated C),
-two admins for independent appeal review, and suspended/deleted accounts. Use
+one admin (the platform has exactly one; it decides both reports and appeals),
+and suspended/deleted accounts. Use
 separate browser profiles so cookies do not mix. Create fixtures per case; one
 case must not depend on a previous case's stock or status mutations.
 

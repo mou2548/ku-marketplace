@@ -48,7 +48,8 @@ records what the team decided.
 1. **Sanction timing.** A sanction takes effect as soon as the admin records the
    verdict. The appeal window (7 days) opens immediately after. There is no
    deferred "apply the penalty when the window closes" step.
-2. **Opening a case is taking it on.** There is no claim button. The first open
+2. **Superseded 2026-10-06 by `frontend/docs/admin-plan.md` decision A: the
+   admin presses a Take button, as in the flow.** Previously: **Opening a case is taking it on.** There is no claim button. The first open
    of a Pending report moves it to `Under_Investigation`; the first open of a
    Pending appeal moves it to `Under_Review`. The opener is stored in
    `handled_by` while `handled_at` stays null until the decision.
@@ -59,9 +60,11 @@ records what the team decided.
    on an upheld report (every sanction, `warn` included) with the appeal
    deadline, and again when the appeal is decided.
 5. **Warn is a penalty.** It is notified and appealable like the others.
-6. **One admin account.** The flow has a single admin lane, so the admin who
-   decided a report also decides its appeal. The old rule "a different admin
-   must decide the appeal" was removed from the code. See open item 1.
+6. **One admin account.** Confirmed by the owner on 2026-10-06: the platform
+   runs with exactly one admin. The flow has a single admin lane, so the admin
+   who decided a report also decides its appeal. Spec §3.1.7.3 ("a different
+   admin must decide the appeal") is superseded and its check stays out of the
+   code. Admin screens never need to show who else holds a case.
 7. **Dashboard uses existing endpoints only.** The temporary
    `GET /admin/users/restricted` and `POST /admin/users/:id/reinstate` were
    removed, together with the Users page. The only way out of a suspension is
@@ -100,13 +103,12 @@ Frontend (`frontend/`):
 
 ## Open items, in priority order
 
-1. **Spec conflict, waiting on the team.** Spec §3.1.7.3 says the appeal must be
-   decided by a different admin than the one who decided the report. The flow
-   and decision 6 say one admin. The code currently allows the same admin. If
-   the team keeps the spec, restore the check in `AppealService.decide`, exclude
-   the original decider in `notifyAdminsOfAppeal`, show "not yours to decide" in
-   the admin UI, and keep at least two admin accounts.
-2. **Retiring `admin2`.** Set `isAdmin = false` instead of deleting the row:
+1. **Admin screen work** is planned in
+   [`frontend/docs/admin-plan.md`](../../frontend/docs/admin-plan.md).
+2. **`admin2` still exists in the data.** The database is not being changed
+   (owner, 2026-10-06), so the row stays with `isAdmin = true`; it only
+   receives the same admin notifications. Code and screens assume one admin.
+   If it is ever retired, set `isAdmin = false` rather than deleting it:
    reports and appeals reference it through `handled_by`.
 3. **Frontend tests were removed** (`frontend/tests/` deleted on purpose, to be
    rewritten). `npm test` in `frontend/` currently finds no files. Old tests can
@@ -128,16 +130,16 @@ Frontend (`frontend/`):
    an upheld appeal can re-apply a ban that an admin lifted by hand.
 6. **Membership queue shows the wrong tier.** `GET /membership/payments/pending`
    returns the account's current tier, not the tier being paid for, so the
-   dashboard row says "Membership slip" instead of a tier. Fix needs the
-   requested tier in the API.
+   dashboard row says "Membership slip" instead of a tier. No schema change
+   needed: approval already derives the tier from the amount
+   (`resolveTierFromAmount`), so the list can return the same value. Planned in
+   `frontend/docs/admin-plan.md` step 6.
 7. **Pre-existing failures, not caused by this work:** e2e "automatically
    allocates Random giveaways once" (2 Waiting tickets instead of 1) and the
    sellers e2e test timing out at 5 s over the network; three frontend unit
    tests (copy plurals, date format, room activity) that are now deleted with
    `frontend/tests/`.
-8. **Stale docs.** `frontend/docs/verification-report.md` (APPEAL-01) still
-   says the original admin cannot decide the appeal.
-9. **Diagram details not modelled.** No stored `appeal_status = not appealed`;
+8. **Diagram details not modelled.** No stored `appeal_status = not appealed`;
    eligibility is computed by `GET /appeals/eligible` within 7 days. The admin
    area has no search.
 
