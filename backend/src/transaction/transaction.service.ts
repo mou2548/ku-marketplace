@@ -318,12 +318,14 @@ export class TransactionService {
   }
 
   /**
-   * §8.7 — the confirm buttons stay locked while a cancellation is unsettled,
-   * so nobody can race it by confirming anyway. There are exactly two unsettled
-   * states, and both have to end for the transaction to move again:
+   * §8.7 — the confirm buttons stay locked while the deal is unsettled, so
+   * nobody can race it by confirming anyway. Two states lock it, and both have
+   * to end for the transaction to move again:
    *
-   *   response Pending                    waiting on the other party
-   *   response Rejected + activeReportId  waiting on an admin
+   *   cancellation response Pending   waiting on the other party
+   *   activeReportId set              waiting on an admin: a rejected
+   *                                   cancellation, or a step that timed out
+   *                                   and went to the report flow
    *
    * Checking `cancellationRequestedBy !== null` instead would lock the
    * transaction forever, because that column is never cleared once set.
@@ -334,14 +336,7 @@ export class TransactionService {
         'A cancellation request is pending on this transaction — the other party must respond first',
       );
     }
-    if (
-      transaction.cancellationResponse === CancellationResponse.Rejected &&
-      transaction.activeReportId !== null
-    ) {
-      throw new BadRequestException(
-        'A rejected cancellation is under admin review — wait for the ruling',
-      );
-    }
+    this.assertNoActiveReport(transaction);
   }
 
   private assertNoActiveReport(transaction: TransactionRow) {
@@ -628,6 +623,7 @@ export class TransactionService {
    */
   async generateQr(transactionId: number, userId: number) {
     const transaction = await this.findOneOrThrow(transactionId);
+    this.assertNoActiveReport(transaction);
     if (transaction.status === TransactionStatus.PendingRefund)
       return this.generateReturnQr(transaction, userId);
     this.assertIsSeller(transaction, userId);
@@ -678,6 +674,7 @@ export class TransactionService {
    */
   async scanQr(transactionId: number, userId: number, dto: ScanQrDto) {
     const transaction = await this.findOneOrThrow(transactionId);
+    this.assertNoActiveReport(transaction);
     if (transaction.status === TransactionStatus.PendingRefund)
       return this.scanReturnQr(transaction, userId, dto.token);
     this.assertIsBuyer(transaction, userId);
@@ -989,6 +986,7 @@ export class TransactionService {
       });
       if (!transaction) throw new NotFoundException('Transaction not found');
       this.assertIsParty(transaction, userId);
+      this.assertNoActiveReport(transaction);
       if (transaction.cancellationRequestedBy !== null)
         throw new BadRequestException('A request already exists');
       if (transaction.status === TransactionStatus.Completed) {
@@ -1106,62 +1104,99 @@ export class TransactionService {
   }
 
   /**
-   * §8.7 — turns an admin's ruling on a rejected cancellation into an actual
-   * transaction state change. Called by ReportService when a report is closed,
-   * because resolving the report is the admin action the spec describes
-   * ("ปุ่มยืนยันยังล็อกอยู่จนแอดมินตัดสิน").
+   * The admin ruled on a report that locked this transaction (§8.7 and every
+   * "go to the report flow" step in the activity diagram). The ruling decides
+   * how the deal moves on, and either way the lock is released.
    *
-   * Without this the transaction is bricked: the confirm endpoints stay locked
-   * on the open dispute, requestCancellation refuses (one request per
-   * transaction) and respondToCancellation refuses (no longer Pending).
+   *   Rejected cancellation (the other side refused to cancel)
+   *     upheld     the requester was right: the cancellation takes effect —
+   *                Pending Refund if money or goods moved, else Cancelled and
+   *                the stock goes back on the market
+   *     dismissed  the deal carries on; the Rejected record stays as history
    *
-   * Two outcomes, mirroring the two ways a report can close:
+   *   Seller did not confirm the payment slip in time
+   *     upheld     the seller is at fault: the deal is cancelled and the
+   *                buyer's money is owed back (Pending Refund)
+   *     dismissed  the deal carries on from where it stopped
    *
-   *   upheld    the requester was right, so the cancellation takes effect —
-   *             Cancelled, and the stock and item go back on the market.
-   *   dismissed the requester was wrong, so the transaction carries on. The
-   *             dispute link is cleared, which is what unlocks the confirm
-   *             buttons; the Rejected record itself is kept as history.
+   *   Buyer did not confirm the refund in time
+   *     upheld     the refund counts as received, as if the buyer confirmed it
+   *     dismissed  the deal carries on from where it stopped
    *
-   * No-op for reports that are not a cancellation dispute.
+   * No-op for reports that do not lock a transaction.
    */
-  async settleCancellationDispute(reportId: number, upheld: boolean) {
+  async settleReportedTransaction(reportId: number, upheld: boolean) {
     const transaction = await this.prisma.transaction.findFirst({
-      where: {
-        activeReportId: reportId,
-        cancellationResponse: CancellationResponse.Rejected,
-      },
+      where: { activeReportId: reportId },
     });
-    if (!transaction) {
-      return;
-    }
-
-    if (!upheld) {
-      await this.prisma.transaction.update({
-        where: { transactionId: transaction.transactionId },
+    if (!transaction) return;
+    const { transactionId } = transaction;
+    const unlock = () =>
+      this.prisma.transaction.update({
+        where: { transactionId },
         data: { activeReportId: null },
       });
+
+    if (!upheld) {
+      await unlock();
       return;
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      const cancelled = await tx.transaction.update({
-        where: { transactionId: transaction.transactionId },
-        data: {
-          status:
-            transaction.paymentConfirmedByBuyerAt ||
-            transaction.itemReceivedConfirmedByBuyerAt
-              ? TransactionStatus.PendingRefund
-              : TransactionStatus.Cancelled,
-          cancellationResponse: CancellationResponse.Approved,
-        },
+    const cancellationDispute =
+      transaction.cancellationResponse === CancellationResponse.Rejected;
+    const slipUnconfirmed =
+      transaction.status === TransactionStatus.Processing &&
+      transaction.paymentConfirmedByBuyerAt !== null &&
+      transaction.slipImageUrl !== null &&
+      transaction.paymentConfirmedBySellerAt === null;
+
+    if (cancellationDispute || slipUnconfirmed) {
+      await this.prisma.$transaction(async (tx) => {
+        const cancelled = await tx.transaction.update({
+          where: { transactionId },
+          data: {
+            activeReportId: null,
+            status:
+              transaction.paymentConfirmedByBuyerAt ||
+              transaction.itemReceivedConfirmedByBuyerAt
+                ? TransactionStatus.PendingRefund
+                : TransactionStatus.Cancelled,
+            ...(cancellationDispute
+              ? { cancellationResponse: CancellationResponse.Approved }
+              : {}),
+          },
+        });
+        if (!transaction.itemReceivedConfirmedByBuyerAt)
+          await this.releaseReservation(
+            tx,
+            cancelled.postId,
+            cancelled.quantity ?? 1,
+          );
       });
-      if (!transaction.itemReceivedConfirmedByBuyerAt)
-        await this.releaseReservation(
-          tx,
-          cancelled.postId,
-          cancelled.quantity ?? 1,
-        );
-    });
+      return;
+    }
+
+    const refundUnconfirmed =
+      transaction.refundSubmittedAt !== null &&
+      transaction.refundSlipUrl !== null &&
+      !transaction.refundConfirmedByBuyer;
+    await unlock();
+    if (refundUnconfirmed) {
+      if (this.slipRejected(transaction)) {
+        await this.prisma.transaction.update({
+          where: { transactionId },
+          data: {
+            status: TransactionStatus.Pending,
+            paymentConfirmedByBuyerAt: null,
+            refundSlipUrl: null,
+            refundSubmittedAt: null,
+          },
+        });
+      } else {
+        await this.recordReturnProgress(transactionId, {
+          refundConfirmedByBuyer: true,
+        });
+      }
+    }
   }
 }

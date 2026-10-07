@@ -68,7 +68,7 @@ function makeServices() {
     fn(prisma),
   );
   const transactionService = {
-    settleCancellationDispute: jest.fn(),
+    settleReportedTransaction: jest.fn(),
   } as unknown as TransactionService;
   const redis = {
     incr: jest.fn().mockResolvedValue(1),

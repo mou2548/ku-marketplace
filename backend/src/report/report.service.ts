@@ -386,7 +386,7 @@ export class ReportService {
     // §8.7 — if this report is a rejected cancellation, the ruling has to move
     // the transaction too, or it stays locked forever. Upholding the report
     // means the party who asked to cancel was right. No-op otherwise.
-    await this.transactionService.settleCancellationDispute(
+    await this.transactionService.settleReportedTransaction(
       reportId,
       dto.status === ReportStatus.Violation_Confirmed,
     );
@@ -412,7 +412,7 @@ export class ReportService {
 
     // Dismissing here closes the dispute the same way, so unlock the
     // transaction rather than leaving it stranded.
-    await this.transactionService.settleCancellationDispute(reportId, false);
+    await this.transactionService.settleReportedTransaction(reportId, false);
 
     return this.serializeReport(restored);
   }

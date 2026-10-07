@@ -655,8 +655,20 @@ export function RoomScreen({
         </div> : <p>Waiting for the other party to respond.</p>}
       </ActionCard>;
     }
-    if (transaction.active_report_id && transaction.cancellation_response === "Rejected") {
-      return <ActionCard title="Under review"><p>Wait for the administrator to review this request.</p></ActionCard>;
+    // An open report locks every step (the API refuses them), whatever
+    // sent the deal to the report flow.
+    if (transaction.active_report_id) {
+      return (
+        <ActionCard title="Under admin review">
+          <p>
+            {transaction.cancellation_response === "Rejected"
+              ? "The cancellation request is with an admin."
+              : "A step ran out of time, so the deal went to an admin."}{" "}
+            Nothing can be confirmed until they decide; you will be told the
+            outcome here.
+          </p>
+        </ActionCard>
+      );
     }
     if (transaction.status === "Pending Refund" || (transaction.status === "Cancelled" && transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer)) {
       const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
@@ -1069,7 +1081,12 @@ export function RoomScreen({
         <div className="flex flex-col gap-5">
           {transaction && viewer ? (
             <section aria-label="Handover" className="flex flex-col gap-3">
-              {(transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
+              {transaction.active_report_id ? (
+                <p className="rounded-control border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-body-sm text-tone-danger-fg">
+                  An admin is reviewing this deal. Meetups, payments and
+                  handover are paused until they decide.
+                </p>
+              ) : (transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
                 <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment && editingAppointment ? (
                 // Pre-filled from the card it replaces — "Resend" updates that
@@ -1429,8 +1446,9 @@ function DealDetails({
               <Flag className="size-4" />{t("deal.reportProblem")}</LinkButton>
           ) : null}
 
-          {transaction.status === "Pending" ||
-          transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by) ? (
+          {!transaction.active_report_id &&
+          (transaction.status === "Pending" ||
+          transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by)) ? (
             <>
               <Button variant="ghost" size="sm" onPress={() => setCancelOpen(true)}>
                 <XCircle className="size-4" />{transaction.status === "Completed" ? "Request return (within 7 days)" : t("deal.requestCancellation")}</Button>

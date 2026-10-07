@@ -33,9 +33,12 @@ function setup(current: Transaction) {
     $queryRaw: jest.fn().mockResolvedValue([]),
     transaction: {
       findUnique: jest.fn().mockResolvedValue(current),
+      findFirst: jest.fn().mockResolvedValue(current),
+      findUniqueOrThrow: jest.fn().mockResolvedValue(current),
       update: jest.fn().mockResolvedValue(current),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+    post: { update: jest.fn().mockResolvedValue({}) },
     notification: { create: jest.fn().mockResolvedValue({}) },
   };
   const prisma = {
@@ -145,5 +148,73 @@ describe('TransactionService after a rejected slip', () => {
       BadRequestException,
     );
     expect(tx.transaction.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('actions while a report locks the transaction', () => {
+  it('refuses to confirm the payment slip', async () => {
+    const { service, tx } = setup(row({ activeReportId: 30 }));
+    await expect(service.confirmPaymentReceived(7, 2)).rejects.toThrow(
+      'under admin review',
+    );
+    expect(tx.transaction.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses a QR handover', async () => {
+    const { service } = setup(row({ activeReportId: 30 }));
+    await expect(service.generateQr(7, 2)).rejects.toThrow(
+      'under admin review',
+    );
+  });
+});
+
+describe('TransactionService.settleReportedTransaction', () => {
+  it('a dismissed report unlocks the deal and leaves it where it was', async () => {
+    const { service, tx } = setup(row({ activeReportId: 30 }));
+    await service.settleReportedTransaction(30, false);
+    expect(tx.transaction.update).toHaveBeenCalledTimes(1);
+    expect(tx.transaction.update).toHaveBeenCalledWith({
+      where: { transactionId: 7 },
+      data: { activeReportId: null },
+    });
+  });
+
+  it('an upheld unconfirmed-slip report cancels the deal and owes the buyer a refund', async () => {
+    const { service, tx } = setup(row({ activeReportId: 30, postId: 4 }));
+    await service.settleReportedTransaction(30, true);
+    expect(tx.transaction.update).toHaveBeenCalledWith({
+      where: { transactionId: 7 },
+      data: { activeReportId: null, status: 'Pending Refund' },
+    });
+    expect(tx.post.update).toHaveBeenCalled();
+  });
+
+  it('an upheld unconfirmed-refund report counts the refund as received', async () => {
+    const current = row({
+      status: 'Pending Refund',
+      activeReportId: 30,
+      refundSlipUrl: refundUrl,
+      refundSubmittedAt: paidAt,
+    });
+    const { service, tx } = setup(current);
+    await service.settleReportedTransaction(30, true);
+    expect(tx.transaction.update).toHaveBeenCalledWith({
+      where: { transactionId: 7 },
+      data: { activeReportId: null },
+    });
+    expect(tx.transaction.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          refundConfirmedByBuyer: true,
+        }) as unknown,
+      }),
+    );
+  });
+
+  it('does nothing for a report that locks no transaction', async () => {
+    const { service, tx } = setup(row());
+    tx.transaction.findFirst.mockResolvedValue(null);
+    await service.settleReportedTransaction(30, true);
+    expect(tx.transaction.update).not.toHaveBeenCalled();
   });
 });

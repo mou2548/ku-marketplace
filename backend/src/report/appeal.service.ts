@@ -362,7 +362,7 @@ export class AppealService {
     // §7.4 — "reverse the decision" has to undo what the decision actually
     // did (a suspension, a ban, a hidden post), not just the Report row's own
     // status. Run after the transaction commits, same as `report.service.ts`'s
-    // `resolve()` calling `settleCancellationDispute` outside its own update.
+    // `resolve()` calling `settleReportedTransaction` outside its own update.
     if (dto.status === AppealStatus.Approved) {
       await this.reportService.undoConsequences(appeal.reportId);
     }

@@ -15,7 +15,7 @@ import { RedisService } from '../redis/redis.service';
   // RedisModule yet — AuthModule provides its own copy the same way. Worth
   // folding into a shared @Global() module once more than two modules need it.
   providers: [TransactionService, RedisService, TransactionDeadlineService],
-  // ReportService calls settleCancellationDispute() when an admin closes a
+  // ReportService calls settleReportedTransaction() when an admin closes a
   // report, so a ruling on a §8.7 dispute actually moves the transaction.
   exports: [TransactionService],
 })
