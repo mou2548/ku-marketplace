@@ -152,7 +152,11 @@ export async function SellerProfileView({
                 </>
               ) : (
                 <div className="flex justify-center px-2 py-1">
-                  <SellerActions sellerId={id} report={signedIn} />
+                  <SellerActions
+                    sellerId={id}
+                    sellerName={profile.name}
+                    report={signedIn}
+                  />
                 </div>
               )
             }

@@ -38,7 +38,7 @@ import { DeliveryCard } from "@/components/kit/delivery-card";
 import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
-import { ReportDialog } from "@/components/kit/report-dialog";
+import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
@@ -113,24 +113,6 @@ const ROSTER_LIMIT = 5;
 const CHAT_POLL_INTERVAL_MS = 5000;
 
 /** §7.5.2 — the system-provided reasons for a user report. */
-const USER_REPORT_REASONS = [
-  {
-    id: "rude-or-threatening",
-    label: "Rude or threatening behavior in chat",
-    description: "Insults, threats, or hostile messages",
-  },
-  {
-    id: "spam-or-disturbance",
-    label: "Spam or disturbance",
-    description: "Repeated unwanted messages",
-  },
-  {
-    id: "impersonation",
-    label: "Impersonating someone else",
-    description: "This is not who they claim to be",
-  },
-];
-
 /**
  * `POST /transactions/{id}/appointment-card`. Flow 1 puts this between the
  * seller confirming payment and the handover, and until now the UI had no way
@@ -1004,20 +986,10 @@ export function RoomScreen({
           {/* §7.5.2 — rude/threatening behavior, spam, or impersonation "in
               chat" is the spec's own framing for a User report, so the
               trigger lives right where that happens. */}
-          <ReportDialog
-            reportType="User"
-            targetId={summary.counterparty.user_id}
-            reasons={USER_REPORT_REASONS}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                pill
-                aria-label={`Report ${summary.counterparty.name}`}
-              >
-                <Flag className="size-3.5" />
-              </Button>
-            }
+          <ReportUserDialog
+            userId={summary.counterparty.user_id}
+            name={summary.counterparty.name}
+            compact
           />
         </span>
 

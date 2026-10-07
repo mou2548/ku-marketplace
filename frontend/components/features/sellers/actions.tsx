@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCopy } from "@/lib/copy";
-import { Flag, Share2, UserPlus, UserCheck } from "lucide-react";
+import { Share2, UserPlus, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/kit/button";
-import { ReportDialog } from "@/components/kit/report-dialog";
+import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { setFollowing } from "@/lib/actions/following";
 
 export const sellerLinkClass =
@@ -124,9 +124,11 @@ export function FollowButton({
 
 export function SellerActions({
   sellerId,
+  sellerName,
   report,
 }: {
   sellerId: number;
+  sellerName: string;
   report: boolean;
 }) {
   const t = getCopy("seller");
@@ -153,20 +155,7 @@ export function SellerActions({
         {t("share")}
       </Button>
       {report ? (
-        <ReportDialog
-          reportType="User"
-          targetId={sellerId}
-          reasons={["fraud", "harassment", "other"].map((id) => ({
-            id,
-            label: t(id),
-          }))}
-          trigger={
-            <Button variant="ghost">
-              <Flag aria-hidden className="size-4" />
-              {t("report")}
-            </Button>
-          }
-        />
+        <ReportUserDialog userId={sellerId} name={sellerName} />
       ) : null}
       <span role="status" className="text-body-sm text-ink-secondary">
         {feedback}
