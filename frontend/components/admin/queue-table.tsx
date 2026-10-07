@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ListBox, Popover, Select, SelectValue } from "react-aria-components";
 import {
-  ArrowDown,
-  ArrowUp,
   ArrowUpDown,
+  ChevronDown,
   Clock,
   CreditCard,
   FileText,
@@ -22,6 +22,9 @@ import {
 } from "@/lib/admin-labels";
 import { cn } from "@/lib/utils";
 
+import { SelectOption } from "@/components/kit/choice";
+
+import { AdminButton } from "./admin-controls";
 import { AdminPill } from "./admin-ui";
 
 const KIND_ICON: Record<QueueKind, typeof Flag> = {
@@ -39,12 +42,15 @@ const FILTERS = [
 
 type Filter = (typeof FILTERS)[number]["id"];
 
-type SortKey = "case" | "status" | "waiting";
-interface Sort {
-  key: SortKey;
-  /** For "waiting", ascending means longest wait first. */
-  dir: "asc" | "desc";
-}
+/** The same kind of sort control as the market feed: one menu of orders. */
+const SORTS = [
+  { id: "oldest", label: "Waiting longest" },
+  { id: "newest", label: "Newest first" },
+  { id: "status", label: "Status (new first)" },
+  { id: "case", label: "Case number" },
+] as const;
+
+type SortKey = (typeof SORTS)[number]["id"];
 
 /** Status order when sorting by status: untouched cases first. */
 const STATUS_RANK: Record<string, number> = {
@@ -54,15 +60,22 @@ const STATUS_RANK: Record<string, number> = {
   "Under review": 2,
 };
 
+const age = (row: QueueRow) => Date.parse(row.createdAt);
+
 function compare(a: QueueRow, b: QueueRow, key: SortKey): number {
-  if (key === "case")
-    return a.title.localeCompare(b.title, undefined, { numeric: true });
-  if (key === "status")
-    return (
-      (STATUS_RANK[a.status.label] ?? 9) - (STATUS_RANK[b.status.label] ?? 9) ||
-      Date.parse(a.createdAt) - Date.parse(b.createdAt)
-    );
-  return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+  switch (key) {
+    case "newest":
+      return age(b) - age(a);
+    case "status":
+      return (
+        (STATUS_RANK[a.status.label] ?? 9) -
+          (STATUS_RANK[b.status.label] ?? 9) || age(a) - age(b)
+      );
+    case "case":
+      return a.title.localeCompare(b.title, undefined, { numeric: true });
+    default:
+      return age(a) - age(b);
+  }
 }
 
 /**
@@ -72,43 +85,67 @@ function compare(a: QueueRow, b: QueueRow, key: SortKey): number {
  */
 export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const [sort, setSort] = useState<Sort>({ key: "waiting", dir: "asc" });
+  const [sort, setSort] = useState<SortKey>("oldest");
   const filtered =
     filter === "all" ? rows : rows.filter((row) => row.kind === filter);
-  const shown = [...filtered].sort((a, b) => {
-    const order = compare(a, b, sort.key);
-    return sort.dir === "asc" ? order : -order;
-  });
-  const sortBy = (key: SortKey) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" },
-    );
+  const shown = [...filtered].sort((a, b) => compare(a, b, sort));
 
   return (
     <>
-      <div
-        role="group"
-        aria-label="Filter the queue"
-        className="inline-flex max-w-full flex-wrap rounded-[8px] border border-line-default p-0.5"
-      >
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            aria-pressed={filter === f.id}
-            onClick={() => setFilter(f.id)}
-            className={cn(
-              "min-h-8 rounded-[6px] px-2.5 text-meta transition-colors",
-              filter === f.id
-                ? "bg-surface-sunken font-medium text-ink"
-                : "text-ink-muted hover:text-ink",
-            )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          role="group"
+          aria-label="Filter the queue"
+          className="inline-flex max-w-full flex-wrap rounded-[8px] border border-line-default p-0.5"
+        >
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={filter === f.id}
+              onClick={() => setFilter(f.id)}
+              className={cn(
+                "min-h-8 rounded-[6px] px-2.5 text-meta transition-colors",
+                filter === f.id
+                  ? "bg-surface-sunken font-medium text-ink"
+                  : "text-ink-muted hover:text-ink",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <Select
+          aria-label="Sort the queue"
+          selectedKey={sort}
+          onSelectionChange={(key) => setSort(key as SortKey)}
+          className="shrink-0"
+        >
+          <AdminButton className="min-h-9 gap-1.5 px-3">
+            <ArrowUpDown aria-hidden className="text-ink-muted" />
+            <SelectValue className="text-body-sm">
+              {({ selectedText }) => selectedText}
+            </SelectValue>
+            <ChevronDown aria-hidden className="text-ink-muted" />
+          </AdminButton>
+          <Popover
+            placement="bottom end"
+            className="z-[90] min-w-52 overflow-auto rounded-[10px] border border-line bg-surface p-1 shadow-overlay data-[entering]:anim-pop-in data-[exiting]:anim-fade-out"
           >
-            {f.label}
-          </button>
-        ))}
+            <ListBox className="outline-none">
+              {SORTS.map((option) => (
+                <SelectOption
+                  key={option.id}
+                  id={option.id}
+                  textValue={option.label}
+                >
+                  {option.label}
+                </SelectOption>
+              ))}
+            </ListBox>
+          </Popover>
+        </Select>
       </div>
 
       <div className="relative -mx-4 mt-3 overflow-x-auto border-t border-line">
@@ -120,15 +157,9 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
           <table className="w-full min-w-[520px] border-collapse text-body-sm">
             <thead>
               <tr className="bg-surface-sunken text-left text-meta text-ink-secondary">
-                <Th icon={<FileText />} sortKey="case" sort={sort} onSort={sortBy}>
-                  Case
-                </Th>
-                <Th icon={<Loader />} sortKey="status" sort={sort} onSort={sortBy}>
-                  Status
-                </Th>
-                <Th icon={<Clock />} sortKey="waiting" sort={sort} onSort={sortBy}>
-                  Waiting
-                </Th>
+                <Th icon={<FileText />}>Case</Th>
+                <Th icon={<Loader />}>Status</Th>
+                <Th icon={<Clock />}>Waiting</Th>
               </tr>
             </thead>
             <tbody>
@@ -190,52 +221,22 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
 
 function Th({
   icon,
-  sortKey,
-  sort,
-  onSort,
   children,
 }: {
   icon: React.ReactNode;
-  sortKey: SortKey;
-  sort: Sort;
-  onSort: (key: SortKey) => void;
   children: React.ReactNode;
 }) {
-  const active = sort.key === sortKey;
-  // "waiting" ascending shows the oldest first, i.e. longest wait on top.
-  const ariaSort = active
-    ? sort.dir === "asc"
-      ? sortKey === "waiting"
-        ? "descending"
-        : "ascending"
-      : sortKey === "waiting"
-        ? "ascending"
-        : "descending"
-    : "none";
-  const Arrow = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
   return (
     <th
       scope="col"
-      aria-sort={ariaSort}
-      className="whitespace-nowrap p-0 font-medium [&+th]:border-l [&+th]:border-line"
+      className="whitespace-nowrap px-4 py-2 font-medium [&+th]:border-l [&+th]:border-line"
     >
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className={cn(
-          "flex w-full items-center gap-1.5 px-4 py-2 text-left hover:text-ink",
-          active && "text-ink",
-        )}
-      >
+      <span className="inline-flex items-center gap-1.5">
         <span aria-hidden className="text-ink-muted [&_svg]:size-3.5">
           {icon}
         </span>
         {children}
-        <Arrow
-          aria-hidden
-          className={cn("size-3.5", active ? "text-ink" : "text-ink-muted/60")}
-        />
-      </button>
+      </span>
     </th>
   );
 }
