@@ -78,15 +78,15 @@ export default async function MyAppealsPage() {
       <h1 className="text-h1">My appeals</h1>
       {eligible.map((report) => (
         <Surface key={report.report_id} shape="card" className="flex flex-col gap-2 p-4">
-          <h2 className="font-semibold">Report #{report.report_id}: {report.reason_category}</h2>
+          <h2 className="font-semibold">{report.reason_category}</h2>
           <p>{report.resolution_note}</p>
           {report.suspended_until ? (
             <p className="text-body-sm text-ink-secondary">
               Your account is suspended until {formatDateTime(new Date(report.suspended_until))}. Access returns automatically then.
             </p>
           ) : null}
-          <p className="text-caption text-ink-muted">Appeal by {formatDateTime(new Date(report.deadline))}. Use this report number in the appeal form.</p>
-          <LinkButton href="/account/appeals/new" variant="secondary">Appeal this decision</LinkButton>
+          <p className="text-caption text-ink-muted">Appeal by {formatDateTime(new Date(report.deadline))}.</p>
+          <LinkButton href={`/account/appeals/new?report=${report.report_id}`} variant="secondary">Appeal this decision</LinkButton>
         </Surface>
       ))}
 
@@ -96,7 +96,7 @@ export default async function MyAppealsPage() {
             <Surface shape="card" className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold">Report #{a.report_id}</p>
+                  <p className="font-semibold">Your appeal</p>
                   <time
                     dateTime={a.created_at}
                     className="text-caption text-ink-muted"
