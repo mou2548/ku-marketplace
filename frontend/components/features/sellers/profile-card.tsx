@@ -92,11 +92,18 @@ export function ProfileCard({
           {stats.map(({ label, value }) => (
             <div key={label} className="flex flex-col-reverse">
               <dt className="text-meta text-on-brand-strong/80">{label}</dt>
-              <dd data-numeric className="text-h3 font-semibold">
-                {typeof value === "number"
-                  ? value.toLocaleString("en-GB")
-                  : value}
-              </dd>
+              {/* Counts read big; a text value such as a join date is
+                  longer, so it drops a size and stays on one line, sitting on
+                  the same baseline as the counts beside it. */}
+              {typeof value === "number" ? (
+                <dd data-numeric className="text-h3 font-semibold">
+                  {value.toLocaleString("en-GB")}
+                </dd>
+              ) : (
+                <dd className="whitespace-nowrap pb-1 text-body font-semibold">
+                  {value}
+                </dd>
+              )}
             </div>
           ))}
         </dl>

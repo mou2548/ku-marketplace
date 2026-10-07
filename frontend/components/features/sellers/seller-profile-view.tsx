@@ -123,7 +123,7 @@ export async function SellerProfileView({
               {
                 label: t("joinedLabel"),
                 value: profile.member_since
-                  ? new Date(profile.member_since).toLocaleDateString("en-GB", {
+                  ? new Date(profile.member_since).toLocaleDateString("en-US", {
                       month: "short",
                       year: "numeric",
                     })
