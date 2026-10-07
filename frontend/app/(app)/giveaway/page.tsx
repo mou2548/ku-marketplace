@@ -42,5 +42,11 @@ export default async function GiveawayPage() {
       ).filter((ticket): ticket is GiveawayTicket => ticket !== undefined)
     : [];
 
-  return <GiveawayBrowser giveaways={giveaways} tickets={tickets} />;
+  return (
+    <GiveawayBrowser
+      giveaways={giveaways}
+      tickets={tickets}
+      viewerId={viewerId ?? null}
+    />
+  );
 }

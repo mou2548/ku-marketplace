@@ -65,6 +65,28 @@ export class GiveawayExpiryService implements OnApplicationBootstrap {
       },
       data: { status: 'Closed' },
     });
+    // Manual allocation is the giver's job (flow: "ผู้แจกเลือกผู้มีสิทธิ์เอง").
+    // Tell them once when registration closes, so it is not left waiting.
+    const toChoose = await this.prisma.giveawayPost.findMany({
+      where: {
+        status: 'Active',
+        allocationMethod: 'Manual',
+        registerDeadline: { lte: now },
+      },
+      select: { giveawayId: true, giverId: true, itemName: true },
+    });
+    if (toChoose.length) {
+      await this.prisma.notification.createMany({
+        data: toChoose.map((g) => ({
+          userId: g.giverId,
+          eventKey: `giveaway:${g.giveawayId}:choose-recipients`,
+          title: 'Choose who receives your giveaway',
+          body: `Registration for ${g.itemName ?? `giveaway #${g.giveawayId}`} has closed. Pick the recipients.`,
+          href: `/giveaway/${g.giveawayId}/manage`,
+        })),
+        skipDuplicates: true,
+      });
+    }
   }
 
   private async runSweepSafely() {

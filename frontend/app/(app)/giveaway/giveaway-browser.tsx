@@ -42,9 +42,11 @@ function isBrowsable(g: GiveawayPost, now: number): boolean {
 export function GiveawayBrowser({
   giveaways,
   tickets,
+  viewerId,
 }: {
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
+  viewerId: number | null;
 }) {
   const t = getCopy();
   const now = useNow(30_000);
@@ -54,6 +56,12 @@ export function GiveawayBrowser({
   // and enter. Before the clock is known (server render), fall back to the
   // backend's own flag so the first paint and the hydrated one agree.
   const open = giveaways.filter((g) => (known ? isBrowsable(g, now) : g.registration_open));
+  // Everything the viewer gave away, whatever its state: a giveaway leaves
+  // the open shelf when registration closes, and the giver still has work to
+  // do (choose recipients, scan tickets) or wants the record.
+  const given = viewerId
+    ? giveaways.filter((g) => g.giver_id === viewerId)
+    : [];
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
@@ -90,6 +98,12 @@ export function GiveawayBrowser({
             {t("giveaway.myEntries")}
             <TabCount>{tickets.length}</TabCount>
           </UnderlineTab>
+          {viewerId ? (
+            <UnderlineTab id="given">
+              My giveaways
+              <TabCount>{given.length}</TabCount>
+            </UnderlineTab>
+          ) : null}
         </TabList>
 
         <TabPanel id="open">
@@ -173,9 +187,100 @@ export function GiveawayBrowser({
             </ul>
           )}
         </TabPanel>
+
+        {viewerId ? (
+          <TabPanel id="given">
+            {given.length === 0 ? (
+              <EmptyState
+                icon={<Gift className="size-6" />}
+                title="You have not given anything away yet"
+                description="Giveaways you create stay here after registration closes, with what is left to do."
+              />
+            ) : (
+              <ul className="flex flex-col gap-2 pt-4">
+                {given.map((giveaway) => {
+                  const stage = giverStage(giveaway, known ? now : null);
+                  return (
+                    <li key={giveaway.giveaway_id}>
+                      <Link href={`/giveaway/${giveaway.giveaway_id}/manage`}>
+                        <Surface
+                          as="div"
+                          shape="card"
+                          interactive
+                          className="flex items-center gap-3 overflow-hidden p-3"
+                        >
+                          <span className="block w-16 shrink-0 overflow-hidden rounded-slot">
+                            <PostImage
+                              src={giveaway.images[0]?.image_url}
+                              alt=""
+                              aspectRatio={1}
+                              sizes="64px"
+                            />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold">
+                              {giveaway.item_name}
+                            </p>
+                            <p className="truncate text-caption text-ink-muted">
+                              {giveaway.registered_count} registered ·{" "}
+                              {giveaway.quantity} to give
+                            </p>
+                            {stage.todo ? (
+                              <p className="mt-1 text-caption font-medium text-tone-warning-fg">
+                                {stage.todo}
+                              </p>
+                            ) : null}
+                          </div>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-pill border px-2.5 py-0.5 text-meta font-medium",
+                              TONE_CHIP[stage.tone],
+                            )}
+                          >
+                            {stage.label}
+                          </span>
+                        </Surface>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </TabPanel>
+        ) : null}
       </Tabs>
     </div>
   );
+}
+
+/**
+ * Where a giveaway stands for its giver, in the flow's terms: open for
+ * registration, then allocation (automatic for First come and Random, the
+ * giver's job for Manual), then pickup.
+ */
+function giverStage(
+  g: GiveawayPost,
+  now: number | null,
+): { label: string; tone: "neutral" | "info" | "success" | "warning"; todo?: string } {
+  if (g.status === "Completed") return { label: "Finished", tone: "neutral" };
+  if (g.status === "Closed")
+    return {
+      label: "Pickup",
+      tone: "info",
+      todo: "Scan each recipient's ticket when they collect",
+    };
+  const closed =
+    now !== null && g.register_deadline
+      ? Date.parse(g.register_deadline) <= now
+      : !g.registration_open;
+  if (!closed) return { label: "Open", tone: "success" };
+  if (g.allocation_method === "Manual")
+    return {
+      label: "Choose recipients",
+      tone: "warning",
+      todo: "Registration has closed: pick who receives it",
+    };
+  return { label: "Allocating", tone: "info" };
 }
 
 function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
