@@ -159,7 +159,16 @@ export function ReportDecision({
         }
       />
 
-      <div className="sticky action-bar-bottom z-[20] -mx-4 -mb-4 flex justify-end border-t border-line bg-surface px-4 py-3 sm:static">
+      <div className="sticky action-bar-bottom z-[20] -mx-4 -mb-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-line bg-surface px-4 py-3 sm:static">
+        {/* Say why the button is off, next to it, instead of leaving the
+            admin to find the counter under the text box. */}
+        {!chosen || tooShort ? (
+          <p role="status" className="text-meta text-ink-muted">
+            {!chosen
+              ? "Choose a verdict first."
+              : `Write ${MIN_NOTE - note.trim().length} more characters of reasoning to record it.`}
+          </p>
+        ) : null}
         <AdminButton
           tone="primary"
           isDisabled={!chosen || tooShort}

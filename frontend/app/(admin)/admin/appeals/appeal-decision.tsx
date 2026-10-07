@@ -88,7 +88,13 @@ export function AppealDecision({
         }
       />
 
-      <div className="sticky action-bar-bottom z-[20] -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-line bg-surface px-4 py-3 sm:static sm:flex-row sm:justify-end">
+      <div className="sticky action-bar-bottom z-[20] -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-line bg-surface px-4 py-3 sm:static sm:flex-row sm:items-center sm:justify-end">
+        {tooShort ? (
+          <p role="status" className="text-meta text-ink-muted sm:mr-auto">
+            Write {MIN_NOTE - note.trim().length} more characters of reasoning
+            to decide.
+          </p>
+        ) : null}
         <AdminButton
           isDisabled={tooShort || busy === "uphold"}
           isLoading={busy === "reject"}
