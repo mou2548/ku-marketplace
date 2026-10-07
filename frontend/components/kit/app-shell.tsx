@@ -24,6 +24,7 @@ import { Button, LinkButton } from "./button";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
+import { RestrictedShell, type Restriction } from "./restricted-shell";
 import { UserAvatar } from "./user-avatar";
 
 /**
@@ -96,9 +97,16 @@ export interface AppShellProps {
   children: React.ReactNode;
   badges?: NavBadges;
   user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
+  /** Set for a suspended or banned account: it gets the restricted shell. */
+  restriction?: Restriction | null;
 }
 
-export function AppShell({ children, badges = {}, user }: AppShellProps) {
+export function AppShell({
+  children,
+  badges = {},
+  user,
+  restriction,
+}: AppShellProps) {
   const t = getCopy();
   const pathname = usePathname() ?? "";
   /**
@@ -123,6 +131,14 @@ export function AppShell({ children, badges = {}, user }: AppShellProps) {
      list like any other and keeps the bar. */
   const isChatRoom = pathname.startsWith("/chat/");
   const showTabBar = !isChatRoom;
+
+  if (restriction) {
+    return (
+      <RestrictedShell restriction={restriction} user={user}>
+        {children}
+      </RestrictedShell>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col", isChat ? "h-dvh" : "min-h-dvh")}>

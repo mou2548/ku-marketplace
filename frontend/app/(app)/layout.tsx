@@ -2,7 +2,9 @@ import { AppShell } from "@/components/kit/app-shell";
 import { ToastProvider } from "@/components/kit/toast";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
+import { getEligibleAppeals } from "@/lib/api/appeals";
 import { getMe } from "@/lib/api/users";
+import type { Restriction } from "@/components/kit/restricted-shell";
 import { actionCount, buildInbox } from "@/lib/inbox";
 
 /**
@@ -30,6 +32,7 @@ export default async function AppLayout({
     | { name: string; avatarUrl: string | null; isAdmin: boolean }
     | undefined;
   let restricted = false;
+  let restriction: Restriction | null = null;
   let badges = { actions: 0, offers: 0, deals: 0 };
 
   if (viewerId) {
@@ -47,6 +50,21 @@ export default async function AppLayout({
       };
     }
 
+    if (restricted && me) {
+      // The latest suspension end among the decisions still open to appeal.
+      const eligible = await getEligibleAppeals().catch(() => []);
+      const until =
+        eligible
+          .map((report) => report.suspended_until)
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null;
+      restriction = {
+        status: me.status === "Banned" ? "Banned" : "Suspended",
+        until: me.status === "Banned" ? null : until,
+      };
+    }
+
     try {
       // No endpoint lists a user's offers across posts (docs/design/api-gaps.md),
       // so the inbox and its badges are built from transactions alone. The
@@ -60,8 +78,7 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
-      <AppShell user={user} badges={badges}>
-        {restricted && <p role="status" className="p-4 text-body-sm text-ink-secondary">Your account is restricted. Marketplace actions are unavailable; you can review decisions and submit an appeal from My appeals.</p>}
+      <AppShell user={user} badges={badges} restriction={restriction}>
         {children}
       </AppShell>
     </ToastProvider>
