@@ -37,6 +37,7 @@ import { DatePickerField } from "@/components/kit/date-picker";
 import { DeliveryCard } from "@/components/kit/delivery-card";
 import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
@@ -984,13 +985,18 @@ export function RoomScreen({
         {/* In a group room the counterparty is the giver, so the bare name
             reads as "the person you are talking to" when it is not. */}
         <span className="flex min-w-0 items-center gap-2">
-          <TrustBadge
+          <ProfileLink
+            userId={summary.counterparty.user_id}
             name={summary.counterparty.name}
-            isVerified={summary.counterparty.isVerified}
-            faculty={summary.counterparty.faculty}
-            avatarUrl={summary.counterparty.avatar_url}
-            size="sm"
-          />
+          >
+            <TrustBadge
+              name={summary.counterparty.name}
+              isVerified={summary.counterparty.isVerified}
+              faculty={summary.counterparty.faculty}
+              avatarUrl={summary.counterparty.avatar_url}
+              size="sm"
+            />
+          </ProfileLink>
           {isGroupRoom ? (
             <span className="shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">{t("chat.giver")}</span>
           ) : null}
@@ -1563,24 +1569,28 @@ function GiveawayDetails({
           <p className="text-overline text-ink-muted uppercase">{t("chat.inThisRoom")}</p>
 
           <span className="flex items-center gap-2">
-            <TrustBadge
-              size="sm"
-              name={giveaway.giver.name}
-              isVerified={giveaway.giver.isVerified}
-              avatarUrl={giveaway.giver.avatar_url}
-            />
+            <ProfileLink userId={giveaway.giver.user_id} name={giveaway.giver.name}>
+              <TrustBadge
+                size="sm"
+                name={giveaway.giver.name}
+                isVerified={giveaway.giver.isVerified}
+                avatarUrl={giveaway.giver.avatar_url}
+              />
+            </ProfileLink>
             <span className="ml-auto shrink-0 rounded-chip bg-gray-100 px-1.5 py-0.5 text-meta font-semibold text-ink-secondary">{t("chat.giver")}</span>
           </span>
 
           <ul className="flex flex-col gap-2">
             {entrants.slice(0, ROSTER_LIMIT).map((e) => (
               <li key={e.receiver_id} className="flex items-center gap-2">
-                <TrustBadge
-                  size="sm"
-                  name={e.user.name}
-                  isVerified={e.user.isVerified}
-                  avatarUrl={e.user.avatar_url}
-                />
+                <ProfileLink userId={e.user.user_id} name={e.user.name}>
+                  <TrustBadge
+                    size="sm"
+                    name={e.user.name}
+                    isVerified={e.user.isVerified}
+                    avatarUrl={e.user.avatar_url}
+                  />
+                </ProfileLink>
                 <StatusBadge
                   status={ENTRANT_STATUS[e.status]}
                   size="sm"

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
 import { TONE_RAIL_LEFT } from "./tone";
+import { ProfileLink } from "./profile-link";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -240,13 +241,18 @@ export function ChatThread({
                   )}
                 >
                   {named && startsRun ? (
-                    <TrustBadge
-                      size="sm"
-                      name={sender?.name ?? "Unknown member"}
-                      isVerified={sender?.isVerified ?? false}
-                      avatarUrl={sender?.avatar_url}
-                      className="px-1"
-                    />
+                    <ProfileLink
+                      userId={m.sender_id}
+                      name={sender?.name ?? "this member"}
+                    >
+                      <TrustBadge
+                        size="sm"
+                        name={sender?.name ?? "Unknown member"}
+                        isVerified={sender?.isVerified ?? false}
+                        avatarUrl={sender?.avatar_url}
+                        className="px-1"
+                      />
+                    </ProfileLink>
                   ) : null}
 
                   {m.images_expired ? (
