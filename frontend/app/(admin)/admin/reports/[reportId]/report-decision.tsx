@@ -53,6 +53,14 @@ const SANCTION_BY_VERDICT: Record<Exclude<VerdictId, "dismiss">, Sanction> = {
   ban: "suspend_permanent",
 };
 
+/** The button names the consequence and the person it lands on. */
+const ACTION_LABEL: Record<VerdictId, (who: string) => string> = {
+  dismiss: () => "Dismiss the report",
+  warn: (who) => `Warn ${who}`,
+  suspend: (who) => `Suspend ${who} for ${TEMPORARY_SUSPENSION_DAYS} days`,
+  ban: (who) => `Ban ${who} permanently`,
+};
+
 const MIN_NOTE = 30;
 
 /**
@@ -61,7 +69,14 @@ const MIN_NOTE = 30;
  * purpose: on a confirmed violation it is sent to the reported user and is
  * what any appeal is judged against. The reporter never sees it.
  */
-export function ReportDecision({ reportId }: { reportId: number }) {
+export function ReportDecision({
+  reportId,
+  targetName,
+}: {
+  reportId: number;
+  /** Who a sanction lands on; named in the verdict so it is never in doubt. */
+  targetName: string | null;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [verdict, setVerdict] = useState<VerdictId | null>(null);
@@ -69,6 +84,7 @@ export function ReportDecision({ reportId }: { reportId: number }) {
   const [busy, setBusy] = useState(false);
 
   const chosen = VERDICTS.find((v) => v.id === verdict);
+  const who = targetName ?? "the reported user";
   const tooShort = note.trim().length < MIN_NOTE;
 
   async function decide() {
@@ -105,9 +121,15 @@ export function ReportDecision({ reportId }: { reportId: number }) {
       aria-labelledby="decision-title"
       className="flex flex-col gap-4 p-4"
     >
-      <h2 id="decision-title" className="text-body font-medium">
-        Decision
-      </h2>
+      <div>
+        <h2 id="decision-title" className="text-body font-medium">
+          Decision
+        </h2>
+        <p className="text-body-sm text-ink-muted">
+          Any sanction applies to <strong className="text-ink">{who}</strong>,
+          not the person who reported.
+        </p>
+      </div>
 
       <AdminRadioGroup
         label="Verdict"
@@ -145,7 +167,7 @@ export function ReportDecision({ reportId }: { reportId: number }) {
           onPress={decide}
         >
           <Gavel aria-hidden />
-          {chosen ? `Record decision: ${chosen.label}` : "Choose a verdict"}
+          {verdict ? ACTION_LABEL[verdict](who) : "Choose a verdict"}
         </AdminButton>
       </div>
     </AdminBox>

@@ -114,6 +114,35 @@ export class ReportService {
   }
 
   /**
+   * The admin's view of reports: each one with the person it is against, so
+   * a case shows both sides and the verdict names who it lands on. One query
+   * for all the people, whatever the number of reports.
+   */
+  private async adminView(
+    reports: Array<Parameters<ReportService['serializeReport']>[0]>,
+  ) {
+    const targetIds = await Promise.all(
+      reports.map((report) => reportedUserId(this.prisma, report)),
+    );
+    const ids = [
+      ...new Set(targetIds.filter((id): id is number => id !== undefined)),
+    ];
+    const users = ids.length
+      ? await this.prisma.user.findMany({ where: { userId: { in: ids } } })
+      : [];
+    const byId = new Map(users.map((user) => [user.userId, user]));
+    return reports.map((report, index) => {
+      const target = byId.get(targetIds[index] ?? -1);
+      return {
+        ...this.serializeReport(report),
+        reported_user: target
+          ? { ...this.serializeUserSummary(target), status: target.status }
+          : null,
+      };
+    });
+  }
+
+  /**
    * The reporter's own view (ruling of 2026-10-05): they see what they filed,
    * never the outcome — no status, verdict note, handler or decision time.
    */
@@ -178,7 +207,7 @@ export class ReportService {
       include: this.reportInclude,
       orderBy: { createdAt: 'desc' },
     });
-    return reports.map((report) => this.serializeReport(report));
+    return this.adminView(reports);
   }
 
   async findAllForUser(userId: number) {
@@ -221,7 +250,7 @@ export class ReportService {
       where: { reportId },
       include: this.reportInclude,
     });
-    return this.serializeReport(report);
+    return (await this.adminView([report]))[0];
   }
 
   private async findOneOrThrow(reportId: number) {
@@ -391,7 +420,7 @@ export class ReportService {
       dto.status === ReportStatus.Violation_Confirmed,
     );
 
-    return this.serializeReport(resolved);
+    return (await this.adminView([resolved]))[0];
   }
 
   async restore(reportId: number, adminId: number) {
@@ -414,6 +443,6 @@ export class ReportService {
     // transaction rather than leaving it stranded.
     await this.transactionService.settleReportedTransaction(reportId, false);
 
-    return this.serializeReport(restored);
+    return (await this.adminView([restored]))[0];
   }
 }

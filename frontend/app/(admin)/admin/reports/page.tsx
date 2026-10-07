@@ -72,7 +72,9 @@ export default async function AdminReportsPage() {
                           Report #{r.report_id} · {r.reason_category}
                         </span>
                         <span className="block truncate text-meta text-ink-muted">
-                          {r.report_type} #{r.target_id} · by {r.reporter.name}
+                          {r.reporter.name} reported{" "}
+                          {r.reported_user?.name ??
+                            `${r.report_type} #${r.target_id}`}
                         </span>
                       </span>
                       <span className="flex flex-col items-end gap-1">

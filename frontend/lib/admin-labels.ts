@@ -42,6 +42,13 @@ export const ADMIN_APPOINTMENT_STATUS: Record<AppointmentStatus, AdminLabel> = {
   Rejected: { label: "Rejected", tone: "neutral" },
 };
 
+export const ADMIN_ACCOUNT_STATUS: Record<string, AdminLabel> = {
+  Active: { label: "Active", tone: "success" },
+  Suspended: { label: "Suspended", tone: "warning" },
+  Banned: { label: "Banned", tone: "danger" },
+  Deleted: { label: "Deleted", tone: "neutral" },
+};
+
 /** Mirrors `TEMPORARY_SUSPENSION_DAYS` in `backend/src/report/account-standing.ts`. */
 export const TEMPORARY_SUSPENSION_DAYS = 3;
 

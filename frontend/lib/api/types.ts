@@ -289,6 +289,8 @@ export interface Report {
   status: ReportStatus;
   /** Admin endpoints only; null until a violation is confirmed. */
   sanction?: Sanction | null;
+  /** Admin endpoints only: who the report is against. */
+  reported_user?: (UserSummary & { status: string | null }) | null;
   handled_by?: number | null;
   handler?: UserSummary | null;
   resolution_note?: string | null;

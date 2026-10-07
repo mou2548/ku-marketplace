@@ -6,7 +6,7 @@ const labels = loadTs('lib/admin-labels.ts');
 const unused = () => {
   throw new Error('not called in this test');
 };
-const { buildQueueRows } = loadTs('lib/admin.ts', {
+const { buildQueueRows, restrictedAccounts } = loadTs('lib/admin.ts', {
   react: { cache: (fn) => fn },
   '@/lib/api/appeals': { adminListAppeals: unused },
   '@/lib/api/membership': { listPendingPayments: unused },
@@ -22,6 +22,8 @@ const report = (id, status, created_at) => ({
   report_type: 'User',
   target_id: 9,
   handled_by: status === 'Pending' ? null : 1,
+  reporter: { user_id: 5, name: 'Ploy' },
+  reported_user: { user_id: 9, name: 'Somchai', status: 'Active' },
 });
 const appeal = (id, status, created_at) => ({
   appeal_id: id,
@@ -65,6 +67,7 @@ test('labels rows with the admin vocabulary and links to the case', () => {
   assert.equal(rows['report-1'].status.label, 'New');
   assert.equal(rows['report-2'].status.label, 'Under investigation');
   assert.equal(rows['report-2'].href, '/admin/reports/2');
+  assert.equal(rows['report-2'].detail, 'Scam · Ploy reported Somchai');
   assert.equal(rows['appeal-1'].status.label, 'Under review');
   assert.equal(rows['appeal-1'].detail, 'Against report #41 · Nattapong');
   assert.equal(rows['membership-7'].href, '/admin/memberships');
@@ -74,3 +77,34 @@ test('labels rows with the admin vocabulary and links to the case', () => {
 test('never names who holds a case: there is one admin', () => {
   for (const row of buildQueueRows(queues)) assert.equal('openedBy' in row, false);
 });
+
+test('restricted accounts: running suspensions and bans, lifted ones gone', () => {
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const decided = (id, userId, status, sanction, handledAt) => ({
+    ...report(id, 'Violation_Confirmed', '2026-10-01T00:00:00Z'),
+    sanction,
+    handled_at: handledAt,
+    reported_user: { user_id: userId, name: `User ${userId}`, status },
+  });
+  const accounts = restrictedAccounts(
+    {
+      reports: [
+        decided(10, 1, 'Suspended', 'suspend_temporary', '2026-10-06T00:00:00Z'),
+        decided(11, 2, 'Suspended', 'suspend_temporary', '2026-10-01T00:00:00Z'),
+        decided(12, 3, 'Banned', 'suspend_permanent', '2026-09-01T00:00:00Z'),
+        decided(13, 4, 'Active', 'warn', '2026-10-06T00:00:00Z'),
+      ],
+      appeals: [],
+      memberships: [],
+    },
+    now,
+  );
+  assert.equal(
+    JSON.stringify(accounts.map((a) => [a.user.user_id, a.status, a.until])),
+    JSON.stringify([
+      [3, 'Banned', null],
+      [1, 'Suspended', '2026-10-09T00:00:00.000Z'],
+    ]),
+  );
+});
+

@@ -6,6 +6,7 @@ import { adminListReports } from "@/lib/api/reports";
 import {
   ADMIN_APPEAL_STATUS,
   ADMIN_REPORT_STATUS,
+  TEMPORARY_SUSPENSION_DAYS,
   isOpenAppeal,
   isOpenReport,
   type AdminQueueCounts,
@@ -52,7 +53,7 @@ export function buildQueueRows(queues: AdminQueues): QueueRow[] {
       kind: "report",
       href: `/admin/reports/${report.report_id}`,
       title: `Report #${report.report_id}`,
-      detail: `${report.reason_category} · ${report.report_type} #${report.target_id}`,
+      detail: `${report.reason_category} · ${report.reporter.name} reported ${report.reported_user?.name ?? `${report.report_type} #${report.target_id}`}`,
       status: ADMIN_REPORT_STATUS[report.status],
       createdAt: report.created_at,
     }));
@@ -83,6 +84,62 @@ export function buildQueueRows(queues: AdminQueues): QueueRow[] {
 
   return [...reports, ...appeals, ...memberships].sort(
     (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
+  );
+}
+
+export interface RestrictedAccount {
+  user: NonNullable<AdminQueues["reports"][number]["reported_user"]>;
+  status: "Suspended" | "Banned";
+  /** When the latest running suspension ends; null for a ban. */
+  until: string | null;
+  /** The decision behind it, for a link to the case. */
+  reportId: number;
+}
+
+/**
+ * Who is suspended or banned right now, worked out from the decided reports
+ * (the sanction and decision time are on each one), so no extra endpoint is
+ * needed. An upheld appeal turns its report back to dismissed, so lifted
+ * sanctions drop out by themselves.
+ */
+export function restrictedAccounts(
+  queues: AdminQueues,
+  now: number,
+): RestrictedAccount[] {
+  const byUser = new Map<number, RestrictedAccount>();
+  for (const report of queues.reports) {
+    const user = report.reported_user;
+    if (
+      report.status !== "Violation_Confirmed" ||
+      !user ||
+      (user.status !== "Suspended" && user.status !== "Banned")
+    )
+      continue;
+    const banned = report.sanction === "suspend_permanent";
+    const ends =
+      report.sanction === "suspend_temporary" && report.handled_at
+        ? Date.parse(report.handled_at) + TEMPORARY_SUSPENSION_DAYS * 86_400_000
+        : null;
+    if (!banned && (ends === null || ends <= now)) continue;
+    const seen = byUser.get(user.user_id);
+    if (seen?.status === "Banned") continue;
+    if (banned) {
+      byUser.set(user.user_id, { user, status: "Banned", until: null, reportId: report.report_id });
+    } else if (!seen || Date.parse(seen.until ?? "") < (ends ?? 0)) {
+      byUser.set(user.user_id, {
+        user,
+        status: "Suspended",
+        until: new Date(ends!).toISOString(),
+        reportId: report.report_id,
+      });
+    }
+  }
+  return [...byUser.values()].sort((a, b) =>
+    a.status === b.status
+      ? a.user.name.localeCompare(b.user.name)
+      : a.status === "Banned"
+        ? -1
+        : 1,
   );
 }
 

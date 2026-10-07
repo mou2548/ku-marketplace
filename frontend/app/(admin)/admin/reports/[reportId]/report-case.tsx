@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 
 import { AdminTakePanel } from "@/components/admin/admin-controls";
 import {
@@ -15,6 +15,7 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { adminOpenReport } from "@/lib/actions/reports";
 import {
+  ADMIN_ACCOUNT_STATUS,
   ADMIN_APPOINTMENT_STATUS,
   ADMIN_REPORT_STATUS,
   ADMIN_SANCTION,
@@ -83,20 +84,16 @@ export function ReportCase({
         <AdminPill status={ADMIN_REPORT_STATUS[report.status]} />
       </header>
 
+      <Parties report={report} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <AdminBox
           aria-labelledby="report-side"
           className="flex flex-col gap-3 p-4"
         >
           <h2 id="report-side" className="text-body font-medium">
-            The report
+            What was reported
           </h2>
-          <TrustBadge
-            name={report.reporter.name}
-            avatarUrl={report.reporter.avatar_url}
-            isVerified={report.reporter.isVerified}
-            size="sm"
-          />
           <AdminFacts
             facts={[
               ["Reason", report.reason_category],
@@ -162,10 +159,82 @@ export function ReportCase({
           onTake={take}
         />
       ) : report.status === "Under_Investigation" ? (
-        <ReportDecision reportId={report.report_id} />
+        <ReportDecision
+          reportId={report.report_id}
+          targetName={report.reported_user?.name ?? null}
+        />
       ) : (
         <DecidedSummary report={report} />
       )}
+    </div>
+  );
+}
+
+/**
+ * Who filed the report and who it is against, side by side, so the admin
+ * never mistakes the reporter for the person a sanction would land on.
+ */
+function Parties({ report }: { report: Report }) {
+  const target = report.reported_user;
+  return (
+    <div className="grid items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <AdminBox className="flex flex-col gap-2 p-4">
+        <p className="text-meta text-ink-muted">Reported by</p>
+        <TrustBadge
+          name={report.reporter.name}
+          avatarUrl={report.reporter.avatar_url}
+          isVerified={report.reporter.isVerified}
+        />
+        <p className="text-meta text-ink-muted">
+          Never told the outcome.
+        </p>
+      </AdminBox>
+      <span
+        aria-hidden
+        className="hidden items-center justify-center text-ink-muted sm:flex"
+      >
+        <ArrowRight className="size-5" />
+      </span>
+      <AdminBox className="flex flex-col gap-2 border-tone-danger-border p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-meta font-medium text-tone-danger-fg">
+            Reported user · receives any sanction
+          </p>
+          {target?.status ? (
+            <AdminPill
+              status={
+                ADMIN_ACCOUNT_STATUS[target.status] ?? {
+                  label: target.status,
+                  tone: "neutral",
+                }
+              }
+            />
+          ) : null}
+        </div>
+        {target ? (
+          <>
+            <TrustBadge
+              name={target.name}
+              avatarUrl={target.avatar_url}
+              isVerified={target.isVerified}
+            />
+            <a
+              href={`/sellers/${target.user_id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex w-fit items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
+            >
+              Open their profile
+              <ExternalLink aria-hidden className="size-3.5" />
+            </a>
+          </>
+        ) : (
+          <p className="text-body-sm text-ink-secondary">
+            Could not work out who this is against (the
+            {" "}{report.report_type.toLowerCase()} may have been removed).
+          </p>
+        )}
+      </AdminBox>
     </div>
   );
 }

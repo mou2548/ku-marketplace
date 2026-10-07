@@ -1,14 +1,22 @@
 import Link from "next/link";
-import { Activity, Bell, Clock, Inbox, ListChecks } from "lucide-react";
+import { Activity, Ban, Bell, Clock, Inbox, ListChecks } from "lucide-react";
 
 import {
   AdminBox,
   AdminBoxHeader,
   AdminPageHeader,
+  AdminPill,
 } from "@/components/admin/admin-ui";
 import { QueueTable } from "@/components/admin/queue-table";
 import { waitingFor, waitingForLong } from "@/lib/admin-labels";
-import { buildQueueRows, loadAdminQueues, requestTime } from "@/lib/admin";
+import {
+  buildQueueRows,
+  loadAdminQueues,
+  requestTime,
+  restrictedAccounts,
+} from "@/lib/admin";
+import { TrustBadge } from "@/components/kit/trust-badge";
+import { formatDateTime } from "@/lib/date-format";
 import { getModerationActivity } from "@/lib/api/notifications";
 import { getMe } from "@/lib/api/users";
 
@@ -49,6 +57,7 @@ export default async function AdminDashboardPage() {
   const now = requestTime();
   const rows = buildQueueRows(queues);
   const oldest = rows[0];
+  const restricted = restrictedAccounts(queues, now);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -64,6 +73,11 @@ export default async function AdminDashboardPage() {
           value={oldest ? waitingForLong(oldest.createdAt, now) : "None"}
           label="oldest case"
         />
+        <Stat
+          icon={<Ban />}
+          value={String(restricted.length)}
+          label="restricted accounts"
+        />
       </dl>
 
       <AdminBox aria-labelledby="queue-title">
@@ -75,6 +89,57 @@ export default async function AdminDashboardPage() {
         <div className="px-4">
           <QueueTable rows={rows} now={now} />
         </div>
+      </AdminBox>
+
+      <AdminBox aria-labelledby="restricted-title">
+        <AdminBoxHeader
+          icon={<Ban />}
+          title="Restricted accounts"
+          titleId="restricted-title"
+        >
+          <span className="text-meta text-ink-muted">
+            Suspensions end on their own; a ban lasts until an appeal is upheld
+          </span>
+        </AdminBoxHeader>
+        {restricted.length ? (
+          <ul className="border-t border-line">
+            {restricted.map((account) => (
+              <li
+                key={account.user.user_id}
+                className="border-b border-line last:border-b-0"
+              >
+                <Link
+                  href={`/admin/reports/${account.reportId}`}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3 text-body-sm hover:bg-surface-sunken/60"
+                >
+                  <TrustBadge
+                    name={account.user.name}
+                    avatarUrl={account.user.avatar_url}
+                    isVerified={account.user.isVerified}
+                    size="sm"
+                    className="min-w-0 flex-1"
+                  />
+                  <span className="text-meta text-ink-muted">
+                    {account.status === "Banned"
+                      ? "Until an appeal is upheld"
+                      : `Until ${formatDateTime(new Date(account.until!))}`}
+                  </span>
+                  <AdminPill
+                    status={
+                      account.status === "Banned"
+                        ? { label: "Banned", tone: "danger" }
+                        : { label: "Suspended", tone: "warning" }
+                    }
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="border-t border-line px-4 py-6 text-center text-body-sm text-ink-muted">
+            No account is suspended or banned.
+          </p>
+        )}
       </AdminBox>
 
       <AdminBox aria-labelledby="activity-title">
