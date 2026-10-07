@@ -6,24 +6,20 @@ import { Button } from "./button";
 import { ReportDialog, type ReportReasonOption } from "./report-dialog";
 
 /**
- * The one set of reasons for reporting a person, wherever the report starts
- * (their profile, a chat). Two copies had drifted into different lists, so the
- * same complaint was worded one way from a chat and another from a profile,
- * and an admin saw both.
+ * §7.5.2 — the system-provided reasons for reporting a person, the same
+ * wherever the report starts (their profile, a chat). Fraud, a fake slip or
+ * an item that is not as described belong to a deal and are reported from
+ * the deal itself (§7.5.3, /history/:txId/report); a listing is reported from
+ * the listing (§7.5.1).
  */
 export const USER_REPORT_REASONS: ReportReasonOption[] = [
   {
-    id: "fraud",
-    label: "Fraud or scam",
-    description: "Took money or goods and did not deliver, fake slip",
-  },
-  {
     id: "rude-or-threatening",
-    label: "Rude, harassing or threatening",
+    label: "Rude or threatening behavior",
     description: "Insults, threats or hostile messages",
   },
   {
-    id: "spam",
+    id: "spam-or-disturbance",
     label: "Spam or disturbance",
     description: "Repeated unwanted messages",
   },
@@ -31,11 +27,6 @@ export const USER_REPORT_REASONS: ReportReasonOption[] = [
     id: "impersonation",
     label: "Impersonating someone else",
     description: "Not who they claim to be",
-  },
-  {
-    id: "other",
-    label: "Something else",
-    description: "Explain in the details",
   },
 ];
 
