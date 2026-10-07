@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Clock,
   CreditCard,
   FileText,
@@ -36,6 +39,32 @@ const FILTERS = [
 
 type Filter = (typeof FILTERS)[number]["id"];
 
+type SortKey = "case" | "status" | "waiting";
+interface Sort {
+  key: SortKey;
+  /** For "waiting", ascending means longest wait first. */
+  dir: "asc" | "desc";
+}
+
+/** Status order when sorting by status: untouched cases first. */
+const STATUS_RANK: Record<string, number> = {
+  New: 0,
+  "Slip to check": 1,
+  "Under investigation": 2,
+  "Under review": 2,
+};
+
+function compare(a: QueueRow, b: QueueRow, key: SortKey): number {
+  if (key === "case")
+    return a.title.localeCompare(b.title, undefined, { numeric: true });
+  if (key === "status")
+    return (
+      (STATUS_RANK[a.status.label] ?? 9) - (STATUS_RANK[b.status.label] ?? 9) ||
+      Date.parse(a.createdAt) - Date.parse(b.createdAt)
+    );
+  return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+}
+
 /**
  * Every open case in one table, oldest first. The filter only narrows what is
  * on screen; the order stays oldest first so nothing waits unseen.
@@ -43,8 +72,19 @@ type Filter = (typeof FILTERS)[number]["id"];
  */
 export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const shown =
+  const [sort, setSort] = useState<Sort>({ key: "waiting", dir: "asc" });
+  const filtered =
     filter === "all" ? rows : rows.filter((row) => row.kind === filter);
+  const shown = [...filtered].sort((a, b) => {
+    const order = compare(a, b, sort.key);
+    return sort.dir === "asc" ? order : -order;
+  });
+  const sortBy = (key: SortKey) =>
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
 
   return (
     <>
@@ -80,9 +120,15 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
           <table className="w-full min-w-[520px] border-collapse text-body-sm">
             <thead>
               <tr className="bg-surface-sunken text-left text-meta text-ink-secondary">
-                <Th icon={<FileText />}>Case</Th>
-                <Th icon={<Loader />}>Status</Th>
-                <Th icon={<Clock />}>Waiting</Th>
+                <Th icon={<FileText />} sortKey="case" sort={sort} onSort={sortBy}>
+                  Case
+                </Th>
+                <Th icon={<Loader />} sortKey="status" sort={sort} onSort={sortBy}>
+                  Status
+                </Th>
+                <Th icon={<Clock />} sortKey="waiting" sort={sort} onSort={sortBy}>
+                  Waiting
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -144,22 +190,52 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
 
 function Th({
   icon,
+  sortKey,
+  sort,
+  onSort,
   children,
 }: {
   icon: React.ReactNode;
+  sortKey: SortKey;
+  sort: Sort;
+  onSort: (key: SortKey) => void;
   children: React.ReactNode;
 }) {
+  const active = sort.key === sortKey;
+  // "waiting" ascending shows the oldest first, i.e. longest wait on top.
+  const ariaSort = active
+    ? sort.dir === "asc"
+      ? sortKey === "waiting"
+        ? "descending"
+        : "ascending"
+      : sortKey === "waiting"
+        ? "ascending"
+        : "descending"
+    : "none";
+  const Arrow = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
   return (
     <th
       scope="col"
-      className="whitespace-nowrap px-4 py-2 font-medium [&+th]:border-l [&+th]:border-line"
+      aria-sort={ariaSort}
+      className="whitespace-nowrap p-0 font-medium [&+th]:border-l [&+th]:border-line"
     >
-      <span className="inline-flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "flex w-full items-center gap-1.5 px-4 py-2 text-left hover:text-ink",
+          active && "text-ink",
+        )}
+      >
         <span aria-hidden className="text-ink-muted [&_svg]:size-3.5">
           {icon}
         </span>
         {children}
-      </span>
+        <Arrow
+          aria-hidden
+          className={cn("size-3.5", active ? "text-ink" : "text-ink-muted/60")}
+        />
+      </button>
     </th>
   );
 }
