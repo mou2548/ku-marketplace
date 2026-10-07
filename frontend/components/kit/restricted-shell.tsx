@@ -47,6 +47,25 @@ export function RestrictedShell({
     if (!ok) router.replace("/account/appeals");
   }, [ok, router]);
 
+  // The restriction is read when the layout renders, and a layout is not
+  // rendered again on client navigation. Re-check on returning to the tab and
+  // once a minute, so a lifted or expired suspension frees the account without
+  // a manual reload.
+  useEffect(() => {
+    const refresh = () => router.refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(refresh, 60_000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(timer);
+    };
+  }, [router]);
+
   const linkClass = (href: string) =>
     cn(
       "flex min-h-10 items-center gap-1.5 rounded-control px-3 text-body-sm transition-colors",
