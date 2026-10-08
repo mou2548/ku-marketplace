@@ -18,6 +18,7 @@ import { SelectOption, Switch } from "@/components/kit/choice";
 import { EmptyState } from "@/components/kit/empty-state";
 import { TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { MasonryRows } from "@/components/kit/masonry-grid";
 import { PostCard } from "@/components/kit/post-card";
 import { SearchField } from "@/components/kit/search-field";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
@@ -482,14 +483,15 @@ export function MarketFeed({
         />
       ) : (
         /**
-         * Row-major, left to right, for every sort including the default
-         * newest-first. The masonry used here before filled column by column
-         * (top to bottom), so the newest listings read down the first column
-         * instead of across the top row.
+         * Masonry, read left to right: listings are dealt across the columns
+         * in order, so the top row holds the first ones for every sort, and
+         * the columns still pack tightly.
          */
-        <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-          {filtered.map(renderCard)}
-        </div>
+        <MasonryRows
+          items={filtered}
+          getKey={(post) => post.post_id}
+          renderItem={renderCard}
+        />
       )}
     </div>
   );
