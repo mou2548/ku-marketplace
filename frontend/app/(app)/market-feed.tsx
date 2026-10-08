@@ -17,7 +17,6 @@ import { Button } from "@/components/kit/button";
 import { SelectOption, Switch } from "@/components/kit/choice";
 import { EmptyState } from "@/components/kit/empty-state";
 import { TextInput } from "@/components/kit/field";
-import { MasonryGrid, MasonryItem } from "@/components/kit/masonry-grid";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostCard } from "@/components/kit/post-card";
 import { SearchField } from "@/components/kit/search-field";
@@ -481,22 +480,12 @@ export function MarketFeed({
             ) : null
           }
         />
-      ) : sort === "newest" ? (
-        <MasonryGrid columns={{ base: 2, md: 3, lg: 4, xl: 5 }}>
-          {filtered.map((post) => (
-            <MasonryItem key={post.post_id}>{renderCard(post)}</MasonryItem>
-          ))}
-        </MasonryGrid>
       ) : (
         /**
-         * An explicit sort drops the masonry, by design. CSS multi-column fills
-         * column-major (masonry-grid.tsx says so in its own header), so in
-         * "price, low to high" the second-cheapest item is not beside the
-         * cheapest — it is below it, and the item to its right is somewhere
-         * around rank n/4. The order is correct in the array and unreadable on
-         * screen. A plain grid is row-major, which is the only layout in which
-         * a chosen sort means anything. `newest` keeps the masonry because it
-         * is the default browse order, not an ordering anyone asked for.
+         * Row-major, left to right, for every sort including the default
+         * newest-first. The masonry used here before filled column by column
+         * (top to bottom), so the newest listings read down the first column
+         * instead of across the top row.
          */
         <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
           {filtered.map(renderCard)}
@@ -539,10 +528,7 @@ function priceLabel(
   return t("feed.priceUpTo", { max: maxPrice ?? 0 });
 }
 
-/**
- * Shared by both layouts above so the card stays identical whichever grid it
- * lands in — only the wrapper differs.
- */
+/** One listing card in the feed grid. */
 function renderCard(post: Post) {
   return (
     <PostCard
