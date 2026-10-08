@@ -12,21 +12,13 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarPlus,
-  CalendarX,
-  CircleCheck,
   Flag,
-  Handshake,
   Info,
   MapPin,
-  PackageCheck,
   QrCode,
-  RotateCcw,
   ScanLine,
-  ShieldAlert,
   Truck,
-  Wallet,
   XCircle,
-  type LucideIcon,
 } from "lucide-react";
 
 import { ActionCard, ChatThread } from "@/components/kit/chat-thread";
@@ -85,7 +77,7 @@ import type {
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
 import { describeDeal } from "@/lib/deal-progress";
-import { buildDealTimeline, type DealEvent, type DealEventKind } from "@/lib/deal-timeline";
+import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
@@ -220,7 +212,6 @@ export function RoomScreen({
   giveaway,
   appointment: initialAppointment,
   appointmentCards: initialAppointmentCards,
-  appointments: initialAppointments,
   entrants,
   messages: initialMessages,
 }: {
@@ -239,10 +230,6 @@ export function RoomScreen({
   /** Every card on the deal, retired ones included — feeds the progress
    * summaries in the thread. */
   appointmentCards?: AppointmentCardData[];
-  /** Every card on this transaction, superseded ones included — what
-   * `buildDealTimeline` needs to show every meetup proposal, not just the
-   * live one. */
-  appointments?: AppointmentCardData[];
   /** Everyone in a giveaway room. See docs/design/api-gaps.md. */
   entrants?: Entrant[];
   messages: ChatMessage[];
@@ -276,7 +263,6 @@ export function RoomScreen({
   const [appointmentCards, setAppointmentCards] = useState(
     initialAppointmentCards ?? [],
   );
-  const [appointments, setAppointments] = useState(initialAppointments ?? []);
   // The transaction itself also has to poll, not just messages and
   // appointments — the stepper, the prompt, every `describeDeal`/
   // `buildDealTimeline` card, and `sellerQr`'s own visibility all read from
@@ -295,7 +281,6 @@ export function RoomScreen({
           const { pinned, pending } = deriveAppointmentView(cards);
           setAppointment(pending ?? pinned);
           setAppointmentCards(cards);
-          setAppointments(cards);
         })
         .catch(() => {});
       fetchTransaction(transactionId).then(setTransaction).catch(() => {});
@@ -315,40 +300,6 @@ export function RoomScreen({
   // Same derivation the stepper runs, for the "Step n of m" counter above it.
   const steps = transaction ? buildSteps(transaction, appointment?.status) : [];
   const currentStep = steps.findIndex((s) => s.current);
-  // The stepper above only ever shows the current step of the happy path —
-  // it has no representation at all for a cancellation, a refund, a return,
-  // or an admin report. `buildDealTimeline` covers every branch, with a
-  // timestamp, so both sides see the full story instead of one snapshot.
-  const timelineEvents = useMemo(
-    () => (transaction ? buildDealTimeline(transaction, appointments, viewerId) : []),
-    [transaction, appointments, viewerId],
-  );
-  // `messages` is already oldest-first (ChatThread's own day-grouping relies
-  // on that order too), so the last message at or before an event's `placeAt`
-  // is found in one pass. `afterMessageId` 0 is "before the first message" —
-  // see `ChatThread`'s own doc comment on `systemCards`.
-  const systemCards = useMemo(() => {
-    if (timelineEvents.length === 0) return [];
-    const buckets = new Map<number, DealEvent[]>();
-    for (const event of timelineEvents) {
-      let afterMessageId = 0;
-      for (const m of messages) {
-        if (Date.parse(m.created_at) <= event.placeAt) afterMessageId = m.message_id;
-        else break;
-      }
-      buckets.set(afterMessageId, [...(buckets.get(afterMessageId) ?? []), event]);
-    }
-    return Array.from(buckets, ([afterMessageId, events]) => ({
-      afterMessageId,
-      node: (
-        <div className="flex flex-col gap-1.5">
-          {events.map((event) => (
-            <DealEventCard key={event.id} event={event} />
-          ))}
-        </div>
-      ),
-    }));
-  }, [timelineEvents, messages]);
   // Every step done means the deal is finished, not that it is back at step 1.
   const currentStepNumber = currentStep === -1 ? steps.length : currentStep + 1;
   const deadline = transaction ? deadlineFor(transaction) : undefined;
@@ -930,7 +881,7 @@ export function RoomScreen({
         ...shownEvents.map((event) => ({
           key: event.id,
           placeAt: event.placeAt,
-          node: <ProgressLine event={event} />,
+          node: <DealEventCard event={event} />,
         })),
         {
           key: "status",
@@ -1041,7 +992,6 @@ export function RoomScreen({
         showSenders={isGroupRoom}
         action={stepAction}
         events={progressEvents}
-        systemCards={systemCards}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
         onSend={handleSend}
@@ -1144,55 +1094,6 @@ export function RoomScreen({
           ) : null}
         </div>
       </Overlay>
-    </div>
-  );
-}
-
-const EVENT_ICON: Record<DealEventKind, LucideIcon> = {
-  started: Handshake,
-  slip: Wallet,
-  paid: CircleCheck,
-  "meetup-proposed": CalendarClock,
-  "meetup-confirmed": CalendarClock,
-  "meetup-closed": CalendarX,
-  shipped: Truck,
-  received: PackageCheck,
-  "cancel-requested": XCircle,
-  "cancel-answered": XCircle,
-  review: ShieldAlert,
-  "refund-slip": RotateCcw,
-  "refund-received": RotateCcw,
-  "item-returned": RotateCcw,
-  closed: XCircle,
-};
-
-/**
- * A step that already happened, as a quiet system line the way LINE shows
- * one: centred, small, no card and no button. The thread is a conversation
- * first; past steps are context, not things to act on.
- */
-function ProgressLine({ event }: { event: DealEvent }) {
-  const Icon = EVENT_ICON[event.kind];
-  return (
-    <div className="flex flex-col items-center gap-0.5 px-6 py-0.5 text-center">
-      {/* Inline, not flex: a long title wraps under its icon instead of
-          leaving the icon alone on a line of its own. */}
-      <p className="text-body-lg text-ink-muted">
-        <Icon
-          aria-hidden
-          className={cn("mr-1.5 inline-block size-5 align-[-0.2em]", TONE_TEXT[event.tone])}
-        />
-        <span className="font-medium text-ink-secondary">{event.title}</span>
-      </p>
-      {event.at || event.detail ? (
-        <p className="text-body-lg break-words text-ink-muted">
-          {event.at ? (
-            <time dateTime={event.at}>{formatDateTime(event.at)}</time>
-          ) : null}
-          {event.at && event.detail ? " · " : null}
-          {event.detail}
-        </p>
-      ) : null}
     </div>
   );
 }

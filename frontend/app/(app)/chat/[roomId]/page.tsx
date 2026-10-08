@@ -55,7 +55,6 @@ export default async function RoomPage({
           giveaway={detail.giveaway}
           appointment={detail.appointment}
           appointmentCards={detail.appointmentCards}
-          appointments={detail.appointments}
           entrants={detail.entrants}
           messages={detail.messages}
         />
