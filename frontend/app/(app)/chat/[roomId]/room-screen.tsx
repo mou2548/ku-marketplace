@@ -272,7 +272,7 @@ export function RoomScreen({
   // card — until they reloaded the page by hand.
   const [transaction, setTransaction] = useState(initialTransaction);
 
-  usePolling(() => {
+  function refreshRoom() {
     if (transaction) {
       const transactionId = transaction.transaction_id;
       fetchChatHistory(transactionId).then(setMessages).catch(() => {});
@@ -287,7 +287,9 @@ export function RoomScreen({
     } else if (giveaway) {
       fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
     }
-  }, CHAT_POLL_INTERVAL_MS);
+  }
+
+  usePolling(refreshRoom, CHAT_POLL_INTERVAL_MS);
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -308,11 +310,14 @@ export function RoomScreen({
   // means the buyer has not paid yet on a deal that needs payment at all —
   // the backend now rejects `createAppointment` for exactly this case, this
   // just keeps the pin from offering a form that would only 400.
+  // Uploading the slip (Pending -> Processing) is not enough: the seller's
+  // check is its own step, and the backend refuses a meetup until it is done.
   const meetupBlockedOnPayment =
     !!transaction &&
     transaction.delivery_method === "Meetup" &&
-    transaction.status === "Pending" &&
-    requiresPayment(transaction);
+    (transaction.status === "Pending" || transaction.status === "Processing") &&
+    requiresPayment(transaction) &&
+    !transaction.payment_confirmed_by_seller_at;
   const isYourTurn = prompt?.actor === viewer;
   /* The one "where does this deal stand" sentence, shared with the inbox row
      and the latest progress card. It knows about the appointment, which
@@ -393,6 +398,10 @@ export function RoomScreen({
     }
     setBusy(false);
     toast.success(message);
+    // `router.refresh()` below re-renders the server page, but `transaction`
+    // is client state seeded once from props, so the step panel kept showing
+    // the old step until the next poll. Fetch it now instead.
+    refreshRoom();
     // Every status-changing control on this screen routes through `act`, so
     // this one line is what makes approving a slip, entering a tracking
     // number, answering a cancellation and confirming a handover float the
@@ -619,6 +628,50 @@ export function RoomScreen({
         </div>
       </ActionCard>;
     }
+    // Flow 1, step 4: either side may propose the meetup and the other
+    // accepts it. `resolveTransactionActor` only knows the transaction, so it
+    // already says "buyer: scan the QR" here and the seller, told "your turn"
+    // by the inbox, got no control at all. Both sides get the step instead.
+    const inMeetupStep =
+      transaction.delivery_method === "Meetup" &&
+      !meetupBlockedOnPayment &&
+      (transaction.status === "Processing" ||
+        (transaction.status === "Pending" && !requiresPayment(transaction))) &&
+      appointment?.status !== "Confirmed";
+    if (inMeetupStep) {
+      if (appointment?.status === "Pending") {
+        return (
+          <ActionCard title={t("deal.stepArrangeMeetup")}>
+            <AppointmentCard
+              status={appointment.status}
+              scheduledAt={`${appointment.date}T${appointment.time}+07:00`}
+              place={appointment.location}
+              awaitingViewer={appointment.proposed_by !== viewerId}
+              onAccept={() => handleAppointmentResponse("confirm")}
+              onEdit={() => {
+                startEditingAppointment();
+                setDetailsOpen(true);
+              }}
+            />
+          </ActionCard>
+        );
+      }
+      return (
+        <ActionCard title={t("deal.stepArrangeMeetup")}>
+          <div className="flex flex-col gap-3">
+            <p className="text-body text-ink-secondary">
+              Agree and confirm a meetup time before the handover QR opens.
+              Either of you can propose it.
+            </p>
+            <Button block onPress={() => setDetailsOpen(true)}>
+              <CalendarClock className="size-4" />
+              {t("deal.proposeTimeAndPlace")}
+            </Button>
+          </div>
+        </ActionCard>
+      );
+    }
+
     if (!isYourTurn) return null;
 
     switch (prompt?.action) {

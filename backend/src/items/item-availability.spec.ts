@@ -107,3 +107,85 @@ describe('getItemAvailability — giveaway ticket release', () => {
     expect(result.isTransferred).toBe(false);
   });
 });
+
+describe('getItemAvailability — units nobody won', () => {
+  it('frees the undrawn units once a Random giveaway closes with fewer registrants', async () => {
+    // 6 owned, 2 listed for sale, 3 given away at random, 1 person registered.
+    const result = await getItemAvailability(
+      client({
+        quantity: 6,
+        posts: [
+          {
+            status: 'Active',
+            deletedAt: null,
+            quantityTotal: 2,
+            quantityRemaining: 2,
+          },
+        ],
+        giveaways: [
+          { quantity: 3, status: 'Closed', tickets: [{ status: 'Waiting' }] },
+        ],
+      }),
+      1,
+    );
+    expect(result.available).toBe(3);
+  });
+
+  it('keeps the full quantity committed while registration is still open', async () => {
+    const result = await getItemAvailability(
+      client({
+        quantity: 6,
+        giveaways: [
+          {
+            quantity: 3,
+            status: 'Active',
+            tickets: [{ status: 'Registered' }],
+          },
+        ],
+      }),
+      1,
+    );
+    expect(result.available).toBe(3);
+  });
+
+  it('counts only awarded tickets after allocation, releasing expired and forfeited ones', async () => {
+    const result = await getItemAvailability(
+      client({
+        quantity: 10,
+        giveaways: [
+          {
+            quantity: 5,
+            status: 'Closed',
+            tickets: [
+              { status: 'Received' },
+              { status: 'Waiting' },
+              { status: 'Expired' },
+              { status: 'Forfeited' },
+              { status: 'NotSelected' },
+            ],
+          },
+        ],
+      }),
+      1,
+    );
+    expect(result.available).toBe(8);
+    expect(result.isTransferred).toBe(false);
+  });
+
+  it('treats a closed giveaway with every winner collected as fully transferred', async () => {
+    const result = await getItemAvailability(
+      client({
+        quantity: 2,
+        giveaways: [
+          {
+            quantity: 2,
+            status: 'Completed',
+            tickets: [{ status: 'Received' }, { status: 'Received' }],
+          },
+        ],
+      }),
+      1,
+    );
+    expect(result).toEqual({ available: 0, isTransferred: true });
+  });
+});

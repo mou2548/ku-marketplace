@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ReportService } from './report.service';
 import { AppealService } from './appeal.service';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -172,7 +171,7 @@ describe('Who hears about moderation', () => {
     expect(mine).not.toHaveProperty('handled_at');
   });
 
-  it('notifies the warned user, with the appeal deadline, and nobody else', async () => {
+  it('notifies the warned user without offering an appeal, and nobody else', async () => {
     const { prisma, reports } = makeServices();
     const handledAt = new Date('2026-10-05T10:00:00Z');
     prisma.report.findUnique.mockResolvedValue(reportRow());
@@ -192,13 +191,32 @@ describe('Who hears about moderation', () => {
       resolution_note: 'Repeated spam listings.',
     });
 
-    expect(notificationsSent(prisma)).toEqual([
+    const sent = notificationsSent(prisma) as Array<{ body: string }>;
+    expect(sent).toEqual([
       expect.objectContaining({
         userId: 9,
         title: 'You received a warning',
-        body: expect.stringContaining('You can appeal until 2026-10-12.'),
+        href: '/account',
       }),
     ]);
+    expect(sent[0].body).not.toContain('appeal');
+  });
+
+  it('refuses an appeal against a warning', async () => {
+    const { prisma, appeals } = makeServices();
+    prisma.report.findUnique.mockResolvedValue(
+      reportRow({
+        status: 'Violation_Confirmed',
+        sanction: 'warn',
+        handledBy: 1,
+        handledAt: new Date(),
+      }),
+    );
+
+    await expect(
+      appeals.create(9, { report_id: 3, reason: 'I disagree' }),
+    ).rejects.toThrow('A warning cannot be appealed');
+    expect(prisma.appeal.create).not.toHaveBeenCalled();
   });
 
   it('sends no notification when a report is dismissed', async () => {

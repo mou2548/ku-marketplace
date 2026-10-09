@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   CircleCheck,
   CircleX,
@@ -72,6 +73,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [show],
   );
 
+  const onChatRoom = usePathname()?.startsWith("/chat/") ?? false;
+
   return (
     <ToastContext.Provider value={api}>
       {children}
@@ -79,7 +82,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         aria-label="Notifications"
         className={cn(
           "pointer-events-none fixed inset-x-0 z-[120] flex flex-col items-center gap-2 px-4",
-          "top-20 md:top-auto md:bottom-6",
+          // A chat room keeps its composer at the bottom of the screen, where
+          // a desktop toast would sit on top of it; stay at the top there.
+          onChatRoom ? "top-20" : "top-20 md:top-auto md:bottom-6",
         )}
       >
         {toasts.map((toast) => (

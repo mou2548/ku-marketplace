@@ -59,7 +59,13 @@ records what the team decided.
    the system opens from stalled deals) and on a new appeal. The penalised user
    on an upheld report (every sanction, `warn` included) with the appeal
    deadline, and again when the appeal is decided.
-5. **Warn is a penalty.** It is notified and appealable like the others.
+5. **Warn is notified but cannot be appealed** (owner's ruling of 2026-10-09).
+   This is a deliberate exception to the flow, which lets every upheld report
+   be appealed; the owner confirmed it after being told so. `isAppealable` in
+   `moderation-notifications.ts` is the single switch: warnings are left out of
+   `GET /appeals/eligible`, refused by `POST /appeals`, and their notification
+   carries no appeal deadline. Reports with no recorded sanction stay
+   appealable.
 6. **One admin account.** Confirmed by the owner on 2026-10-06: the platform
    runs with exactly one admin. The flow has a single admin lane, so the admin
    who decided a report also decides its appeal. Spec §3.1.7.3 ("a different

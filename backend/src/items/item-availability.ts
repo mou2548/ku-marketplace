@@ -18,7 +18,8 @@ export interface ItemAvailability {
  * available(item) = Item.quantity
  *                  − Σ quantity_total                          (channel ที่เปิดอยู่)
  *                  − Σ (quantity_total − quantity_remaining)    (channel ที่ปิดแล้ว)
- *                  − Σ (quantity − released_tickets)            (Giveaway_Post)
+ *                  − Σ (quantity − released_tickets)            (Giveaway_Post, Active)
+ *                  − Σ awarded_tickets                          (Giveaway_Post, allocated)
  *
  * Post is "open" when deletedAt is null and status is 'Active'; anything
  * else (soft-deleted, or 'Inactive') is "closed" and only its actually-sold
@@ -38,6 +39,12 @@ export interface ItemAvailability {
  * they don't move this number either way — the giveaway's `quantity` maps
  * 1:1 to its winning tickets (Waiting/Received/Expired/Forfeited), not to
  * its full registrant pool.
+ *
+ * Once allocation is over (status Closed or Completed), units nobody won are
+ * free again: a Random draw with fewer registrants than units, a FirstCome
+ * that closed before filling, or a Manual pick of fewer recipients. From then
+ * on only the awarded tickets still waiting for pickup or already received
+ * stay committed.
  */
 export async function getItemAvailability(
   client: QueryClient,
@@ -64,6 +71,7 @@ export async function getItemAvailability(
     where: { itemId },
     select: {
       quantity: true,
+      status: true,
       tickets: { select: { status: true } },
     },
   });
@@ -85,6 +93,14 @@ export async function getItemAvailability(
     const received = giveaway.tickets.filter(
       (ticket) => ticket.status === 'Received',
     ).length;
+    if (giveaway.status === 'Closed' || giveaway.status === 'Completed') {
+      const waiting = giveaway.tickets.filter(
+        (ticket) => ticket.status === 'Waiting',
+      ).length;
+      committed += waiting + received;
+      pendingHandover += waiting;
+      continue;
+    }
     const released = giveaway.tickets.filter(
       (ticket) => ticket.status === 'Expired' || ticket.status === 'Forfeited',
     ).length;

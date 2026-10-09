@@ -126,6 +126,45 @@ describe('Fresh clone database', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('does not let a meetup be arranged before the seller confirms the payment', async () => {
+    const posts = new PostsService(prisma as unknown as PrismaService);
+    const chats = new TransactionsService(prisma as unknown as PrismaService);
+    const service = transactionService();
+    const item = await prisma.item.create({
+      data: {
+        ownerId: 3,
+        name: 'Meetup gating',
+        category: 'Books',
+        condition: 'Good',
+        quantity: 1,
+      },
+    });
+    const post = await posts.createPost(
+      {
+        item_id: item.itemId,
+        post_type: 'SellOnly',
+        price: 10,
+        quantity_total: 1,
+      },
+      3,
+    );
+    const purchase = await posts.buyPost(post.post_id, {
+      buyer_id: 4,
+      delivery_method: 'Meetup',
+    });
+    const id = Number(purchase.transaction_id.replace('transaction_', ''));
+    const meetup = { date: '2030-01-10', time: '12:00', location: 'Library' };
+    await service.uploadPaymentSlip(id, 4, {
+      slip_image_url: 'https://example.test/payment.png',
+    });
+    // Slip uploaded (Processing) but not yet checked by the seller: step 3.
+    await expect(chats.createAppointment(id, meetup, 4)).rejects.toThrow(
+      /confirm the payment/,
+    );
+    await service.confirmPaymentReceived(id, 3);
+    await expect(chats.createAppointment(id, meetup, 4)).resolves.toBeTruthy();
+  });
+
   it('keeps remaining stock listed after a partial shipping sale and protects listed inventory', async () => {
     const posts = new PostsService(prisma as unknown as PrismaService);
     const items = new ItemsService(prisma as unknown as PrismaService);
@@ -453,13 +492,14 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
-        // Processing, not Pending: this test is about chat-room creation
-        // under concurrency and appointment-card supersession, not payment
-        // gating, so the fixture starts past `createAppointment`'s own
-        // payment-required guard (a still-Pending, no-offer transaction
-        // cannot arrange a meetup at all — see that guard's own comment).
+        // Paid and confirmed by the seller: this test is about chat-room
+        // creation under concurrency and appointment-card supersession, not
+        // payment gating, so the fixture starts past `createAppointment`'s
+        // own guard (a meetup needs the seller's payment confirmation first).
         status: 'Processing',
         deliveryMethod: 'Meetup',
+        paymentConfirmedByBuyerAt: new Date(),
+        paymentConfirmedBySellerAt: new Date(),
       },
     });
     const rooms = await Promise.all([
@@ -830,10 +870,12 @@ describe('Fresh clone database', () => {
         quantity: 1,
         allocationMethod: 'Random',
         registerDeadline: new Date(Date.now() - 1000),
+        // Explicit: the column defaults to 'Waiting', which would make both
+        // entrants winners before the draw ever runs.
         tickets: {
           create: [
-            { receiverId: 4, queueNumber: 1 },
-            { receiverId: 5, queueNumber: 2 },
+            { receiverId: 4, queueNumber: 1, status: 'Registered' },
+            { receiverId: 5, queueNumber: 2, status: 'Registered' },
           ],
         },
       },
@@ -929,6 +971,8 @@ describe('Fresh clone database', () => {
         deliveryMethod: 'Shipping',
         status: 'Processing',
         paymentConfirmedByBuyerAt: new Date(Date.now() - 25 * 3600000),
+        // The seller's review clock only runs with a slip on file.
+        slipImageUrl: 'https://example.test/slip.png',
       },
     });
     const service = new TransactionDeadlineService(
@@ -1025,6 +1069,8 @@ describe('Fresh clone database', () => {
         deliveryMethod: 'Shipping',
         status: 'Processing',
         paymentConfirmedByBuyerAt: started,
+        // The seller's review clock only runs with a slip on file.
+        slipImageUrl: 'https://example.test/slip.png',
       },
     });
     const service = new TransactionDeadlineService(

@@ -75,7 +75,8 @@ export function GiveawayBrowser({
             {t("giveaway.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Wraps at 360px: side by side, the two buttons ran past the gutter. */}
+        <div className="flex flex-wrap items-center gap-2">
           <LinkButton size="sm" variant="secondary" href="/giveaway/scan">
             <ScanLine className="size-4" />
             Scan a ticket

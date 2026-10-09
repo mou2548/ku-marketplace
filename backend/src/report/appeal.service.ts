@@ -16,6 +16,7 @@ import { DecideAppealDto } from './dto/decide-appeal.dto';
 import { ReportService } from './report.service';
 import {
   APPEAL_WINDOW_DAYS,
+  isAppealable,
   notifyAdminsOfAppeal,
   notifyAppealDecided,
 } from './moderation-notifications';
@@ -180,6 +181,9 @@ export class AppealService {
           gte: new Date(Date.now() - APPEAL_WINDOW_DAYS * 86400000),
         },
         appeals: { none: {} },
+        // Warnings are not appealable. `not` alone would also drop legacy rows
+        // with no recorded sanction, which stay appealable.
+        OR: [{ sanction: null }, { sanction: { not: Sanction.Warn } }],
       },
       orderBy: { handledAt: 'desc' },
     });
@@ -283,6 +287,10 @@ export class AppealService {
       throw new BadRequestException(
         'Report has not been resolved yet — nothing to appeal',
       );
+    }
+
+    if (!isAppealable(report.sanction)) {
+      throw new BadRequestException('A warning cannot be appealed');
     }
 
     const deadline = new Date(report.handledAt);

@@ -220,9 +220,17 @@ export function ChatThread({
             const label = only ? receipts?.get(only) : undefined;
             const receipt = only && label ? { url: only, label } : undefined;
 
+            // The day divider heads its day: deal events from that same day
+            // (a "Deal started" a minute before the first message) go under
+            // it, and only events from an earlier day stay above it.
+            const sameDay = (e: (typeof before)[number]) =>
+              dayKey(new Date(e.placeAt).toISOString()) === dayKey(m.created_at);
+            const earlier = startsNewDay ? before.filter((e) => !sameDay(e)) : [];
+            const onTheDay = startsNewDay ? before.filter(sameDay) : before;
+
             return (
               <div key={m.message_id} className="flex flex-col gap-3">
-                {before.map((e) => (
+                {earlier.map((e) => (
                   <div key={e.key}>{e.node}</div>
                 ))}
                 {startsNewDay ? (
@@ -232,6 +240,9 @@ export function ChatThread({
                     </span>
                   </div>
                 ) : null}
+                {onTheDay.map((e) => (
+                  <div key={e.key}>{e.node}</div>
+                ))}
 
                 <div
                   className={cn(
@@ -288,7 +299,10 @@ export function ChatThread({
                         "rounded-card px-3.5 py-2.5 text-body",
                         mine
                           ? "rounded-br-chip bg-brand text-on-brand"
-                          : "rounded-bl-chip bg-surface text-ink",
+                          : // A white bubble on the near-white thread had no
+                            // edge at all; the sunken tint gives the other
+                            // side's message a shape without a border.
+                            "rounded-bl-chip bg-surface-sunken text-ink",
                         named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                       )}
                     >
@@ -331,7 +345,7 @@ export function ChatThread({
           Read-only rooms have no composer and so no toggle — the action stays
           open there rather than becoming unreachable. */}
       {action && (actionOpen || isReadOnly) ? (
-        <div className="min-h-0 max-h-[75%] shrink-0 overflow-y-auto overscroll-contain">
+        <div className="min-h-0 max-h-[45%] shrink-0 overflow-y-auto overscroll-contain">
           {action}
         </div>
       ) : null}

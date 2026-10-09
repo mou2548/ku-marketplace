@@ -30,7 +30,8 @@ const VERDICTS = [
   {
     id: "warn",
     label: "Warn",
-    description: `A warning is recorded and the reported user is told. They keep full access and can appeal within ${APPEAL_WINDOW_DAYS} days.`,
+    description:
+      "A warning is recorded and the reported user is told. They keep full access. A warning cannot be appealed.",
   },
   {
     id: "suspend",
@@ -104,7 +105,9 @@ export function ReportDecision({
           resolution_note: note,
         });
         toast.success(
-          "Decision recorded. The reported user is told and can appeal.",
+          verdict === "warn"
+            ? "Warning recorded. The reported user is told."
+            : "Decision recorded. The reported user is told and can appeal.",
         );
       }
       router.push("/admin/reports");

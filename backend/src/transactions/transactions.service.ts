@@ -218,13 +218,12 @@ export class TransactionsService {
           'This transaction cannot arrange a handover now',
         );
       }
-      // A meetup cannot be arranged ahead of payment: `uploadPaymentSlip`
-      // (transaction.service.ts) is what moves status Pending -> Processing,
-      // so still-Pending means the buyer has not paid yet on a deal that
-      // needs payment at all. Mirrors `paymentRequired` in
-      // transaction.service.ts — inlined here since this service does not
-      // depend on that one.
-      if (!returning && transaction.status === 'Pending') {
+      // Flow 1: a meetup is arranged only after the seller has confirmed the
+      // payment. Uploading a slip (Pending -> Processing) is not enough; the
+      // seller's check is its own step, and skipping it let a deal jump from
+      // step 3 to step 4. Mirrors `paymentRequired` in transaction.service.ts
+      // — inlined here since this service does not depend on that one.
+      if (!returning && !transaction.paymentConfirmedBySellerAt) {
         const paymentRequired =
           transaction.offerId === null
             ? true
@@ -237,7 +236,7 @@ export class TransactionsService {
               ) > 0;
         if (paymentRequired) {
           throw new BadRequestException(
-            'Upload and confirm the payment slip before arranging a meetup',
+            'The seller has to confirm the payment before a meetup is arranged',
           );
         }
       }

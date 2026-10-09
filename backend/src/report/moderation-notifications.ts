@@ -24,6 +24,14 @@ type Db = Prisma.TransactionClient;
 
 export const APPEAL_WINDOW_DAYS = 7;
 
+/**
+ * A warning cannot be appealed (owner's ruling of 2026-10-09, a deliberate
+ * exception to the flow, which lets every upheld report be appealed). Every
+ * other sanction, `none` included, keeps the 7-day appeal window.
+ */
+export const isAppealable = (sanction: string | null) =>
+  sanction !== Sanction.Warn;
+
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 
 async function activeAdminIds(db: Db) {
@@ -108,11 +116,13 @@ export async function notifySanctioned(
           report.sanction === Sanction.Suspend_Temporary
             ? `Your account is restored on ${isoDate(suspensionEndsAt(report.handledAt))}.`
             : null,
-          `You can appeal until ${isoDate(deadline)}.`,
+          isAppealable(report.sanction)
+            ? `You can appeal until ${isoDate(deadline)}.`
+            : null,
         ]
           .filter(Boolean)
           .join(' '),
-        href: '/account/appeals',
+        href: isAppealable(report.sanction) ? '/account/appeals' : '/account',
       },
     ],
     skipDuplicates: true,

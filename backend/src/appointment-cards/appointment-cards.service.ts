@@ -153,6 +153,29 @@ export class AppointmentCardsService {
             : null;
       if (!status)
         throw new BadRequestException('Invalid appointment response');
+      // Flow 1: the meetup comes after the seller confirms the payment. A card
+      // proposed before that (older data, or before this check existed) can
+      // still be declined, but not confirmed into an agreed meetup.
+      if (
+        status === 'Confirmed' &&
+        !returning &&
+        !transaction.paymentConfirmedBySellerAt
+      ) {
+        const paymentRequired =
+          transaction.offerId === null
+            ? true
+            : Number(
+                (
+                  await tx.offer.findUnique({
+                    where: { offerId: transaction.offerId },
+                  })
+                )?.additionalMoney ?? 0,
+              ) > 0;
+        if (paymentRequired)
+          throw new BadRequestException(
+            'The seller has to confirm the payment before a meetup is agreed',
+          );
+      }
       const updated = await tx.appointmentCard.update({
         where: { appointmentId },
         // §appointment loop fix — declining ("Another time") retires this card

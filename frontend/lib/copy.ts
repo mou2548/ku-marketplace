@@ -419,7 +419,7 @@ const COPY: { [key: string]: CopyNode } = {
       "whereHint": "Somewhere public and busy on campus",
       "meetupProposed": "Meetup proposed. Waiting on a reply.",
       "meetupWaitingOnPayment": "Waiting on payment",
-      "meetupPaymentNotice": "Complete payment first — the meetup can be arranged once the slip is uploaded.",
+      "meetupPaymentNotice": "The meetup can be arranged once the seller has confirmed the payment.",
       "stepArrangeMeetup": "Your step - arrange the meetup",
       "stepUploadSlip": "Your step - pay and upload the slip",
       "stepCheckSlip": "Your step - check the slip",
