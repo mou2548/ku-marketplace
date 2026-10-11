@@ -3,6 +3,12 @@
 
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
+// Mirrors docs/db/KU_Marketplace_Data_Dictionary.md (24 tables). Field names follow the
+// existing backend (e.g. `status` -> user_status). Things Prisma cannot express live only
+// in SQL migrations: CHECK constraints, partial unique indexes
+// (Giveaway_Ticket, Transaction_Payment, Transaction_Cancellation, Transaction_Refund_Slip)
+// and row level security.
+
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,4 +16,456 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Users and membership
+// ---------------------------------------------------------------------------
+
+model User {
+  userId          Int       @id @default(autoincrement()) @map("user_id")
+  email           String    @unique @db.VarChar(255)
+  firstNameEn     String    @map("first_name_en") @db.VarChar(100)
+  lastNameEn      String    @map("last_name_en") @db.VarChar(100)
+  firstNameTh     String    @map("first_name_th") @db.VarChar(100)
+  lastNameTh      String    @map("last_name_th") @db.VarChar(100)
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(500)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  phoneNumber     String?   @map("phone_number") @db.VarChar(20)
+  promptpayId     String?   @map("promptpay_id") @db.VarChar(100)
+  status          String?   @default("Active") @map("user_status") @db.VarChar(20)
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamp(6)
+  isAdmin         Boolean?  @default(false) @map("isAdmin")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  appealsFiled                 Appeal[]                  @relation("AppealAppellant")
+  appealsHandled               Appeal[]                  @relation("AppealHandledBy")
+  appointmentsProposed         AppointmentCard[]
+  chatMessages                 ChatMessage[]
+  giveaways                    GiveawayPost[]
+  giveawayTickets              GiveawayTicket[]
+  items                        Item[]
+  notifications                Notification[]
+  offers                       Offer[]
+  reportsHandled               Report[]                  @relation("ReportHandledBy")
+  reportsFiled                 Report[]                  @relation("ReportReporter")
+  subscriptions                Subscription[]
+  subscriptionPaymentsHandled  SubscriptionPayment[]     @relation("SubscriptionPaymentHandledBy")
+  subscriptionPayments         SubscriptionPayment[]     @relation("SubscriptionPaymentUser")
+  purchases                    Transaction[]             @relation("TransactionBuyer")
+  sales                        Transaction[]             @relation("TransactionSeller")
+  transactionPaymentsHandled   TransactionPayment[]      @relation("TransactionPaymentHandledBy")
+  transactionCancellationsMade TransactionCancellation[] @relation("TransactionCancellationRequester")
+  followers                    UserFollow[]              @relation("UserFollowers")
+  following                    UserFollow[]              @relation("UserFollowing")
+
+  @@map("User")
+}
+
+/// Soft delete: deletedAt = NULL means the follow is active. Un-follow sets deletedAt,
+/// following again sets it back to NULL (the composite PK blocks a second INSERT).
+model UserFollow {
+  followerId Int       @map("follower_id")
+  followedId Int       @map("followed_id")
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamp(6)
+  followed   User      @relation("UserFollowers", fields: [followedId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  follower   User      @relation("UserFollowing", fields: [followerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([followerId, followedId])
+  @@index([followedId, createdAt])
+  @@index([followerId, createdAt, followedId])
+  @@map("User_Follow")
+}
+
+model Subscription {
+  subscriptionId     Int                   @id @default(autoincrement()) @map("subscription_id")
+  userId             Int                   @map("user_id")
+  tier               String                @db.VarChar(20)
+  postsUsedThisMonth Int?                  @default(0) @map("posts_used_this_month")
+  status             String?               @default("Active") @map("subscription_status") @db.VarChar(20)
+  startDate          DateTime?             @map("start_date") @db.Timestamp(6)
+  endDate            DateTime?             @map("end_date") @db.Timestamp(6)
+  user               User                  @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  payments           SubscriptionPayment[]
+
+  @@map("Subscription")
+}
+
+model SubscriptionPayment {
+  paymentId       Int          @id @default(autoincrement()) @map("payment_id")
+  subscriptionId  Int          @map("subscription_id")
+  userId          Int          @map("user_id")
+  amount          Decimal      @db.Decimal(10, 2)
+  slipImageUrl    String       @map("slip_image_url") @db.VarChar(500)
+  status          String       @default("Pending") @map("payment_status") @db.VarChar(25)
+  rejectionReason String?      @map("rejection_reason") @db.VarChar(500)
+  handledBy       Int?         @map("handled_by")
+  handledAt       DateTime?    @map("handled_at") @db.Timestamp(6)
+  createdAt       DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
+  handler         User?        @relation("SubscriptionPaymentHandledBy", fields: [handledBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  subscription    Subscription @relation(fields: [subscriptionId], references: [subscriptionId], onDelete: NoAction, onUpdate: NoAction)
+  user            User         @relation("SubscriptionPaymentUser", fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Subscription_Payment")
+}
+
+// ---------------------------------------------------------------------------
+// Items and posts
+// ---------------------------------------------------------------------------
+
+model Item {
+  itemId         Int            @id @default(autoincrement()) @map("item_id")
+  ownerId        Int            @map("owner_id")
+  name           String         @db.VarChar(255)
+  category       String         @db.VarChar(50)
+  quantity       Int
+  condition      String         @db.VarChar(50)
+  description    String?        @db.VarChar(2000)
+  status         String?        @default("Unlisted") @map("item_status") @db.VarChar(20)
+  courseName     String?        @map("course_name") @db.VarChar(100)
+  brandModel     String?        @map("brand_model") @db.VarChar(100)
+  warrantyExpiry DateTime?      @map("warranty_expiry") @db.Date
+  size           String?        @db.VarChar(100)
+  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt      DateTime?      @map("deleted_at") @db.Timestamp(6)
+  giveawayPosts  GiveawayPost[]
+  owner          User           @relation(fields: [ownerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  images         ItemImage[]
+  offerItems     OfferItem[]
+  /// One item can back several posts at once (multi-listing), so this is 1:N, not 1:1.
+  posts          Post[]
+
+  @@map("Item")
+}
+
+model ItemImage {
+  imageId      Int       @id @default(autoincrement()) @map("image_id")
+  itemId       Int       @map("item_id")
+  status       String?   @default("Active") @map("item_image_status") @db.VarChar(20)
+  imageUrl     String    @map("image_url") @db.VarChar(500)
+  isPrimary    Boolean?  @default(false) @map("is_primary")
+  displayOrder Int?      @default(0) @map("display_order")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  item         Item      @relation(fields: [itemId], references: [itemId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Item_Image")
+}
+
+model Post {
+  postId            Int           @id @default(autoincrement()) @map("post_id")
+  itemId            Int           @map("item_id")
+  description       String?       @db.VarChar(2000)
+  postType          String        @map("post_type") @db.VarChar(20)
+  status            String?       @default("Active") @map("post_status") @db.VarChar(20)
+  price             Decimal?      @db.Decimal(10, 2)
+  quantityTotal     Int           @default(1) @map("quantity_total")
+  quantityRemaining Int           @default(1) @map("quantity_remaining")
+  wantedItemOffer   String?       @map("wanted_item_offer") @db.VarChar(500)
+  createdAt         DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt         DateTime?     @map("deleted_at") @db.Timestamp(6)
+  offers            Offer[]
+  item              Item          @relation(fields: [itemId], references: [itemId], onDelete: NoAction, onUpdate: NoAction)
+  transactions      Transaction[]
+
+  @@map("Post")
+}
+
+// ---------------------------------------------------------------------------
+// Offers, transactions and appointments
+// ---------------------------------------------------------------------------
+
+model Offer {
+  offerId         Int           @id @default(autoincrement()) @map("offer_id")
+  postId          Int           @map("post_id")
+  proposerId      Int           @map("proposer_id")
+  additionalMoney Decimal?      @default(0.00) @map("additional_money") @db.Decimal(10, 2)
+  status          String?       @default("Pending") @map("offer_status") @db.VarChar(20)
+  createdAt       DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  post            Post          @relation(fields: [postId], references: [postId], onDelete: NoAction, onUpdate: NoAction)
+  proposer        User          @relation(fields: [proposerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  items           OfferItem[]
+  transactions    Transaction[]
+
+  @@map("Offer")
+}
+
+model OfferItem {
+  offerId Int   @map("offer_id")
+  itemId  Int   @map("item_id")
+  item    Item  @relation(fields: [itemId], references: [itemId], onDelete: NoAction, onUpdate: NoAction)
+  offer   Offer @relation(fields: [offerId], references: [offerId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([offerId, itemId])
+  @@map("Offer_Item")
+}
+
+model Transaction {
+  transactionId                   Int       @id @default(autoincrement()) @map("transaction_id")
+  postId                          Int       @map("post_id")
+  offerId                         Int?      @map("offer_id")
+  buyerId                         Int       @map("buyer_id")
+  sellerId                        Int       @map("seller_id")
+  quantity                        Int?      @default(1)
+  /// Cash the buyer owes, fixed when the transaction is created.
+  totalAmount                     Decimal   @map("total_amount") @db.Decimal(10, 2)
+  status                          String?   @default("Pending") @map("transaction_status") @db.VarChar(20)
+  deliveryMethod                  String    @map("delivery_method") @db.VarChar(20)
+  createdAt                       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  itemReceivedConfirmedByBuyerAt  DateTime? @map("item_received_confirmed_by_buyer_at") @db.Timestamp(6)
+  itemReceivedConfirmedBySellerAt DateTime? @map("item_received_confirmed_by_seller_at") @db.Timestamp(6)
+
+  appointmentCards AppointmentCard[]
+  chatRooms        ChatRoom[]
+  buyer            User                      @relation("TransactionBuyer", fields: [buyerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  offer            Offer?                    @relation(fields: [offerId], references: [offerId], onDelete: NoAction, onUpdate: NoAction)
+  post             Post                      @relation(fields: [postId], references: [postId], onDelete: NoAction, onUpdate: NoAction)
+  seller           User                      @relation("TransactionSeller", fields: [sellerId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  shipment         TransactionShipment?
+  payments         TransactionPayment[]
+  cancellations    TransactionCancellation[]
+  refund           TransactionRefund?
+
+  @@map("Transaction")
+}
+
+/// 1:1, only for delivery_method = 'Shipping'.
+model TransactionShipment {
+  transactionId         Int         @id @map("transaction_id")
+  trackingNumber        String?     @map("tracking_number") @db.VarChar(100)
+  estimatedDeliveryDate DateTime?   @map("estimated_delivery_date") @db.Date
+  shippedAt             DateTime?   @map("shipped_at") @db.Timestamp(6)
+  transaction           Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Transaction_Shipment")
+}
+
+/// One row per payment slip. Current slip = latest row by createdAt.
+/// (SQL-only: partial unique index allowing one Pending/Confirmed slip per transaction.)
+model TransactionPayment {
+  paymentId       Int         @id @default(autoincrement()) @map("payment_id")
+  transactionId   Int         @map("transaction_id")
+  slipImageUrl    String      @map("slip_image_url") @db.VarChar(500)
+  status          String?     @default("Pending") @map("payment_status") @db.VarChar(20)
+  rejectionReason String?     @map("rejection_reason") @db.VarChar(500)
+  handledBy       Int?        @map("handled_by")
+  handledAt       DateTime?   @map("handled_at") @db.Timestamp(6)
+  createdAt       DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  handler         User?       @relation("TransactionPaymentHandledBy", fields: [handledBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  transaction     Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([transactionId, createdAt])
+  @@map("Transaction_Payment")
+}
+
+/// One row per cancellation request.
+/// (SQL-only: partial unique index allowing one Pending request per transaction.)
+model TransactionCancellation {
+  cancellationId Int         @id @default(autoincrement()) @map("cancellation_id")
+  transactionId  Int         @map("transaction_id")
+  requestedBy    Int         @map("requested_by")
+  reason         String?     @db.VarChar(500)
+  requestedAt    DateTime?   @default(now()) @map("requested_at") @db.Timestamp(6)
+  response       String?     @default("Pending") @db.VarChar(20)
+  respondedAt    DateTime?   @map("responded_at") @db.Timestamp(6)
+  requester      User        @relation("TransactionCancellationRequester", fields: [requestedBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  transaction    Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([transactionId, requestedAt])
+  @@map("Transaction_Cancellation")
+}
+
+/// 1:1, created when a cancellation is approved after payment.
+model TransactionRefund {
+  transactionId         Int                     @id @map("transaction_id")
+  itemReturnConfirmedAt DateTime?               @map("item_return_confirmed_at") @db.Timestamp(6)
+  createdAt             DateTime?               @default(now()) @map("created_at") @db.Timestamp(6)
+  transaction           Transaction             @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+  slips                 TransactionRefundSlip[]
+
+  @@map("Transaction_Refund")
+}
+
+/// One row per refund slip; the buyer decides (no handled_by).
+/// (SQL-only: partial unique index allowing one Pending/Confirmed slip per transaction.)
+model TransactionRefundSlip {
+  refundSlipId    Int               @id @default(autoincrement()) @map("refund_slip_id")
+  transactionId   Int               @map("transaction_id")
+  refundSlipUrl   String            @map("refund_slip_url") @db.VarChar(500)
+  status          String?           @default("Pending") @map("refund_status") @db.VarChar(20)
+  rejectionReason String?           @map("rejection_reason") @db.VarChar(500)
+  handledAt       DateTime?         @map("handled_at") @db.Timestamp(6)
+  createdAt       DateTime?         @default(now()) @map("created_at") @db.Timestamp(6)
+  refund          TransactionRefund @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([transactionId, createdAt])
+  @@map("Transaction_Refund_Slip")
+}
+
+model AppointmentCard {
+  appointmentId Int         @id @default(autoincrement()) @map("appointment_id")
+  transactionId Int         @map("transaction_id")
+  proposedBy    Int         @map("proposed_by")
+  date          DateTime    @db.Date
+  time          DateTime    @db.Time(6)
+  location      String      @db.VarChar(255)
+  status        String?     @default("Pending") @map("appointment_status") @db.VarChar(20)
+  createdAt     DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  deletedAt     DateTime?   @map("deleted_at") @db.Timestamp(6)
+  proposer      User        @relation(fields: [proposedBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  transaction   Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([transactionId, createdAt])
+  @@map("Appointment_Card")
+}
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+/// target_id points at a Post, User or Transaction depending on report_type (no real FK).
+model Report {
+  reportId       Int       @id @default(autoincrement()) @map("report_id")
+  reporterId     Int       @map("reporter_id")
+  reportType     String    @map("report_type") @db.VarChar(20)
+  /// none | warn | suspend_temporary | suspend_permanent (lower case, enforced by a CHECK)
+  sanction       String?   @db.VarChar(30)
+  targetId       Int       @map("target_id")
+  reasonCategory String    @map("reason_category") @db.VarChar(100)
+  details        String?   @db.VarChar(2000)
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String?   @default("Pending") @map("report_status") @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note") @db.VarChar(1000)
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  appeals        Appeal[]
+  handler        User?     @relation("ReportHandledBy", fields: [handledBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  reporter       User      @relation("ReportReporter", fields: [reporterId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([reportType, targetId])
+  @@map("Report")
+}
+
+model Appeal {
+  appealId       Int       @id @default(autoincrement()) @map("appeal_id")
+  reportId       Int       @map("report_id")
+  appellantId    Int       @map("appellant_id")
+  reason         String    @db.VarChar(2000)
+  evidenceUrls   Json?     @map("evidence_urls")
+  status         String    @map("appeal_status") @db.VarChar(20)
+  handledBy      Int?      @map("handled_by")
+  resolutionNote String?   @map("resolution_note") @db.VarChar(1000)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  handledAt      DateTime? @map("handled_at") @db.Timestamp(6)
+  appellant      User      @relation("AppealAppellant", fields: [appellantId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  handler        User?     @relation("AppealHandledBy", fields: [handledBy], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  report         Report    @relation(fields: [reportId], references: [reportId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Appeal")
+}
+
+// ---------------------------------------------------------------------------
+// Giveaway
+// ---------------------------------------------------------------------------
+
+model GiveawayPost {
+  giveawayId       Int              @id @default(autoincrement()) @map("giveaway_id")
+  itemId           Int              @map("item_id")
+  quantity         Int              @default(1)
+  description      String?          @db.VarChar(2000)
+  pickupLocation   String           @map("pickup_location") @db.VarChar(255)
+  giverId          Int              @map("giver_id")
+  allocationMethod String           @map("allocation_method") @db.VarChar(20)
+  status           String?          @default("Active") @map("giveaway_status") @db.VarChar(20)
+  registerStart    DateTime?        @map("register_start") @db.Timestamp(6)
+  registerDeadline DateTime?        @map("register_deadline") @db.Timestamp(6)
+  pickupStart      DateTime?        @map("pickup_start") @db.Timestamp(6)
+  pickupDeadline   DateTime?        @map("pickup_deadline") @db.Timestamp(6)
+  drawnAt          DateTime?        @map("drawn_at") @db.Timestamp(6)
+  createdAt        DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  chatRooms        ChatRoom[]
+  images           GiveawayImage[]
+  giver            User             @relation(fields: [giverId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  item             Item             @relation(fields: [itemId], references: [itemId], onDelete: NoAction, onUpdate: NoAction)
+  tickets          GiveawayTicket[]
+
+  @@map("Giveaway_Post")
+}
+
+/// A receiver may hold several tickets per giveaway over time (e.g. Forfeited, then re-register).
+/// (SQL-only: partial unique index allowing one Registered/Waiting/Received ticket per receiver.)
+model GiveawayTicket {
+  ticketId    Int          @id @default(autoincrement()) @map("ticket_id")
+  giveawayId  Int          @map("giveaway_id")
+  receiverId  Int          @map("receiver_id")
+  queueNumber Int          @map("queue_number")
+  qrToken     String?      @unique @map("qr_token") @db.VarChar(255)
+  status      String?      @default("Waiting") @map("ticket_status") @db.VarChar(20)
+  qrIssuedAt  DateTime?    @map("qr_issued_at") @db.Timestamp(6)
+  updatedAt   DateTime?    @default(now()) @map("updated_at") @db.Timestamp(6)
+  giveaway    GiveawayPost @relation(fields: [giveawayId], references: [giveawayId], onDelete: NoAction, onUpdate: NoAction)
+  receiver    User         @relation(fields: [receiverId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([giveawayId, queueNumber])
+  @@map("Giveaway_Ticket")
+}
+
+model GiveawayImage {
+  imageId      Int          @id @default(autoincrement()) @map("image_id")
+  giveawayId   Int          @map("giveaway_id")
+  status       String?      @default("Active") @map("image_status") @db.VarChar(20)
+  imageUrl     String       @map("image_url") @db.VarChar(500)
+  displayOrder Int?         @default(0) @map("display_order")
+  createdAt    DateTime?    @default(now()) @map("created_at") @db.Timestamp(6)
+  giveaway     GiveawayPost @relation(fields: [giveawayId], references: [giveawayId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Giveaway_Image")
+}
+
+// ---------------------------------------------------------------------------
+// Chat and notifications
+// ---------------------------------------------------------------------------
+
+/// Tied to exactly one of transaction / giveaway (CHECK num_nonnulls(...) = 1, SQL-only).
+model ChatRoom {
+  roomId        Int           @id @default(autoincrement()) @map("room_id")
+  transactionId Int?          @map("transaction_id")
+  giveawayId    Int?          @map("giveaway_id")
+  status        String?       @default("Active") @map("chat_room_status") @db.VarChar(20)
+  createdAt     DateTime?     @default(now()) @map("created_at") @db.Timestamp(6)
+  messages      ChatMessage[]
+  giveaway      GiveawayPost? @relation(fields: [giveawayId], references: [giveawayId], onDelete: NoAction, onUpdate: NoAction)
+  transaction   Transaction?  @relation(fields: [transactionId], references: [transactionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Chat_Room")
+}
+
+model ChatMessage {
+  messageId Int       @id @default(autoincrement()) @map("message_id")
+  roomId    Int       @map("room_id")
+  senderId  Int       @map("sender_id")
+  content   String?   @db.VarChar(2000)
+  imageUrls Json?     @map("image_urls")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  room      ChatRoom  @relation(fields: [roomId], references: [roomId], onDelete: NoAction, onUpdate: NoAction)
+  sender    User      @relation(fields: [senderId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Chat_Message")
+}
+
+model Notification {
+  notificationId Int       @id @default(autoincrement()) @map("notification_id")
+  userId         Int       @map("user_id")
+  eventKey       String    @map("event_key") @db.VarChar(255)
+  title          String    @db.VarChar(255)
+  body           String    @db.VarChar(1000)
+  href           String    @db.VarChar(500)
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  readAt         DateTime? @map("read_at") @db.Timestamp(6)
+  user           User      @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, eventKey])
+  @@index([userId, createdAt])
+  @@map("Notification")
 }
