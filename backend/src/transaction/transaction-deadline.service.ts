@@ -1,8 +1,13 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import type { Transaction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { notifyAdminsOfReport } from '../report/moderation-notifications';
+import {
+  findLockingReports,
+  loadTransactionSnapshot,
+  timedOutReason,
+  type TransactionState,
+} from './transaction-state';
 
 const HOUR = 60 * 60 * 1000;
 export interface FlowDeadline {
@@ -16,7 +21,7 @@ export interface FlowDeadline {
 }
 
 /** Each timer starts at its triggering event, never at transaction creation. */
-export function transactionDeadline(t: Transaction): FlowDeadline | null {
+export function transactionDeadline(t: TransactionState): FlowDeadline | null {
   if (t.activeReportId) return null;
   if (t.cancellationResponse === 'Pending' && t.cancellationRequestedAt) {
     const returning = t.status === 'Completed';
@@ -114,16 +119,20 @@ export class TransactionDeadlineService implements OnApplicationBootstrap {
         status: {
           in: ['Processing', 'Completed', 'Pending Refund', 'Cancelled'],
         },
-        activeReportId: null,
       },
       select: { transactionId: true },
     });
+    // A deal already with an admin has no clock running; skip it up front.
+    const locked = await findLockingReports(
+      this.prisma,
+      rows.map((row) => row.transactionId),
+    );
     for (const row of rows) {
+      if (locked.has(row.transactionId)) continue;
       await this.prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${row.transactionId} FOR UPDATE`;
-        const t = await tx.transaction.findUniqueOrThrow({
-          where: { transactionId: row.transactionId },
-        });
+        const t = await loadTransactionSnapshot(tx, row.transactionId);
+        if (!t) return;
         const deadline = transactionDeadline(t);
         if (!deadline) return;
         const elapsed = now.getTime() - deadline.startedAt.getTime();
@@ -143,7 +152,12 @@ export class TransactionDeadlineService implements OnApplicationBootstrap {
           createdAt: now,
         });
         await tx.notification.upsert({
-          where: { eventKey: `${key}:${deadline.actorId}` },
+          where: {
+            userId_eventKey: {
+              userId: deadline.actorId,
+              eventKey: `${key}:${deadline.actorId}`,
+            },
+          },
           create: notification(deadline.actorId),
           update: {},
         });
@@ -153,23 +167,27 @@ export class TransactionDeadlineService implements OnApplicationBootstrap {
               reporterId: deadline.reporterId,
               reportType: 'Transaction',
               targetId: t.transactionId,
-              reasonCategory: `${deadline.phase} timed out`,
+              reasonCategory: timedOutReason(deadline.phase),
               status: 'Pending',
               details: `No response before ${new Date(deadline.startedAt.getTime() + deadline.limit).toISOString()}.`,
             },
           });
           await notifyAdminsOfReport(tx, report);
-          await tx.transaction.update({
-            where: { transactionId: t.transactionId },
-            data: {
-              activeReportId: report.reportId,
-              ...(t.cancellationResponse === 'Pending'
-                ? { cancellationResponse: 'Rejected' }
-                : {}),
-            },
-          });
+          // The open report is what locks the deal from here. An unanswered
+          // cancellation counts as refused, which is what the admin rules on.
+          if (t.cancellationResponse === 'Pending' && t.cancellationId) {
+            await tx.transactionCancellation.update({
+              where: { cancellationId: t.cancellationId },
+              data: { response: 'Rejected', respondedAt: now },
+            });
+          }
           await tx.notification.upsert({
-            where: { eventKey: `${key}:${deadline.reporterId}` },
+            where: {
+              userId_eventKey: {
+                userId: deadline.reporterId,
+                eventKey: `${key}:${deadline.reporterId}`,
+              },
+            },
             create: notification(deadline.reporterId),
             update: {},
           });

@@ -70,6 +70,17 @@ docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < ba
 npm run prisma:generate --prefix backend
 ```
 
+Schema v3 (the `Transaction` split) is different: it moves data and drops
+columns, so it runs once, in a single transaction, after a small preparation
+script for databases built from `init.sql`. A fresh volume gets both
+automatically; an existing local database needs them applied by hand:
+
+```sh
+docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/local/before-schema-v3.sql
+docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 -1 < backend/prisma/migrations/20261011000000_schema_v3_transaction_split/migration.sql
+npm run prisma:generate --prefix backend
+```
+
 The redirection examples use a POSIX shell; on PowerShell pipe `Get-Content -Raw`
 into the same Docker command. These migrations extend the schema from `init.sql`;
 they are not a complete empty-database Prisma migration history. Do not use

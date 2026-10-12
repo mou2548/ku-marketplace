@@ -1,8 +1,9 @@
 import 'dotenv/config';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Pool } from 'pg';
 import { Prisma } from '@prisma/client';
+import { additiveMigrationsSql, schemaV3Sql } from './schema-v3';
 
 it('upgrades the legacy schema twice without losing existing rows or evidence', async () => {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -30,12 +31,9 @@ it('upgrades the legacy schema twice without losing existing rows or evidence', 
           )
         ).rows,
       );
-    const folder = resolve(__dirname, '../prisma/migrations');
     for (let pass = 0; pass < 2; pass++) {
-      for (const migration of readdirSync(folder).sort())
-        await client.query(
-          readFileSync(resolve(folder, migration, 'migration.sql'), 'utf8'),
-        );
+      for (const migration of additiveMigrationsSql())
+        await client.query(migration);
     }
     for (const [table, before] of snapshots) {
       const columns = Object.keys(before[0] ?? {});
@@ -47,6 +45,9 @@ it('upgrades the legacy schema twice without losing existing rows or evidence', 
       ).rows;
       expect(after).toEqual(before);
     }
+    // Schema v3 moves data into new tables and drops the old columns, so it
+    // runs once, after the row-for-row comparison above.
+    await client.query(schemaV3Sql());
     for (const model of Prisma.dmmf.datamodel.models) {
       const columns = model.fields
         .filter((field) => field.kind !== 'object')

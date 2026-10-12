@@ -10,6 +10,7 @@ import {
   IsString,
   Min,
   ValidateNested,
+  MaxLength,
 } from 'class-validator';
 
 class CreateItemImageDto {
@@ -45,6 +46,7 @@ export class CreateItemDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(2000)
   description?: string;
 
   @IsString()

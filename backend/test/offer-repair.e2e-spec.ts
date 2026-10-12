@@ -1,7 +1,8 @@
 import 'dotenv/config';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Pool, type PoolClient } from 'pg';
+import { additiveMigrationsSql, schemaV3Sql } from './schema-v3';
 // The same CLI implementation is exercised against an isolated legacy schema.
 const { repairInvalidOffers } =
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -22,12 +23,10 @@ it('previews legacy invalid offers and repairs them idempotently without changin
     await client.query(
       readFileSync(resolve(__dirname, 'fixtures/legacy-init.sql'), 'utf8'),
     );
-    const folder = resolve(__dirname, '../prisma/migrations');
-    for (const name of readdirSync(folder).sort()) {
-      await client.query(
-        readFileSync(resolve(folder, name, 'migration.sql'), 'utf8'),
-      );
+    for (const migration of additiveMigrationsSql()) {
+      await client.query(migration);
     }
+    await client.query(schemaV3Sql());
     const before = (
       await client.query<{ offer_id: number; offer_status: string }>(
         'SELECT * FROM "Offer" ORDER BY offer_id',

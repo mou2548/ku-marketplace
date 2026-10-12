@@ -1,8 +1,15 @@
-import { ArrayMaxSize, IsArray, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateMessageDto {
   @IsString()
   @IsOptional()
+  @MaxLength(2000)
   content?: string;
 
   @IsArray()

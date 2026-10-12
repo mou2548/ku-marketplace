@@ -63,7 +63,10 @@ export class MembershipService {
       postQuota: quota,
       postsRemaining: quota === null ? null : Math.max(quota - postsUsed, 0),
       pendingPayment: pendingPayment
-        ? { paymentId: pendingPayment.paymentId, amount: pendingPayment.amount }
+        ? {
+            paymentId: pendingPayment.paymentId,
+            amount: Number(pendingPayment.amount),
+          }
         : null,
     };
   }
@@ -92,7 +95,7 @@ export class MembershipService {
       const tier = payload.requestedTier as MembershipTier;
       const amount = MEMBERSHIP_CONFIG[tier].priceBaht;
 
-      return tx.subscriptionPayment.create({
+      const payment = await tx.subscriptionPayment.create({
         data: {
           subscriptionId: subscription.subscriptionId,
           userId,
@@ -101,11 +104,17 @@ export class MembershipService {
           status: 'Pending',
         },
       });
+      return this.withNumericAmount(payment);
     });
   }
 
+  /** `amount` is DECIMAL in the database; the API has always sent a number. */
+  private withNumericAmount<T extends { amount: unknown }>(payment: T) {
+    return { ...payment, amount: Number(payment.amount) };
+  }
+
   async listPendingPayments() {
-    return this.prisma.subscriptionPayment.findMany({
+    const payments = await this.prisma.subscriptionPayment.findMany({
       where: { status: 'Pending' },
       orderBy: { createdAt: 'asc' },
       include: {
@@ -113,6 +122,7 @@ export class MembershipService {
         subscription: { select: { tier: true } },
       },
     });
+    return payments.map((payment) => this.withNumericAmount(payment));
   }
 
   async reviewPayment(
@@ -148,7 +158,7 @@ export class MembershipService {
       });
 
       if (approve) {
-        const tier = this.resolveTierFromAmount(payment.amount);
+        const tier = this.resolveTierFromAmount(Number(payment.amount));
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + MEMBERSHIP_DURATION_DAYS);
 

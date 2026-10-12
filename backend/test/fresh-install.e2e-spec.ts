@@ -1,6 +1,4 @@
 import 'dotenv/config';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient, Prisma } from '@prisma/client';
@@ -20,17 +18,52 @@ import { GiveawaysService } from '../src/giveaways/giveaways.service';
 import { GiveawayExpiryService } from '../src/giveaways/giveaway-expiry.service';
 import { RedisService } from '../src/redis/redis.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { UsersService } from '../src/users/users.service';
 import { getItemAvailability } from '../src/items/item-availability';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import request from 'supertest';
 import { Reflector } from '@nestjs/core';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
+import { freshInstallSql } from './schema-v3';
 
 describe('Fresh clone database', () => {
   const schema = `fresh_install_${process.pid}_${Date.now()}`;
   let pool: Pool;
   let prisma: PrismaClient;
+
+  // Schema v3 fixtures: payment slips live in their own table, one row each.
+  const SLIP = 'https://example.test/slip.png';
+  const paid = (uploadedAt = new Date()) => ({
+    create: { slipImageUrl: SLIP, createdAt: uploadedAt },
+  });
+  const paidAndConfirmed = (at = new Date()) => ({
+    create: {
+      slipImageUrl: SLIP,
+      status: 'Confirmed',
+      handledBy: 3,
+      handledAt: at,
+      createdAt: at,
+    },
+  });
+  const giveawayItem = (name: string) =>
+    prisma.item.create({
+      data: {
+        ownerId: 3,
+        name,
+        category: 'Other',
+        condition: 'Good',
+        quantity: 1,
+      },
+    });
+  const lockingReports = (transactionId: number) =>
+    prisma.report.count({
+      where: {
+        reportType: 'Transaction',
+        targetId: transactionId,
+        status: 'Pending',
+      },
+    });
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -38,9 +71,7 @@ describe('Fresh clone database', () => {
     try {
       await connection.query(`CREATE SCHEMA "${schema}"`);
       await connection.query(`SET search_path TO "${schema}"`);
-      await connection.query(
-        readFileSync(resolve(__dirname, '../../init.sql'), 'utf8'),
-      );
+      await connection.query(freshInstallSql());
     } finally {
       connection.release();
     }
@@ -53,6 +84,8 @@ describe('Fresh clone database', () => {
         { schema },
       ),
     });
+    // Selling needs a PromptPay ID, and the seed predates the column.
+    await prisma.user.updateMany({ data: { promptpayId: '0812345678' } });
   });
 
   beforeEach(async () => {
@@ -112,6 +145,7 @@ describe('Fresh clone database', () => {
         name: 'Deleted offered item',
         category: 'Books',
         condition: 'Good',
+        quantity: 1,
         deletedAt: new Date(),
       },
     });
@@ -237,10 +271,10 @@ describe('Fresh clone database', () => {
           postId: 1,
           buyerId: 4,
           sellerId: 3,
+          totalAmount: 100,
           deliveryMethod: 'Meetup',
           status: 'Processing',
-          paymentConfirmedByBuyerAt: new Date(),
-          paymentConfirmedBySellerAt: new Date(),
+          payments: paidAndConfirmed(),
         },
       });
       await prisma.appointmentCard.create({
@@ -354,6 +388,7 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         status: 'Pending',
         deliveryMethod: 'Meetup',
       },
@@ -427,6 +462,7 @@ describe('Fresh clone database', () => {
       data: {
         email: 'quota@ku.th',
         passwordHash: 'test-only',
+        promptpayId: '0812345678',
         firstNameEn: 'Quota',
         lastNameEn: 'Test',
         firstNameTh: 'Quota',
@@ -443,6 +479,7 @@ describe('Fresh clone database', () => {
             name: `Quota ${i}`,
             category: 'Books',
             condition: 'Good',
+            quantity: 1,
           },
         }),
       ),
@@ -492,14 +529,14 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         // Paid and confirmed by the seller: this test is about chat-room
         // creation under concurrency and appointment-card supersession, not
         // payment gating, so the fixture starts past `createAppointment`'s
         // own guard (a meetup needs the seller's payment confirmation first).
         status: 'Processing',
         deliveryMethod: 'Meetup',
-        paymentConfirmedByBuyerAt: new Date(),
-        paymentConfirmedBySellerAt: new Date(),
+        payments: paidAndConfirmed(),
       },
     });
     const rooms = await Promise.all([
@@ -600,10 +637,10 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Meetup',
         status: 'Processing',
-        paymentConfirmedByBuyerAt: new Date(),
-        paymentConfirmedBySellerAt: new Date(),
+        payments: paidAndConfirmed(),
       },
     });
 
@@ -700,6 +737,7 @@ describe('Fresh clone database', () => {
         name: 'Concurrency item',
         category: 'Books',
         condition: 'Good',
+        quantity: 1,
       },
     });
     await expect(
@@ -769,9 +807,10 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Shipping',
         status: 'Processing',
-        paymentConfirmedByBuyerAt: new Date(),
+        payments: paid(),
       },
     });
     await service.requestCancellation(deal.transactionId, 4, {
@@ -806,9 +845,10 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Meetup',
         status: 'Completed',
-        paymentConfirmedByBuyerAt: new Date(),
+        payments: paidAndConfirmed(),
         itemReceivedConfirmedByBuyerAt: new Date(),
       },
     });
@@ -846,6 +886,7 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Meetup',
         status: 'Completed',
         itemReceivedConfirmedByBuyerAt: new Date(Date.now() - 8 * 86400000),
@@ -865,7 +906,7 @@ describe('Fresh clone database', () => {
     const post = await prisma.giveawayPost.create({
       data: {
         giverId: 3,
-        itemName: 'Automatic draw',
+        itemId: (await giveawayItem('Automatic draw')).itemId,
         pickupLocation: 'Library',
         quantity: 1,
         allocationMethod: 'Random',
@@ -904,7 +945,7 @@ describe('Fresh clone database', () => {
     const post = await prisma.giveawayPost.create({
       data: {
         giverId: 3,
-        itemName: 'QR window',
+        itemId: (await giveawayItem('QR window')).itemId,
         pickupLocation: 'Library',
         quantity: 1,
         allocationMethod: 'Manual',
@@ -968,11 +1009,11 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Shipping',
         status: 'Processing',
-        paymentConfirmedByBuyerAt: new Date(Date.now() - 25 * 3600000),
         // The seller's review clock only runs with a slip on file.
-        slipImageUrl: 'https://example.test/slip.png',
+        payments: paid(new Date(Date.now() - 25 * 3600000)),
       },
     });
     const service = new TransactionDeadlineService(
@@ -1002,6 +1043,7 @@ describe('Fresh clone database', () => {
         offerId: offer.offerId,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 0,
         deliveryMethod: 'Meetup',
         status: 'Pending',
       },
@@ -1043,6 +1085,7 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Shipping',
         status: 'Pending',
       },
@@ -1066,32 +1109,20 @@ describe('Fresh clone database', () => {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Shipping',
         status: 'Processing',
-        paymentConfirmedByBuyerAt: started,
         // The seller's review clock only runs with a slip on file.
-        slipImageUrl: 'https://example.test/slip.png',
+        payments: paid(started),
       },
     });
     const service = new TransactionDeadlineService(
       prisma as unknown as PrismaService,
     );
     await service.processDue(new Date(started.getTime() + 24 * 3600000 - 1));
-    expect(
-      (
-        await prisma.transaction.findUniqueOrThrow({
-          where: { transactionId: deal.transactionId },
-        })
-      ).activeReportId,
-    ).toBeNull();
+    expect(await lockingReports(deal.transactionId)).toBe(0);
     await service.processDue(new Date(started.getTime() + 24 * 3600000));
-    expect(
-      (
-        await prisma.transaction.findUniqueOrThrow({
-          where: { transactionId: deal.transactionId },
-        })
-      ).activeReportId,
-    ).not.toBeNull();
+    expect(await lockingReports(deal.transactionId)).toBe(1);
   });
 
   it('creates a new post row when relisting, preserving the original as history', async () => {
@@ -1102,6 +1133,7 @@ describe('Fresh clone database', () => {
         name: 'Relist',
         category: 'Books',
         condition: 'Good',
+        quantity: 1,
       },
     });
     const first = await service.createPost(
@@ -1119,7 +1151,7 @@ describe('Fresh clone database', () => {
     });
     expect(original.deletedAt).not.toBeNull();
     expect(original.status).toBe('Inactive');
-    expect(original.price.toNumber()).toBe(10);
+    expect(original.price?.toNumber()).toBe(10);
   });
 
   it('lets a cancelled trade unlock its post for relisting under a different type', async () => {
@@ -1130,6 +1162,7 @@ describe('Fresh clone database', () => {
         name: 'Unlock test',
         category: 'Books',
         condition: 'Good',
+        quantity: 1,
       },
     });
     const proposerItem = await prisma.item.create({
@@ -1138,6 +1171,7 @@ describe('Fresh clone database', () => {
         name: 'Unlock trade-in',
         category: 'Books',
         condition: 'Good',
+        quantity: 1,
       },
     });
     const post = await service.createPost(
@@ -1187,6 +1221,7 @@ describe('Fresh clone database', () => {
             name: 'Trade reservation',
             category: 'Books',
             condition: 'Good',
+            quantity: 1,
           },
         }),
       ),
@@ -1223,6 +1258,7 @@ describe('Fresh clone database', () => {
             name: 'Competing trade',
             category: 'Books',
             condition: 'Good',
+            quantity: 1,
           },
         }),
       ),
@@ -1267,6 +1303,7 @@ describe('Fresh clone database', () => {
         offerId: offer.offerId,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 0,
         deliveryMethod: 'Meetup',
         status: 'Pending',
       },
@@ -1295,32 +1332,27 @@ describe('Fresh clone database', () => {
     await expect(service.generateQr(deal.transactionId, 3)).rejects.toThrow();
   });
 
-  it('does not revive a cancelled transaction with a payment upload based on a stale read', async () => {
+  it('does not revive a cancelled transaction with a payment upload that was already on its way', async () => {
     const service = transactionService();
     const deal = await prisma.transaction.create({
       data: {
         postId: 1,
         buyerId: 4,
         sellerId: 3,
+        totalAmount: 100,
         deliveryMethod: 'Shipping',
         status: 'Pending',
       },
     });
+    // The cancellation lands after the upload request arrived but before it
+    // takes the row lock. The upload validates against what it reads under
+    // the lock, so it must see the deal as cancelled.
     const intercepted = {
-      transaction: {
-        findUnique: async () => {
-          const snapshot = await prisma.transaction.findUnique({
-            where: { transactionId: deal.transactionId },
-          });
-          await service.requestCancellation(deal.transactionId, 3, {
-            reason: 'Cancel before payment',
-          });
-          return snapshot;
-        },
-        update: (args: Prisma.TransactionUpdateArgs) =>
-          prisma.transaction.update(args),
-        updateMany: (args: Prisma.TransactionUpdateManyArgs) =>
-          prisma.transaction.updateMany(args),
+      $transaction: async (work: never) => {
+        await service.requestCancellation(deal.transactionId, 3, {
+          reason: 'Cancel before payment',
+        });
+        return prisma.$transaction(work);
       },
     } as unknown as PrismaService;
     const delayed = new TransactionService(intercepted, {} as RedisService);
@@ -1328,7 +1360,7 @@ describe('Fresh clone database', () => {
       delayed.uploadPaymentSlip(deal.transactionId, 4, {
         slip_image_url: 'https://example.com/slip.jpg',
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('must be Pending');
     expect(
       (
         await prisma.transaction.findUniqueOrThrow({
@@ -1336,6 +1368,172 @@ describe('Fresh clone database', () => {
         })
       ).status,
     ).toBe('Cancelled');
+    expect(
+      await prisma.transactionPayment.count({
+        where: { transactionId: deal.transactionId },
+      }),
+    ).toBe(0);
+  });
+
+  it('keeps every slip on record through reject, refund, repayment and a final refund', async () => {
+    const service = transactionService();
+    const deal = await prisma.transaction.create({
+      data: {
+        postId: 1,
+        buyerId: 4,
+        sellerId: 3,
+        totalAmount: 100,
+        deliveryMethod: 'Shipping',
+        status: 'Pending',
+      },
+    });
+    const id = deal.transactionId;
+    const slip = (name: string) => ({
+      slip_image_url: `https://example.test/${name}.png`,
+    });
+    const refundSlip = (name: string) => ({
+      refund_slip_url: `https://example.test/${name}.png`,
+    });
+
+    // First slip is rejected: the deal stays Processing with the claim standing.
+    await service.uploadPaymentSlip(id, 4, slip('first'));
+    expect(await service.rejectPaymentSlip(id, 3)).toMatchObject({
+      status: 'Processing',
+      slipImageUrl: null,
+      paymentConfirmedBySellerAt: null,
+    });
+    await expect(service.confirmPaymentReceived(id, 3)).rejects.toThrow(
+      'rejected',
+    );
+
+    // A second slip replaces it and is rejected too; the seller sends the
+    // money back and the buyer confirms, which returns the deal to Pending.
+    expect(
+      await service.uploadPaymentSlip(id, 4, slip('second')),
+    ).toMatchObject({ slipImageUrl: 'https://example.test/second.png' });
+    await service.rejectPaymentSlip(id, 3);
+    await service.uploadRefundSlip(id, 3, refundSlip('returned'));
+    await expect(
+      service.uploadPaymentSlip(id, 4, slip('too-late')),
+    ).rejects.toThrow('refund slip');
+    expect(await service.confirmRefund(id, 4)).toMatchObject({
+      status: 'Pending',
+      paymentConfirmedByBuyerAt: null,
+      refundSlipUrl: null,
+    });
+    expect(
+      await prisma.transactionPayment.findMany({
+        where: { transactionId: id },
+        orderBy: { paymentId: 'asc' },
+        select: { status: true },
+      }),
+    ).toEqual([{ status: 'Rejected' }, { status: 'Rejected' }]);
+
+    // Paid again and confirmed, then cancelled by consent: a real refund,
+    // which must still be recordable after the earlier one was settled.
+    await service.uploadPaymentSlip(id, 4, slip('third'));
+    await service.confirmPaymentReceived(id, 3);
+    await service.requestCancellation(id, 4, { reason: 'Changed my mind' });
+    expect(
+      await service.respondToCancellation(id, 3, { response: 'Approved' }),
+    ).toMatchObject({ status: 'Pending Refund' });
+    await service.uploadRefundSlip(id, 3, refundSlip('refunded'));
+    expect(await service.confirmRefund(id, 4)).toMatchObject({
+      status: 'Refunded',
+      refundConfirmedByBuyer: true,
+    });
+    expect(
+      await prisma.transactionRefundSlip.findMany({
+        where: { transactionId: id },
+        select: { status: true },
+      }),
+    ).toEqual([{ status: 'Confirmed' }]);
+  });
+
+  it('requires a PromptPay ID before money can reach a seller, and pays it through the QR', async () => {
+    const posts = new PostsService(prisma as unknown as PrismaService);
+    const users = new UsersService(prisma as unknown as PrismaService);
+    const service = transactionService();
+    const seller = 3;
+    const item = await prisma.item.create({
+      data: {
+        ownerId: seller,
+        name: 'PromptPay rule',
+        category: 'Books',
+        condition: 'Good',
+        quantity: 3,
+      },
+    });
+    const sell = { item_id: item.itemId, post_type: 'SellOnly', price: 150 };
+
+    // No ID: a trade-only listing is fine, a priced one is not.
+    await prisma.user.update({
+      where: { userId: seller },
+      data: { promptpayId: null },
+    });
+    await expect(posts.createPost(sell, seller)).rejects.toThrow('PromptPay');
+    const trade = await posts.createPost(
+      { item_id: item.itemId, post_type: 'TradeOnly', price: 0 },
+      seller,
+    );
+    await expect(
+      posts.updatePost(trade.post_id, { post_type: 'Both' }, seller),
+    ).rejects.toThrow('PromptPay');
+
+    // Only a Thai mobile number is accepted, and it is stored normalised.
+    await expect(
+      users.updateMe(seller, { promptpay_id: '1234567890123' }),
+    ).rejects.toThrow('PromptPay');
+    expect(
+      await users.updateMe(seller, { promptpay_id: '089-999-8888' }),
+    ).toMatchObject({ promptpayId: '0899998888' });
+    // Leaving the field out of a later edit keeps it.
+    expect(
+      await users.updateMe(seller, { phone_number: '0811111111' }),
+    ).toMatchObject({ promptpayId: '0899998888' });
+
+    const post = await posts.createPost({ ...sell, quantity_total: 2 }, seller);
+    // With a priced listing open, the ID can be replaced but not removed.
+    await expect(
+      users.updateMe(seller, { promptpay_id: null }),
+    ).rejects.toThrow(ConflictException);
+
+    // A listing that predates the rule cannot be bought until its seller sets one.
+    await prisma.user.update({
+      where: { userId: seller },
+      data: { promptpayId: null },
+    });
+    await expect(
+      posts.buyPost(post.post_id, { buyer_id: 4, quantity: 2 }),
+    ).rejects.toThrow('PromptPay');
+    await users.updateMe(seller, { promptpay_id: '0899998888' });
+
+    const bought = await posts.buyPost(post.post_id, {
+      buyer_id: 4,
+      quantity: 2,
+    });
+    const id = Number(bought.transaction_id.replace(/\D/g, ''));
+    const qr = await service.paymentQr(id, 4);
+    // 150 x 2, to the seller's number in international form.
+    expect(qr).toMatchObject({ amount: 300, promptpay_id: 'xxx-xxx-8888' });
+    expect(qr.payload).toContain('01130066899998888');
+    expect(qr.payload).toContain('5406300.00');
+    await expect(service.paymentQr(id, seller)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+
+    // The amount was fixed when the deal was made; a price edit does not move it.
+    await posts.updatePost(post.post_id, { price: 999 }, seller);
+    expect((await service.paymentQr(id, 4)).amount).toBe(300);
+    expect((await service.findOneForUser(id, 4)).final_amount).toBe(300);
+
+    // Once a slip is in, there is nothing left to pay; a rejection reopens it.
+    await service.uploadPaymentSlip(id, 4, {
+      slip_image_url: 'https://example.test/qr-paid.png',
+    });
+    await expect(service.paymentQr(id, 4)).rejects.toThrow();
+    await service.rejectPaymentSlip(id, seller);
+    expect((await service.paymentQr(id, 4)).amount).toBe(300);
   });
 
   it('boots the full API without an email key and authenticates a fresh demo account', async () => {
@@ -1380,6 +1578,43 @@ describe('Fresh clone database', () => {
         .set('Authorization', `Bearer ${body.data.accessToken}`)
         .expect(200);
       await request(app.getHttpServer()).get('/transactions').expect(401);
+      // PromptPay over HTTP: set through the profile, then paid through the QR.
+      await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
+        .send({ promptpay_id: 'not-a-number' })
+        .expect(400);
+      const profile = await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
+        .send({ promptpay_id: '081 111 2222' })
+        .expect(200);
+      expect(
+        (profile.body as { data: { promptpayId: string } }).data.promptpayId,
+      ).toBe('0811112222');
+      const owed = await prisma.transaction.create({
+        data: {
+          postId: 3,
+          buyerId: 3,
+          sellerId: 4,
+          totalAmount: 250,
+          deliveryMethod: 'Meetup',
+          status: 'Pending',
+        },
+      });
+      const qr = await request(app.getHttpServer())
+        .get(`/transactions/${owed.transactionId}/payment-qr`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
+        .expect(200);
+      expect(
+        (qr.body as { data: { amount: number; payload: string } }).data,
+      ).toMatchObject({
+        amount: 250,
+        payload: expect.stringContaining('5406250.00') as unknown,
+      });
+      await request(app.getHttpServer())
+        .get(`/transactions/${owed.transactionId}/payment-qr`)
+        .expect(401);
       await request(app.getHttpServer())
         .post('/auth/register')
         .send({ email: 'invalid@example.test', password: 'x' })
@@ -1399,6 +1634,7 @@ describe('Fresh clone database', () => {
           name: 'Protected ownership',
           category: 'Books',
           condition: 'Good',
+          quantity: 1,
           ownerId: 3,
         },
       });

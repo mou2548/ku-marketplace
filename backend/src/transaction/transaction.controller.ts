@@ -40,6 +40,18 @@ export class TransactionController {
     return this.transactionService.findOneForUser(id, user.userId);
   }
 
+  /**
+   * §8.6 — the PromptPay QR the buyer scans to pay: the seller's account and
+   * the exact amount owed, both fixed server-side.
+   */
+  @Get(':id/payment-qr')
+  paymentQr(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.transactionService.paymentQr(id, user.userId);
+  }
+
   /** §8.6 — buyer uploads the transfer slip and confirms: Pending → Processing.
    * Also replaces a slip the seller rejected. */
   @Post(':id/payment-slip')
