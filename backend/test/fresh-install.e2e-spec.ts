@@ -1492,6 +1492,31 @@ describe('Fresh clone database', () => {
       await users.updateMe(seller, { phone_number: '0811111111' }),
     ).toMatchObject({ promptpayId: '0899998888' });
 
+    // One number, one account: nobody else can take it, however it is
+    // written, while its owner can save it again.
+    await expect(
+      users.updateMe(4, { promptpay_id: '089 999 8888' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(
+      await users.updateMe(seller, { promptpay_id: '0899998888' }),
+    ).toMatchObject({ promptpayId: '0899998888' });
+    // A deleted account no longer holds its number.
+    await prisma.user.create({
+      data: {
+        email: 'gone@ku.th',
+        passwordHash: 'test-only',
+        firstNameEn: 'Gone',
+        lastNameEn: 'Test',
+        firstNameTh: 'Gone',
+        lastNameTh: 'Test',
+        status: 'Deleted',
+        promptpayId: '0877776666',
+      },
+    });
+    expect(
+      await users.updateMe(4, { promptpay_id: '0877776666' }),
+    ).toMatchObject({ promptpayId: '0877776666' });
+
     const post = await posts.createPost({ ...sell, quantity_total: 2 }, seller);
     // With a priced listing open, the ID can be replaced but not removed.
     await expect(

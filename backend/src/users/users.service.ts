@@ -80,7 +80,30 @@ export class UsersService {
         'PromptPay ต้องเป็นเบอร์มือถือ 10 หลัก เช่น 0812345678',
       );
     }
+    await this.assertPromptPayIsFree(userId, promptpayId);
     return promptpayId;
+  }
+
+  /**
+   * One number, one account: a student has a single account, so a number
+   * already on another one is a typo or a second account (a banned seller
+   * coming back, say). A deleted account no longer holds its number.
+   *
+   * Checked here only — the column has no unique index, so two saves landing
+   * at the same instant could still both pass.
+   */
+  private async assertPromptPayIsFree(userId: number, promptpayId: string) {
+    const holder = await this.prisma.user.findFirst({
+      where: {
+        promptpayId,
+        userId: { not: userId },
+        OR: [{ status: null }, { status: { not: 'Deleted' } }],
+      },
+      select: { userId: true },
+    });
+    if (holder) {
+      throw new ConflictException('เบอร์ PromptPay นี้ถูกใช้กับบัญชีอื่นแล้ว');
+    }
   }
 
   /**
