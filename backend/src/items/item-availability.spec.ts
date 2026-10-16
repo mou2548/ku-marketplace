@@ -109,6 +109,28 @@ describe('getItemAvailability — giveaway ticket release', () => {
 });
 
 describe('getItemAvailability — units nobody won', () => {
+  it('reserves open giveaway capacity despite repeated forfeits and re-registration', async () => {
+    const result = await getItemAvailability(
+      client({
+        quantity: 3,
+        giveaways: [
+          {
+            quantity: 3,
+            status: 'Active',
+            tickets: [
+              { status: 'Forfeited' },
+              { status: 'Forfeited' },
+              { status: 'Waiting' },
+            ],
+          },
+        ],
+      }),
+      1,
+    );
+    expect(result.available).toBe(0);
+    expect(result.isTransferred).toBe(false);
+  });
+
   it('frees the undrawn units once a Random giveaway closes with fewer registrants', async () => {
     // 6 owned, 2 listed for sale, 3 given away at random, 1 person registered.
     const result = await getItemAvailability(

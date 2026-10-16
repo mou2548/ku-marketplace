@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MessageOverride } from '../dto/message-override.dto';
 import { getItemAvailability } from '../items/item-availability';
 import { displayName } from '../common/utils/display-name';
+import { validateText } from '../common/utils/schema-validation';
 
 export interface GiveawayImage {
   image_url: string;
@@ -18,7 +19,6 @@ export interface GiveawayImage {
 
 export interface CreateGiveawayPayload {
   item_id?: number;
-  item_name?: string;
   quantity?: number;
   description?: string;
   pickup_location?: string;
@@ -89,6 +89,11 @@ export class GiveawaysService {
   }
 
   async create(payload: CreateGiveawayPayload, giverId: number) {
+    validateText(payload.description, 'description', 2000);
+    validateText(payload.pickup_location, 'pickup_location', 255);
+    for (const image of payload.images ?? []) {
+      validateText(image.image_url, 'image_url', 500);
+    }
     if (
       !payload.item_id ||
       !payload.pickup_location ||
@@ -189,7 +194,6 @@ export class GiveawaysService {
         data: {
           giverId,
           itemId,
-          itemName: payload.item_name,
           quantity,
           description: payload.description,
           pickupLocation,
@@ -206,6 +210,7 @@ export class GiveawaysService {
           },
         },
         include: {
+          item: true,
           images: { orderBy: { displayOrder: 'asc' } },
           giver: true,
         },
@@ -217,8 +222,8 @@ export class GiveawaysService {
   private serializeGiveaway(
     giveaway: {
       giveawayId: number;
-      itemId: number | null;
-      itemName: string | null;
+      itemId: number;
+      item: { name: string };
       description: string | null;
       pickupLocation: string;
       giverId: number;
@@ -243,7 +248,7 @@ export class GiveawaysService {
     return {
       giveaway_id: this.label('giveaway', giveaway.giveawayId),
       item_id: giveaway.itemId,
-      item_name: giveaway.itemName,
+      item_name: giveaway.item.name,
       description: giveaway.description,
       pickup_location: giveaway.pickupLocation,
       giver_id: giveaway.giverId,
@@ -284,9 +289,20 @@ export class GiveawaysService {
     const giveaway = await this.prisma.giveawayPost.findUnique({
       where: { giveawayId: this.id(id, 'giveaway') },
       include: {
+        item: true,
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
-        _count: { select: { tickets: true } },
+        _count: {
+          select: {
+            tickets: {
+              where: {
+                status: {
+                  in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
+                },
+              },
+            },
+          },
+        },
       },
     });
     if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
@@ -300,9 +316,20 @@ export class GiveawaysService {
   async findAll() {
     const giveaways = await this.prisma.giveawayPost.findMany({
       include: {
+        item: true,
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
-        _count: { select: { tickets: true } },
+        _count: {
+          select: {
+            tickets: {
+              where: {
+                status: {
+                  in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
+                },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -339,13 +366,20 @@ export class GiveawaysService {
       if (!(await tx.user.findUnique({ where: { userId: receiverId } }))) {
         throw new NotFoundException('ไม่พบผู้รับ');
       }
-      const existing = await tx.giveawayTicket.findUnique({
-        where: { giveawayId_receiverId: { giveawayId, receiverId } },
+      const existing = await tx.giveawayTicket.findFirst({
+        where: {
+          giveawayId,
+          receiverId,
+          status: { in: ['Registered', 'Waiting', 'Received'] },
+        },
       });
       if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
 
       const participantCount = await tx.giveawayTicket.count({
-        where: { giveawayId },
+        where: {
+          giveawayId,
+          status: { in: ['Registered', 'Waiting', 'Received'] },
+        },
       });
       if (
         giveaway.allocationMethod === 'FirstCome' &&
@@ -354,11 +388,17 @@ export class GiveawaysService {
         throw new ConflictException('สิทธิ์รับของครบแล้ว');
       }
 
+      // Queue numbers are unique across the entire history, including forfeits.
+      // The giveaway row lock serializes concurrent registrations.
+      const lastTicket = await tx.giveawayTicket.aggregate({
+        where: { giveawayId },
+        _max: { queueNumber: true },
+      });
       const ticket = await tx.giveawayTicket.create({
         data: {
           giveawayId,
           receiverId,
-          queueNumber: participantCount + 1,
+          queueNumber: (lastTicket._max.queueNumber ?? 0) + 1,
           status:
             giveaway.allocationMethod === 'FirstCome'
               ? 'Waiting'
@@ -977,6 +1017,7 @@ export class GiveawaysService {
     payload: SendGiveawayMessagePayload,
     userId: number,
   ) {
+    validateText(payload.content, 'content', 2000);
     const { content, image_urls } = payload;
     if (!content && (!image_urls || image_urls.length === 0)) {
       throw new BadRequestException(

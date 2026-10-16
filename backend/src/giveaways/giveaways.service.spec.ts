@@ -29,6 +29,8 @@ describe('GiveawaysService allocation boundaries', () => {
       },
       giveawayTicket: {
         findUnique: jest.fn().mockResolvedValue(null),
+        findFirst: jest.fn().mockResolvedValue(null),
+        aggregate: jest.fn().mockResolvedValue({ _max: { queueNumber: null } }),
         findMany: jest.fn(),
         count: jest.fn(),
         create: jest.fn(),
@@ -81,6 +83,135 @@ describe('GiveawaysService allocation boundaries', () => {
       where: { giveawayId: 2 },
       data: { status: 'Closed' },
     });
+  });
+
+  it('allows re-registration after a forfeited ticket and never reuses a queue number', async () => {
+    const { service, tx } = setupTransaction();
+    tx.giveawayPost.findUnique.mockResolvedValue({
+      giveawayId: 2,
+      giverId: 99,
+      status: 'Active',
+      allocationMethod: 'FirstCome',
+      quantity: 4,
+    });
+    tx.giveawayTicket.count.mockResolvedValue(1);
+    tx.giveawayTicket.aggregate.mockResolvedValue({ _max: { queueNumber: 7 } });
+    tx.giveawayTicket.create.mockResolvedValue({
+      ...ticket(8),
+      queueNumber: 8,
+      status: 'Waiting',
+    });
+
+    const result = await service.join('2', 12);
+    expect(result.queue_number).toBe(8);
+    expect(result.remaining_slots).toBe(2);
+    expect(tx.giveawayTicket.findFirst).toHaveBeenCalledWith({
+      where: {
+        giveawayId: 2,
+        receiverId: 12,
+        status: { in: ['Registered', 'Waiting', 'Received'] },
+      },
+    });
+    expect(tx.giveawayTicket.count).toHaveBeenCalledWith({
+      where: {
+        giveawayId: 2,
+        status: { in: ['Registered', 'Waiting', 'Received'] },
+      },
+    });
+  });
+
+  it.each(['Registered', 'Waiting', 'Received'])(
+    'rejects a duplicate live %s ticket',
+    async (status) => {
+      const { service, tx } = setupTransaction();
+      tx.giveawayPost.findUnique.mockResolvedValue({
+        giveawayId: 2,
+        giverId: 99,
+        status: 'Active',
+      });
+      tx.giveawayTicket.findFirst.mockResolvedValue({ ...ticket(1), status });
+      await expect(service.join('2', 12)).rejects.toThrow(
+        'ผู้ใช้นี้เข้าร่วมแล้ว',
+      );
+      expect(tx.giveawayTicket.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reads the giveaway name from its item on both public endpoints', async () => {
+    const giveaway = {
+      giveawayId: 2,
+      itemId: 10,
+      item: { name: 'Current item name' },
+      giverId: 99,
+      giver: receiver(99),
+      images: [],
+      quantity: 5,
+      status: 'Active',
+      allocationMethod: 'FirstCome',
+      _count: { tickets: 2 },
+    };
+    const prisma = {
+      giveawayPost: {
+        findUnique: jest.fn().mockResolvedValue(giveaway),
+        findMany: jest.fn().mockResolvedValue([giveaway]),
+      },
+    };
+    const service = new GiveawaysService(prisma as unknown as PrismaService);
+    expect(await service.detail('2')).toEqual(
+      expect.objectContaining({
+        item_name: 'Current item name',
+        participant_count: 2,
+      }),
+    );
+    expect(await service.findAll()).toEqual([
+      expect.objectContaining({ item_name: 'Current item name' }),
+    ]);
+  });
+
+  it('rejects text exceeding the new database limits before creating a giveaway', async () => {
+    const { service } = setupTransaction();
+    await expect(
+      service.create({ description: 'x'.repeat(2001) }, 99),
+    ).rejects.toThrow('description');
+    await expect(
+      service.sendGiveawayMessage('2', { content: 'x'.repeat(2001) }, 99),
+    ).rejects.toThrow('content');
+  });
+
+  it('does not advertise every entrant as guaranteed after an oversubscribed draw', async () => {
+    const findUnique = jest.fn().mockResolvedValue({
+      giveawayId: 2,
+      itemId: 10,
+      item: { name: 'Book' },
+      giverId: 99,
+      giver: receiver(99),
+      images: [],
+      quantity: 2,
+      status: 'Closed',
+      allocationMethod: 'Random',
+      _count: { tickets: 3 },
+    });
+    const service = new GiveawaysService({
+      giveawayPost: { findUnique },
+    } as unknown as PrismaService);
+    expect((await service.detail('2')).all_registered_guaranteed).toBe(false);
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          _count: {
+            select: {
+              tickets: {
+                where: {
+                  status: {
+                    in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
+                  },
+                },
+              },
+            },
+          },
+        }),
+      }),
+    );
   });
 
   it('selects every entrant when a Random draw is under capacity', async () => {

@@ -18,7 +18,7 @@ export interface ItemAvailability {
  * available(item) = Item.quantity
  *                  − Σ quantity_total                          (channel ที่เปิดอยู่)
  *                  − Σ (quantity_total − quantity_remaining)    (channel ที่ปิดแล้ว)
- *                  − Σ (quantity − released_tickets)            (Giveaway_Post, Active)
+ *                  − Σ quantity                                 (Giveaway_Post, Active)
  *                  − Σ awarded_tickets                          (Giveaway_Post, allocated)
  *
  * Post is "open" when deletedAt is null and status is 'Active'; anything
@@ -29,8 +29,9 @@ export interface ItemAvailability {
  * A Giveaway_Post's `quantity` is committed the moment it's created (the
  * same as a Post's quantityTotal while open — createGiveaway already checks
  * it against `available` up front), regardless of the giveaway's own
- * Active/Closed status. What can shrink that commitment is a per-ticket
- * outcome: a ticket that reaches 'Expired' (the pickup deadline passed
+ * Active/Closed status. While Active, reserve the full capacity because a
+ * forfeited receiver can register again. After closure, a ticket that
+ * reaches 'Expired' (the pickup deadline passed
  * before it was scanned) or 'Forfeited' (the recipient gave it up) will
  * never be claimed, so that one unit is released back to `available` —
  * mirroring exactly how an unsold portion of a closed Post already flows
@@ -93,6 +94,12 @@ export async function getItemAvailability(
     const received = giveaway.tickets.filter(
       (ticket) => ticket.status === 'Received',
     ).length;
+    if (giveaway.status === 'Active') {
+      // Historical forfeits do not release a slot that can still be refilled.
+      committed += giveaway.quantity;
+      pendingHandover += giveaway.quantity - received;
+      continue;
+    }
     if (giveaway.status === 'Closed' || giveaway.status === 'Completed') {
       const waiting = giveaway.tickets.filter(
         (ticket) => ticket.status === 'Waiting',

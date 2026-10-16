@@ -14,18 +14,19 @@ import {
 import { getItemAvailability } from '../items/item-availability';
 import { PrismaService } from '../prisma/prisma.service';
 import { displayName } from '../common/utils/display-name';
+import { validateText } from '../common/utils/schema-validation';
 
 export interface CreatePostPayload {
   item_id?: number;
   post_type?: string;
-  price?: number;
+  price?: number | null;
   quantity_total?: number;
   description?: string;
   wanted_item_offer?: string;
 }
 
 export interface UpdatePostPayload {
-  price?: number;
+  price?: number | null;
   post_type?: string;
   /** Changing this restocks or reduces the channel — see updatePost's own
    * validation: can't drop below what this channel already sold/traded, and
@@ -71,7 +72,7 @@ export class PostsService {
     postId: number;
     itemId: number;
     postType: string;
-    price: { toNumber(): number };
+    price: { toNumber(): number } | null;
     quantityTotal: number;
     quantityRemaining: number;
     description?: string | null;
@@ -119,7 +120,7 @@ export class PostsService {
       // (the item's own facts, nested below, shared by every channel it backs).
       description: post.description ?? null,
       wanted_item_offer: post.wantedItemOffer ?? null,
-      price: post.price.toNumber(),
+      price: post.price?.toNumber() ?? null,
       quantity_total: post.quantityTotal,
       quantity_available: post.quantityRemaining,
       quantity_remaining: post.quantityRemaining,
@@ -172,10 +173,10 @@ export class PostsService {
   }
 
   async createPost(payload: CreatePostPayload, userId: number) {
-    if (!payload.item_id || !payload.post_type || payload.price === undefined) {
-      throw new BadRequestException(
-        'item_id, post_type และ price จำเป็นต้องระบุ',
-      );
+    validateText(payload.description, 'description', 2000);
+    validateText(payload.wanted_item_offer, 'wanted_item_offer', 500);
+    if (!payload.item_id || !payload.post_type) {
+      throw new BadRequestException('item_id และ post_type จำเป็นต้องระบุ');
     }
     if (!['SellOnly', 'TradeOnly', 'Both'].includes(payload.post_type)) {
       throw new BadRequestException(
@@ -185,10 +186,13 @@ export class PostsService {
     const quantity = payload.quantity_total ?? 1;
     const itemId = payload.item_id;
     const postType = payload.post_type;
-    const price = payload.price;
+    const price = payload.price ?? null;
+    if (postType !== 'TradeOnly' && price === null) {
+      throw new BadRequestException('price is required for SellOnly and Both');
+    }
     if (
-      !Number.isFinite(payload.price) ||
-      payload.price < 0 ||
+      (price !== null &&
+        (!Number.isFinite(price) || price < 0 || price > 99999999.99)) ||
       !Number.isInteger(quantity) ||
       quantity < 1 ||
       !Number.isSafeInteger(itemId) ||
@@ -352,6 +356,8 @@ export class PostsService {
   }
 
   async updatePost(postId: string, payload: UpdatePostPayload, userId: number) {
+    validateText(payload.description, 'description', 2000);
+    validateText(payload.wanted_item_offer, 'wanted_item_offer', 500);
     if (
       payload.price === undefined &&
       payload.post_type === undefined &&
@@ -363,7 +369,10 @@ export class PostsService {
     }
     if (
       payload.price !== undefined &&
-      (!Number.isFinite(payload.price) || payload.price < 0)
+      payload.price !== null &&
+      (!Number.isFinite(payload.price) ||
+        payload.price < 0 ||
+        payload.price > 99999999.99)
     ) {
       throw new BadRequestException('price ต้องเป็นเลขที่ไม่ติดลบ');
     }
@@ -391,6 +400,16 @@ export class PostsService {
         where: { postId: id, deletedAt: null },
       });
       if (!found) throw new NotFoundException('ไม่พบโพสต์');
+      const nextPrice =
+        payload.price === undefined ? found.price : payload.price;
+      if (
+        (payload.post_type ?? found.postType) !== 'TradeOnly' &&
+        nextPrice === null
+      ) {
+        throw new BadRequestException(
+          'price is required for SellOnly and Both',
+        );
+      }
 
       let quantityTotal = found.quantityTotal;
       let quantityRemaining = found.quantityRemaining;
@@ -443,7 +462,7 @@ export class PostsService {
 
     return {
       post_id: this.label('post', post.postId),
-      price: post.price.toNumber(),
+      price: post.price?.toNumber() ?? null,
       post_type: post.postType,
       quantity_total: post.quantityTotal,
       quantity_remaining: post.quantityRemaining,
@@ -537,6 +556,9 @@ export class PostsService {
       if (!['SellOnly', 'Both'].includes(post.postType)) {
         throw new ConflictException('โพสต์นี้รองรับการแลกเปลี่ยนเท่านั้น');
       }
+      if (post.price === null) {
+        throw new ConflictException('This post has no sale price');
+      }
       if (post.item.ownerId === buyerId) {
         throw new ConflictException(
           'เจ้าของโพสต์ไม่สามารถซื้อสินค้าของตัวเองได้',
@@ -547,12 +569,19 @@ export class PostsService {
       }
       const buyer = await tx.user.findUnique({ where: { userId: buyerId } });
       if (!buyer) throw new NotFoundException('ไม่พบผู้ซื้อ');
+      const totalAmount = post.price.mul(quantity);
+      if (totalAmount.greaterThan('99999999.99')) {
+        throw new BadRequestException(
+          'total_amount exceeds the database limit',
+        );
+      }
       const created = await tx.transaction.create({
         data: {
           postId: id,
           buyerId,
           sellerId: post.item.ownerId,
           quantity,
+          totalAmount,
           deliveryMethod,
           status: 'Pending',
         },
@@ -583,6 +612,7 @@ export class PostsService {
       buyer_id: transaction.buyerId,
       delivery_method: transaction.deliveryMethod,
       quantity: transaction.quantity,
+      total_amount: transaction.totalAmount.toNumber(),
       status: transaction.status,
     };
   }
@@ -599,7 +629,8 @@ export class PostsService {
       !Array.isArray(payload.item_ids) ||
       payload.item_ids.some((id) => !Number.isSafeInteger(id) || id < 1) ||
       !Number.isFinite(payload.additional_money ?? 0) ||
-      (payload.additional_money ?? 0) < 0
+      (payload.additional_money ?? 0) < 0 ||
+      (payload.additional_money ?? 0) > 99999999.99
     ) {
       throw new BadRequestException(
         'Invalid offered items or additional money',
@@ -854,6 +885,7 @@ export class PostsService {
           buyerId: offer.proposerId,
           sellerId: offer.post.item.ownerId,
           quantity: 1,
+          totalAmount: offer.additionalMoney ?? new Prisma.Decimal(0),
           deliveryMethod,
           status: 'Pending',
         },
@@ -892,6 +924,7 @@ export class PostsService {
       post_id: this.label('post', postPk),
       offer_id: this.label('offer', offerPk),
       delivery_method: transaction.deliveryMethod,
+      total_amount: transaction.totalAmount.toNumber(),
       status: 'accepted',
     };
   }
