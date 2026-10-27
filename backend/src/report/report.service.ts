@@ -14,6 +14,7 @@ import {
 import { CreateReportDto } from './dto/create-report.dto';
 import { ResolveReportDto } from './dto/resolve-report.dto';
 import { TransactionService } from '../transaction/transaction.service';
+import { isLockingReason } from '../transaction/transaction-state';
 import {
   notifyAdminsOfReport,
   notifySanctioned,
@@ -166,6 +167,12 @@ export class ReportService {
 
   async create(reporterId: number, dto: CreateReportDto) {
     if (dto.report_type === ReportType.Transaction) {
+      // The reasons the system files with lock a deal until an admin rules
+      // (see transaction-state.ts), so a participant may not claim one.
+      if (isLockingReason(dto.reason_category))
+        throw new BadRequestException(
+          'This reason is reserved for system reports',
+        );
       const target = await this.prisma.transaction.findUnique({
         where: { transactionId: dto.target_id },
       });

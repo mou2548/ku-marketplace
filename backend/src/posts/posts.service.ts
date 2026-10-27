@@ -412,6 +412,13 @@ export class PostsService {
     }
     await this.requirePostOwner(postId, userId);
     const id = this.id(postId, 'post');
+    if (payload.post_type !== undefined && payload.post_type !== 'TradeOnly') {
+      await this.assertHasPromptPay(
+        this.prisma,
+        userId,
+        'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนเปิดขายสินค้า',
+      );
+    }
 
     const post = await this.prisma.$transaction(async (tx) => {
       const found = await tx.post.findUnique({

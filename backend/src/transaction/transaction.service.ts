@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import type { Prisma, Transaction } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import {
@@ -16,6 +16,7 @@ import {
 } from '../common/enums/transaction.enums';
 import { ReportStatus, ReportType } from '../common/enums/report.enums';
 import { UploadPaymentSlipDto } from './dto/upload-payment-slip.dto';
+import { RejectPaymentSlipDto } from './dto/reject-payment-slip.dto';
 import { ShipTransactionDto } from './dto/ship-transaction.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
@@ -23,8 +24,22 @@ import { RequestCancellationDto } from './dto/request-cancellation.dto';
 import { RespondCancellationDto } from './dto/respond-cancellation.dto';
 import { notifyAdminsOfReport } from '../report/moderation-notifications';
 import { displayName } from '../common/utils/display-name';
+import { maskPromptPayId, promptPayPayload } from '../common/utils/promptpay';
+import {
+  CANCELLATION_REJECTED_REASON,
+  PaymentStatus,
+  findLockingReports,
+  isLockingReason,
+  loadTransactionSnapshot,
+  toTransactionSnapshot,
+  toTransactionState,
+  transactionStateInclude,
+  type TransactionSnapshot,
+  type TransactionState,
+} from './transaction-state';
 
-type TransactionRow = Transaction;
+type TransactionRow = TransactionSnapshot;
+type Db = Prisma.TransactionClient;
 
 /** §6 Redis key pattern + §8.6 "อายุ token 15 นาที" */
 const QR_TOKEN_TTL_SECONDS = 15 * 60;
@@ -55,127 +70,93 @@ export class TransactionService {
   }
 
   /**
-   * Not a stored column — `Transaction` has no `final_amount`. A straight
-   * purchase (`offer_id` null) pays the post's price; a trade only ever
-   * carries the offer's `additional_money` top-up (`requiresPayment` in
-   * `lib/status.ts` uses the same `offer_id == null` split on the frontend).
+   * `state` carries every per-deal field (see `transaction-state.ts`); the row
+   * itself is only read for the relations around it. `final_amount` is the
+   * stored `total_amount`: what the buyer owed when the deal was made, so a
+   * later price edit on the post does not move it.
    */
-  private finalAmount(transaction: {
-    offerId: number | null;
-    quantity: number | null;
-    post: { price: { toNumber(): number } };
-    offer: { additionalMoney: { toNumber(): number } | null } | null;
-  }) {
-    if (transaction.offerId === null) {
-      return transaction.post.price.toNumber() * (transaction.quantity ?? 1);
-    }
-    return transaction.offer?.additionalMoney?.toNumber() ?? 0;
-  }
-
-  private serializeTransaction(transaction: {
-    transactionId: number;
-    postId: number;
-    offerId: number | null;
-    buyerId: number;
-    sellerId: number;
-    quantity: number | null;
-    status: string | null;
-    activeReportId: number | null;
-    deliveryMethod: string;
-    slipImageUrl: string | null;
-    trackingNumber: string | null;
-    estimatedDeliveryDate: Date | null;
-    paymentConfirmedByBuyerAt: Date | null;
-    paymentConfirmedBySellerAt: Date | null;
-    itemReceivedConfirmedByBuyerAt: Date | null;
-    itemReceivedConfirmedBySellerAt: Date | null;
-    cancellationRequestedBy: number | null;
-    cancellationReason: string | null;
-    cancellationRequestedAt: Date | null;
-    cancellationResponse: string | null;
-    refundSlipUrl: string | null;
-    refundSubmittedAt: Date | null;
-    refundConfirmedByBuyer: boolean | null;
-    itemReturnConfirmedAt: Date | null;
-    createdAt: Date | null;
-    post: {
-      postId: number;
-      itemId: number;
-      postType: string;
-      price: { toNumber(): number };
-      quantityRemaining: number;
-      createdAt: Date | null;
-      item: {
+  private serializeTransaction(
+    transaction: {
+      post: {
+        postId: number;
         itemId: number;
-        ownerId: number;
-        name: string;
-        category: string;
-        condition: string;
-        description: string | null;
-        courseName: string | null;
-        brandModel: string | null;
-        warrantyExpiry: Date | null;
-        size: string | null;
+        postType: string;
+        price: { toNumber(): number } | null;
+        quantityRemaining: number;
         createdAt: Date | null;
-        images: {
-          imageId: number;
+        item: {
           itemId: number;
-          imageUrl: string;
-          isPrimary: boolean | null;
-          displayOrder: number | null;
-        }[];
+          ownerId: number;
+          name: string;
+          category: string;
+          condition: string;
+          description: string | null;
+          courseName: string | null;
+          brandModel: string | null;
+          warrantyExpiry: Date | null;
+          size: string | null;
+          createdAt: Date | null;
+          images: {
+            imageId: number;
+            itemId: number;
+            imageUrl: string;
+            isPrimary: boolean | null;
+            displayOrder: number | null;
+          }[];
+        };
       };
-    };
-    offer: { additionalMoney: { toNumber(): number } | null } | null;
-    buyer: {
-      userId: number;
-      firstNameEn: string;
-      lastNameEn: string;
-      emailVerifiedAt: Date | null;
-    };
-    seller: {
-      userId: number;
-      firstNameEn: string;
-      lastNameEn: string;
-      emailVerifiedAt: Date | null;
-    };
-  }) {
+      offer: { additionalMoney: { toNumber(): number } | null } | null;
+      buyer: {
+        userId: number;
+        firstNameEn: string;
+        lastNameEn: string;
+        emailVerifiedAt: Date | null;
+      };
+      seller: {
+        userId: number;
+        firstNameEn: string;
+        lastNameEn: string;
+        emailVerifiedAt: Date | null;
+      };
+    },
+    state: TransactionState,
+  ) {
     const item = transaction.post.item;
     return {
-      transaction_id: transaction.transactionId,
-      post_id: transaction.postId,
-      offer_id: transaction.offerId,
-      buyer_id: transaction.buyerId,
-      seller_id: transaction.sellerId,
-      quantity: transaction.quantity,
-      final_amount: this.finalAmount(transaction),
-      status: transaction.status,
-      delivery_method: transaction.deliveryMethod,
-      active_report_id: transaction.activeReportId,
-      slip_image_url: transaction.slipImageUrl,
-      tracking_number: transaction.trackingNumber,
-      estimated_delivery_date: transaction.estimatedDeliveryDate,
-      payment_confirmed_by_buyer_at: transaction.paymentConfirmedByBuyerAt,
-      payment_confirmed_by_seller_at: transaction.paymentConfirmedBySellerAt,
-      item_received_confirmed_by_buyer_at:
-        transaction.itemReceivedConfirmedByBuyerAt,
+      transaction_id: state.transactionId,
+      post_id: state.postId,
+      offer_id: state.offerId,
+      buyer_id: state.buyerId,
+      seller_id: state.sellerId,
+      quantity: state.quantity,
+      final_amount: state.totalAmount,
+      status: state.status,
+      delivery_method: state.deliveryMethod,
+      active_report_id: state.activeReportId,
+      slip_image_url: state.slipImageUrl,
+      tracking_number: state.trackingNumber,
+      estimated_delivery_date: state.estimatedDeliveryDate,
+      payment_confirmed_by_buyer_at: state.paymentConfirmedByBuyerAt,
+      payment_confirmed_by_seller_at: state.paymentConfirmedBySellerAt,
+      payment_rejection_reason: state.paymentRejectionReason,
+      item_received_confirmed_by_buyer_at: state.itemReceivedConfirmedByBuyerAt,
       item_received_confirmed_by_seller_at:
-        transaction.itemReceivedConfirmedBySellerAt,
-      cancellation_requested_by: transaction.cancellationRequestedBy,
-      cancellation_reason: transaction.cancellationReason,
-      cancellation_requested_at: transaction.cancellationRequestedAt,
-      cancellation_response: transaction.cancellationResponse,
-      refund_slip_url: transaction.refundSlipUrl,
-      refund_submitted_at: transaction.refundSubmittedAt,
-      refund_confirmed_by_buyer: transaction.refundConfirmedByBuyer,
-      item_return_confirmed_at: transaction.itemReturnConfirmedAt,
-      created_at: transaction.createdAt,
+        state.itemReceivedConfirmedBySellerAt,
+      cancellation_requested_by: state.cancellationRequestedBy,
+      cancellation_reason: state.cancellationReason,
+      cancellation_requested_at: state.cancellationRequestedAt,
+      cancellation_response: state.cancellationResponse,
+      refund_slip_url: state.refundSlipUrl,
+      refund_submitted_at: state.refundSubmittedAt,
+      refund_confirmed_by_buyer: state.refundConfirmedByBuyer,
+      item_return_confirmed_at: state.itemReturnConfirmedAt,
+      created_at: state.createdAt,
       additional_money: transaction.offer?.additionalMoney?.toNumber() ?? null,
       post: {
         post_id: transaction.post.postId,
         item_id: transaction.post.itemId,
         post_type: transaction.post.postType,
-        price: transaction.post.price.toNumber(),
+        price: transaction.post.price?.toNumber() ?? 0,
         quantity_remaining: transaction.post.quantityRemaining,
         created_at: transaction.post.createdAt,
         item: {
@@ -207,6 +188,7 @@ export class TransactionService {
   }
 
   private readonly transactionInclude = {
+    ...transactionStateInclude,
     post: { include: { item: { include: { images: true } } } },
     offer: true,
     buyer: true,
@@ -221,25 +203,22 @@ export class TransactionService {
       include: this.transactionInclude,
       orderBy: { createdAt: 'desc' },
     });
+    const locks = await findLockingReports(
+      this.prisma,
+      transactions.map((transaction) => transaction.transactionId),
+    );
     return transactions.map((transaction) =>
-      this.serializeTransaction(transaction),
+      this.serializeTransaction(
+        transaction,
+        toTransactionSnapshot(
+          transaction,
+          locks.get(transaction.transactionId) ?? null,
+        ),
+      ),
     );
   }
 
-  private async findOneOrThrow(transactionId: number) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { transactionId },
-    });
-    if (!transaction) {
-      throw new NotFoundException(`Transaction ${transactionId} not found`);
-    }
-    return transaction;
-  }
-
-  /** Public GET /transactions/{id} — the only caller of this one; every
-   * mutating method below reads through `findOneOrThrow` instead, which
-   * stays a raw, unincluded row since they only ever touch scalar columns. */
-  async findOneForUser(transactionId: number, userId: number) {
+  private async findSerialized(transactionId: number) {
     const transaction = await this.prisma.transaction.findUnique({
       where: { transactionId },
       include: this.transactionInclude,
@@ -247,24 +226,55 @@ export class TransactionService {
     if (!transaction) {
       throw new NotFoundException(`Transaction ${transactionId} not found`);
     }
-    if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
+    const locks = await findLockingReports(this.prisma, [transactionId]);
+    return {
+      transaction,
+      state: toTransactionSnapshot(
+        transaction,
+        locks.get(transactionId) ?? null,
+      ),
+    };
+  }
+
+  /** Public GET /transactions/{id}. */
+  async findOneForUser(transactionId: number, userId: number) {
+    const { transaction, state } = await this.findSerialized(transactionId);
+    if (state.buyerId !== userId && state.sellerId !== userId) {
       throw new ForbiddenException('You are not a party to this transaction');
     }
-    return this.serializeTransaction(transaction);
+    return this.serializeTransaction(transaction, state);
   }
 
   /** §7.1/§7.5.3 — GET /admin/transactions/{id}. Same read as
    * `findOneForUser`, minus the participant check: an admin reviewing a
    * report is neither the buyer nor the seller. */
   async findOneForAdmin(transactionId: number) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { transactionId },
-      include: this.transactionInclude,
-    });
+    const { transaction, state } = await this.findSerialized(transactionId);
+    return this.serializeTransaction(transaction, state);
+  }
+
+  private async loadOrThrow(db: Db | PrismaService, transactionId: number) {
+    const transaction = await loadTransactionSnapshot(db, transactionId);
     if (!transaction) {
       throw new NotFoundException(`Transaction ${transactionId} not found`);
     }
-    return this.serializeTransaction(transaction);
+    return transaction;
+  }
+
+  /**
+   * Every state change runs here: the transaction row is locked first, so two
+   * requests on the same deal are serialised, and `work` validates against the
+   * state it will actually write over. Returns the deal as it stands after.
+   */
+  private async mutate(
+    transactionId: number,
+    work: (tx: Db, current: TransactionRow) => Promise<void>,
+  ): Promise<TransactionState> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
+      await work(tx, await this.loadOrThrow(tx, transactionId));
+      return toTransactionState(await this.loadOrThrow(tx, transactionId));
+    });
   }
 
   private assertIsBuyer(transaction: TransactionRow, userId: number) {
@@ -277,33 +287,6 @@ export class TransactionService {
     if (transaction.sellerId !== userId) {
       throw new ForbiddenException('Only the seller can perform this action');
     }
-  }
-
-  private async updateCurrent(
-    transaction: TransactionRow,
-    data: Prisma.TransactionUpdateManyMutationInput,
-    guard: Prisma.TransactionWhereInput = {},
-  ) {
-    const changed = await this.prisma.transaction.updateMany({
-      where: {
-        ...guard,
-        transactionId: transaction.transactionId,
-        status: transaction.status,
-        cancellationResponse: transaction.cancellationResponse,
-        activeReportId: transaction.activeReportId,
-        paymentConfirmedByBuyerAt: transaction.paymentConfirmedByBuyerAt,
-        paymentConfirmedBySellerAt: transaction.paymentConfirmedBySellerAt,
-        itemReceivedConfirmedByBuyerAt:
-          transaction.itemReceivedConfirmedByBuyerAt,
-        refundConfirmedByBuyer: transaction.refundConfirmedByBuyer,
-      },
-      data,
-    });
-    if (changed.count !== 1)
-      throw new ConflictException(
-        'The transaction changed; reload before trying again',
-      );
-    return this.findOneOrThrow(transaction.transactionId);
   }
 
   private assertStatus(
@@ -323,12 +306,12 @@ export class TransactionService {
    * to end for the transaction to move again:
    *
    *   cancellation response Pending   waiting on the other party
-   *   activeReportId set              waiting on an admin: a rejected
+   *   an open system report           waiting on an admin: a rejected
    *                                   cancellation, or a step that timed out
    *                                   and went to the report flow
    *
    * Checking `cancellationRequestedBy !== null` instead would lock the
-   * transaction forever, because that column is never cleared once set.
+   * transaction forever, because a request's record is kept once answered.
    */
   private assertNoPendingCancellation(transaction: TransactionRow) {
     if (transaction.cancellationResponse === CancellationResponse.Pending) {
@@ -349,9 +332,9 @@ export class TransactionService {
 
   /**
    * The seller turned the buyer's slip down (`rejectPaymentSlip`) and nothing
-   * has settled it yet. There is no column for this: a paid deal only reaches
-   * Processing through a slip, so Processing with the buyer's claim still on
-   * record but no slip on file can only mean the slip was rejected.
+   * has settled it yet: a paid deal only reaches Processing through a slip, so
+   * Processing with the buyer's claim standing but no open slip means the
+   * latest one was rejected.
    */
   private slipRejected(transaction: TransactionRow) {
     return (
@@ -362,6 +345,60 @@ export class TransactionService {
   }
 
   /**
+   * The deal is waiting on the buyer's money: not yet paid, or the last slip
+   * was rejected. Returns whether this is the second case.
+   */
+  private assertAwaitingPayment(transaction: TransactionRow) {
+    const resubmitting = this.slipRejected(transaction);
+    if (!resubmitting)
+      this.assertStatus(transaction, TransactionStatus.Pending);
+    this.assertNoPendingCancellation(transaction);
+    if (!transaction.paymentRequired)
+      throw new BadRequestException('This trade does not require payment');
+    if (resubmitting && transaction.refundSlipUrl) {
+      throw new BadRequestException(
+        'The seller has sent a refund slip — confirm the refund first',
+      );
+    }
+    if (transaction.paymentId !== null) {
+      throw new BadRequestException('A payment slip is already on file');
+    }
+    return resubmitting;
+  }
+
+  /**
+   * §8.6 step 1, before the slip — what the buyer scans to pay. A PromptPay QR
+   * for the seller's registered number and exactly `total_amount`, so the
+   * transfer cannot go to the wrong account or for the wrong sum. Built here
+   * rather than in the browser, where either could be edited.
+   *
+   * It only fills in the bank app's transfer screen: nothing tells the
+   * platform the money moved, so the slip upload and the seller's check still
+   * follow. Available whenever a slip may be uploaded.
+   */
+  async paymentQr(transactionId: number, userId: number) {
+    const transaction = await this.loadOrThrow(this.prisma, transactionId);
+    this.assertIsBuyer(transaction, userId);
+    this.assertAwaitingPayment(transaction);
+    if (transaction.totalAmount <= 0) {
+      throw new BadRequestException('This transaction has nothing to pay');
+    }
+    const seller = await this.prisma.user.findUnique({
+      where: { userId: transaction.sellerId },
+      select: { promptpayId: true },
+    });
+    if (!seller?.promptpayId) {
+      throw new ConflictException('The seller has not set up PromptPay yet');
+    }
+    return {
+      payload: promptPayPayload(seller.promptpayId, transaction.totalAmount),
+      amount: transaction.totalAmount,
+      // Enough to recognise the account; the full number is not repeated.
+      promptpay_id: maskPromptPayId(seller.promptpayId),
+    };
+  }
+
+  /**
    * §8.6 step 1 — the buyer transfers money off-platform, uploads the slip and
    * confirms. That moves the transaction Pending → Processing. The platform
    * only records that the buyer says they paid; it never moves money itself.
@@ -369,35 +406,29 @@ export class TransactionService {
    * Also the buyer's way out of a rejected slip: a new one puts the deal back
    * in front of the seller. Closed once the seller has uploaded a refund slip
    * — from then on the buyer answers that instead.
+   *
+   * Each upload is its own Transaction_Payment row, so a rejected slip stays
+   * on record beside the one that replaced it.
    */
   async uploadPaymentSlip(
     transactionId: number,
     userId: number,
     dto: UploadPaymentSlipDto,
   ) {
-    const transaction = await this.findOneOrThrow(transactionId);
-    this.assertIsBuyer(transaction, userId);
-    const resubmitting = this.slipRejected(transaction);
-    if (!resubmitting)
-      this.assertStatus(transaction, TransactionStatus.Pending);
-    this.assertNoPendingCancellation(transaction);
-    if (!(await this.paymentRequired(transaction)))
-      throw new BadRequestException('This trade does not require payment');
-    if (resubmitting && transaction.refundSlipUrl) {
-      throw new BadRequestException(
-        'The seller has sent a refund slip — confirm the refund first',
-      );
-    }
+    return this.mutate(transactionId, async (tx, transaction) => {
+      this.assertIsBuyer(transaction, userId);
+      const resubmitting = this.assertAwaitingPayment(transaction);
 
-    return this.updateCurrent(
-      transaction,
-      {
-        slipImageUrl: dto.slip_image_url,
-        paymentConfirmedByBuyerAt: new Date(),
-        status: TransactionStatus.Processing,
-      },
-      resubmitting ? { slipImageUrl: null, refundSlipUrl: null } : {},
-    );
+      await tx.transactionPayment.create({
+        data: { transactionId, slipImageUrl: dto.slip_image_url },
+      });
+      if (!resubmitting) {
+        await tx.transaction.update({
+          where: { transactionId },
+          data: { status: TransactionStatus.Processing },
+        });
+      }
+    });
   }
 
   /**
@@ -407,32 +438,39 @@ export class TransactionService {
    * status stays Processing here.
    */
   async confirmPaymentReceived(transactionId: number, userId: number) {
-    const transaction = await this.findOneOrThrow(transactionId);
-    this.assertIsSeller(transaction, userId);
-    this.assertStatus(transaction, TransactionStatus.Processing);
-    this.assertNoPendingCancellation(transaction);
+    return this.mutate(transactionId, async (tx, transaction) => {
+      this.assertIsSeller(transaction, userId);
+      this.assertStatus(transaction, TransactionStatus.Processing);
+      this.assertNoPendingCancellation(transaction);
 
-    if (transaction.paymentConfirmedBySellerAt) {
-      throw new BadRequestException(
-        'Payment receipt has already been confirmed',
-      );
-    }
-    if (this.slipRejected(transaction)) {
-      throw new BadRequestException(
-        'The payment slip was rejected — wait for a new one',
-      );
-    }
+      if (transaction.paymentConfirmedBySellerAt) {
+        throw new BadRequestException(
+          'Payment receipt has already been confirmed',
+        );
+      }
+      if (this.slipRejected(transaction)) {
+        throw new BadRequestException(
+          'The payment slip was rejected — wait for a new one',
+        );
+      }
+      if (transaction.paymentId === null) {
+        throw new BadRequestException('There is no payment slip to confirm');
+      }
 
-    return this.updateCurrent(
-      transaction,
-      { paymentConfirmedBySellerAt: new Date() },
-      { slipImageUrl: { not: null } },
-    );
+      await tx.transactionPayment.update({
+        where: { paymentId: transaction.paymentId },
+        data: {
+          status: PaymentStatus.Confirmed,
+          handledBy: userId,
+          handledAt: new Date(),
+        },
+      });
+    });
   }
 
   /**
    * §8.6 step 2, the other branch — the slip does not match what the seller's
-   * bank shows. Only the slip is taken off file; the transaction deliberately
+   * bank shows. Only the slip is marked Rejected; the transaction deliberately
    * stays Processing, because the buyer may really have sent money. Dropping
    * straight back to Pending would let the seller cancel unilaterally
    * (`requestCancellation`) and walk away with it.
@@ -448,49 +486,48 @@ export class TransactionService {
    * Not allowed once the seller has confirmed the money, once the goods have
    * been handed over, or while an admin is reviewing the transaction.
    */
-  async rejectPaymentSlip(transactionId: number, userId: number) {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
-      const transaction = await tx.transaction.findUnique({
-        where: { transactionId },
-      });
-      if (!transaction) {
-        throw new NotFoundException(`Transaction ${transactionId} not found`);
-      }
+  async rejectPaymentSlip(
+    transactionId: number,
+    userId: number,
+    dto: RejectPaymentSlipDto,
+  ) {
+    return this.mutate(transactionId, async (tx, transaction) => {
       this.assertIsSeller(transaction, userId);
       this.assertStatus(transaction, TransactionStatus.Processing);
       this.assertNoPendingCancellation(transaction);
 
-      if (!transaction.slipImageUrl || !transaction.paymentConfirmedByBuyerAt) {
-        throw new BadRequestException('There is no payment slip to reject');
-      }
       if (transaction.paymentConfirmedBySellerAt) {
         throw new BadRequestException(
           'Payment receipt has already been confirmed',
         );
       }
+      if (transaction.paymentId === null) {
+        throw new BadRequestException('There is no payment slip to reject');
+      }
       if (transaction.itemReceivedConfirmedByBuyerAt) {
         throw new BadRequestException('Handover is already recorded');
       }
-      this.assertNoActiveReport(transaction);
 
-      const updated = await tx.transaction.update({
-        where: { transactionId },
-        data: { slipImageUrl: null },
+      await tx.transactionPayment.update({
+        where: { paymentId: transaction.paymentId },
+        data: {
+          status: PaymentStatus.Rejected,
+          rejectionReason: dto.reason,
+          handledBy: userId,
+          handledAt: new Date(),
+        },
       });
-      // Keyed on the rejected slip's own timestamp (a new upload restamps it),
-      // so each rejected upload gets its own notification without colliding
-      // on the unique event_key.
+      // Keyed on the rejected slip itself, so each rejected upload gets its
+      // own notification.
       await tx.notification.create({
         data: {
           userId: transaction.buyerId,
-          eventKey: `transaction:${transactionId}:payment-slip-rejected:${transaction.paymentConfirmedByBuyerAt.getTime()}`,
+          eventKey: `transaction:${transactionId}:payment-slip-rejected:${transaction.paymentId}`,
           title: 'Payment slip rejected',
-          body: `The seller could not match your slip for transaction #${transactionId}. Upload a new one, or wait for the seller to return what you sent.`,
+          body: `The seller could not match your slip for transaction #${transactionId}: ${dto.reason}. Upload a new one, or wait for the seller to return what you sent.`,
           href: `/history/${transactionId}`,
         },
       });
-      return updated;
     });
   }
 
@@ -511,21 +548,27 @@ export class TransactionService {
    * parcel to a courier is not the buyer receiving it.
    */
   async ship(transactionId: number, userId: number, dto: ShipTransactionDto) {
-    const transaction = await this.findOneOrThrow(transactionId);
-    this.assertIsSeller(transaction, userId);
-    this.assertDeliveryMethod(transaction, DeliveryMethod.Shipping);
-    this.assertStatus(transaction, TransactionStatus.Processing);
-    this.assertNoPendingCancellation(transaction);
+    return this.mutate(transactionId, async (tx, transaction) => {
+      this.assertIsSeller(transaction, userId);
+      this.assertDeliveryMethod(transaction, DeliveryMethod.Shipping);
+      this.assertStatus(transaction, TransactionStatus.Processing);
+      this.assertNoPendingCancellation(transaction);
 
-    if (!transaction.paymentConfirmedBySellerAt) {
-      throw new BadRequestException(
-        'Confirm the payment was received before shipping',
-      );
-    }
+      if (!transaction.paymentConfirmedBySellerAt) {
+        throw new BadRequestException(
+          'Confirm the payment was received before shipping',
+        );
+      }
 
-    return this.updateCurrent(transaction, {
-      trackingNumber: dto.tracking_number,
-      estimatedDeliveryDate: new Date(dto.estimated_delivery_date),
+      const shipment = {
+        trackingNumber: dto.tracking_number,
+        estimatedDeliveryDate: new Date(dto.estimated_delivery_date),
+      };
+      await tx.transactionShipment.upsert({
+        where: { transactionId },
+        create: { transactionId, ...shipment, shippedAt: new Date() },
+        update: shipment,
+      });
     });
   }
 
@@ -539,35 +582,27 @@ export class TransactionService {
    * item is still Listed.
    */
   private async confirmItemReceived(transactionId: number) {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
-      const current = await tx.transaction.findUniqueOrThrow({
-        where: { transactionId },
-      });
+    return this.mutate(transactionId, async (tx, current) => {
       this.assertNoPendingCancellation(current);
-      const needsPayment = await this.paymentRequired(current);
       this.assertStatus(
         current,
-        needsPayment ? TransactionStatus.Processing : TransactionStatus.Pending,
+        current.paymentRequired
+          ? TransactionStatus.Processing
+          : TransactionStatus.Pending,
       );
       if (current.itemReceivedConfirmedByBuyerAt)
         throw new BadRequestException('Handover is already recorded');
-      const updated = await tx.transaction.update({
-        where: { transactionId },
-        data: { itemReceivedConfirmedByBuyerAt: new Date() },
-      });
 
-      if (
-        !updated.paymentConfirmedBySellerAt &&
-        (await this.paymentRequired(updated))
-      ) {
-        return updated;
-      }
-
-      const completed = await tx.transaction.update({
+      const completes =
+        !current.paymentRequired || current.paymentConfirmedBySellerAt !== null;
+      await tx.transaction.update({
         where: { transactionId },
-        data: { status: TransactionStatus.Completed },
+        data: {
+          itemReceivedConfirmedByBuyerAt: new Date(),
+          ...(completes ? { status: TransactionStatus.Completed } : {}),
+        },
       });
+      if (!completes) return;
 
       // §8.2 — an offered item is always single-channel by construction (it
       // must be fully available before it can be offered — see createOffer's
@@ -575,13 +610,12 @@ export class TransactionService {
       // holds even though the listing's own item (above) can now have other
       // open channels. Unlike the listing's item, this one keeps its
       // item_status write until the column itself is dropped in round 2.
-      if (completed.offerId !== null) {
+      if (current.offerId !== null) {
         await tx.item.updateMany({
-          where: { offerItems: { some: { offerId: completed.offerId } } },
+          where: { offerItems: { some: { offerId: current.offerId } } },
           data: { status: 'Transferred' },
         });
       }
-      return completed;
     });
   }
 
@@ -592,7 +626,7 @@ export class TransactionService {
    * confirmation screen separate from the "track parcel" button.
    */
   async confirmDelivery(transactionId: number, userId: number) {
-    const transaction = await this.findOneOrThrow(transactionId);
+    const transaction = await this.loadOrThrow(this.prisma, transactionId);
     this.assertIsBuyer(transaction, userId);
     this.assertDeliveryMethod(transaction, DeliveryMethod.Shipping);
     this.assertStatus(transaction, TransactionStatus.Processing);
@@ -622,7 +656,7 @@ export class TransactionService {
    * expired code.
    */
   async generateQr(transactionId: number, userId: number) {
-    const transaction = await this.findOneOrThrow(transactionId);
+    const transaction = await this.loadOrThrow(this.prisma, transactionId);
     this.assertNoActiveReport(transaction);
     if (transaction.status === TransactionStatus.PendingRefund)
       return this.generateReturnQr(transaction, userId);
@@ -673,7 +707,7 @@ export class TransactionService {
    * proximity proof (§8.6).
    */
   async scanQr(transactionId: number, userId: number, dto: ScanQrDto) {
-    const transaction = await this.findOneOrThrow(transactionId);
+    const transaction = await this.loadOrThrow(this.prisma, transactionId);
     this.assertNoActiveReport(transaction);
     if (transaction.status === TransactionStatus.PendingRefund)
       return this.scanReturnQr(transaction, userId, dto.token);
@@ -713,16 +747,8 @@ export class TransactionService {
     }
   }
 
-  private async paymentRequired(transaction: TransactionRow) {
-    if (transaction.offerId === null) return true;
-    const offer = await this.prisma.offer.findUnique({
-      where: { offerId: transaction.offerId },
-    });
-    return Number(offer?.additionalMoney ?? 0) > 0;
-  }
-
   private async assertHandoverReady(transaction: TransactionRow) {
-    const paid = await this.paymentRequired(transaction);
+    const paid = transaction.paymentRequired;
     this.assertStatus(
       transaction,
       paid ? TransactionStatus.Processing : TransactionStatus.Pending,
@@ -746,7 +772,12 @@ export class TransactionService {
       );
   }
 
-  private refundFinished(transaction: TransactionRow) {
+  private refundFinished(transaction: {
+    paymentConfirmedByBuyerAt: Date | null;
+    refundConfirmedByBuyer: boolean;
+    itemReceivedConfirmedByBuyerAt: Date | null;
+    itemReturnConfirmedAt: Date | null;
+  }) {
     const moneyReturned =
       !transaction.paymentConfirmedByBuyerAt ||
       transaction.refundConfirmedByBuyer;
@@ -756,109 +787,144 @@ export class TransactionService {
     return Boolean(moneyReturned && goodsReturned);
   }
 
+  /** Transaction_Refund is the 1:1 header every refund slip hangs off. */
+  private async ensureRefund(tx: Db, transactionId: number) {
+    await tx.transactionRefund.upsert({
+      where: { transactionId },
+      create: { transactionId },
+      update: {},
+    });
+  }
+
   /** Seller submits refund evidence, starting the confirmation deadline. */
   async uploadRefundSlip(
     transactionId: number,
     userId: number,
     dto: UploadRefundSlipDto,
   ) {
-    const transaction = await this.findOneOrThrow(transactionId);
-    this.assertIsSeller(transaction, userId);
-    if (this.slipRejected(transaction)) {
+    return this.mutate(transactionId, async (tx, transaction) => {
+      this.assertIsSeller(transaction, userId);
       // Returning the money behind a rejected slip is not a cancellation, so
       // the deal stays Processing until the buyer confirms it arrived.
-      this.assertNoPendingCancellation(transaction);
-      this.assertNoActiveReport(transaction);
-      return this.updateCurrent(
-        transaction,
-        {
-          refundSlipUrl: dto.refund_slip_url,
-          refundSubmittedAt: transaction.refundSubmittedAt ?? new Date(),
-        },
-        { slipImageUrl: null },
-      );
-    }
-    this.assertRefundable(transaction);
+      const afterRejectedSlip = this.slipRejected(transaction);
+      if (afterRejectedSlip) this.assertNoPendingCancellation(transaction);
+      else this.assertRefundable(transaction);
+      if (transaction.refundConfirmedByBuyer) {
+        throw new BadRequestException('This refund has already been confirmed');
+      }
 
-    return this.updateCurrent(transaction, {
-      refundSlipUrl: dto.refund_slip_url,
-      refundSubmittedAt: transaction.refundSubmittedAt ?? new Date(),
-      status: TransactionStatus.PendingRefund,
+      await this.ensureRefund(tx, transactionId);
+      // A slip the buyer has not answered yet is replaced in place, which
+      // keeps the confirmation deadline running from the first upload.
+      if (transaction.refundSlipId !== null) {
+        await tx.transactionRefundSlip.update({
+          where: { refundSlipId: transaction.refundSlipId },
+          data: { refundSlipUrl: dto.refund_slip_url },
+        });
+      } else {
+        await tx.transactionRefundSlip.create({
+          data: { transactionId, refundSlipUrl: dto.refund_slip_url },
+        });
+      }
+      if (!afterRejectedSlip) {
+        await tx.transaction.update({
+          where: { transactionId },
+          data: { status: TransactionStatus.PendingRefund },
+        });
+      }
+    });
+  }
+
+  /**
+   * The money behind a rejected slip is back with the buyer, so nothing is
+   * owed either way: the deal returns to Pending, where the buyer can pay
+   * again or either side can cancel. The rejected slip stays on record; the
+   * refund evidence is removed, because the table allows one confirmed refund
+   * slip per transaction and this deal may yet be paid and refunded for real.
+   */
+  private async voidRejectedPayment(tx: Db, transactionId: number) {
+    await tx.transactionRefundSlip.deleteMany({ where: { transactionId } });
+    await tx.transactionRefund.deleteMany({ where: { transactionId } });
+    await tx.transaction.update({
+      where: { transactionId },
+      data: { status: TransactionStatus.Pending },
     });
   }
 
   /** Buyer acknowledges receipt; completed returns also require the goods. */
   async confirmRefund(transactionId: number, userId: number) {
-    const transaction = await this.findOneOrThrow(transactionId);
-    this.assertIsBuyer(transaction, userId);
-    if (this.slipRejected(transaction)) {
-      this.assertNoPendingCancellation(transaction);
-      this.assertNoActiveReport(transaction);
+    return this.mutate(transactionId, async (tx, transaction) => {
+      this.assertIsBuyer(transaction, userId);
+      if (this.slipRejected(transaction)) {
+        this.assertNoPendingCancellation(transaction);
+        if (!transaction.refundSlipUrl) {
+          throw new BadRequestException(
+            'The seller has not uploaded a refund slip yet',
+          );
+        }
+        await this.voidRejectedPayment(tx, transactionId);
+        return;
+      }
+      this.assertRefundable(transaction);
+
       if (!transaction.refundSlipUrl) {
         throw new BadRequestException(
           'The seller has not uploaded a refund slip yet',
         );
       }
-      // The money is back with the buyer, so nothing is owed either way: the
-      // payment claim and the refund evidence are wiped and the deal returns
-      // to Pending, where the buyer can pay again or either side can cancel.
-      return this.updateCurrent(
-        transaction,
-        {
-          status: TransactionStatus.Pending,
-          paymentConfirmedByBuyerAt: null,
-          refundSlipUrl: null,
-          refundSubmittedAt: null,
-        },
-        { slipImageUrl: null, refundSlipUrl: { not: null } },
-      );
-    }
-    this.assertRefundable(transaction);
+      if (transaction.refundConfirmedByBuyer) {
+        throw new BadRequestException('This refund has already been confirmed');
+      }
 
-    if (!transaction.refundSlipUrl) {
-      throw new BadRequestException(
-        'The seller has not uploaded a refund slip yet',
-      );
-    }
-    if (transaction.refundConfirmedByBuyer) {
-      throw new BadRequestException('This refund has already been confirmed');
-    }
-
-    return this.recordReturnProgress(transactionId, {
-      refundConfirmedByBuyer: true,
+      await this.recordReturnProgress(tx, transaction, {
+        refundConfirmedByBuyer: true,
+      });
     });
   }
 
   private async recordReturnProgress(
-    transactionId: number,
+    tx: Db,
+    current: TransactionRow,
     progress: {
-      refundConfirmedByBuyer?: boolean;
+      refundConfirmedByBuyer?: true;
       itemReturnConfirmedAt?: Date;
     },
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
-      const current = await tx.transaction.findUniqueOrThrow({
-        where: { transactionId },
-      });
-      if (!['Pending Refund', 'Cancelled'].includes(current.status ?? ''))
-        throw new BadRequestException('Return already completed');
-      if (
-        (progress.refundConfirmedByBuyer && current.refundConfirmedByBuyer) ||
-        (progress.itemReturnConfirmedAt && current.itemReturnConfirmedAt)
-      ) {
-        throw new BadRequestException('This return step is already recorded');
+    const { transactionId } = current;
+    if (!['Pending Refund', 'Cancelled'].includes(current.status ?? ''))
+      throw new BadRequestException('Return already completed');
+    if (
+      (progress.refundConfirmedByBuyer && current.refundConfirmedByBuyer) ||
+      (progress.itemReturnConfirmedAt && current.itemReturnConfirmedAt)
+    ) {
+      throw new BadRequestException('This return step is already recorded');
+    }
+    if (progress.refundConfirmedByBuyer) {
+      if (current.refundSlipId === null) {
+        throw new BadRequestException(
+          'The seller has not uploaded a refund slip yet',
+        );
       }
-      const updated = { ...current, ...progress };
-      return tx.transaction.update({
-        where: { transactionId },
-        data: {
-          ...progress,
-          status: this.refundFinished(updated)
-            ? TransactionStatus.Refunded
-            : TransactionStatus.PendingRefund,
-        },
+      await tx.transactionRefundSlip.update({
+        where: { refundSlipId: current.refundSlipId },
+        data: { status: PaymentStatus.Confirmed, handledAt: new Date() },
       });
+    }
+    if (progress.itemReturnConfirmedAt) {
+      const { itemReturnConfirmedAt } = progress;
+      await tx.transactionRefund.upsert({
+        where: { transactionId },
+        create: { transactionId, itemReturnConfirmedAt },
+        update: { itemReturnConfirmedAt },
+      });
+    }
+    await tx.transaction.update({
+      where: { transactionId },
+      data: {
+        status: this.refundFinished({ ...current, ...progress })
+          ? TransactionStatus.Refunded
+          : TransactionStatus.PendingRefund,
+      },
     });
   }
 
@@ -923,9 +989,9 @@ export class TransactionService {
     if (consumed !== 1)
       throw new BadRequestException('Invalid or expired return QR');
     const itemReturnConfirmedAt = new Date();
-    return this.recordReturnProgress(transaction.transactionId, {
-      itemReturnConfirmedAt,
-    });
+    return this.mutate(transaction.transactionId, (tx, current) =>
+      this.recordReturnProgress(tx, current, { itemReturnConfirmedAt }),
+    );
   }
 
   private assertIsParty(transaction: TransactionRow, userId: number) {
@@ -950,15 +1016,38 @@ export class TransactionService {
    * `quantity` is nullable in the schema, so callers pass `?? 1` to match the
    * column default.
    */
-  private async releaseReservation(
-    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
-    postId: number,
-    quantity: number,
-  ) {
+  private async releaseReservation(tx: Db, postId: number, quantity: number) {
     await tx.post.update({
       where: { postId },
       data: { quantityRemaining: { increment: quantity } },
     });
+  }
+
+  /**
+   * A cancellation that takes effect: Pending Refund if money or goods have
+   * moved, otherwise Cancelled. The stock goes back on the market unless the
+   * buyer is still holding the goods.
+   */
+  private async cancelTransaction(tx: Db, transaction: TransactionRow) {
+    const { transactionId } = transaction;
+    const owed =
+      transaction.paymentConfirmedByBuyerAt ||
+      transaction.itemReceivedConfirmedByBuyerAt;
+    await tx.transaction.update({
+      where: { transactionId },
+      data: {
+        status: owed
+          ? TransactionStatus.PendingRefund
+          : TransactionStatus.Cancelled,
+      },
+    });
+    if (owed) await this.ensureRefund(tx, transactionId);
+    if (!transaction.itemReceivedConfirmedByBuyerAt)
+      await this.releaseReservation(
+        tx,
+        transaction.postId,
+        transaction.quantity ?? 1,
+      );
   }
 
   /**
@@ -979,12 +1068,7 @@ export class TransactionService {
     userId: number,
     dto: RequestCancellationDto,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
-      const transaction = await tx.transaction.findUnique({
-        where: { transactionId },
-      });
-      if (!transaction) throw new NotFoundException('Transaction not found');
+    return this.mutate(transactionId, async (tx, transaction) => {
       this.assertIsParty(transaction, userId);
       this.assertNoActiveReport(transaction);
       if (transaction.cancellationRequestedBy !== null)
@@ -1008,25 +1092,30 @@ export class TransactionService {
         );
       }
       const immediate = transaction.status === TransactionStatus.Pending;
-      const updated = await tx.transaction.update({
-        where: { transactionId },
+      const requestedAt = new Date();
+      await tx.transactionCancellation.create({
         data: {
-          cancellationRequestedBy: userId,
-          cancellationReason: dto.reason,
-          cancellationRequestedAt: new Date(),
-          cancellationResponse: immediate
+          transactionId,
+          requestedBy: userId,
+          reason: dto.reason,
+          requestedAt,
+          response: immediate
             ? CancellationResponse.Approved
             : CancellationResponse.Pending,
-          ...(immediate ? { status: TransactionStatus.Cancelled } : {}),
+          respondedAt: immediate ? requestedAt : null,
         },
       });
-      if (immediate)
+      if (immediate) {
+        await tx.transaction.update({
+          where: { transactionId },
+          data: { status: TransactionStatus.Cancelled },
+        });
         await this.releaseReservation(
           tx,
           transaction.postId,
           transaction.quantity ?? 1,
         );
-      return updated;
+      }
     });
   }
 
@@ -1035,9 +1124,8 @@ export class TransactionService {
    *
    *   Approved  → Cancelled, and the item goes back on the market.
    *   Rejected  → NOT cancelled and NOT auto-resolved. The dispute goes to an
-   *               admin: a Transaction report is opened and linked via
-   *               activeReportId, and the confirm buttons stay locked (the
-   *               cancellation record is kept, which is what keeps them locked).
+   *               admin: a Transaction report is opened, and while it stays
+   *               open the confirm buttons stay locked.
    *
    * The requester never answers their own request — that is the whole point of
    * requiring consent.
@@ -1047,14 +1135,10 @@ export class TransactionService {
     userId: number,
     dto: RespondCancellationDto,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
-      const transaction = await tx.transaction.findUnique({
-        where: { transactionId },
-      });
-      if (!transaction) throw new NotFoundException('Transaction not found');
+    return this.mutate(transactionId, async (tx, transaction) => {
       this.assertIsParty(transaction, userId);
       if (
+        transaction.cancellationId === null ||
         transaction.cancellationRequestedBy === null ||
         transaction.cancellationResponse !== CancellationResponse.Pending
       ) {
@@ -1062,51 +1146,33 @@ export class TransactionService {
       }
       if (transaction.cancellationRequestedBy === userId)
         throw new ForbiddenException('The other party must respond');
+      await tx.transactionCancellation.update({
+        where: { cancellationId: transaction.cancellationId },
+        data: { response: dto.response, respondedAt: new Date() },
+      });
       if (dto.response === CancellationResponse.Approved) {
-        const updated = await tx.transaction.update({
-          where: { transactionId },
-          data: {
-            status:
-              transaction.paymentConfirmedByBuyerAt ||
-              transaction.itemReceivedConfirmedByBuyerAt
-                ? TransactionStatus.PendingRefund
-                : TransactionStatus.Cancelled,
-            cancellationResponse: CancellationResponse.Approved,
-          },
-        });
-        if (!transaction.itemReceivedConfirmedByBuyerAt)
-          await this.releaseReservation(
-            tx,
-            transaction.postId,
-            transaction.quantity ?? 1,
-          );
-        return updated;
+        await this.cancelTransaction(tx, transaction);
+        return;
       }
       const report = await tx.report.create({
         data: {
           reporterId: transaction.cancellationRequestedBy,
           reportType: ReportType.Transaction,
           targetId: transactionId,
-          reasonCategory: 'Cancellation or return rejected',
+          reasonCategory: CANCELLATION_REJECTED_REASON,
           details: transaction.cancellationReason,
           status: ReportStatus.Pending,
         },
       });
       await notifyAdminsOfReport(tx, report);
-      return tx.transaction.update({
-        where: { transactionId },
-        data: {
-          cancellationResponse: CancellationResponse.Rejected,
-          activeReportId: report.reportId,
-        },
-      });
     });
   }
 
   /**
    * The admin ruled on a report that locked this transaction (§8.7 and every
    * "go to the report flow" step in the activity diagram). The ruling decides
-   * how the deal moves on, and either way the lock is released.
+   * how the deal moves on. Closing the report is what releases the lock, so a
+   * dismissed one needs nothing more here.
    *
    *   Rejected cancellation (the other side refused to cancel)
    *     upheld     the requester was right: the cancellation takes effect —
@@ -1126,77 +1192,50 @@ export class TransactionService {
    * No-op for reports that do not lock a transaction.
    */
   async settleReportedTransaction(reportId: number, upheld: boolean) {
-    const transaction = await this.prisma.transaction.findFirst({
-      where: { activeReportId: reportId },
+    const report = await this.prisma.report.findUnique({
+      where: { reportId },
+      select: { reportType: true, targetId: true, reasonCategory: true },
     });
-    if (!transaction) return;
-    const { transactionId } = transaction;
-    const unlock = () =>
-      this.prisma.transaction.update({
-        where: { transactionId },
-        data: { activeReportId: null },
-      });
-
-    if (!upheld) {
-      await unlock();
+    if (
+      !upheld ||
+      !report ||
+      report.reportType !== ReportType.Transaction ||
+      !isLockingReason(report.reasonCategory)
+    )
       return;
-    }
 
-    const cancellationDispute =
-      transaction.cancellationResponse === CancellationResponse.Rejected;
-    const slipUnconfirmed =
-      transaction.status === TransactionStatus.Processing &&
-      transaction.paymentConfirmedByBuyerAt !== null &&
-      transaction.slipImageUrl !== null &&
-      transaction.paymentConfirmedBySellerAt === null;
+    await this.mutate(report.targetId, async (tx, transaction) => {
+      const cancellationDispute =
+        transaction.cancellationResponse === CancellationResponse.Rejected;
+      const slipUnconfirmed =
+        transaction.status === TransactionStatus.Processing &&
+        transaction.paymentConfirmedByBuyerAt !== null &&
+        transaction.slipImageUrl !== null &&
+        transaction.paymentConfirmedBySellerAt === null;
 
-    if (cancellationDispute || slipUnconfirmed) {
-      await this.prisma.$transaction(async (tx) => {
-        const cancelled = await tx.transaction.update({
-          where: { transactionId },
-          data: {
-            activeReportId: null,
-            status:
-              transaction.paymentConfirmedByBuyerAt ||
-              transaction.itemReceivedConfirmedByBuyerAt
-                ? TransactionStatus.PendingRefund
-                : TransactionStatus.Cancelled,
-            ...(cancellationDispute
-              ? { cancellationResponse: CancellationResponse.Approved }
-              : {}),
-          },
-        });
-        if (!transaction.itemReceivedConfirmedByBuyerAt)
-          await this.releaseReservation(
-            tx,
-            cancelled.postId,
-            cancelled.quantity ?? 1,
-          );
-      });
-      return;
-    }
+      if (cancellationDispute || slipUnconfirmed) {
+        if (cancellationDispute && transaction.cancellationId !== null) {
+          await tx.transactionCancellation.update({
+            where: { cancellationId: transaction.cancellationId },
+            data: { response: CancellationResponse.Approved },
+          });
+        }
+        await this.cancelTransaction(tx, transaction);
+        return;
+      }
 
-    const refundUnconfirmed =
-      transaction.refundSubmittedAt !== null &&
-      transaction.refundSlipUrl !== null &&
-      !transaction.refundConfirmedByBuyer;
-    await unlock();
-    if (refundUnconfirmed) {
+      const refundUnconfirmed =
+        transaction.refundSubmittedAt !== null &&
+        transaction.refundSlipUrl !== null &&
+        !transaction.refundConfirmedByBuyer;
+      if (!refundUnconfirmed) return;
       if (this.slipRejected(transaction)) {
-        await this.prisma.transaction.update({
-          where: { transactionId },
-          data: {
-            status: TransactionStatus.Pending,
-            paymentConfirmedByBuyerAt: null,
-            refundSlipUrl: null,
-            refundSubmittedAt: null,
-          },
-        });
+        await this.voidRejectedPayment(tx, transaction.transactionId);
       } else {
-        await this.recordReturnProgress(transactionId, {
+        await this.recordReturnProgress(tx, transaction, {
           refundConfirmedByBuyer: true,
         });
       }
-    }
+    });
   }
 }

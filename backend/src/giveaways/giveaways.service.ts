@@ -213,6 +213,7 @@ export class GiveawaysService {
           item: true,
           images: { orderBy: { displayOrder: 'asc' } },
           giver: true,
+          item: { select: { name: true } },
         },
       });
     });

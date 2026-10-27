@@ -10,7 +10,10 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # A fresh volume runs these in name order: the seed, then schema v3 on top.
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./backend/prisma/local/before-schema-v3.sql:/docker-entrypoint-initdb.d/02-before-schema-v3.sql
+      - ./backend/prisma/migrations/20261011000000_schema_v3_transaction_split/migration.sql:/docker-entrypoint-initdb.d/03-schema-v3.sql
 
   redis:
     image: redis:7-alpine
