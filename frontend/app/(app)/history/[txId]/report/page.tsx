@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
+import { getChatHistory } from "@/lib/api/chat";
 import { getTransaction } from "@/lib/api/transactions";
 import { getAccessToken } from "@/lib/api/session";
 import { getMe } from "@/lib/api/users";
@@ -39,6 +40,12 @@ export default async function ReportPage({
   const { txId } = await params;
   const tx = await getTransaction(Number(txId)).catch(() => undefined);
   if (!tx) notFound();
+
+  // The deal's chat, so the reporter can point at the messages they mean.
+  // A failed read only hides the picker; photos and details still work.
+  const messages = await getChatHistory(tx.transaction_id)
+    .then((chat) => chat.messages)
+    .catch(() => undefined);
 
   const deadline = deadlineFor(tx);
   const allowed = canReport(deadline ? [deadline] : []);
@@ -122,6 +129,8 @@ export default async function ReportPage({
         counterparty={other.name}
         allowed={allowed}
         deadline={deadline}
+        messages={messages}
+        viewerId={viewerProfile.userId}
       />
     </TwoColumn>
   );

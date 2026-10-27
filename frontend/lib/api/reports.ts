@@ -29,6 +29,8 @@ export interface CreateReportInput {
   reason_category: string;
   details?: string;
   evidence_urls?: string[];
+  /** Chat messages the reporter picked; only from their own deal chat. */
+  evidence_message_ids?: number[];
 }
 
 export interface ResolveReportInput {

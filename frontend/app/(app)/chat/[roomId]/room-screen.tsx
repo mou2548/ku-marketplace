@@ -994,6 +994,9 @@ export function RoomScreen({
             userId={summary.counterparty.user_id}
             name={summary.counterparty.name}
             compact
+            // Picking messages works for deal chats only; giveaway rooms are
+            // not supported by the backend yet.
+            chat={transaction ? { messages, viewerId } : undefined}
           />
         </span>
 

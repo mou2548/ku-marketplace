@@ -277,6 +277,22 @@ export interface Entrant {
   status: EntrantStatus;
 }
 
+/**
+ * A chat message the reporter picked out as evidence, as the admin endpoints
+ * return it. Images are never expired here: evidence is shown in full.
+ */
+export interface EvidenceMessage {
+  message_id: number;
+  room_id: number;
+  /** The deal whose chat it came from. */
+  transaction_id: number | null;
+  sender_id: number;
+  sender: UserSummary;
+  content: string | null;
+  image_urls: string[] | null;
+  created_at: string;
+}
+
 export interface Report {
   report_id: number;
   reporter_id: number;
@@ -286,6 +302,10 @@ export interface Report {
   reason_category: string;
   details?: string | null;
   evidence_urls?: string[] | null;
+  /** Ids of the chat messages the reporter picked. */
+  evidence_message_ids?: number[];
+  /** Admin endpoints only: those messages, oldest first. */
+  evidence_messages?: EvidenceMessage[];
   status: ReportStatus;
   /** Admin endpoints only; null until a violation is confirmed. */
   sanction?: Sanction | null;
@@ -327,6 +347,7 @@ export type SubmittedReport = Pick<
   | "reason_category"
   | "details"
   | "evidence_urls"
+  | "evidence_message_ids"
   | "created_at"
 >;
 
@@ -341,6 +362,8 @@ export interface AppealReportContext {
   reason_category: string;
   details?: string | null;
   evidence_urls?: string[] | null;
+  evidence_message_ids?: number[];
+  evidence_messages?: EvidenceMessage[];
   status: ReportStatus;
   sanction: Sanction | null;
   resolution_note?: string | null;

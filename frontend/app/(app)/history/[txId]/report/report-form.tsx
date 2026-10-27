@@ -1,21 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flag, ImagePlus, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Flag, ShieldAlert } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
+import { ChatMessagePicker } from "@/components/kit/chat-message-picker";
 import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { CountdownPill } from "@/components/kit/countdown-pill";
+import { EvidencePicker } from "@/components/kit/evidence-picker";
 import { TextAreaField } from "@/components/kit/field";
+import { EvidenceNote } from "@/components/kit/report-dialog";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
-import { uploadChatImage } from "@/lib/actions/chat";
 import { createReport } from "@/lib/actions/reports";
+import { uploadFile } from "@/lib/actions/uploads";
 import type { ApiError } from "@/lib/api/client";
-import type { Transaction } from "@/lib/api/types";
+import type { ChatMessage, Transaction } from "@/lib/api/types";
 import {
   cancelResponseDeadline,
   isExpired,
@@ -110,6 +113,8 @@ export function ReportForm({
   counterparty,
   allowed,
   deadline,
+  messages,
+  viewerId,
 }: {
   transaction: Transaction;
   transactionId: number;
@@ -117,11 +122,13 @@ export function ReportForm({
   counterparty: string;
   allowed: boolean;
   deadline?: Deadline;
+  /** The deal's chat; undefined when it could not be loaded. */
+  messages?: ChatMessage[];
+  viewerId: number;
 }) {
   const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const eligibility = new Map(REASONS.map((r) => [r.id, r.eligible(transaction)]));
   const firstEligible = REASONS.find((r) => eligibility.get(r.id))?.id ?? REASONS[0].id;
@@ -129,6 +136,7 @@ export function ReportForm({
   const [reason, setReason] = useState(firstEligible);
   const [details, setDetails] = useState("");
   const [evidence, setEvidence] = useState<File[]>([]);
+  const [messageIds, setMessageIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
 
   // R2: not an error page. The user is worried; tell them exactly when they can
@@ -164,11 +172,7 @@ export function ReportForm({
     setBusy(true);
     try {
       const evidence_urls: string[] = [];
-      for (const file of evidence) {
-        const formData = new FormData();
-        formData.append("file", file);
-        evidence_urls.push(await uploadChatImage(formData));
-      }
+      for (const file of evidence) evidence_urls.push(await uploadFile(file));
       const label = REASONS.find((r) => r.id === reason)?.label ?? reason;
       await createReport({
         report_type: "Transaction",
@@ -176,6 +180,7 @@ export function ReportForm({
         reason_category: label,
         details,
         evidence_urls: evidence_urls.length ? evidence_urls : undefined,
+        evidence_message_ids: messageIds.length ? messageIds : undefined,
       });
       toast.success("Report submitted. An admin will review it.");
       router.push(`/history/${transactionId}`);
@@ -239,42 +244,25 @@ export function ReportForm({
         onChange={setDetails}
         rows={5}
         placeholder="Walk through what happened in order. The more detail, the faster an admin can decide."
-        hint="Admins can already see the chat and slips on this deal. No need to attach them again."
+        hint="Admins can see this deal's chat and slips, but not which part you mean. Point at it below."
       />
 
-      <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-body-sm font-medium text-ink-secondary">
-          Extra evidence
-          <span className="ml-1 font-normal text-ink-muted">optional</span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {evidence.map((file, i) => (
-            <span
-              key={`${file.name}-${i}`}
-              className="rounded-chip bg-surface-sunken px-2 py-1 text-meta shadow-sunken"
-            >
-              {file.name}
-            </span>
-          ))}
-          <Button
-            variant="secondary"
-            size="sm"
-            onPress={() => fileRef.current?.click()}
-          >
-            <ImagePlus className="size-4" />
-            Attach an image
-          </Button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          onChange={(e) =>
-            setEvidence((list) => [...list, ...Array.from(e.target.files ?? [])])
-          }
-        />
+      <Surface shape="card" className="flex flex-col gap-4 p-4">
+        <EvidenceNote canPickMessages />
+        {messages ? (
+          <ChatMessagePicker
+            messages={messages}
+            viewerId={viewerId}
+            selected={messageIds}
+            onChange={setMessageIds}
+          />
+        ) : (
+          <p className="text-caption text-ink-muted">
+            The chat could not be loaded, so messages cannot be picked right
+            now. Reload the page to try again.
+          </p>
+        )}
+        <EvidencePicker files={evidence} onChange={setEvidence} label="Photos" />
       </Surface>
 
       <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
