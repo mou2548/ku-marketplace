@@ -73,7 +73,11 @@ export class GiveawayExpiryService implements OnApplicationBootstrap {
         allocationMethod: 'Manual',
         registerDeadline: { lte: now },
       },
-      select: { giveawayId: true, giverId: true, itemName: true },
+      select: {
+        giveawayId: true,
+        giverId: true,
+        item: { select: { name: true } },
+      },
     });
     if (toChoose.length) {
       await this.prisma.notification.createMany({
@@ -81,7 +85,7 @@ export class GiveawayExpiryService implements OnApplicationBootstrap {
           userId: g.giverId,
           eventKey: `giveaway:${g.giveawayId}:choose-recipients`,
           title: 'Choose who receives your giveaway',
-          body: `Registration for ${g.itemName ?? `giveaway #${g.giveawayId}`} has closed. Pick the recipients.`,
+          body: `Registration for ${g.item.name} has closed. Pick the recipients.`,
           href: `/giveaway/${g.giveawayId}/manage`,
         })),
         skipDuplicates: true,

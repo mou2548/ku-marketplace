@@ -35,6 +35,7 @@ export class ItemsService {
     return this.prisma.item.create({
       data: {
         ...itemData,
+        quantity: itemData.quantity ?? 1,
         ownerId: userId,
         courseName: course_name,
         brandModel: brand_model,

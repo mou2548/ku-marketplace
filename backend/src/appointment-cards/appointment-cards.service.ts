@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionService } from '../transaction/transaction.service';
+import { loadTransactionSnapshot } from '../transaction/transaction-state';
 import { RespondAppointmentDto } from './dto/respond-appointment.dto';
 import { displayName } from '../common/utils/display-name';
 
@@ -131,7 +132,11 @@ export class AppointmentCardsService {
         throw new BadRequestException(
           'This appointment is already answered or superseded',
         );
-      const transaction = appointment.transaction;
+      const transaction = await loadTransactionSnapshot(
+        tx,
+        appointment.transactionId,
+      );
+      if (!transaction) throw new NotFoundException('Transaction not found');
       const returning =
         transaction.status === 'Pending Refund' &&
         transaction.itemReceivedConfirmedByBuyerAt &&
@@ -159,22 +164,12 @@ export class AppointmentCardsService {
       if (
         status === 'Confirmed' &&
         !returning &&
-        !transaction.paymentConfirmedBySellerAt
+        !transaction.paymentConfirmedBySellerAt &&
+        transaction.paymentRequired
       ) {
-        const paymentRequired =
-          transaction.offerId === null
-            ? true
-            : Number(
-                (
-                  await tx.offer.findUnique({
-                    where: { offerId: transaction.offerId },
-                  })
-                )?.additionalMoney ?? 0,
-              ) > 0;
-        if (paymentRequired)
-          throw new BadRequestException(
-            'The seller has to confirm the payment before a meetup is agreed',
-          );
+        throw new BadRequestException(
+          'The seller has to confirm the payment before a meetup is agreed',
+        );
       }
       const updated = await tx.appointmentCard.update({
         where: { appointmentId },

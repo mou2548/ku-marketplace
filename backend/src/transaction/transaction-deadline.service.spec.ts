@@ -1,15 +1,15 @@
-import type { Transaction } from '@prisma/client';
 import { transactionDeadline } from './transaction-deadline.service';
+import type { TransactionState } from './transaction-state';
 
 const now = new Date('2026-09-09T00:00:00Z');
 const HOUR = 3600000;
-const row = (fields: Partial<Transaction>) =>
+const row = (fields: Partial<TransactionState>) =>
   ({
     buyerId: 1,
     sellerId: 2,
     activeReportId: null,
     ...fields,
-  }) as Transaction;
+  }) as TransactionState;
 
 describe('Activity diagram timers', () => {
   it('allows 72 hours for cancellation responses and 24 hours for completed-deal return responses', () => {

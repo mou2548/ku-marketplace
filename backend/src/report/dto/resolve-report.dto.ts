@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ReportStatus, Sanction } from '../../common/enums/report.enums';
 
 const RESOLVABLE_STATUSES = [
@@ -19,5 +19,6 @@ export class ResolveReportDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   resolution_note?: string;
 }

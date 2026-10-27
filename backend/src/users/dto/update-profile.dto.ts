@@ -30,4 +30,14 @@ export class UpdateProfileDto {
   @IsOptional()
   @MaxLength(500)
   avatar_url?: string;
+
+  /**
+   * The mobile number the user's PromptPay is registered to; buyers are shown
+   * a QR that pays it. Spaces and dashes are accepted. Null or an empty
+   * string clears it.
+   */
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  promptpay_id?: string | null;
 }

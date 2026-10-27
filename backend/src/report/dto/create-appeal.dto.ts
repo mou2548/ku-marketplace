@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateAppealDto {
@@ -14,6 +15,7 @@ export class CreateAppealDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(2000)
   reason: string;
 
   @IsOptional()

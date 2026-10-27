@@ -23,6 +23,7 @@ export class CreateReportDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   details?: string;
 
   @IsOptional()
