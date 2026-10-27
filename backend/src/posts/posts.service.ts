@@ -204,13 +204,12 @@ export class PostsService {
     }
   }
 
-  async createPost(payload: CreatePostPayload, userId: number) {
-    this.assertTextFits(payload);
-    if (!payload.item_id || !payload.post_type || payload.price === undefined) {
-      throw new BadRequestException(
-        'item_id, post_type และ price จำเป็นต้องระบุ',
-      );
-    }
+  private async requirePromptPay(
+    db: Pick<Prisma.TransactionClient, 'user'>,
+    userId: number,
+    message = 'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนเปิดขายสินค้า',
+  ) {
+    await this.assertHasPromptPay(db, userId, message);
   }
 
   async createPost(payload: CreatePostPayload, userId: number) {
