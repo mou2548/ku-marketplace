@@ -18,6 +18,7 @@ import { PostsService } from '../src/posts/posts.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TokenService } from '../src/auth/token.service';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
+import { schemaV3Sql } from './schema-v3';
 
 describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
   const schema = `sellers_${process.pid}_${Date.now()}`;
@@ -52,6 +53,7 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
       );
       await conn.query(sql);
       await conn.query(sql);
+      await conn.query(schemaV3Sql());
     } finally {
       conn.release();
     }
@@ -112,6 +114,7 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
           name: `Book ${type}`,
           category: 'Books',
           condition: 'Good',
+          quantity: 1,
           posts: {
             create: {
               postType: type,
@@ -242,6 +245,7 @@ describe('Seller profiles and following (isolated PostgreSQL schema)', () => {
         name: 'Offered book',
         category: 'Books',
         condition: 'Good',
+        quantity: 1,
         status: 'Unlisted',
       },
     });

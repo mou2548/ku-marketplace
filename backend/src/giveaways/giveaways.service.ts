@@ -89,10 +89,9 @@ export class GiveawaysService {
   }
 
   async create(payload: CreateGiveawayPayload, giverId: number) {
-    validateText(payload.description, 'description', 2000);
-    validateText(payload.pickup_location, 'pickup_location', 255);
-    for (const image of payload.images ?? []) {
-      validateText(image.image_url, 'image_url', 500);
+    // Giveaway_Post.description is VARCHAR(2000).
+    if ((payload.description?.length ?? 0) > 2000) {
+      throw new BadRequestException('description ยาวได้ไม่เกิน 2000 ตัวอักษร');
     }
     if (
       !payload.item_id ||
@@ -213,6 +212,7 @@ export class GiveawaysService {
           item: true,
           images: { orderBy: { displayOrder: 'asc' } },
           giver: true,
+          item: { select: { name: true } },
         },
       });
     });
@@ -292,17 +292,8 @@ export class GiveawaysService {
         item: true,
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
-        _count: {
-          select: {
-            tickets: {
-              where: {
-                status: {
-                  in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
-                },
-              },
-            },
-          },
-        },
+        item: { select: { name: true } },
+        _count: { select: { tickets: true } },
       },
     });
     if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
@@ -319,17 +310,8 @@ export class GiveawaysService {
         item: true,
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
-        _count: {
-          select: {
-            tickets: {
-              where: {
-                status: {
-                  in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
-                },
-              },
-            },
-          },
-        },
+        item: { select: { name: true } },
+        _count: { select: { tickets: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -366,12 +348,11 @@ export class GiveawaysService {
       if (!(await tx.user.findUnique({ where: { userId: receiverId } }))) {
         throw new NotFoundException('ไม่พบผู้รับ');
       }
+      // The pair is no longer unique in the database (only one live ticket
+      // is), but joining twice is still refused here whatever became of the
+      // first ticket.
       const existing = await tx.giveawayTicket.findFirst({
-        where: {
-          giveawayId,
-          receiverId,
-          status: { in: ['Registered', 'Waiting', 'Received'] },
-        },
+        where: { giveawayId, receiverId },
       });
       if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
 

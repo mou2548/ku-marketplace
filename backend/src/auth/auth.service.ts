@@ -122,8 +122,9 @@ export class AuthService {
     }
 
     // Restricted accounts can sign in to appeal; JwtAuthGuard blocks marketplace actions.
+    const allowedStatuses = new Set(['Active', 'Suspended', 'Banned']);
     user.status = await liftExpiredSuspension(this.prisma, user);
-    if (!['Active', 'Suspended', 'Banned'].includes(user.status ?? '')) {
+    if (!allowedStatuses.has(user.status ?? '')) {
       throw new UnauthorizedException('บัญชีนี้ถูกลบไปแล้ว');
     }
 
@@ -154,10 +155,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { userId: payload.userId },
     });
-    if (
-      !user ||
-      !['Active', 'Suspended', 'Banned'].includes(user.status ?? '')
-    ) {
+    const allowedStatuses = new Set(['Active', 'Suspended', 'Banned']);
+    if (!user || !allowedStatuses.has(user.status ?? '')) {
       await this.tokenService.revoke(refreshToken);
       throw new UnauthorizedException('Account is not available');
     }

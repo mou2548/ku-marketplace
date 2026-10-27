@@ -30,7 +30,6 @@ describe('GiveawaysService allocation boundaries', () => {
       giveawayTicket: {
         findUnique: jest.fn().mockResolvedValue(null),
         findFirst: jest.fn().mockResolvedValue(null),
-        aggregate: jest.fn().mockResolvedValue({ _max: { queueNumber: null } }),
         findMany: jest.fn(),
         count: jest.fn(),
         create: jest.fn(),

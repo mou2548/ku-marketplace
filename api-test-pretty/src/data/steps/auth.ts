@@ -63,5 +63,29 @@ export const authStep: StepGroup = {
         { responseKeys: ['isAdmin'], sessionKey: 'isAdmin' },
       ],
     },
+    {
+      id: 'users-me',
+      method: 'GET',
+      path: '/users/me',
+      label: 'ดูโปรไฟล์ของฉัน (มี promptpayId)',
+      needsAuth: true,
+    },
+    {
+      id: 'users-set-promptpay',
+      method: 'PATCH',
+      path: '/users/me',
+      label: 'ตั้งค่า PromptPay (ต้องตั้งก่อนลงขาย)',
+      needsAuth: true,
+      fields: [
+        {
+          name: 'promptpay_id',
+          label: 'เบอร์มือถือที่ผูก PromptPay',
+          type: 'text',
+          placeholder: '081-234-5678',
+          required: true,
+        },
+      ],
+      hint: 'รับเฉพาะเบอร์มือถือไทย 10 หลัก (มีขีดหรือเว้นวรรคได้) ถ้ายังไม่ตั้ง จะสร้างโพสต์ขายไม่ได้ และคนอื่นกดซื้อโพสต์ของเราไม่ได้',
+    },
   ],
 };

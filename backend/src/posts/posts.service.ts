@@ -120,7 +120,7 @@ export class PostsService {
       // (the item's own facts, nested below, shared by every channel it backs).
       description: post.description ?? null,
       wanted_item_offer: post.wantedItemOffer ?? null,
-      price: post.price?.toNumber() ?? null,
+      price: post.price?.toNumber() ?? 0,
       quantity_total: post.quantityTotal,
       quantity_available: post.quantityRemaining,
       quantity_remaining: post.quantityRemaining,
@@ -172,17 +172,43 @@ export class PostsService {
       );
   }
 
-  private async requirePromptPay(
-    tx: Pick<Prisma.TransactionClient, 'user'>,
-    sellerId: number,
+  /**
+   * The buyer pays by scanning a QR built from the seller's PromptPay ID
+   * (`TransactionService.paymentQr`), so nobody may be owed money through a
+   * listing before they have set one.
+   */
+  private async assertHasPromptPay(
+    db: Pick<Prisma.TransactionClient, 'user'>,
+    userId: number,
+    message: string,
   ) {
-    const seller = await tx.user.findUnique({
-      where: { userId: sellerId },
+    const user = await db.user.findUnique({
+      where: { userId },
       select: { promptpayId: true },
     });
-    if (!seller?.promptpayId?.trim()) {
-      throw new ConflictException(
-        'กรุณาตั้งค่า PromptPay ของผู้ขายก่อนทำรายการที่มีการชำระเงิน',
+    if (!user?.promptpayId) throw new ConflictException(message);
+  }
+
+  /** The two free-text columns are VARCHAR(2000) and VARCHAR(500). */
+  private assertTextFits(payload: {
+    description?: string;
+    wanted_item_offer?: string;
+  }) {
+    if ((payload.description?.length ?? 0) > 2000) {
+      throw new BadRequestException('description ยาวได้ไม่เกิน 2000 ตัวอักษร');
+    }
+    if ((payload.wanted_item_offer?.length ?? 0) > 500) {
+      throw new BadRequestException(
+        'wanted_item_offer ยาวได้ไม่เกิน 500 ตัวอักษร',
+      );
+    }
+  }
+
+  async createPost(payload: CreatePostPayload, userId: number) {
+    this.assertTextFits(payload);
+    if (!payload.item_id || !payload.post_type || payload.price === undefined) {
+      throw new BadRequestException(
+        'item_id, post_type และ price จำเป็นต้องระบุ',
       );
     }
   }
@@ -227,7 +253,11 @@ export class PostsService {
       if (item.deletedAt)
         throw new ConflictException('Item is not available for listing');
       if (postType !== 'TradeOnly') {
-        await this.requirePromptPay(tx, userId);
+        await this.assertHasPromptPay(
+          tx,
+          userId,
+          'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนลงขายสินค้า',
+        );
       }
       const { available } = await getItemAvailability(tx, itemId);
       if (quantity > available)
@@ -374,8 +404,7 @@ export class PostsService {
   }
 
   async updatePost(postId: string, payload: UpdatePostPayload, userId: number) {
-    validateText(payload.description, 'description', 2000);
-    validateText(payload.wanted_item_offer, 'wanted_item_offer', 500);
+    this.assertTextFits(payload);
     if (
       payload.price === undefined &&
       payload.post_type === undefined &&
@@ -412,6 +441,13 @@ export class PostsService {
     }
     await this.requirePostOwner(postId, userId);
     const id = this.id(postId, 'post');
+    if (payload.post_type !== undefined && payload.post_type !== 'TradeOnly') {
+      await this.assertHasPromptPay(
+        this.prisma,
+        userId,
+        'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนเปิดขายสินค้า',
+      );
+    }
 
     const post = await this.prisma.$transaction(async (tx) => {
       const found = await tx.post.findUnique({
@@ -483,7 +519,7 @@ export class PostsService {
 
     return {
       post_id: this.label('post', post.postId),
-      price: post.price?.toNumber() ?? null,
+      price: post.price?.toNumber() ?? 0,
       post_type: post.postType,
       quantity_total: post.quantityTotal,
       quantity_remaining: post.quantityRemaining,
@@ -588,7 +624,16 @@ export class PostsService {
       if (post.quantityRemaining < quantity) {
         throw new ConflictException('สินค้าเหลือไม่เพียงพอ');
       }
-      await this.requirePromptPay(tx, post.item.ownerId);
+      if (post.price === null) {
+        throw new ConflictException('โพสต์นี้ไม่ได้ตั้งราคาขาย');
+      }
+      // Listings older than the PromptPay rule may belong to a seller who has
+      // not set one yet; the buyer would have nothing to pay into.
+      await this.assertHasPromptPay(
+        tx,
+        post.item.ownerId,
+        'ผู้ขายยังไม่ได้ตั้งค่า PromptPay จึงยังซื้อสินค้านี้ไม่ได้',
+      );
       const buyer = await tx.user.findUnique({ where: { userId: buyerId } });
       if (!buyer) throw new NotFoundException('ไม่พบผู้ซื้อ');
       const totalAmount = post.price.mul(quantity);
@@ -603,7 +648,8 @@ export class PostsService {
           buyerId,
           sellerId: post.item.ownerId,
           quantity,
-          totalAmount,
+          // What the buyer owes, fixed now: a later price edit does not move it.
+          totalAmount: post.price.mul(quantity),
           deliveryMethod,
           status: 'Pending',
         },
@@ -853,8 +899,12 @@ export class PostsService {
       if (offer.post.quantityRemaining < 1)
         throw new ConflictException('สินค้าไม่มีเหลือแล้ว');
 
-      if (new Prisma.Decimal(offer.additionalMoney ?? 0).greaterThan(0)) {
-        await this.requirePromptPay(tx, offer.post.item.ownerId);
+      if (Number(offer.additionalMoney ?? 0) > 0) {
+        await this.assertHasPromptPay(
+          tx,
+          offer.post.item.ownerId,
+          'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนรับข้อเสนอที่มีเงินเพิ่ม',
+        );
       }
 
       const offeredIds = offer.items
@@ -911,7 +961,8 @@ export class PostsService {
           buyerId: offer.proposerId,
           sellerId: offer.post.item.ownerId,
           quantity: 1,
-          totalAmount: offer.additionalMoney ?? new Prisma.Decimal(0),
+          // A trade only ever carries the offer's cash top-up, if any.
+          totalAmount: offer.additionalMoney ?? 0,
           deliveryMethod,
           status: 'Pending',
         },

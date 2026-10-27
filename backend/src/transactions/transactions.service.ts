@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { displayName } from '../common/utils/display-name';
+import { loadTransactionSnapshot } from '../transaction/transaction-state';
 
 /** §6.2 — รูปในแชทมีอายุการแสดงผล 7 วัน ก่อนถูกแทนที่ด้วยข้อความแจ้งเตือน */
 const IMAGE_DISPLAY_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
@@ -200,9 +201,8 @@ export class TransactionsService {
     await this.assertParticipant(transactionId, userId);
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "transaction_id" FROM "Transaction" WHERE "transaction_id" = ${transactionId} FOR UPDATE`;
-      const transaction = await tx.transaction.findUniqueOrThrow({
-        where: { transactionId },
-      });
+      const transaction = await loadTransactionSnapshot(tx, transactionId);
+      if (!transaction) throw new NotFoundException('Transaction not found');
       const returning =
         transaction.status === 'Pending Refund' &&
         transaction.itemReceivedConfirmedByBuyerAt &&
@@ -221,24 +221,15 @@ export class TransactionsService {
       // Flow 1: a meetup is arranged only after the seller has confirmed the
       // payment. Uploading a slip (Pending -> Processing) is not enough; the
       // seller's check is its own step, and skipping it let a deal jump from
-      // step 3 to step 4. Mirrors `paymentRequired` in transaction.service.ts
-      // — inlined here since this service does not depend on that one.
-      if (!returning && !transaction.paymentConfirmedBySellerAt) {
-        const paymentRequired =
-          transaction.offerId === null
-            ? true
-            : Number(
-                (
-                  await tx.offer.findUnique({
-                    where: { offerId: transaction.offerId },
-                  })
-                )?.additionalMoney ?? 0,
-              ) > 0;
-        if (paymentRequired) {
-          throw new BadRequestException(
-            'The seller has to confirm the payment before a meetup is arranged',
-          );
-        }
+      // step 3 to step 4.
+      if (
+        !returning &&
+        !transaction.paymentConfirmedBySellerAt &&
+        transaction.paymentRequired
+      ) {
+        throw new BadRequestException(
+          'The seller has to confirm the payment before a meetup is arranged',
+        );
       }
       const { date, time, location } = createAppointmentDto;
       const previous = await tx.appointmentCard.findFirst({
