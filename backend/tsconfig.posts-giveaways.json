@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": [
+    "src/posts/**/*.ts",
+    "src/giveaways/**/*.ts",
+    "test/giveaways-concurrency.e2e-spec.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
