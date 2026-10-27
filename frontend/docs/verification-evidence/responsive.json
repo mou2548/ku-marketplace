@@ -1,0 +1,293 @@
+{
+  "results": [
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/feed",
+      "url": "/feed",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/inventory",
+      "url": "/inventory",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/offers",
+      "url": "/offers",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/history",
+      "url": "/history",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/chat",
+      "url": "/chat",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/giveaway",
+      "url": "/giveaway",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/notifications",
+      "url": "/notifications",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/account",
+      "url": "/account",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 360,
+      "route": "/account/membership",
+      "url": "/account/membership",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/feed",
+      "url": "/feed",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/inventory",
+      "url": "/inventory",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/offers",
+      "url": "/offers",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/history",
+      "url": "/history",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/chat",
+      "url": "/chat",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/giveaway",
+      "url": "/giveaway",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/notifications",
+      "url": "/notifications",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/account",
+      "url": "/account",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 768,
+      "route": "/account/membership",
+      "url": "/account/membership",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/feed",
+      "url": "/feed",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/inventory",
+      "url": "/inventory",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/offers",
+      "url": "/offers",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/history",
+      "url": "/history",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/chat",
+      "url": "/chat",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/giveaway",
+      "url": "/giveaway",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/notifications",
+      "url": "/notifications",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/account",
+      "url": "/account",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "user",
+      "width": 1280,
+      "route": "/account/membership",
+      "url": "/account/membership",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 360,
+      "route": "/admin/reports",
+      "url": "/admin/reports",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 360,
+      "route": "/admin/appeals",
+      "url": "/admin/appeals",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 360,
+      "route": "/admin/memberships",
+      "url": "/admin/memberships",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 768,
+      "route": "/admin/reports",
+      "url": "/admin/reports",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 768,
+      "route": "/admin/appeals",
+      "url": "/admin/appeals",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 768,
+      "route": "/admin/memberships",
+      "url": "/admin/memberships",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 1280,
+      "route": "/admin/reports",
+      "url": "/admin/reports",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 1280,
+      "route": "/admin/appeals",
+      "url": "/admin/appeals",
+      "overflow": false,
+      "error": false
+    },
+    {
+      "role": "admin",
+      "width": 1280,
+      "route": "/admin/memberships",
+      "url": "/admin/memberships",
+      "overflow": false,
+      "error": false
+    }
+  ],
+  "errors": []
+}

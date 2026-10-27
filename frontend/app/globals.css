@@ -1,26 +1,890 @@
 @import "tailwindcss";
 
+/* Light theme only for now. Every token below is semantic, so a `.dark` block
+   can be added later without touching a single component. */
+
+/* =========================================================================
+   1. PRIMITIVES — raw ramps. Never referenced directly by a component.
+   Contrast figures are against white unless noted. See docs/design/tokens.md.
+   ========================================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* --- Primary: KU green. Anchored at 600 = the brand hex. --- */
+  --green-50: #f4f9f6;   /*  1.07 */
+  --green-100: #e6f2eb;  /*  1.15 */
+  --green-200: #cde7d9;  /*  1.31 */
+  --green-300: #a7dabe;  /*  1.56 */
+  --green-400: #6bca96;  /*  2.00 */
+  --green-500: #3ab572;  /*  2.60 */
+  --green-600: #2e8f5a;  /*  4.04 — BRAND. Fills only, never normal text. */
+  --green-700: #257248;  /*  5.88 — text + links. AA. */
+  --green-800: #1d6d41;  /*  6.34 */
+  --green-900: #19432c;  /* 11.16 */
+  --green-950: #122b1d;  /* 15.04 — ink */
+
+  /* --- Neutral: blue-charcoal, adapted from the Chinese flat palette. --- */
+  --gray-50: #f8f9fb;
+  --gray-100: #f1f2f6;  /* Anti-Flash White */
+  --gray-200: #dfe4ea;  /* City Lights */
+  --gray-300: #ced6e0;  /* Twinkle Blue */
+  --gray-400: #a4b0be;  /* Peace — decorative / disabled only */
+  --gray-500: #747d8c;  /* Bay Wharf — large text and icons only */
+  --gray-600: #57606f;  /* AA body copy */
+  --gray-700: #46505d;
+  --gray-800: #3a414c;
+  --gray-900: #2f3542;  /* Prestige Blue — primary light-theme ink */
+  --gray-950: #222630;
+
+  /* --- Amber: waiting, deadline approaching --- */
+  --amber-50: #fbf8f1;
+  --amber-100: #f8efe0;
+  --amber-200: #f4e2c0;
+  --amber-300: #f3cf8f;
+  --amber-400: #f7b63e;
+  --amber-500: #f09c00;  /*  2.23 — fill only */
+  --amber-600: #bd7b00;  /*  3.51 — large text only */
+  --amber-700: #966200;  /*  5.20 — text. AA. */
+  --amber-800: #754d03;
+  --amber-900: #573a05;
+  --amber-950: #382606;
+
+  /* --- Rose: cancelled, reported, expired --- */
+  --rose-50: #f9f3f4;
+  --rose-100: #fbe4e8;
+  --rose-200: #e9cbd0;
+  --rose-300: #dea3ae;
+  --rose-400: #b3455a;   /*  5.36 */
+  --rose-500: #be324b;   /*  5.61 — text. AA. */
+  --rose-600: #96273b;   /*  7.93 */
+  --rose-700: #771f2f;   /* 10.36 */
+  --rose-800: #5d1b27;
+  --rose-900: #46161f;
+  --rose-950: #2d1015;
+
+  /* --- Slate: info only. Added 2026-08-14 — info used to share the green
+     ramp with success (see the tone comment below), and a ticket list with
+     both on screen at once (Registered vs Collected) showed they cannot be
+     told apart at a glance. Cool and muted on purpose: it must read as
+     "the system is moving," not compete with the brand green. */
+  --slate-50: #f3f6f8;
+  --slate-100: #e4eaef;
+  --slate-400: #6f8fa3;  /*  3.42 — border only */
+  --slate-600: #3d6076;  /*  6.70 */
+  --slate-700: #2f4c5f;  /*  9.05 — text. AA. */
+
+  /* --- Marketplace categories: colour explains the transaction type. --- */
+  --blue-100: #e8f3ff;
+  --blue-400: #70a1ff;
+  --blue-600: #1767ad;
+  --blue-700: #145a97;
+
+  --violet-100: #ececff;
+  --violet-400: #7d7cff;
+  --violet-500: #5352ed;
+  --violet-700: #3f3bb0;
 }
+
+/* =========================================================================
+   2. SEMANTIC TOKENS — the only layer a component may reference.
+   ========================================================================= */
+
+:root {
+  /* --- Surfaces ---
+     Revised 2026-08-14: page went fully white, matching --bg-surface. Cards
+     now separate from the page by shadow alone (--shadow-raised carries an
+     inset top highlight plus a soft drop shadow), not by a colour step —
+     the "depth over outline" principle applied to the page itself, not just
+     to individual surfaces. */
+  --bg-page: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #ffffff;
+  --bg-surface-sunken: var(--gray-100);
+  --bg-surface-inverse: var(--gray-900);
+  /* Operational chrome stays dark in both themes. Unlike an inverse content
+     surface, admin navigation and a camera view must not flip to white when
+     the page switches to dark mode. */
+  --bg-immersive: var(--gray-900);
+  /* Solid brand chrome: the header, hero bands, section headers. */
+  --bg-brand-strong: var(--green-800);
+  --bg-brand-band: var(--green-700);
+  --on-brand-strong: #ffffff;
+  --bg-overlay: rgb(47 53 66 / 0.52);
+
+  /* --- Borders --- */
+  --border-subtle: var(--gray-200);
+  --border-default: var(--gray-300);
+  --border-strong: var(--gray-400);
+  --border-brand: var(--green-600);
+
+  /* --- Text. Every value below is AA or better on --bg-surface. --- */
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-muted: var(--gray-600);
+  --text-disabled: var(--gray-400);   /* non-informational only */
+  --text-brand: var(--green-700);     /*  5.88 */
+  --text-inverse: #ffffff;
+
+  /* --- Brand actions --- */
+  --brand: var(--green-600);
+  --brand-hover: var(--green-700);
+  --brand-active: var(--green-800);
+  --brand-subtle: var(--green-100);
+  --brand-subtle-hover: var(--green-200);
+  --auth-accent: #2ed573;
+  --on-brand: #ffffff;                /* 4.04 on --brand: large/bold labels
+                                         and button text at >=16px 600 only */
+
+  /* Listing type is not a severity. These tokens exist so the feed can use
+     colour for quick scanning without borrowing warning or error colours. */
+  --listing-sale-bg: #e8f7ee;
+  --listing-sale-fg: #1b6b3f;
+  --listing-trade-bg: var(--blue-100);
+  --listing-trade-fg: var(--blue-600);
+  --listing-both-bg: var(--violet-100);
+  --listing-both-fg: var(--violet-700);
+  --listing-giveaway-bg: #fff5d6;
+  --listing-giveaway-fg: #806000;
+  --membership-bg: #fff5d6;
+  --membership-fg: #806000;
+
+  /* --- Focus --- */
+  --ring: var(--green-600);
+  --ring-offset: var(--bg-surface);
+
+  /* --------------------------------------------------------------------
+     Tones. Backend enums map to a tone in lib/status.ts — never in CSS.
+     Each tone is a trio: a wash background, a border, and AA-safe text.
+
+     The border is not decoration. A wash is a 100-step tint and the page is
+     #f4f7f5, so a chip's fill measures about 1.06:1 against the page it sits
+     on — the pill disappears and leaves floating coloured text. The border is
+     the only thing giving the chip a shape, so each tone uses the lowest step
+     that stays visible on both the page and a white card:
+
+       neutral gray-400   2.51:1    warning amber-600 3.25:1
+       info    slate-400  3.42:1    danger  rose-400  3.37:1
+       success green-600  4.04:1    trade   teal-400  2.87:1
+
+     They were all 300 before, which measured 1.38-2.10:1 and was chosen for
+     white only. Pair them with `TONE_CHIP`, never `TONE_WASH` alone.
+     -------------------------------------------------------------------- */
+  --tone-neutral-bg: var(--gray-100);
+  --tone-neutral-border: var(--gray-400);
+  --tone-neutral-fg: var(--gray-700);
+  --tone-neutral-solid: var(--gray-600);
+
+  /* Revised 2026-08-14: info used to be the light green, on the theory that
+     it and success were "the same journey seen twice." On a real screen —
+     the giveaway ticket list — Registered (info) and Collected (success)
+     sat two rows apart in near-identical green pills, and the difference
+     that was supposed to carry the meaning (a 1.14:1 wash gap) did not
+     survive being printed. Info is slate now: it no longer competes with
+     success for the one hue that means "this went well." */
+  --tone-info-bg: var(--slate-100);
+  --tone-info-border: var(--slate-400);
+  --tone-info-fg: var(--slate-700);
+  --tone-info-solid: var(--slate-600);
+
+  --tone-success-bg: var(--green-200);
+  --tone-success-border: var(--green-600);
+  --tone-success-fg: var(--green-800);
+  --tone-success-solid: var(--green-700);
+
+  --tone-warning-bg: var(--amber-100);
+  --tone-warning-border: var(--amber-600);
+  --tone-warning-fg: var(--amber-800);
+  /* amber-500 (2.23:1) was fill-only and needed near-black text, which read as
+     a different, brighter family next to every other tone's deep-saturated,
+     white-on-top solid. amber-700 (5.20:1) takes white like the rest do. */
+  --tone-warning-solid: var(--amber-700);
+
+  --tone-danger-bg: var(--rose-100);
+  --tone-danger-border: var(--rose-400);
+  --tone-danger-fg: var(--rose-600);
+  --tone-danger-solid: var(--rose-500);
+
+  --tone-trade-bg: var(--blue-100);
+  --tone-trade-border: var(--blue-400);
+  --tone-trade-fg: var(--blue-600);
+  --tone-trade-solid: var(--blue-700);
+
+  /* --------------------------------------------------------------------
+     Condition rarity. Drives the inventory slot border — the game read.
+     Maps all five Item.condition grades:
+     New | Very Good | Good | Acceptable | Poor.
+
+     One ramp, green to red, strictly monotonic. The first pass put New on
+     gold and Poor on amber, with Very Good lighter than Good — so the worse
+     grade looked better and the worst grade read as "caution" rather than
+     "worn". Hue now carries the grade and nothing else does.
+     -------------------------------------------------------------------- */
+  --rarity-new-edge: var(--green-600);
+  --rarity-new-glow: rgb(46 143 90 / 0.32);
+  --rarity-new-fg: var(--green-700);
+
+  /* Very Good sits between New and Good — the seed's fifth grade. */
+  --rarity-verygood-edge: var(--green-400);
+  --rarity-verygood-glow: rgb(107 202 150 / 0.30);
+  --rarity-verygood-fg: var(--green-700);
+
+  --rarity-good-edge: var(--amber-400);
+  --rarity-good-glow: rgb(240 156 0 / 0.26);
+  --rarity-good-fg: var(--amber-700);
+
+  --rarity-acceptable-edge: var(--amber-600);
+  --rarity-acceptable-glow: rgb(189 123 0 / 0.24);
+  --rarity-acceptable-fg: var(--amber-800);
+
+  --rarity-poor-edge: var(--rose-500);
+  --rarity-poor-glow: rgb(190 50 75 / 0.26);
+  --rarity-poor-fg: var(--rose-600);
+}
+
+/* =========================================================================
+   3. TYPE — Prompt, tuned for mixed Thai + Latin.
+   Thai ascenders and tone marks need more leading than Latin: body line
+   heights are 1.65-1.75, never the 1.5 a Latin-only scale would use.
+   Display sizes use clamp() so mobile is the base, not a shrunk desktop.
+   ========================================================================= */
+
+:root {
+  --font-ui: var(--font-prompt), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+  --text-display-lg: clamp(2rem, 1.4rem + 3vw, 3rem);
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.022em;
+  --text-display-lg--font-weight: 700;
+
+  --text-display: clamp(1.75rem, 1.3rem + 2.2vw, 2.375rem);
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 700;
+
+  --text-h1: clamp(1.5rem, 1.25rem + 1.2vw, 1.875rem);
+  --text-h1--line-height: 1.25;
+  --text-h1--letter-spacing: -0.016em;
+  --text-h1--font-weight: 700;
+
+  --text-h2: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
+  --text-h2--line-height: 1.3;
+  --text-h2--letter-spacing: -0.012em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.4;
+  --text-h3--letter-spacing: -0.006em;
+  --text-h3--font-weight: 600;
+
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--font-weight: 400;
+
+  /* 16px, revised 2026-09-03 (docs/design/register.md §6).
+     Was 15px/1.7. Two reasons, one of them mechanical: iOS Safari zooms the
+     viewport whenever a focused input is under 16px, which was a real defect
+     on every form in this product. And 1.7 was set for a 15px body — at 16px
+     it over-spaces the short strings this product is mostly made of (card
+     titles, status sentences, list rows) and pushes content below the fold on
+     exactly the screens the owner called too dense. */
+  --text-body: 1rem;
+  --text-body--line-height: 1.55;
+  --text-body--font-weight: 400;
+
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.55;
+  --text-body-sm--font-weight: 400;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.5;
+  --text-caption--font-weight: 500;
+
+  /* 12px is the floor for anything a reader must take in to act
+     (register.md §6). Nothing smaller than this carries meaning; the two
+     sizes below it that used to exist were labels naming values people read
+     to make a decision. */
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.45;
+  --text-meta--font-weight: 500;
+
+  /* Was 0.6875rem (11px), under the floor, and used for ActionCard's title —
+     the single most important sentence on the deal screen. */
+  --text-overline: 0.75rem;
+  --text-overline--line-height: 1.4;
+  --text-overline--letter-spacing: 0.09em;
+  --text-overline--font-weight: 600;
+
+  /* Tabular figures for prices, quantities, countdowns, tracking numbers. */
+  --text-numeric: 0.9375rem;
+  --text-numeric--line-height: 1.4;
+  --text-numeric--font-weight: 600;
+}
+
+/* =========================================================================
+   4. SHAPE — radius varies by role. One radius everywhere reads as a template.
+   ========================================================================= */
+
+:root {
+  --radius-slot: 0.625rem;   /* 10px — inventory slot */
+  --radius-control: 0.75rem; /* 12px — button, input, select */
+  --radius-chip: 0.5rem;     /*  8px — small badge */
+  --radius-card: 1.25rem;    /* 20px — post card, list card */
+  --radius-panel: 1.5rem;    /* 24px — game panel, sheet, dialog */
+  --radius-pill: 9999px;
+}
+
+/* =========================================================================
+   5. ELEVATION — three shadow layers plus a 1px inner top highlight.
+   The highlight is what the old flat 1px-border UI was missing: it reads as
+   a lit edge, so a surface looks raised instead of outlined.
+   ========================================================================= */
+
+:root {
+  --shadow-flat:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 0 0 1px rgb(47 53 66 / 0.045);
+
+  --shadow-raised:
+    inset 0 1px 0 rgb(255 255 255 / 0.75),
+    0 1px 2px rgb(47 53 66 / 0.05),
+    0 2px 6px rgb(47 53 66 / 0.045),
+    0 0 0 1px rgb(47 53 66 / 0.04);
+
+  --shadow-floating:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 2px 4px rgb(47 53 66 / 0.05),
+    0 8px 18px rgb(47 53 66 / 0.07),
+    0 0 0 1px rgb(47 53 66 / 0.04);
+
+  --shadow-overlay:
+    0 4px 8px rgb(47 53 66 / 0.06),
+    0 16px 32px rgb(47 53 66 / 0.12),
+    0 32px 64px rgb(47 53 66 / 0.10);
+
+  /* Sunken: inventory slots, drop targets, the trade bench well. */
+  --shadow-sunken:
+    inset 0 2px 4px rgb(47 53 66 / 0.10),
+    inset 0 0 0 1px rgb(47 53 66 / 0.06);
+
+  /* Rarity glow, applied on top of --shadow-sunken for a filled slot. */
+  --shadow-rarity: 0 0 0 1.5px var(--slot-edge, transparent),
+    0 0 12px -2px var(--slot-glow, transparent);
+
+  --shadow-focus: 0 0 0 2px var(--ring-offset), 0 0 0 4px var(--ring);
+}
+
+/* =========================================================================
+   6. MOTION — feedback, never decoration.
+   ========================================================================= */
+
+:root {
+  --dur-instant: 90ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 340ms;
+
+  --ease-out: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =========================================================================
+   7. LAYERS — SiteHeader is the ceiling for in-page content. A z-10 card
+   overlay painting over the sticky header was a real bug (2026-07-31).
+   ========================================================================= */
+
+:root {
+  --z-base: 0;
+  --z-card-overlay: 10;
+  --z-sticky: 20;
+  --z-header: 50;
+  --z-dialog: 100;
+  --z-toast: 120;
+}
+
+/* Dark follows the same relationship as Pinterest's themes: the canvas
+   changes from white to black while the brand hue stays an accent. */
+[data-theme="dark"] {
+  --green-50: #102017;
+  --green-100: #172d20;
+  --green-200: #1f3c2a;
+  --green-300: #315a40;
+  --green-400: #6bca96;
+  --green-500: #52c684;
+  --green-600: #3ab572;
+  --green-700: #8bdcad;
+  --green-800: #b9edcf;
+  --green-900: #d9f4e4;
+  --green-950: #f1f7f3;
+
+  --gray-50: #1a1e23;
+  --gray-100: #252a32;
+  --gray-200: #2f3542;
+  --gray-300: #46505d;
+  --gray-400: #747d8c;
+  --gray-500: #a4b0be;
+  --gray-600: #b8c1cd;
+  --gray-700: #d5dae2;
+  --gray-800: #dfe4ea;
+  --gray-900: #f1f2f6;
+  --gray-950: #f8f9fb;
+
+  --bg-page: #14171b;
+  --bg-surface: #1d2127;
+  --bg-surface-raised: #2f3542;
+  --bg-surface-sunken: #252a32;
+  --bg-surface-inverse: #f1f2f6;
+  --bg-immersive: #0d0f12;
+  --bg-brand-strong: #19432c;
+  --bg-brand-band: #257248;
+  --on-brand-strong: #ffffff;
+  --bg-overlay: rgb(7 9 12 / 0.76);
+
+  --border-subtle: #2f3542;
+  --border-default: #46505d;
+  --border-strong: #747d8c;
+  --border-brand: #52c684;
+
+  --text-primary: #f1f2f6;
+  --text-secondary: #d5dae2;
+  --text-muted: #a4b0be;
+  --text-disabled: #747d8c;
+  --text-brand: #88e3ac;
+  --text-inverse: #2f3542;
+
+  --brand: #2ed573;
+  --brand-hover: #4ae086;
+  --brand-active: #74e9a0;
+  --brand-subtle: #17452b;
+  --brand-subtle-hover: #205c3a;
+  --on-brand: #102519;
+  --ring: #2ed573;
+  --ring-offset: var(--bg-page);
+
+  --listing-sale-bg: #17452b;
+  --listing-sale-fg: #88e3ac;
+  --listing-trade-bg: #173a5e;
+  --listing-trade-fg: #86c5ff;
+  --listing-both-bg: #2d2a67;
+  --listing-both-fg: #b9b7ff;
+  --listing-giveaway-bg: #4c3b08;
+  --listing-giveaway-fg: #f4d66c;
+  --membership-bg: #4c3b08;
+  --membership-fg: #f4d66c;
+
+  --tone-neutral-bg: #28322c;
+  --tone-neutral-border: #637269;
+  --tone-neutral-fg: #d8e1db;
+  --tone-neutral-solid: #637269;
+  --tone-info-bg: #1b3442;
+  --tone-info-border: #6f8fa3;
+  --tone-info-fg: #c9e7f5;
+  --tone-info-solid: #3d6076;
+  --tone-success-bg: #193c28;
+  --tone-success-border: #52c684;
+  --tone-success-fg: #b9edcf;
+  --tone-success-solid: #257248;
+  --tone-warning-bg: #3d2d10;
+  --tone-warning-border: #bd7b00;
+  --tone-warning-fg: #f9d898;
+  --tone-warning-solid: #966200;
+  --tone-danger-bg: #3c1d24;
+  --tone-danger-border: #b3455a;
+  --tone-danger-fg: #f3c1ca;
+  --tone-danger-solid: #96273b;
+  --tone-trade-bg: #173a5e;
+  --tone-trade-border: #70a1ff;
+  --tone-trade-fg: #86c5ff;
+  --tone-trade-solid: #1767ad;
+
+  --shadow-flat:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(255 255 255 / 0.055);
+  --shadow-raised:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    0 1px 2px rgb(0 0 0 / 0.24),
+    0 4px 12px rgb(0 0 0 / 0.16),
+    0 0 0 1px rgb(255 255 255 / 0.045);
+  --shadow-floating:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 4px 10px rgb(0 0 0 / 0.24),
+    0 14px 30px rgb(0 0 0 / 0.22),
+    0 0 0 1px rgb(255 255 255 / 0.05);
+  --shadow-overlay: 0 18px 56px rgb(0 0 0 / 0.48);
+  --shadow-sunken:
+    inset 0 2px 5px rgb(0 0 0 / 0.3),
+    inset 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* =========================================================================
+   8. TAILWIND MAPPING
+   ========================================================================= */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
+
+  --color-green-50: var(--green-50);
+  --color-green-100: var(--green-100);
+  --color-green-200: var(--green-200);
+  --color-green-300: var(--green-300);
+  --color-green-400: var(--green-400);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
+  --color-green-800: var(--green-800);
+  --color-green-900: var(--green-900);
+  --color-green-950: var(--green-950);
+
+  /* Amber is one of the five hues the product allows, so its ramp is
+     reachable the way green's is — a filled chip needs the 700 step to carry
+     white text at 4.5:1, and 600 only reaches 3.50:1. */
+  --color-amber-100: var(--amber-100);
+  --color-amber-400: var(--amber-400);
+  --color-amber-600: var(--amber-600);
+  --color-amber-700: var(--amber-700);
+  --color-amber-800: var(--amber-800);
+
+  --color-rose-400: var(--rose-400);
+  --color-rose-500: var(--rose-500);
+  --color-rose-600: var(--rose-600);
+
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+  --color-gray-950: var(--gray-950);
+
+
+  /* Semantic — prefer these in components. */
+  --color-page: var(--bg-page);
+  --color-brand-strong: var(--bg-brand-strong);
+  --color-brand-band: var(--bg-brand-band);
+  --color-on-brand-strong: var(--on-brand-strong);
+  --color-surface: var(--bg-surface);
+  --color-surface-raised: var(--bg-surface-raised);
+  --color-surface-sunken: var(--bg-surface-sunken);
+  --color-surface-inverse: var(--bg-surface-inverse);
+  --color-immersive: var(--bg-immersive);
+
+  --color-line: var(--border-subtle);
+  --color-line-default: var(--border-default);
+  --color-line-strong: var(--border-strong);
+
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-disabled: var(--text-disabled);
+  --color-ink-brand: var(--text-brand);
+  --color-ink-inverse: var(--text-inverse);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-active: var(--brand-active);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-on-brand: var(--on-brand);
+
+  --color-tone-neutral-bg: var(--tone-neutral-bg);
+  --color-tone-neutral-border: var(--tone-neutral-border);
+  --color-tone-neutral-fg: var(--tone-neutral-fg);
+  --color-tone-neutral-solid: var(--tone-neutral-solid);
+  --color-tone-info-bg: var(--tone-info-bg);
+  --color-tone-info-border: var(--tone-info-border);
+  --color-tone-info-fg: var(--tone-info-fg);
+  --color-tone-info-solid: var(--tone-info-solid);
+  --color-tone-success-bg: var(--tone-success-bg);
+  --color-tone-success-border: var(--tone-success-border);
+  --color-tone-success-fg: var(--tone-success-fg);
+  --color-tone-success-solid: var(--tone-success-solid);
+  --color-tone-warning-bg: var(--tone-warning-bg);
+  --color-tone-warning-border: var(--tone-warning-border);
+  --color-tone-warning-fg: var(--tone-warning-fg);
+  --color-tone-warning-solid: var(--tone-warning-solid);
+  --color-tone-danger-bg: var(--tone-danger-bg);
+  --color-tone-danger-border: var(--tone-danger-border);
+  --color-tone-danger-fg: var(--tone-danger-fg);
+  --color-tone-danger-solid: var(--tone-danger-solid);
+  --color-tone-trade-bg: var(--tone-trade-bg);
+  --color-tone-trade-border: var(--tone-trade-border);
+  --color-tone-trade-fg: var(--tone-trade-fg);
+  --color-tone-trade-solid: var(--tone-trade-solid);
+
+  /* The type scale, as utilities. It was defined in :root but never exposed
+     here, so `text-display` was not a class anybody could write — which is why
+     every call site spells out four literal classes and why the two display
+     sizes went unused. `text-display` now carries size, leading, tracking and
+     weight in one token, per the Tailwind v4 --text-*--* convention above. */
+  --text-display-lg: var(--text-display-lg);
+  --text-display-lg--line-height: var(--text-display-lg--line-height);
+  --text-display-lg--letter-spacing: var(--text-display-lg--letter-spacing);
+  --text-display-lg--font-weight: var(--text-display-lg--font-weight);
+
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--text-display--line-height);
+  --text-display--letter-spacing: var(--text-display--letter-spacing);
+  --text-display--font-weight: var(--text-display--font-weight);
+
+  --text-h1: var(--text-h1);
+  --text-h1--line-height: var(--text-h1--line-height);
+  --text-h1--letter-spacing: var(--text-h1--letter-spacing);
+  --text-h1--font-weight: var(--text-h1--font-weight);
+
+  --text-h2: var(--text-h2);
+  --text-h2--line-height: var(--text-h2--line-height);
+  --text-h2--letter-spacing: var(--text-h2--letter-spacing);
+  --text-h2--font-weight: var(--text-h2--font-weight);
+
+  --text-h3: var(--text-h3);
+  --text-h3--line-height: var(--text-h3--line-height);
+  --text-h3--letter-spacing: var(--text-h3--letter-spacing);
+  --text-h3--font-weight: var(--text-h3--font-weight);
+
+  --text-body-lg: var(--text-body-lg);
+  --text-body-lg--line-height: var(--text-body-lg--line-height);
+  --text-body-lg--font-weight: var(--text-body-lg--font-weight);
+
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--text-body--line-height);
+  --text-body--font-weight: var(--text-body--font-weight);
+
+  --text-body-sm: var(--text-body-sm);
+  --text-body-sm--line-height: var(--text-body-sm--line-height);
+  --text-body-sm--font-weight: var(--text-body-sm--font-weight);
+
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--text-caption--line-height);
+  --text-caption--font-weight: var(--text-caption--font-weight);
+
+  --text-meta: var(--text-meta);
+  --text-meta--line-height: var(--text-meta--line-height);
+  --text-meta--font-weight: var(--text-meta--font-weight);
+
+  --text-overline: var(--text-overline);
+  --text-overline--line-height: var(--text-overline--line-height);
+  --text-overline--letter-spacing: var(--text-overline--letter-spacing);
+  --text-overline--font-weight: var(--text-overline--font-weight);
+
+  --radius-slot: var(--radius-slot);
+  --radius-control: var(--radius-control);
+  --radius-chip: var(--radius-chip);
+  --radius-card: var(--radius-card);
+  --radius-panel: var(--radius-panel);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-flat: var(--shadow-flat);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-floating: var(--shadow-floating);
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-sunken: var(--shadow-sunken);
+  /* Reachable as `shadow-rarity` so anything that carries a condition — a slot,
+     a feed card — can take the edge without the [box-shadow:…] escape hatch. */
+  --shadow-rarity: var(--shadow-rarity);
+
+  --color-rarity-new: var(--rarity-new-edge);
+  --color-rarity-verygood: var(--rarity-verygood-edge);
+  --color-rarity-good: var(--rarity-good-edge);
+  --color-rarity-acceptable: var(--rarity-acceptable-edge);
+  --color-rarity-poor: var(--rarity-poor-edge);
+
+  --ease-out: var(--ease-out);
+  --ease-spring: var(--ease-spring);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* =========================================================================
+   9. BASE
+   ========================================================================= */
+
+@layer base {
+  html {
+    font-family: var(--font-ui);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition:
+      background-color var(--dur-base) var(--ease-out),
+      color var(--dur-base) var(--ease-out);
+  }
+
+  /* Prices, quantities, countdowns and tracking numbers must not jitter as
+     digits change. */
+  :where(output, time, [data-numeric]) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* react-aria-components emits data-focus-visible rather than :focus-visible
+     on composite widgets (GridList rows, drop targets, menu items). */
+  :where([data-focus-visible]) {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  ::selection {
+    background-color: var(--green-200);
+    color: var(--green-950);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* =========================================================================
+   10. TEXTURE — key surfaces only. Never behind body text.
+   ========================================================================= */
+
+/* 2% noise. Inline SVG so nothing is fetched. */
+.texture-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+.texture-grid {
+  background-image:
+    linear-gradient(to right, rgb(18 43 29 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(18 43 29 / 0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+[data-theme="dark"] .texture-grid {
+  background-image:
+    linear-gradient(to right, rgb(139 220 173 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(139 220 173 / 0.055) 1px, transparent 1px);
+}
+
+/* The game panel: a lit plate rather than a flat rectangle. */
+.plate {
+  position: relative;
+  background-image: linear-gradient(
+    180deg,
+    var(--bg-surface) 0%,
+    var(--bg-surface-sunken) 100%
+  );
+  box-shadow: var(--shadow-raised);
+}
+
+/* =========================================================================
+   11. REDUCED MOTION
+   ========================================================================= */
+
+/* =========================================================================
+   TOUCH TARGETS
+
+   CLAUDE.md §5 sets a 44px floor. button.tsx carried a comment claiming the
+   floor held "on coarse pointers even at size=sm" — there was no
+   `pointer: coarse` rule anywhere in the codebase, so the claim was false and
+   36px shipped to every phone.
+
+   Density on a mouse is worth keeping, so the floor applies only where the
+   primary pointer is a finger. Everything that can be pressed gets the class;
+   a control already larger than 44px is unaffected.
+   ========================================================================= */
+
+/* Sticky action bars have to clear the phone tab bar (56px plus the home
+   indicator), which app-shell.tsx renders below 768px. Eight screens park a
+   primary action at the bottom edge; without this they sit under it. */
+.action-bar-bottom {
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 48rem) {
+  .action-bar-bottom {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}
+
+/* =========================================================================
+   ENTER / EXIT ANIMATIONS
+
+   These replace `tw-animate-css`, which CLAUDE.md §2 lists as removed and
+   never to return. It was still imported and its utilities were live at five
+   components. The set below is only what those five actually used, named for
+   what it does rather than for the distance it travels, and it costs one
+   dependency less in every route bundle.
+
+   Durations come from the motion scale above, so a change there moves these
+   too. The reduced-motion block at the end of this file already collapses
+   every `animation-duration`, so nothing here needs its own guard.
+   ========================================================================= */
+
+@keyframes ku-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ku-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes ku-pop-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ku-rise-in {
+  from { opacity: 0; transform: translateY(var(--ku-rise, 1rem)); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ku-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+@keyframes ku-slide-out-left {
+  from { transform: none; }
+  to { transform: translateX(-100%); }
+}
+@keyframes ku-slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@keyframes ku-slide-out-right {
+  from { transform: none; }
+  to { transform: translateX(100%); }
+}
+
+@utility anim-fade-in { animation: ku-fade-in var(--dur-base) ease-out; }
+@utility anim-fade-out { animation: ku-fade-out var(--dur-fast) ease-in; }
+@utility anim-pop-in { animation: ku-pop-in var(--dur-base) ease-out; }
+@utility anim-rise-in { animation: ku-rise-in var(--dur-base) ease-out; }
+@utility anim-slide-in-left { animation: ku-slide-in-left var(--dur-base) ease-out; }
+@utility anim-slide-out-left { animation: ku-slide-out-left var(--dur-fast) ease-in; }
+@utility anim-slide-in-right { animation: ku-slide-in-right var(--dur-base) ease-out; }
+@utility anim-slide-out-right { animation: ku-slide-out-right var(--dur-fast) ease-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
