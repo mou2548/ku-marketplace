@@ -1,15 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { getCopy } from "@/lib/copy";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Handshake, MapPin, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeftRight, Check, Flag, MapPin, ShoppingBag, Truck, XCircle } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
-import { Radio, RadioGroupField } from "@/components/kit/choice";
+import { ConfirmButton } from "@/components/kit/confirm-button";
+import { TextInput } from "@/components/kit/field";
+import { Radio, RadioGroup } from "react-aria-components";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
 import type { DeliveryMethod } from "@/lib/status";
+import { buyPostAction, unlistListing } from "@/lib/actions/posts";
 import type { Post } from "@/lib/api/types";
+
+/** §7.5.1 — the system-provided reasons for a post report. */
+const POST_REPORT_REASONS = [
+  {
+    id: "illegal-item",
+    label: "Illegal or prohibited item",
+    description: "The item itself is not allowed on the platform",
+  },
+  {
+    id: "inappropriate-content",
+    label: "Inappropriate content (scam or spam)",
+    description: "The listing looks like a scam, or is spam",
+  },
+  {
+    id: "false-info",
+    label: "False information in the listing",
+    description: "Photos, price, or details do not match reality",
+  },
+];
 
 /**
  * E3 entry point. Two decisions happen here and nowhere else:
@@ -24,99 +49,137 @@ import type { Post } from "@/lib/api/types";
  * fold on a phone.
  */
 export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
+  const t = getCopy();
   const router = useRouter();
   const toast = useToast();
   const [method, setMethod] = useState<DeliveryMethod>("Meetup");
+  const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
+  const deliveryId = useId();
 
   const canBuy = post.post_type !== "TradeOnly";
   const canTrade = post.post_type !== "SellOnly";
+  const quantityValue = Number(quantity);
+  const canConfirm =
+    Number.isInteger(quantityValue) &&
+    quantityValue >= 1 &&
+    quantityValue <= post.quantity_remaining;
 
   if (isMine) {
     return (
-      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex gap-2 lg:static">
+      <div className="sticky action-bar-bottom z-[20] flex gap-2 lg:static">
         <LinkButton
           variant="secondary"
           block
           className="lg:w-auto"
-          href={`/inventory/${post.item_id}/list`}
-        >
-          Edit listing
-        </LinkButton>
+          href={`/inventory/${post.item_id}/list/${post.post_id}`}
+        >{t("inventory.editListing")}</LinkButton>
+        <ConfirmButton
+          title="Unlist this listing?"
+          description="This takes it off the market. The item itself stays in your inventory, and this channel's history is kept."
+          confirmLabel="Unlist"
+          doneMessage="Listing removed from the market."
+          icon={<XCircle className="size-4" />}
+          onConfirm={unlistListing.bind(null, post.post_id)}
+          onDone={() => router.push(`/inventory/${post.item_id}`)}
+          trigger={
+            <>
+              <XCircle className="size-4" />
+              Unlist
+            </>
+          }
+          triggerProps={{ variant: "ghost", block: true, className: "lg:w-auto" }}
+        />
       </div>
     );
   }
 
   async function buy() {
+    if (busy || !canConfirm) return;
     setBusy(true);
-    // POST /posts/{id}/buy → { delivery_method, quantity }
-    await new Promise((r) => setTimeout(r, 400));
-    setBusy(false);
-    toast.show("Deal created. A chat room has been opened for you.");
-    // UI mock: the real call returns the new transaction id. Transaction 6 is
-    // the fixture where the viewer is the buyer, so the redirect through
-    // /history/[txId] lands in a room instead of a 404. Delete with the fixtures.
-    router.push("/history/6");
+    try {
+      const deal = await buyPostAction(post.post_id, { delivery_method: method, quantity: quantityValue });
+      const transactionId = Number(deal.transaction_id.replace(/^transaction_/, ""));
+      if (!Number.isSafeInteger(transactionId) || transactionId < 1) throw new Error("The purchase returned an invalid transaction ID");
+      toast.success("Deal created. A chat room has been opened for you.");
+      router.push(`/history/${transactionId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the purchase");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <div
-      className={
-        "sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] " +
-        "-mx-4 flex gap-2 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur " +
-        "lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
-      }
-    >
+    <ActionBar className="-mx-1 lg:flex-col lg:items-stretch">
       {canBuy ? (
         <OverlayTrigger>
-          <Button block size="lg" className="lg:w-auto">
+          <Button block size="lg" isDisabled={post.quantity_remaining < 1}>
             <ShoppingBag className="size-5" />
-            Buy now
+            {post.quantity_remaining < 1 ? t("market.soldOut") : t("market.buyNow")}
           </Button>
 
           <Overlay
-            title="Choose how you will get it"
-            description="This cannot be changed later. The steps after this differ depending on what you pick."
+            isBusy={busy}
+            title={t("market.chooseDelivery")}
+            description={t("market.chooseDeliveryBody")}
             footer={
               <>
-                <Button variant="ghost" slot="close">
-                  Cancel
-                </Button>
-                <Button onPress={buy} isLoading={busy}>
-                  <Handshake className="size-4" />
-                  Confirm purchase
-                </Button>
+                <Button variant="ghost" slot="close" isDisabled={busy}>{t("inventory.cancel")}</Button>
+                <Button onPress={buy} isDisabled={!canConfirm} isLoading={busy} className="sm:min-w-44">
+                  {t("market.confirmPurchase")}</Button>
               </>
             }
           >
-            <RadioGroupField
-              aria-label="Delivery method"
+            <RadioGroup
+              aria-label={t("market.deliveryMethod")}
               value={method}
-              onChange={(v) => setMethod(v as DeliveryMethod)}
-              variant="card"
+              onChange={(value) => setMethod(value as DeliveryMethod)}
+              isDisabled={busy}
+              className="flex flex-col gap-2"
             >
-              <Radio
-                value="Meetup"
-                description="Meet on campus, inspect before paying, finish by scanning the seller QR"
-              >
-                <span className="flex items-center gap-2">
-                  <MapPin aria-hidden className="size-4" />
-                  Meetup
-                </span>
-              </Radio>
-              <Radio
-                value="Shipping"
-                description="Pay first, upload a slip, the seller confirms and posts it with a tracking number"
-              >
-                <span className="flex items-center gap-2">
-                  <Truck aria-hidden className="size-4" />
-                  Shipping
-                </span>
-              </Radio>
-            </RadioGroupField>
+              {([
+                { value: "Meetup", icon: MapPin, title: "meetup", caption: "meetupCaption" },
+                { value: "Shipping", icon: Truck, title: "shipping", caption: "shippingCaption" },
+              ] as const).map(({ value, icon: Icon, title, caption }) => (
+                <Radio
+                  key={value}
+                  value={value}
+                  aria-labelledby={`${deliveryId}-${value}-label`}
+                  aria-describedby={`${deliveryId}-${value}-description`}
+                  className="group flex min-h-20 cursor-pointer items-center gap-3 rounded-control px-3.5 py-4 text-ink outline-none transition-colors hover:bg-surface-sunken data-[selected]:bg-surface-sunken data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-brand data-[disabled]:cursor-wait"
+                >
+                  {({ isSelected }) => (
+                    <>
+                      <Icon aria-hidden className="size-5 shrink-0 text-ink-muted" />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span id={`${deliveryId}-${value}-label`} className="text-body font-medium">{t(`market.${title}`)}</span>
+                        <span id={`${deliveryId}-${value}-description`} className="text-body-sm font-normal leading-relaxed text-ink-muted">{t(`market.${caption}`)}</span>
+                      </span>
+                      <span aria-hidden className="flex size-5 shrink-0 items-center justify-center self-center rounded-pill border border-ink-muted group-data-[selected]:border-brand group-data-[selected]:bg-brand group-data-[selected]:text-on-brand">
+                        {isSelected ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                      </span>
+                    </>
+                  )}
+                </Radio>
+              ))}
+            </RadioGroup>
 
-            <p className="mt-4 rounded-control bg-tone-warning-bg p-3 text-[0.8125rem] leading-[1.6] text-tone-warning-fg">
-              Money moves directly between you, outside the platform. The app keeps the slip and the timestamps as evidence for both sides. Do not transfer before confirming here.
+            {post.quantity_remaining > 1 ? (
+              <TextInput
+                className="mt-4"
+                label="Quantity"
+                value={quantity}
+                onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
+                inputMode="numeric"
+                isRequired
+                isInvalid={quantity !== "" && !canConfirm}
+                hint={`${post.quantity_remaining} available`}
+              />
+            ) : null}
+
+            <p className="mt-4 mb-4 text-caption font-normal leading-relaxed text-ink-muted">
+              {t("market.directPaymentNotice")}
             </p>
           </Overlay>
         </OverlayTrigger>
@@ -124,16 +187,30 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
 
       {canTrade ? (
         <LinkButton
-          variant={canBuy ? "secondary" : "primary"}
+          variant={canBuy ? "secondary" : "trade"}
           size="lg"
           block
-          className="lg:w-auto"
+          className={canBuy ? "text-tone-trade-fg" : undefined}
           href={`/offers/new?post=${post.post_id}`}
         >
-          <ArrowLeftRight className="size-5" />
-          Offer a trade
-        </LinkButton>
+          <ArrowLeftRight className="size-5" />{t("market.offerTrade")}</LinkButton>
       ) : null}
-    </div>
+
+      <ReportDialog
+        reportType="Post"
+        targetId={post.post_id}
+        reasons={POST_REPORT_REASONS}
+        trigger={
+          <Button
+            variant="ghost"
+            size="lg"
+            aria-label={t("market.reportPost")}
+            className="self-end"
+          >
+            <Flag className="size-5" />
+          </Button>
+        }
+      />
+    </ActionBar>
   );
 }

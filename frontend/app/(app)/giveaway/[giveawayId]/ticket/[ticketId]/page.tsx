@@ -12,10 +12,7 @@ import { TicketScreen } from "./ticket-screen";
  *
  * There is no `GET` for a single ticket in the spec — only
  * `GET /giveaways/{id}/recipients`, which is why the route carries both ids
- * and `getMyTicket` re-derives this ticket from that list
- * (docs/design/api-gaps.md §8). A forfeited or expired ticket drops out of
- * that list entirely, so it 404s here rather than showing a stale
- * "ready to collect" state.
+ * and `getMyTicket` re-derives this ticket from that complete outcome list.
  */
 export default async function TicketPage({
   params,

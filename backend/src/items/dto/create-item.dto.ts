@@ -4,10 +4,13 @@ import {
   IsBoolean,
   IsDateString,
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
+  MaxLength,
 } from 'class-validator';
 
 class CreateItemImageDto {
@@ -33,17 +36,18 @@ export class CreateItemDto {
   @IsNotEmpty()
   category: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsIn(['New', 'Good', 'Acceptable', 'Poor'])
   condition: string;
 
-  @IsString()
+  @IsInt()
   @IsOptional()
-  description?: string;
+  @Min(1)
+  quantity?: number;
 
   @IsString()
   @IsOptional()
-  status?: string;
+  @MaxLength(2000)
+  description?: string;
 
   @IsString()
   @IsOptional()

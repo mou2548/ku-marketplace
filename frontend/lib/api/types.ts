@@ -1,22 +1,21 @@
 /**
  * Response shapes for the KU Marketplace API.
  *
- * These mirror `fornewdesign/API_Marketplace.pdf` and `DatabaseSchema.pdf`
- * exactly — snake_case field names included — so that swapping the fixtures in
- * `lib/api/fixtures.ts` for real `fetch` calls is a one-line change per module
- * and no screen has to be touched.
+ * snake_case field names, mirroring the database. Every `lib/api/*.ts` module
+ * adapts its endpoint's wire form to these; the old `lib/api/fixtures.ts` mock
+ * layer has been removed — the whole app now runs on the real backend.
  *
- * The backend is fixed and untouchable (CLAUDE.md §0). If a screen needs a
- * field that is not here, it does not exist: record the gap in
- * docs/design/api-gaps.md and design around it.
+ * If a screen needs a field the API does not return, record the gap in
+ * docs/design/api-gaps.md and design around it (or add it to the backend).
  */
 
 import type {
   AllocationMethod,
   AppealStatus,
+  AppointmentStatus,
   DeliveryMethod,
+  EntrantStatus,
   ItemCondition,
-  ItemStatus,
   OfferStatus,
   PostType,
   ReportStatus,
@@ -39,6 +38,7 @@ export interface User {
   first_name_th: string;
   last_name_th: string;
   phone_number?: string | null;
+  avatar_url?: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   email_verified_at?: string | null;
   isAdmin: boolean;
@@ -81,7 +81,6 @@ export interface Item {
   category: ItemCategory;
   condition: ItemCondition;
   description?: string | null;
-  status: ItemStatus;
   /** Books and lecture notes. Persona P1 searches by this. */
   course_name?: string | null;
   brand_model?: string | null;
@@ -91,11 +90,49 @@ export interface Item {
   images: ItemImage[];
 }
 
+/**
+ * One currently open channel this item is committed to. An item can carry
+ * several at once (e.g. a SellOnly post and a TradeOnly post together) —
+ * this is why `Item` no longer carries a single `status` field.
+ */
+export type ItemChannel =
+  | {
+      type: "post";
+      post_id: number;
+      post_type: PostType;
+      quantity_total: number;
+      quantity_remaining: number;
+    }
+  | {
+      type: "giveaway";
+      giveaway_id: number;
+      quantity_total: number;
+      quantity_claimed: number;
+    };
+
+export interface ItemHistorySummary {
+  item_id: number;
+  inventory_quantity: number;
+  /** Committed to a currently open channel — sale, trade or giveaway. */
+  posted_quantity: number;
+  /** How many units can still be committed to a new channel right now. */
+  available_quantity: number;
+  sold_quantity: number;
+  traded_quantity: number;
+  /** Reserved by a deal that hasn't completed yet — not free, not history. */
+  ongoing_quantity: number;
+  /** How many units have actually been handed over via a giveaway. */
+  given_quantity: number;
+  /** Every currently open Post/Giveaway channel for this item. */
+  channels: ItemChannel[];
+}
+
 export interface Post {
   post_id: number;
   item_id: number;
   post_type: PostType;
   price: number;
+  quantity_total: number;
   quantity_remaining: number;
   description?: string | null;
   /** Only meaningful when post_type is TradeOnly or Both. */
@@ -112,6 +149,8 @@ export interface Offer {
   additional_money: number;
   status: OfferStatus;
   created_at: string;
+  /** Set once the offer is accepted — the transaction it opened. */
+  transaction_id?: number | null;
   items: Item[];
   proposer: UserSummary;
   post: Post;
@@ -128,13 +167,26 @@ export interface Transaction {
   status: TransactionStatus;
   delivery_method: DeliveryMethod;
   active_report_id?: number | null;
+  /** When that report was filed — the time of the "sent to admin review" event. */
+  active_report_created_at?: string | null;
   slip_image_url?: string | null;
   tracking_number?: string | null;
   estimated_delivery_date?: string | null;
+  shipped_at?: string | null;
   payment_confirmed_by_buyer_at?: string | null;
   payment_confirmed_by_seller_at?: string | null;
   item_received_confirmed_by_buyer_at?: string | null;
   item_received_confirmed_by_seller_at?: string | null;
+  cancellation_requested_by?: number | null;
+  cancellation_reason?: string | null;
+  cancellation_requested_at?: string | null;
+  cancellation_response?: "Pending" | "Approved" | "Rejected" | null;
+  cancellation_responded_at?: string | null;
+  refund_slip_url?: string | null;
+  refund_submitted_at?: string | null;
+  refund_confirmed_by_buyer?: boolean | null;
+  refund_confirmed_at?: string | null;
+  item_return_confirmed_at?: string | null;
   created_at: string;
   /** Present on a trade — drives whether the payment sequence runs at all. */
   additional_money?: number | null;
@@ -147,65 +199,166 @@ export interface ChatMessage {
   message_id: number;
   room_id: number;
   sender_id: number;
+  /** Absent for a fixture-sourced (giveaway) room — see lib/api/chat.ts. */
+  sender?: UserSummary;
   content?: string | null;
   image_urls?: string[] | null;
+  /** §6.2 — true once the message is older than the 7-day display lifetime;
+   * `image_urls` is null in that case, and the UI shows a notice instead. */
+  images_expired?: boolean;
   created_at: string;
 }
 
+/**
+ * Mirrors `Appointment_Card` (`DatabaseSchema.pdf` §2.13, init.sql). An
+ * earlier pass invented `Proposed|Accepted|Declined`, which meant a real row
+ * could never be passed in — see the fix note in `lib/status.ts`. `date`/
+ * `time` are plain `"YYYY-MM-DD"`/`"HH:mm:ss"` strings, matching what
+ * `AppointmentCard`/`appointmentLabel` already expect; `lib/api/chat.ts`'s
+ * adapter slices the backend's full ISO timestamps down to this shape.
+ */
 export interface AppointmentCardData {
   appointment_id: number;
   transaction_id: number;
-  scheduled_at: string;
-  place: string;
-  coordinates?: string | null;
-  status: "Proposed" | "Accepted" | "Declined";
   proposed_by: number;
+  proposer: UserSummary;
+  date: string;
+  time: string;
+  location: string;
+  status: AppointmentStatus;
+  /**
+   * Set once a newer proposal supersedes this card or the other party rejects
+   * it. `deriveAppointmentView` keeps only cards with this null, so declining a
+   * proposed change ("Another time") can never fall back to an older Confirmed
+   * card. Mirrors the backend's `assertHandoverReady`.
+   */
+  deleted_at?: string | null;
+  /**
+   * When the other party confirmed or declined. Null while Pending, and on a
+   * card answered before the backend recorded it.
+   */
+  responded_at?: string | null;
+  created_at: string;
 }
 
 export interface GiveawayPost {
   giveaway_id: number;
-  item_name: string;
+  /** Null on legacy rows created before item linking existed. */
+  item_id: number | null;
+  /** Optional fallback label — the linked item's own name is authoritative. */
+  item_name: string | null;
   description?: string | null;
   pickup_location: string;
   giver_id: number;
   allocation_method: AllocationMethod;
-  registered_deadline?: string | null;
-  pickup_start_date?: string | null;
-  pickup_end_date?: string | null;
+  quantity: number;
+  register_start?: string | null;
+  register_deadline?: string | null;
+  pickup_start?: string | null;
+  pickup_deadline?: string | null;
+  registration_open: boolean;
+  remaining_slots: number;
+  all_registered_guaranteed: boolean;
   status: "Active" | "Closed" | "Completed";
   created_at: string;
   images: Array<{ image_id: number; image_url: string; display_order: number }>;
   giver: UserSummary;
-  /** Client-side aggregate for the card. */
-  registered_count?: number;
+  registered_count: number;
 }
 
 export interface GiveawayTicket {
   ticket_id: number;
   giveaway_id: number;
   receiver_id: number;
+  queue_number: number;
   status: TicketStatus;
   updated_at: string;
   created_at: string;
   giveaway: GiveawayPost;
 }
 
+/**
+ * Who else is in a giveaway's group chat room. Built from the full recipient
+ * roster, including allocation and collection outcomes.
+ */
+export interface Entrant {
+  receiver_id: number;
+  user: UserSummary;
+  status: EntrantStatus;
+}
+
 export interface Report {
   report_id: number;
   reporter_id: number;
+  reporter: UserSummary;
   report_type: "Post" | "User" | "Transaction";
   target_id: number;
   reason_category: string;
   details?: string | null;
   evidence_urls?: string[] | null;
   status: ReportStatus;
+  /** Admin endpoints only; null until a violation is confirmed. */
+  sanction?: Sanction | null;
+  /** Admin endpoints only: who the report is against. */
+  reported_user?: (UserSummary & { status: string | null }) | null;
+  handled_by?: number | null;
+  handler?: UserSummary | null;
   resolution_note?: string | null;
+  handled_at?: string | null;
   created_at: string;
 }
 
 export interface Appeal {
   appeal_id: number;
   report_id: number;
+  appellant_id: number;
+  appellant: UserSummary;
+  reason: string;
+  evidence_urls?: string[] | null;
   status: AppealStatus;
+  handled_by?: number | null;
+  resolution_note?: string | null;
   created_at: string;
+  handled_at?: string | null;
+}
+
+/**
+ * The reporter's own view of a report. The backend never returns the outcome
+ * to the person who filed it (ruling of 2026-10-05), so there is no status,
+ * verdict note or handler here to render.
+ */
+export type SubmittedReport = Pick<
+  Report,
+  | "report_id"
+  | "reporter_id"
+  | "reporter"
+  | "report_type"
+  | "target_id"
+  | "reason_category"
+  | "details"
+  | "evidence_urls"
+  | "created_at"
+>;
+
+/** Stored on a confirmed report; `suspend_*` restricts the account. */
+export type Sanction = "none" | "warn" | "suspend_temporary" | "suspend_permanent";
+
+/** The verdict an appeal contests, as the admin appeal endpoints embed it. */
+export interface AppealReportContext {
+  report_id: number;
+  report_type: Report["report_type"];
+  target_id: number;
+  reason_category: string;
+  details?: string | null;
+  evidence_urls?: string[] | null;
+  status: ReportStatus;
+  sanction: Sanction | null;
+  resolution_note?: string | null;
+  handled_by?: number | null;
+  handler?: UserSummary | null;
+  handled_at?: string | null;
+}
+
+export interface AdminAppeal extends Appeal {
+  report: AppealReportContext;
 }

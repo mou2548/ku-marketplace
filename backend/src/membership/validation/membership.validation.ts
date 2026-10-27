@@ -7,7 +7,7 @@ export const requestMembershipSchema = z.object({
 
 export const reviewMembershipSchema = z.object({
   approve: z.boolean(),
-  rejectionReason: z.string().optional(),
+  rejectionReason: z.string().max(500).optional(),
 });
 
 export type RequestMembershipPayload = z.infer<typeof requestMembershipSchema>;

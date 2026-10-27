@@ -11,19 +11,32 @@ import type { NextConfig } from "next";
  * Permanent, because these moves are structural and not coming back.
  */
 const nextConfig: NextConfig = {
+  // Dev server blocks cross-origin requests by default (Next 16). LAN
+  // testing from a phone or another machine hits this — the page loads but
+  // hydration never completes, so nothing is clickable.
+  allowedDevOrigins: ["10.31.223.158"],
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // Photos go to the API through a Server Action (lib/actions/uploads.ts),
+      // and the 1MB default rejected most phone photos before they reached
+      // it. The API accepts up to 5MB; this leaves room for the form wrapper.
+      bodySizeLimit: "6mb",
+    },
+  },
   images: {
     remotePatterns: [
-      // Fixtures (lib/api/fixtures.ts, mock data) use picsum.photos.
-      { protocol: "https", hostname: "picsum.photos" },
-      { protocol: "https", hostname: "fastly.picsum.photos" },
-      { protocol: "https", hostname: "upload.wikimedia.org" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-      // The real seed in init.sql stores every photo on this placeholder
-      // host instead — it does not resolve to a real image, so pictures
-      // sourced from real seed data render broken, but at least the page
-      // itself no longer 500s (next/image throws on an unlisted hostname).
+      // Legacy local volumes can still contain the original object-storage
+      // URLs. Older init.sql revisions used deterministic Picsum seeds; the
+      // current one uses curated Unsplash photos that actually match each item.
       { protocol: "https", hostname: "r2.ku-market.com" },
+      { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      // Seeded payment slips and chat attachments use this host.
+      { protocol: "https", hostname: "placehold.co" },
+      // Real uploads land here: POST /uploads/image -> Cloudinary
+      // (item photos, giveaway photos, chat images).
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   async redirects() {

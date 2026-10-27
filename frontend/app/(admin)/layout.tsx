@@ -1,100 +1,87 @@
 import Link from "next/link";
-import { ArrowLeft, Crown, Scale, ShieldAlert } from "lucide-react";
+import { redirect } from "next/navigation";
+import { Bell } from "lucide-react";
 
+import { AdminSidebar, AdminTabBar } from "@/components/admin/admin-navigation";
+import { ThemeSwitch } from "@/components/patterns/theme-switch";
 import { ToastProvider } from "@/components/kit/toast";
-import { getAdminAppeals, getAdminReports, getMembershipRequests } from "@/lib/api/fixtures";
+import { UserAvatar } from "@/components/kit/user-avatar";
+import { loadAdminQueues, queueCounts } from "@/lib/admin";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe } from "@/lib/api/users";
 
 /**
  * Moderation is a different job from using the marketplace, so it gets its own
- * shell rather than a hidden branch of the student navigation. Three queues,
- * each with its pending count, and a way back out.
+ * shell: a left rail of four sections with their waiting counts on desktop, a
+ * bottom tab bar on phones, and a thin top bar with notifications and a way
+ * back out.
+ *
+ * Signed-out visitors go to login and signed-in non-admins to the feed; the
+ * API enforces the same rule on every `/admin/*` endpoint.
  */
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [reports, appeals, memberships] = await Promise.all([
-    getAdminReports(),
-    getAdminAppeals(),
-    getMembershipRequests(),
-  ]);
+  if (!(await getAccessToken())) redirect("/login");
+  const viewer = await getMe().catch(() => undefined);
+  if (!viewer || !viewer.isAdmin) redirect("/feed");
 
-  const queues = [
-    {
-      href: "/admin/reports",
-      label: "Reports",
-      icon: ShieldAlert,
-      count: reports.filter(
-        (r) => r.status === "Pending" || r.status === "Under_Investigation",
-      ).length,
-    },
-    {
-      href: "/admin/appeals",
-      label: "Appeals",
-      icon: Scale,
-      count: appeals.filter((a) => a.status !== "Appeal_Upheld").length,
-    },
-    {
-      href: "/admin/memberships",
-      label: "Memberships",
-      icon: Crown,
-      count: memberships.length,
-    },
-  ];
+  const counts = queueCounts(await loadAdminQueues());
+  const name = `${viewer.firstNameEn} ${viewer.lastNameEn}`.trim();
 
   return (
     <ToastProvider>
-      <div className="flex min-h-dvh flex-col">
-        <header className="sticky top-0 z-[50] border-b border-line bg-surface-inverse text-white">
-          <div className="flex h-16 w-full items-center gap-3 px-4 lg:px-8">
-            {/* Truncates rather than pushing the row wide: at 360 the title,
-                three queue links and the back link together overflowed. */}
-            <span className="min-w-0 truncate font-bold tracking-[-0.012em]">
-              KU Marketplace · Admin
-            </span>
+      <div className="min-h-dvh bg-page lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+        <AdminSidebar counts={counts} />
 
-            <nav
-              aria-label="Moderation queues"
-              className="flex shrink-0 items-center gap-1 sm:ml-4"
-            >
-              {queues.map(({ href, label, icon: Icon, count }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex min-h-11 items-center gap-2 rounded-control px-3 text-[0.9375rem] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-                >
-                  <Icon aria-hidden className="size-4" />
-                  <span className="hidden sm:inline">{label}</span>
-                  {count > 0 ? (
-                    <span
-                      data-numeric
-                      className="grid min-w-5 place-items-center rounded-pill bg-tone-danger-solid px-1.5 text-[0.6875rem] font-semibold"
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
-            </nav>
+        <div className="flex min-w-0 flex-col">
+          {/* Same height as the marketplace navbar (app-shell.tsx), so switching
+              between User mode and admin does not shift the page. */}
+          <header className="sticky top-0 z-[50] flex h-[4.25rem] items-center gap-2 border-b border-line bg-page px-4 lg:px-8">
+            <p className="flex items-baseline gap-2 font-semibold tracking-[-0.01em] lg:hidden">
+              KU Marketplace{" "}
+              <span className="text-caption font-normal text-ink-muted">
+                Admin
+              </span>
+            </p>
+            <div className="ml-auto flex items-center gap-1">
+              <Link
+                href="/feed"
+                className="hidden min-h-9 items-center rounded-[10px] border border-line-default px-3 text-body-sm text-ink-secondary hover:bg-surface-sunken sm:flex"
+              >
+                User mode
+              </Link>
+              <ThemeSwitch />
+              <Link
+                href="/notifications"
+                aria-label="Notifications"
+                title="Notifications"
+                className="grid size-11 place-items-center rounded-[10px] text-ink-secondary hover:bg-surface-sunken"
+              >
+                <Bell aria-hidden className="size-5" />
+              </Link>
+              <Link
+                href="/account"
+                title={name}
+                className="touch-target ml-1 grid size-10 place-items-center rounded-full hover:ring-2 hover:ring-[var(--brand-subtle-hover)]"
+              >
+                <UserAvatar name={name} avatarUrl={viewer.avatarUrl} />
+                <span className="sr-only">Your account, signed in as {name}</span>
+              </Link>
+            </div>
+          </header>
 
-            <Link
-              href="/"
-              className="ml-auto flex min-h-11 shrink-0 items-center gap-2 rounded-control px-3 text-[0.875rem] text-white/70 hover:text-white"
-            >
-              <ArrowLeft aria-hidden className="size-4" />
-              <span className="hidden sm:inline">Back to the marketplace</span>
-            </Link>
-          </div>
-        </header>
-
-        <main
-          id="main"
-          className="w-full flex-1 px-4 py-6 lg:px-8"
-        >
-          {children}
-        </main>
+          <main
+            id="main"
+            className="w-full flex-1 px-4 pb-28 pt-6 lg:px-8 lg:pb-10 lg:pt-8"
+          >
+            {children}
+          </main>
+        </div>
       </div>
+      <AdminTabBar counts={counts} />
     </ToastProvider>
   );
 }

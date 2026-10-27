@@ -102,7 +102,7 @@ one place to change, 24 enum values, zero raw enum strings in JSX.
 | neutral | gray-100 | gray-400 | gray-700 | gray-600 |
 | info | green-100 | green-400 | green-700 | green-400 |
 | success | green-200 | green-600 | green-800 | green-700 |
-| warning | amber-100 | amber-600 | amber-800 | amber-500 |
+| warning | amber-100 | amber-600 | amber-800 | amber-700 |
 | danger | rose-100 | rose-400 | rose-600 | rose-500 |
 | trade | gray-100 | gray-400 | gray-700 | gray-600 |
 
@@ -297,12 +297,27 @@ grounds that the labels are now English.
 | `h1` | clamp 24→30px | 1.25 | 700 | -0.016em |
 | `h2` | clamp 20→24px | 1.30 | 600 | -0.012em |
 | `h3` | 18px | 1.40 | 600 | -0.006em |
-| `body-lg` | 17px | 1.75 | 400 | — |
-| `body` | 15px | 1.70 | 400 | — |
-| `body-sm` | 14px | 1.65 | 400 | — |
+| `body-lg` | 17px | 1.60 | 400 | — |
+| `body` | 16px | 1.55 | 400 | — |
+| `body-sm` | 14px | 1.55 | 400 | — |
 | `caption` | 13px | 1.50 | 500 | — |
-| `overline` | 11px | 1.40 | 600 | +0.09em |
+| `meta` | 12px | 1.45 | 500 | — |
+| `overline` | 12px | 1.40 | 600 | +0.09em |
 | `numeric` | 15px | 1.40 | 600 | tabular |
+
+**12px is the floor.** Nothing below `meta` may carry text a reader takes in to
+act on. Revised 2026-09-03 (`register.md` §6): `body` was 15px/1.70 and
+`overline` 11px. iOS Safari zooms the viewport whenever a focused input is under
+16px, which was a live defect on every form here; and 1.70 was spaced for 15px,
+so at 16px it pushed short strings — card titles, status sentences, list rows —
+further down screens the owner had already called too dense.
+
+**Use the scale, not a rem literal.** The scale existed and the components
+ignored it: 312 arbitrary `text-[…rem]` values across `app/` and `components/`
+sat outside it, so changing a token moved nothing. They are on the named
+classes now. Heading-level literals (`text-[1.5rem]` and up) are deliberately
+left alone — the display tokens are `clamp()` and a fixed rem is not equivalent
+to one.
 
 Display sizes use `clamp()` — mobile is the base value, not a shrunk desktop
 (principle 8). Negative tracking at display sizes is what gives headings weight; this

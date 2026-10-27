@@ -48,17 +48,16 @@ export function Drawer({
         "fixed inset-0 z-[100] bg-[--bg-overlay] backdrop-blur-[2px]",
         "flex",
         side === "right" && "justify-end",
-        "data-[entering]:animate-in data-[entering]:fade-in",
-        "data-[exiting]:animate-out data-[exiting]:fade-out",
+        "data-[entering]:anim-fade-in",
+        "data-[exiting]:anim-fade-out",
       )}
     >
       <Modal
         className={cn(
           "h-full w-[min(20rem,85vw)] bg-surface shadow-overlay outline-none",
           side === "left"
-            ? "rounded-r-panel data-[entering]:slide-in-from-left data-[exiting]:slide-out-to-left"
-            : "rounded-l-panel data-[entering]:slide-in-from-right data-[exiting]:slide-out-to-right",
-          "data-[entering]:animate-in data-[exiting]:animate-out",
+            ? "rounded-r-panel data-[entering]:anim-slide-in-left data-[exiting]:anim-slide-out-left"
+            : "rounded-l-panel data-[entering]:anim-slide-in-right data-[exiting]:anim-slide-out-right",
           className,
         )}
       >
@@ -68,7 +67,7 @@ export function Drawer({
               <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <Heading
                   slot="title"
-                  className="text-[1.0625rem] leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
+                  className="text-body-lg leading-[1.3] font-bold tracking-[-0.012em] text-ink-brand"
                 >
                   {title}
                 </Heading>

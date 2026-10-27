@@ -1,6 +1,19 @@
-import { Controller, Post, Get, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { UsePipes } from '@nestjs/common';
+import { ZodValidationPipe } from 'nestjs-zod';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  ParseIntPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { MembershipService } from './membership.service';
-import { RequestMembershipDto, ReviewMembershipDto } from './dto/membership.dto';
+import {
+  RequestMembershipDto,
+  ReviewMembershipDto,
+} from './dto/membership.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -11,6 +24,7 @@ import { ResponseMessage } from '../common/decorators/response-message.decorator
 // (แบบเดียวกับ ReportController) เพราะ /admin/membership/:id/approve อยู่คนละ
 // prefix กับ /membership/* ที่เหลือ รวมไว้ในไฟล์เดียวเพราะยังใช้ MembershipService
 // ตัวเดียวกัน ไม่ได้ต่างจากเดิมแค่ path เปลี่ยน
+@UsePipes(ZodValidationPipe)
 @Controller()
 export class MembershipController {
   constructor(private membershipService: MembershipService) {}
@@ -19,7 +33,10 @@ export class MembershipController {
   @UseGuards(JwtAuthGuard)
   @Post('membership/subscribe')
   @ResponseMessage('ส่งคำขอสมัครสมาชิกสำเร็จ รอการตรวจสอบจากแอดมิน')
-  requestUpgrade(@CurrentUser() user: CurrentUserPayload, @Body() dto: RequestMembershipDto) {
+  requestUpgrade(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: RequestMembershipDto,
+  ) {
     return this.membershipService.requestUpgrade(user.userId, dto);
   }
 
@@ -46,6 +63,11 @@ export class MembershipController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReviewMembershipDto,
   ) {
-    return this.membershipService.reviewPayment(id, admin.userId, dto.approve, dto.rejectionReason);
+    return this.membershipService.reviewPayment(
+      id,
+      admin.userId,
+      dto.approve,
+      dto.rejectionReason,
+    );
   }
 }

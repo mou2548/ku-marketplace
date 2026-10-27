@@ -1,5 +1,6 @@
 "use client";
 
+import { getCopy } from "@/lib/copy";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -7,8 +8,9 @@ import {
   parseDate,
   type DateValue,
 } from "@internationalized/date";
-import { ImagePlus, Save, X } from "lucide-react";
+import { ImagePlus, Save, Trash2, X } from "lucide-react";
 
+import { ActionBar } from "@/components/kit/action-bar";
 import { Button } from "@/components/kit/button";
 import {
   Radio,
@@ -16,27 +18,39 @@ import {
   SelectField,
   SelectOption,
 } from "@/components/kit/choice";
+import { ConfirmButton } from "@/components/kit/confirm-button";
 import { DatePickerField } from "@/components/kit/date-picker";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
+import { useStatusText } from "@/lib/status-text";
+import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
+import { uploadFile } from "@/lib/actions/uploads";
+import type { ItemPayload } from "@/lib/api/items";
 import type { Item, ItemCategory } from "@/lib/api/types";
 import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
 
+interface Photo {
+  key: string;
+  /** Present for a newly picked file, still local, not yet uploaded. */
+  file?: File;
+  previewUrl: string;
+}
+
 /**
  * Best first, worst last — the order the rarity ramp runs in, so the colour of
  * the border a student is choosing goes one way down the list.
+ *
+ * Four grades, not five: the real `Item.condition` column is
+ * `CHECK IN ('New', 'Good', 'Acceptable', 'Poor')` (`init.sql`) — `'Very
+ * Good'` exists in `lib/status.ts`'s `ItemCondition` because seed *display*
+ * data used it before this screen posted to a real backend, but submitting it
+ * here fails the database constraint. Not offered as a choice.
  */
-const CONDITION_ORDER: ItemCondition[] = [
-  "New",
-  "Very Good",
-  "Good",
-  "Acceptable",
-  "Poor",
-];
+const CONDITION_ORDER: ItemCondition[] = ["New", "Good", "Acceptable", "Poor"];
 
 /** What each grade means, in the words a seller has to be honest in. */
 const CONDITION_HINT: Record<ItemCondition, string> = {
@@ -65,6 +79,8 @@ export function ItemForm({
   mode: "create" | "edit";
   item?: Item;
 }) {
+  const t = getCopy();
+  const st = useStatusText();
   const router = useRouter();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -84,8 +100,11 @@ export function ItemForm({
   const [warranty, setWarranty] = useState<DateValue | null>(
     item?.warranty_expiry ? parseDate(item.warranty_expiry.slice(0, 10)) : null,
   );
-  const [previews, setPreviews] = useState<string[]>(
-    item?.images.map((i) => i.image_url) ?? [],
+  const [photos, setPhotos] = useState<Photo[]>(
+    item?.images.map((i) => ({
+      key: `existing-${i.image_id}`,
+      previewUrl: i.image_url,
+    })) ?? [],
   );
   const [busy, setBusy] = useState(false);
 
@@ -103,10 +122,42 @@ export function ItemForm({
 
   async function save() {
     setBusy(true);
-    // POST /items  or  PATCH /items/{item_id}
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      // New photos are still local `File`s (blob preview only) — upload each
+      // to get a real hosted URL before the item itself can reference it.
+      const images = await Promise.all(
+        photos.map(async (p, i) => ({
+          image_url: p.file ? await uploadFile(p.file) : p.previewUrl,
+          is_primary: i === 0,
+          display_order: i,
+        })),
+      );
+
+      const payload: ItemPayload = {
+        name: name.trim(),
+        category,
+        condition,
+        quantity: Number(quantity) || 1,
+        description: description.trim() || undefined,
+        course_name: needsCourse ? courseName.trim() || undefined : undefined,
+        brand_model: needsBrand ? brandModel.trim() || undefined : undefined,
+        warranty_expiry: needsWarranty && warranty ? warranty.toString() : undefined,
+        size: needsSize ? size.trim() || undefined : undefined,
+        images,
+      };
+
+      if (mode === "create") {
+        await saveNewItem(payload);
+      } else if (item) {
+        await saveItemEdits(item.item_id, payload);
+      }
+    } catch (err) {
+      setBusy(false);
+      toast.error(err instanceof Error ? err.message : "Could not save item");
+      return;
+    }
     setBusy(false);
-    toast.show(mode === "create" ? "Item added to your inventory" : "Changes saved");
+    toast.success(mode === "create" ? "Item added to your inventory" : "Changes saved");
     router.push("/inventory");
   }
 
@@ -120,74 +171,102 @@ export function ItemForm({
    * thing worth seeing while filling this form in.
    */
   const preview = (
-    <Surface shape="card" className="flex flex-col gap-3 p-5">
-      <p className="text-overline text-ink-muted uppercase">In your stash</p>
+    <Surface shape="panel" className="flex flex-col overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
+        <PostImage
+          src={photos[0]?.previewUrl}
+          alt={name.trim() || "Untitled item"}
+          aspectRatio={4 / 3}
+          sizes="320px"
+          className="h-full"
+        />
+        <span
+          aria-hidden
+          style={{ "--slot-edge": ITEM_CONDITION[condition].edge } as React.CSSProperties}
+          className="absolute inset-x-0 bottom-0 h-1 bg-[var(--slot-edge)]"
+        />
+      </div>
 
-      <span
-        style={
-          {
-            "--slot-edge": ITEM_CONDITION[condition].edge,
-          } as React.CSSProperties
-        }
-        className="block w-full overflow-hidden rounded-slot ring-2 ring-[var(--slot-edge)]"
-      >
-        <PostImage src={previews[0]} alt="" aspectRatio={1} sizes="320px" />
-      </span>
+      <div className="flex flex-col gap-3 p-5">
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("inventory.inYourStash")}
+        </p>
+        <p className="text-h3">{name.trim() || "Untitled item"}</p>
+        <span
+          style={
+            {
+              "--slot-edge": ITEM_CONDITION[condition].fg,
+              "--slot-glow": ITEM_CONDITION[condition].glow,
+            } as React.CSSProperties
+          }
+          className="w-fit rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+        >
+          {st.of(ITEM_CONDITION[condition]).label}
+        </span>
 
-      <p className="font-semibold">{name.trim() || "Untitled item"}</p>
-
-      <dl className="flex flex-col gap-2 border-t border-line pt-3 text-[0.8125rem]">
+        <dl className="flex flex-col gap-2 border-t border-line pt-3 text-caption">
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Category</dt>
+          <dt className="text-ink-muted">{t("inventory.category")}</dt>
           <dd>{category}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Condition</dt>
-          <dd>{ITEM_CONDITION[condition].label}</dd>
+          <dt className="text-ink-muted">{t("inventory.condition")}</dt>
+          <dd>{st.of(ITEM_CONDITION[condition]).label}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-ink-muted">Quantity</dt>
+          <dt className="text-ink-muted">{t("inventory.quantity")}</dt>
           <dd data-numeric>{quantity || "1"}</dd>
         </div>
-      </dl>
-
-      <p className="border-t border-line pt-3 text-[0.75rem] leading-[1.6] text-ink-muted">
-        The border colour is the condition. It is how the item reads at a glance
-        everywhere it appears.
-      </p>
+        </dl>
+      </div>
     </Surface>
   );
 
   return (
     <TwoColumn rail={preview}>
-      <h1 className="text-h1">
-        {mode === "create" ? "Add an item" : "Edit details"}
-      </h1>
+      <header>
+        <p className="text-overline font-semibold text-ink-brand uppercase">
+          {t("inventory.myStuff")}
+        </p>
+        <h1 className="mt-1 text-h1">
+          {mode === "create" ? t("inventory.addItem") : t("inventory.editDetails")}
+        </h1>
+      </header>
 
       {/* Photos first: it is the fastest field to fill and the one that makes
           the rest feel worth doing. */}
       <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-[0.875rem] font-medium text-ink-secondary">
-          Photos
-          <span className="ml-1 font-normal text-ink-muted">
+        <p className="text-body-sm font-medium text-ink-secondary">{t("inventory.photos")}<span className="ml-1 font-normal text-ink-muted">
             the first one is the cover
           </span>
         </p>
 
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {previews.map((src, i) => (
+          {photos.map((p, i) => (
             <div
-              key={src}
+              key={p.key}
               className="relative aspect-square overflow-hidden rounded-slot bg-surface-sunken shadow-sunken"
             >
-              <Image src={src} alt="" fill className="object-cover" />
+              {/* `fill` with no `sizes` makes next/image emit sizes="100vw",
+                  so a thumbnail in a four-column grid downloads a full-width
+                  image on every device. */}
+              <Image
+                src={p.previewUrl}
+                alt=""
+                fill
+                sizes="(min-width: 768px) 25vw, 33vw"
+                className="object-cover"
+              />
               <button
                 type="button"
                 aria-label={`Remove photo ${i + 1}`}
                 onClick={() =>
-                  setPreviews((list) => list.filter((s) => s !== src))
+                  setPhotos((list) => list.filter((x) => x.key !== p.key))
                 }
-                className="absolute top-1 right-1 grid size-6 place-items-center rounded-pill bg-surface-inverse/80 text-white"
+                // The smallest control in the product at 24px, sitting in a photo corner
+                // where a thumb has the least room. touch-target lifts the hit area
+                // to 44px on a phone without growing the drawn circle.
+                className="touch-target absolute top-1 right-1 grid size-7 place-items-center rounded-pill bg-surface-inverse/80 text-white"
               >
                 <X aria-hidden className="size-3.5" />
               </button>
@@ -200,7 +279,7 @@ export function ItemForm({
             className="grid aspect-square place-items-center rounded-slot border-2 border-dashed border-line-default bg-surface-sunken text-ink-muted transition-colors hover:border-brand hover:text-ink-brand"
           >
             <ImagePlus aria-hidden className="size-5" />
-            <span className="sr-only">Add photos</span>
+            <span className="sr-only">{t("inventory.addPhotos")}</span>
           </button>
         </div>
 
@@ -212,26 +291,32 @@ export function ItemForm({
           hidden
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
-            setPreviews((list) => [
+            setPhotos((list) => [
               ...list,
-              ...files.map((f) => URL.createObjectURL(f)),
+              ...files.map((f) => ({
+                key: `new-${f.name}-${f.lastModified}-${Math.random()}`,
+                file: f,
+                previewUrl: URL.createObjectURL(f),
+              })),
             ]);
           }}
         />
       </Surface>
 
-      <TextInput
-        className="max-w-2xl"
-        label="Item name"
-        value={name}
-        onChange={setName}
-        isRequired
-        placeholder="e.g. Calculus textbook, volume 1"
-      />
+      <Surface shape="panel" className="flex flex-col gap-5 p-4 sm:p-5">
+        <h2 className="text-h3">{t("market.productInfo")}</h2>
+        <TextInput
+          className="max-w-2xl"
+          label={t("inventory.itemName")}
+          value={name}
+          onChange={setName}
+          isRequired
+          placeholder={t("inventory.itemNamePlaceholder")}
+        />
 
       <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <SelectField
-          label="Category"
+          label={t("inventory.category")}
           selectedKey={category}
           onSelectionChange={(k) => setCategory(k as ItemCategory)}
         >
@@ -243,7 +328,7 @@ export function ItemForm({
         </SelectField>
 
         <TextInput
-          label="Quantity"
+          label={t("inventory.quantity")}
           value={quantity}
           onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
           inputMode="numeric"
@@ -253,82 +338,102 @@ export function ItemForm({
       {needsCourse ? (
         <TextInput
           className="max-w-2xl"
-          label="Course code"
+          label={t("inventory.courseCode")}
           value={courseName}
           onChange={setCourseName}
           placeholder="e.g. 01417111"
-          hint="Most people search by course code. Adding it makes this far easier to find."
+          hint={t("inventory.courseHint")}
         />
       ) : null}
 
       {needsBrand ? (
         <TextInput
-          label="Brand and model"
+          label={t("inventory.brandModel")}
           value={brandModel}
           onChange={setBrandModel}
-          placeholder="e.g. Keychron K2"
+          placeholder={t("inventory.brandPlaceholder")}
         />
       ) : null}
 
       {needsWarranty ? (
         <DatePickerField
-          label="Warranty expires"
+          label={t("inventory.warranty")}
           value={warranty}
           onChange={setWarranty}
-          hint="Leave empty if it is out of warranty or never had one"
+          hint={t("inventory.warrantyHint")}
         />
       ) : null}
 
-      {needsSize ? (
-        <TextInput
-          label="Size"
-          value={size}
-          onChange={setSize}
-          placeholder="e.g. M, 42, or 15 inch"
-          hint="Whatever the label says. This is the question every buyer asks first."
-        />
-      ) : null}
+        {needsSize ? (
+          <TextInput
+            label={t("inventory.size")}
+            value={size}
+            onChange={setSize}
+            placeholder={t("inventory.sizePlaceholder")}
+            hint={t("inventory.sizeHint")}
+          />
+        ) : null}
+      </Surface>
 
       {/* Rendered from the map rather than hand-written, which is how this
           form came to offer four grades while the market filtered on five —
           "Very Good" was missing, and it is the grade the seed uses most. */}
       <RadioGroupField
-        label="Condition"
+        label={t("inventory.condition")}
         value={condition}
         onChange={(v) => setCondition(v as ItemCondition)}
         variant="card"
-        hint="Condition shows as the border colour of the item, in your inventory and in the market. Be honest and the meetup goes smoothly."
+        hint={t("inventory.conditionHint")}
       >
         {CONDITION_ORDER.map((value) => (
           <Radio key={value} value={value} description={CONDITION_HINT[value]}>
-            {ITEM_CONDITION[value].label}
+            {st.of(ITEM_CONDITION[value]).label}
           </Radio>
         ))}
       </RadioGroupField>
 
       <TextAreaField
         className="max-w-2xl"
-        label="Details"
+        label={t("inventory.details")}
         value={description}
         onChange={setDescription}
-        placeholder="Say honestly how long you have had it, what is wrong with it, and anything the next owner should know"
+        placeholder={t("inventory.descHint")}
         rows={5}
       />
 
-      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[20] flex gap-2 lg:static">
+      {mode === "edit" && item ? (
+        <div className="flex justify-end">
+          <ConfirmButton
+            title="Delete this item?"
+            description="This removes it from your inventory for good. Only possible while nothing of it is committed to a listing or a giveaway — unlist everything first if this is blocked."
+            confirmLabel="Delete item"
+            doneMessage="Item deleted."
+            icon={<Trash2 className="size-4" />}
+            onConfirm={() => removeItem(item.item_id)}
+            onDone={() => router.push("/inventory")}
+            trigger={
+              <>
+                <Trash2 className="size-4" />
+                Delete item
+              </>
+            }
+            triggerProps={{ variant: "ghost", size: "sm" }}
+          />
+        </div>
+      ) : null}
+
+      <ActionBar>
         <Button
           variant="secondary"
           block
           onPress={() => router.back()}
           isDisabled={busy}
-        >
-          Cancel
-        </Button>
+        >{t("inventory.cancel")}</Button>
         <Button block size="lg" isDisabled={!canSave} isLoading={busy} onPress={save}>
           <Save className="size-5" />
           {mode === "create" ? "Add to inventory" : "Save"}
         </Button>
-      </div>
+      </ActionBar>
     </TwoColumn>
   );
 }

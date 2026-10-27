@@ -17,7 +17,7 @@ export default function NotFound() {
         <h1 className="text-[1.875rem] leading-[1.2] font-bold tracking-[-0.016em]">
           Page not found
         </h1>
-        <p className="max-w-sm text-[0.9375rem] leading-[1.7] text-ink-muted">
+        <p className="max-w-sm text-body text-ink-muted">
           This page does not exist, or it moved during the redesign. The market
           is the best place to pick things up again.
         </p>

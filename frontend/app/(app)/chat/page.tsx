@@ -1,9 +1,13 @@
+import { redirect } from "next/navigation";
+
 import { RoomList } from "@/components/kit/room-list";
 import { EmptyState } from "@/components/kit/empty-state";
 import { MessagesSquare } from "lucide-react";
+import { getCopy } from "@/lib/copy";
 
-import { VIEWER_ID } from "@/lib/api/fixtures";
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
+import { getAccessToken } from "@/lib/api/session";
+import { getMe } from "@/lib/api/users";
 
 import { RoomScreen } from "./[roomId]/room-screen";
 
@@ -15,26 +19,36 @@ export const metadata = { title: "Chat - KU Marketplace" };
  * This used to be a `max-w-2xl` list and nothing else, which measured 47% of a
  * 1440px window with the rest empty. A messaging app on a laptop shows the list
  * beside a thread, so it does: the room that opens is the first in
- * `buildRooms`' order, which sorts rooms waiting on the viewer ahead of
- * everything else and then by recency — "the one waiting on me, otherwise the
- * latest".
+ * `buildRooms`' order, which is pure recency on `lastActivityAt` — the
+ * conversation that moved last, whether it moved because someone typed or
+ * because the deal itself advanced. Whose turn it is deliberately does not
+ * reorder the list; it stays a per-row badge (see `sortRooms` in
+ * `lib/rooms.ts`).
  *
  * Below `xl` it stays the plain list. That is the same breakpoint
  * `/chat/[roomId]` uses to show or hide the list beside a room, and on a phone
  * the inbox has to be the thing you land on.
+ *
+ * Built from real transactions/giveaways now (`rooms-query.ts`), so — same as
+ * `/chat/[roomId]` — it needs to know who is actually asking.
  */
 export default async function ChatInboxPage() {
-  const rooms = await getRoomSummaries();
+  const t = await getCopy();
+  if (!(await getAccessToken())) redirect("/login");
+  const viewer = await getMe().catch(() => undefined);
+  if (!viewer) redirect("/login");
+
+  const rooms = await getRoomSummaries(viewer.userId);
   const first = rooms[0]
-    ? await getRoomDetail(rooms[0].room_id, rooms)
+    ? await getRoomDetail(rooms[0].room_id, viewer.userId, rooms)
     : undefined;
 
   if (rooms.length === 0) {
     return (
       <EmptyState
         icon={<MessagesSquare className="size-6" />}
-        title="No conversations yet"
-        description="A room opens by itself when you buy something, when an offer is accepted, or when you win a giveaway."
+        title={t("chat.noConversations")}
+        description={t("chat.emptyBody")}
       />
     );
   }
@@ -45,7 +59,8 @@ export default async function ChatInboxPage() {
         <RoomList
           rooms={rooms}
           activeRoomId={first?.summary.room_id}
-          heading="Chat"
+          viewerId={viewer.userId}
+          heading={t("nav.chat")}
         />
       </div>
 
@@ -54,11 +69,13 @@ export default async function ChatInboxPage() {
       {first ? (
         <div className="hidden min-h-0 min-w-0 flex-1 xl:flex">
           <RoomScreen
+            key={first.summary.room_id}
             summary={first.summary}
-            viewerId={VIEWER_ID}
+            viewerId={viewer.userId}
             transaction={first.transaction}
             giveaway={first.giveaway}
             appointment={first.appointment}
+            appointmentCards={first.appointmentCards}
             entrants={first.entrants}
             messages={first.messages}
           />

@@ -1,16 +1,21 @@
 "use client";
 
+import { formatDate } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronUp, ImagePlus, Send } from "lucide-react";
+import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
 
 import type { UserSummary } from "@/lib/api/types";
 import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
-import { Overlay, OverlayTrigger } from "./overlay";
+import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
 import { TONE_RAIL_LEFT } from "./tone";
+import { ProfileLink } from "./profile-link";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -28,6 +33,9 @@ export interface ChatMessage {
   sender_id: number;
   content?: string | null;
   image_urls?: string[] | null;
+  /** §6.2 — past the 7-day display lifetime, `image_urls` is null and this
+   * is true; shown as a notice instead of the (no longer sent) image grid. */
+  images_expired?: boolean;
   created_at: string;
 }
 
@@ -36,7 +44,18 @@ export interface ChatThreadProps {
   viewerId: number;
   /** Rendered pinned to the end of the thread — the current flow action. */
   action?: React.ReactNode;
-  /** Cards interleaved by timestamp, e.g. accepted appointments. */
+  /**
+   * Cards placed by time among the messages — the deal's progress summaries.
+   * Sorted by `placeAt` (epoch ms); each renders before the first message sent
+   * after it, and `Infinity` puts one after the last message.
+   */
+  events?: Array<{ key: string; placeAt: number; node: React.ReactNode }>;
+  /**
+   * Cards interleaved by timestamp, e.g. accepted appointments. `0` is a
+   * sentinel for "before the first message" — a real `message_id` is never
+   * 0 — for a deal event that predates every message in the room (or a room
+   * with no messages at all yet).
+   */
   systemCards?: Array<{ afterMessageId: number; node: React.ReactNode }>;
   onSend?: (text: string) => void | Promise<void>;
   onAttach?: (files: FileList) => void | Promise<void>;
@@ -54,6 +73,17 @@ export interface ChatThreadProps {
    * that is not yours otherwise collapses into the same anonymous grey.
    */
   showSenders?: boolean;
+  /**
+   * Image URLs that are a receipt for this deal rather than a snapshot someone
+   * attached — keyed by URL, valued with what to call it.
+   *
+   * A payment slip is posted into the thread when it is uploaded, because that
+   * is where people look for it: the Thai habit is "transferred, here you go"
+   * followed by the screenshot. But a slip is evidence and an ordinary photo is
+   * not, so it must not look like one. Bubbles listed here get a label and the
+   * slip's own proportions instead of a square crop.
+   */
+  receipts?: Map<string, string>;
   className?: string;
 }
 
@@ -80,19 +110,50 @@ function dayLabel(iso: string): string {
   if (key === dayKey(new Date().toISOString())) return "Today";
   if (key === dayKey(new Date(Date.now() - 86_400_000).toISOString()))
     return "Yesterday";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    timeZone: "Asia/Bangkok",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return formatDate(new Date(iso));
+}
+
+/**
+ * A slip in the thread, told apart from a snapshot.
+ *
+ * Square-cropping a bank screenshot is the worst possible thumbnail for it: the
+ * crop lands on the middle of the receipt and cuts off both the amount at the
+ * top and the reference at the bottom. This keeps the slip's own proportions,
+ * names what it is, and opens the same full-screen viewer as everything else.
+ */
+function ReceiptBubble({ url, label }: { url: string; label: string }) {
+  const t = getCopy();
+  return (
+    <PhotoViewerTrigger>
+      <button
+        type="button"
+        aria-label={t("chat.viewFullSize")}
+        className="block w-[min(15rem,60vw)] overflow-hidden rounded-card bg-surface shadow-raised"
+      >
+        <span className="flex items-center gap-1.5 px-3 py-2 text-meta font-semibold text-ink-brand">
+          <ReceiptText aria-hidden className="size-3.5" />
+          {label}
+        </span>
+        <Image
+          src={url}
+          alt=""
+          width={480}
+          height={640}
+          className="max-h-64 w-full bg-surface-sunken object-contain"
+        />
+      </button>
+      <PhotoViewer src={url} alt={label} title={label} />
+    </PhotoViewerTrigger>
+  );
 }
 
 export function ChatThread({
   messages,
   viewerId,
   action,
+  events = [],
   systemCards = [],
+  receipts,
   onSend,
   onAttach,
   isReadOnly = false,
@@ -101,6 +162,7 @@ export function ChatThread({
   showSenders = false,
   className,
 }: ChatThreadProps) {
+  const t = getCopy();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -118,7 +180,7 @@ export function ChatThread({
   // user when they are reading back through the thread.
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [messages.length, events.length]);
 
   const cardsByMessage = new Map(
     systemCards.map((c) => [c.afterMessageId, c.node]),
@@ -126,13 +188,21 @@ export function ChatThread({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-page/60 px-4 py-4">
         {/* `mt-auto` pins a short conversation to the bottom, against the
             composer, the way every messenger does. Without it a room with
             three messages hangs from the top of a tall column with the gap
             underneath, which reads as a document rather than a thread. */}
         <div className="mt-auto flex flex-col gap-3">
+          {cardsByMessage.get(0) ?? null}
+
           {messages.map((m, i) => {
+            const sentAt = Date.parse(m.created_at);
+            const before = events.filter(
+              (e) =>
+                e.placeAt <= sentAt &&
+                (i === 0 || e.placeAt > Date.parse(messages[i - 1].created_at)),
+            );
             const mine = m.sender_id === viewerId;
             // Only the first message of a run gets the name — repeating it on
             // every bubble of a five-message burst is noise, not attribution.
@@ -143,16 +213,36 @@ export function ChatThread({
             const startsNewDay =
               i === 0 ||
               dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
+            // A receipt is posted on its own, one image and no text. A photo
+            // that merely happens to repeat the URL inside a longer message
+            // stays an ordinary attachment.
+            const only = m.image_urls?.length === 1 ? m.image_urls[0] : undefined;
+            const label = only ? receipts?.get(only) : undefined;
+            const receipt = only && label ? { url: only, label } : undefined;
+
+            // The day divider heads its day: deal events from that same day
+            // (a "Deal started" a minute before the first message) go under
+            // it, and only events from an earlier day stay above it.
+            const sameDay = (e: (typeof before)[number]) =>
+              dayKey(new Date(e.placeAt).toISOString()) === dayKey(m.created_at);
+            const earlier = startsNewDay ? before.filter((e) => !sameDay(e)) : [];
+            const onTheDay = startsNewDay ? before.filter(sameDay) : before;
 
             return (
               <div key={m.message_id} className="flex flex-col gap-3">
+                {earlier.map((e) => (
+                  <div key={e.key}>{e.node}</div>
+                ))}
                 {startsNewDay ? (
                   <div className="flex justify-center py-1">
-                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-[0.75rem] font-medium text-ink-muted">
+                    <span className="rounded-pill bg-surface-sunken px-3 py-1 text-meta font-medium text-ink-muted">
                       {dayLabel(m.created_at)}
                     </span>
                   </div>
                 ) : null}
+                {onTheDay.map((e) => (
+                  <div key={e.key}>{e.node}</div>
+                ))}
 
                 <div
                   className={cn(
@@ -162,22 +252,31 @@ export function ChatThread({
                   )}
                 >
                   {named && startsRun ? (
-                    <TrustBadge
-                      size="sm"
-                      name={sender?.name ?? "Unknown member"}
-                      isVerified={sender?.isVerified ?? false}
-                      avatarUrl={sender?.avatar_url}
-                      className="px-1"
-                    />
+                    <ProfileLink
+                      userId={m.sender_id}
+                      name={sender?.name ?? "this member"}
+                    >
+                      <TrustBadge
+                        size="sm"
+                        name={sender?.name ?? "Unknown member"}
+                        isVerified={sender?.isVerified ?? false}
+                        avatarUrl={sender?.avatar_url}
+                        className="px-1"
+                      />
+                    </ProfileLink>
                   ) : null}
 
-                  {m.image_urls?.length ? (
+                  {m.images_expired ? (
+                    <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">{t("chat.photosExpired")}</p>
+                  ) : receipt ? (
+                    <ReceiptBubble url={receipt.url} label={receipt.label} />
+                  ) : m.image_urls?.length ? (
                     <div className="grid grid-cols-2 gap-1.5">
                       {m.image_urls.slice(0, 5).map((url) => (
-                        <OverlayTrigger key={url}>
+                        <PhotoViewerTrigger key={url}>
                           <button
                             type="button"
-                            aria-label="View photo full size"
+                            aria-label={t("chat.viewFullSize")}
                             className="block overflow-hidden rounded-control"
                           >
                             <Image
@@ -188,18 +287,8 @@ export function ChatThread({
                               className="aspect-square object-cover shadow-raised"
                             />
                           </button>
-                          <Overlay title="Photo" size="lg">
-                            <div className="flex items-center justify-center">
-                              <Image
-                                src={url}
-                                alt=""
-                                width={960}
-                                height={960}
-                                className="max-h-[75dvh] w-full rounded-control object-contain"
-                              />
-                            </div>
-                          </Overlay>
-                        </OverlayTrigger>
+                          <PhotoViewer src={url} alt="" title={t("chat.photo")} />
+                        </PhotoViewerTrigger>
                       ))}
                     </div>
                   ) : null}
@@ -207,10 +296,13 @@ export function ChatThread({
                   {m.content ? (
                     <p
                       className={cn(
-                        "rounded-card px-3.5 py-2.5 text-[0.9375rem] leading-[1.7]",
+                        "rounded-card px-3.5 py-2.5 text-body",
                         mine
                           ? "rounded-br-chip bg-brand text-on-brand"
-                          : "rounded-bl-chip bg-surface text-ink",
+                          : // A white bubble on the near-white thread had no
+                            // edge at all; the sunken tint gives the other
+                            // side's message a shape without a border.
+                            "rounded-bl-chip bg-surface-sunken text-ink",
                         named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                       )}
                     >
@@ -220,7 +312,7 @@ export function ChatThread({
 
                   <time
                     dateTime={m.created_at}
-                    className="px-1 text-[0.75rem] text-ink-muted"
+                    className="px-1 text-meta text-ink-muted"
                   >
                     {new Date(m.created_at).toLocaleTimeString("en-GB", {
                       hour: "2-digit",
@@ -234,6 +326,16 @@ export function ChatThread({
             );
           })}
 
+          {events
+            .filter(
+              (e) =>
+                messages.length === 0 ||
+                e.placeAt > Date.parse(messages[messages.length - 1].created_at),
+            )
+            .map((e) => (
+              <div key={e.key}>{e.node}</div>
+            ))}
+
           <div ref={endRef} />
         </div>
       </div>
@@ -242,15 +344,19 @@ export function ChatThread({
           the deal is waiting on cannot scroll out from under its own toggle.
           Read-only rooms have no composer and so no toggle — the action stays
           open there rather than becoming unreachable. */}
-      {action && (actionOpen || isReadOnly) ? action : null}
+      {action && (actionOpen || isReadOnly) ? (
+        <div className="min-h-0 max-h-[45%] shrink-0 overflow-y-auto overscroll-contain">
+          {action}
+        </div>
+      ) : null}
 
       {isReadOnly ? (
-        <p className="border-t border-line px-4 py-3 text-center text-[0.8125rem] text-ink-muted">
+        <p className="shrink-0 border-t border-line px-4 py-3 text-center text-caption text-ink-muted">
           {readOnlyNotice}
         </p>
       ) : (
         <form
-          className="flex items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="flex shrink-0 items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           onSubmit={(e) => {
             e.preventDefault();
             const value = inputRef.current?.value.trim();
@@ -288,7 +394,7 @@ export function ChatThread({
             variant="ghost"
             size="icon"
             pill
-            aria-label="Attach images, up to 5"
+            aria-label={t("chat.attachImages")}
             onPress={() => fileRef.current?.click()}
           >
             <ImagePlus className="size-5" />
@@ -306,12 +412,12 @@ export function ChatThread({
 
           <input
             ref={inputRef}
-            aria-label="Message"
-            placeholder="Write a message"
-            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-[0.9375rem] shadow-sunken"
+            aria-label={t("chat.message")}
+            placeholder={t("chat.writeMessage")}
+            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-body shadow-sunken"
           />
 
-          <Button type="submit" size="icon" pill aria-label="Send">
+          <Button type="submit" size="icon" pill aria-label={t("chat.send")}>
             <Send className="size-5" />
           </Button>
         </form>
@@ -343,9 +449,11 @@ export function ActionCard({
       className={cn("border-t border-line bg-brand-subtle/30", className)}
       aria-label={title}
     >
-      <h4 className="px-4 pt-3 text-overline text-ink-brand uppercase">
-        {title}
-      </h4>
+      {/* This is the single most important sentence on the deal screen — the
+          thing the viewer has to do next — and it was set at the smallest size
+          in the scale, in caps, with 0.09em tracking. Overline is for a label
+          above a group, not for an instruction. */}
+      <h4 className="px-4 pt-3 text-body font-semibold text-ink">{title}</h4>
       <div className="px-4 pt-2 pb-3">{children}</div>
     </section>
   );

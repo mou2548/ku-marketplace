@@ -1,58 +1,62 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { getCopy } from "@/lib/copy";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Selection } from "react-aria-components";
-import { CheckSquare, Package, Plus, Store, X } from "lucide-react";
+import { GridListItem, type Selection } from "react-aria-components";
+import { ArrowLeftRight, Check, CheckSquare, Gift, Package, Plus, Store, Tag, X } from "lucide-react";
 
 import { Button, LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
-import { EmptySlot, InventoryGrid, InventorySlot } from "@/components/kit/inventory-slot";
+import { InventoryGrid } from "@/components/kit/inventory-slot";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { useToast } from "@/components/kit/toast";
-import type { Item } from "@/lib/api/types";
-import { ITEM_STATUS, type ItemStatus } from "@/lib/status";
+import { useStatusText } from "@/lib/status-text";
+import type { Item, ItemHistorySummary } from "@/lib/api/types";
+import {
+  ITEM_CONDITION,
+  ITEM_TRANSFERRED_STATUS,
+  isItemTransferred,
+} from "@/lib/status";
+import { ChannelChips } from "@/components/kit/channel-chips";
 
 /**
- * The slot grid, same as the trade bench: a student who has dragged an item
- * onto the bench already knows how this screen works, and the rarity border
- * means the same thing in both places.
- *
- * Three behaviours came out of reviewing the built screen:
- *
- *  - **Tapping an item opens it.** Selection used to be the default click
- *    behaviour, so the obvious gesture did the unobvious thing and there was no
- *    way to see an item in full at all.
- *  - **Bulk is behind a button.** Selecting many is the rarer job — persona
- *    P2's end-of-semester clear-out — so it is a mode you enter deliberately.
- *  - **The corner badge is a word.** An icon-only badge in the corner said
- *    nothing to anyone who had not learned it yet; "Listed" and "Unlisted"
- *    are the two states this screen exists to distinguish, so they are spelled
- *    out.
+ * A product catalogue for things the student owns. Inventory behaviour stays
+ * familiar — tap to open, enter a separate bulk-select mode — but the visual
+ * language now matches the market: real photo first, readable status, then
+ * product facts. The condition strip is the restrained piece of GAME DNA.
  */
 export function InventoryScreen({
   items,
-  listedItemIds,
+  summaries,
 }: {
   items: Item[];
-  listedItemIds: number[];
+  summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
+  const t = getCopy();
+  const statusText = useStatusText();
   const router = useRouter();
-  const toast = useToast();
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Selection>(new Set());
-  const listed = useMemo(() => new Set(listedItemIds), [listedItemIds]);
 
-  /**
-   * Two states, and only two. `Transferred` is filtered out upstream in
-   * page.tsx — an item that has been handed over is not in this inventory at
-   * all — so the badge here answers one question: is a post standing for this
-   * thing right now?
-   */
-  const statusOf = (item: Item): Extract<ItemStatus, "Listed" | "Unlisted"> =>
-    listed.has(item.item_id) ? "Listed" : "Unlisted";
+  const isTransferred = useCallback(
+    (item: Item) => {
+      const summary = summaries[item.item_id];
+      return summary ? isItemTransferred(summary) : false;
+    },
+    [summaries],
+  );
+  const transferredIds = useMemo(
+    () => new Set(items.filter(isTransferred).map((item) => item.item_id)),
+    [items, isTransferred],
+  );
+  const openCount = items.filter((item) => {
+    const summary = summaries[item.item_id];
+    return summary ? summary.channels.length > 0 : false;
+  }).length;
+  const activeCount = items.length - transferredIds.size;
 
   const slots: InventoryItem[] = useMemo(
     () =>
@@ -67,14 +71,12 @@ export function InventoryScreen({
     [items],
   );
 
-  /**
-   * Pad the stash out to three rows at the widest breakpoint, so the panel is
-   * a container with room in it rather than a strip that hugs its contents.
-   */
-  const emptyWells = Math.max(0, 18 - slots.length);
-
   const selectedIds =
-    selected === "all" ? items.map((i) => i.item_id) : [...selected].map(Number);
+    selected === "all"
+      ? items
+          .filter((item) => !transferredIds.has(item.item_id))
+          .map((item) => item.item_id)
+      : [...selected].map(Number);
 
   function exitSelecting() {
     setSelecting(false);
@@ -85,74 +87,70 @@ export function InventoryScreen({
     return (
       <EmptyState
         icon={<Package className="size-6" />}
-        title="Your inventory is empty"
-        description="Put what you own in here first. Later you decide whether to sell it, open it to trades, or just keep it."
+        title={t("inventory.emptyTitle")}
+        description={t("inventory.emptyBody")}
         action={
           <LinkButton href="/inventory/new">
-            <Plus className="size-4" />
-            Add your first item
-          </LinkButton>
+            <Plus className="size-4" />{t("inventory.addFirst")}</LinkButton>
         }
       />
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
-            My stuff
-          </h1>
-          <p data-numeric className="text-[0.8125rem] text-ink-muted">
-            {items.length} {items.length === 1 ? "item" : "items"}
-          </p>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <div>
+            <h1 className="text-h1">{t("inventory.myStuff")}</h1>
+            <p data-numeric className="mt-1 text-body-sm text-ink-muted">
+              {items.length} {items.length === 1 ? "item" : "items"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-meta">
+            <span className="rounded-pill bg-brand-subtle px-2.5 py-1 font-medium text-ink-brand">
+              {openCount} {t("inventory.onTheMarket")}
+            </span>
+            <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-secondary">
+              {activeCount - openCount} {t("inventory.notListed")}
+            </span>
+            {transferredIds.size > 0 ? (
+              <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-muted">
+                {transferredIds.size} transferred
+              </span>
+            ) : null}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto">
           {selecting ? (
-            <Button variant="secondary" size="sm" onPress={exitSelecting}>
-              <X className="size-4" />
-              Cancel
-            </Button>
+            <Button block variant="secondary" size="sm" onPress={exitSelecting}>
+              <X className="size-4" />{t("inventory.cancel")}</Button>
           ) : (
             <Button
+              block
               variant="secondary"
               size="sm"
               onPress={() => setSelecting(true)}
             >
-              <CheckSquare className="size-4" />
-              Select
-            </Button>
+              <CheckSquare className="size-4" />{t("inventory.select")}</Button>
           )}
-          <LinkButton size="sm" href="/inventory/new">
-            <Plus className="size-4" />
-            Add an item
-          </LinkButton>
+          <LinkButton block size="sm" href="/inventory/new">
+            <Plus className="size-4" />{t("inventory.addItem")}</LinkButton>
         </div>
       </header>
 
       {selecting ? (
-        <p className="text-[0.8125rem] text-ink-muted">
-          Pick the items you want to handle together, then choose an action.
-        </p>
+        <p className="text-caption text-ink-muted">{t("inventory.selectHint")}</p>
       ) : null}
 
-      {/* The stash is the one surface that has to read as a game panel
-          (CLAUDE.md §3.3, §3.8) — a lit plate with the slots sunk into it,
-          not a grid of thumbnails floating on the page background. */}
-      <Surface
-        as="section"
-        shape="panel"
-        fill="plate"
-        noise
-        aria-label="Inventory"
-        className="p-4"
-      >
+      <section aria-label={t("inventory.title")}>
         <InventoryGrid
-          aria-label="Items in my inventory"
+          className="grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5"
+          aria-label={t("inventory.itemsIn")}
           items={slots}
           selectionMode={selecting ? "multiple" : "none"}
+          disabledKeys={selecting ? transferredIds : undefined}
           selectedKeys={selected}
           onSelectionChange={setSelected}
           // RAC fires this for Enter as well as click, so the keyboard path is
@@ -161,61 +159,142 @@ export function InventoryScreen({
         >
           {(slot: InventoryItem) => {
             const item = items.find((i) => i.item_id === slot.item_id)!;
+            const rarity = ITEM_CONDITION[item.condition];
+            const summary = summaries[item.item_id];
+            const transferred = isTransferred(item);
+            const resolution = summary
+              ? ([
+                  { icon: Tag, label: "Sold", value: summary.sold_quantity },
+                  { icon: ArrowLeftRight, label: "Traded", value: summary.traded_quantity },
+                  { icon: Gift, label: t("inventory.given"), value: summary.given_quantity },
+                ] as const).filter((entry) => entry.value > 0)
+              : [];
             return (
-              <InventorySlot
+              <GridListItem
                 id={slot.item_id}
-                item={slot}
-                badge={
-                  <StatusBadge
-                    status={ITEM_STATUS[statusOf(item)]}
-                    size="sm"
-                  />
+                textValue={
+                  transferred
+                    ? `${item.name}, ${statusText.of(ITEM_TRANSFERRED_STATUS).label}`
+                    : item.name
                 }
-              />
+                style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
+                className="group min-w-0 cursor-pointer overflow-hidden rounded-card bg-surface shadow-raised outline-none transition-[transform,box-shadow] duration-[--dur-fast] hover:-translate-y-0.5 hover:shadow-floating focus-visible:ring-2 focus-visible:ring-brand data-[pressed]:translate-y-px data-[selected]:ring-2 data-[selected]:ring-brand"
+              >
+                {({ isSelected }) => (
+                  <>
+                    <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
+                      <PostImage
+                        src={slot.image_url}
+                        alt={item.name}
+                        aspectRatio={4 / 3}
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                        className="h-full"
+                      />
+                      {transferred ? (
+                        <StatusBadge
+                          status={ITEM_TRANSFERRED_STATUS}
+                          size="sm"
+                          className="absolute top-2 left-2 shadow-raised"
+                        />
+                      ) : summary && summary.channels.length > 0 ? (
+                        <ChannelChips
+                          channels={summary.channels}
+                          className="absolute top-2 left-2"
+                        />
+                      ) : null}
+                      {isSelected ? (
+                        <span className="absolute top-2 right-2 grid size-7 place-items-center rounded-pill bg-brand text-on-brand shadow-raised">
+                          <Check aria-hidden className="size-4" />
+                          <span className="sr-only">Selected</span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex min-w-0 flex-col gap-2 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="line-clamp-2 min-h-[2.9em] flex-1 text-[1.2rem] leading-[1.45] font-semibold group-hover:text-ink-brand">
+                          {item.name}
+                        </p>
+                        <span data-numeric className="shrink-0 text-h3 font-bold text-ink-brand">
+                          ×{item.quantity}
+                        </span>
+                      </div>
+                      <span className="truncate text-caption text-ink-muted">{item.category}</span>
+                      <span
+                        className="w-fit rounded-pill bg-[var(--slot-glow)] px-2 py-0.5 text-meta font-medium text-[var(--slot-edge)]"
+                        style={{ "--slot-glow": rarity.glow } as React.CSSProperties}
+                      >
+                        {statusText.of(rarity).label}
+                      </span>
+                      {transferred ? (
+                        resolution.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2">
+                            {resolution.map(({ icon: Icon, label, value }) => (
+                              <span key={label} className="flex items-center gap-1.5">
+                                <Icon aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+                                <span className="text-meta text-ink-muted">{label}</span>
+                                <span data-numeric className="text-body-sm font-semibold">
+                                  {value}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null
+                      ) : summary ? (
+                        <div className="flex flex-col gap-1 border-t border-line pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                          <span className="flex items-center gap-1.5">
+                            <Store aria-hidden className="size-3.5 shrink-0 text-ink-brand" />
+                            <span className="text-meta text-ink-muted">Listed</span>
+                            <span data-numeric className="text-body-sm font-semibold text-ink-brand">
+                              {summary.posted_quantity}
+                            </span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Package aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+                            <span className="text-meta text-ink-muted">Unlisted</span>
+                            <span data-numeric className="text-body-sm font-semibold">
+                              {summary.available_quantity}
+                            </span>
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="border-t border-line pt-2 text-meta text-ink-muted">
+                          History unavailable
+                        </p>
+                      )}
+                    </div>
+                    <span aria-hidden className="block h-1 bg-[var(--slot-edge)]" />
+                  </>
+                )}
+              </GridListItem>
             );
           }}
         </InventoryGrid>
-
-        {/* A stash shows the room it has left. Without the empty wells the
-            panel collapsed to a single strip of thumbnails and the screen read
-            as a short list rather than a container you are filling. Count
-            matches InventoryGrid's own breakpoints so the rows stay whole. */}
-        {emptyWells > 0 ? (
-          <div
-            aria-hidden
-            className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 md:gap-3 lg:grid-cols-6"
-          >
-            {Array.from({ length: emptyWells }, (_, i) => (
-              <EmptySlot key={i} label="Empty slot" />
-            ))}
-          </div>
-        ) : null}
-      </Surface>
+      </section>
 
       {selecting && selectedIds.length > 0 ? (
         <Surface
           shape="card"
-          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-[20] flex items-center gap-3 p-3"
+          className="sticky action-bar-bottom z-[20] flex items-center gap-3 p-3"
         >
-          <p data-numeric className="flex-1 text-[0.875rem] font-medium">
+          <p data-numeric className="flex-1 text-body-sm font-medium">
             {selectedIds.length} selected
           </p>
-          <Button variant="ghost" size="sm" onPress={() => setSelected(new Set())}>
-            Clear
-          </Button>
+          <Button variant="ghost" size="sm" onPress={() => setSelected(new Set())}>{t("inventory.clear")}</Button>
           <Button
             size="sm"
             onPress={() => {
               if (selectedIds.length === 1) {
                 router.push(`/inventory/${selectedIds[0]}/list`);
               } else {
-                toast.show(`Preparing to list ${selectedIds.length} items`);
+                // The composer already handles picking terms for several
+                // items at once — hand it the selection instead of asking
+                // the owner to find them again there.
+                router.push(`/post?item=${selectedIds.join(",")}`);
               }
             }}
           >
-            <Store className="size-4" />
-            List
-          </Button>
+            <Store className="size-4" />{t("inventory.list")}</Button>
         </Surface>
       ) : null}
     </div>

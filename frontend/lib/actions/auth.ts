@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import * as authApi from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { clearSession, setSession } from "@/lib/api/session";
+import { clearSession, getRefreshToken, setSession } from "@/lib/api/session";
 
 function messageFor(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -27,14 +27,26 @@ export async function login(
   }
 
   let accessToken: string;
+  let session: { refreshToken: string; sessionExpiresAt: number };
+  let restricted = false;
+  let isAdmin = false;
   try {
-    ({ accessToken } = await authApi.login(email, password));
+    const result = await authApi.login(email, password);
+    accessToken = result.accessToken;
+    session = result;
+    restricted =
+      result.user.status === "Suspended" || result.user.status === "Banned";
+    isAdmin = result.user.isAdmin === true;
   } catch (err) {
     return { error: messageFor(err) };
   }
 
-  await setSession(accessToken);
-  redirect("/");
+  await setSession(accessToken, session);
+  const requestedReturn = String(formData.get("returnTo") ?? "");
+  const returnTo = /^\/sellers\/[1-9]\d{0,9}$/.test(requestedReturn) && Number(requestedReturn.split("/").pop()) <= 2147483647 ? requestedReturn : undefined;
+  redirect(
+    restricted ? "/account/appeals" : returnTo ?? (isAdmin ? "/admin" : "/feed"),
+  );
 }
 
 export interface RegisterState {
@@ -71,14 +83,17 @@ export async function verifyRegisterOtp(
   const otp = String(formData.get("otp") ?? "");
 
   let accessToken: string;
+  let session: { refreshToken: string; sessionExpiresAt: number };
   try {
-    ({ accessToken } = await authApi.verifyRegisterOtp(email, otp));
+    const result = await authApi.verifyRegisterOtp(email, otp);
+    accessToken = result.accessToken;
+    session = result;
   } catch (err) {
     return { error: messageFor(err) };
   }
 
-  await setSession(accessToken);
-  redirect("/");
+  await setSession(accessToken, session);
+  redirect("/feed");
 }
 
 export interface ResendState {
@@ -102,18 +117,9 @@ export async function resendOtp(
   return { resent: true };
 }
 
-/**
- * Stateless logout: clears our own session cookie, tells the backend to clear
- * its refresh cookie (best-effort — nothing to recover if this call fails,
- * since the local cookie is cleared either way), then sends the user back to
- * `/login`.
- */
+/** Do not claim server-side revocation succeeded during a service outage. */
 export async function logout() {
-  try {
-    await authApi.logout();
-  } catch {
-    // Nothing to do — the local session is cleared below regardless.
-  }
+  await authApi.logout(await getRefreshToken());
   await clearSession();
   redirect("/login");
 }

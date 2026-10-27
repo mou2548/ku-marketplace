@@ -17,6 +17,15 @@ export const transactionsStep: StepGroup = {
       params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
     },
     {
+      id: 'tx-payment-qr',
+      method: 'GET',
+      path: '/transactions/:id/payment-qr',
+      label: 'ผู้ซื้อขอ QR PromptPay สำหรับจ่ายเงิน',
+      needsAuth: true,
+      params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
+      hint: 'ใช้ token ของผู้ซื้อ และผู้ขายต้องตั้ง PromptPay แล้ว — payload ใน response คือข้อความที่เอาไปแปลงเป็น QR, amount คือยอดที่ล็อกไว้ตอนสร้างธุรกรรม',
+    },
+    {
       id: 'tx-payment-slip',
       method: 'POST',
       path: '/transactions/:id/payment-slip',
@@ -41,6 +50,23 @@ export const transactionsStep: StepGroup = {
       label: 'ผู้ขายยืนยันรับเงิน',
       needsAuth: true,
       params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
+    },
+    {
+      id: 'tx-reject-payment-slip',
+      method: 'POST',
+      path: '/transactions/:id/reject-payment-slip',
+      label: 'ผู้ขายปฏิเสธสลิป (ยังเป็น Processing จนกว่าจะส่งสลิปใหม่หรือคืนเงิน)',
+      needsAuth: true,
+      params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
+      fields: [
+        {
+          name: 'reason',
+          label: 'เหตุผลที่ปฏิเสธ (ผู้ซื้อจะเห็น)',
+          type: 'textarea',
+          defaultValue: 'ตรวจแอปธนาคารแล้วไม่พบเงินเข้า',
+          required: true,
+        },
+      ],
     },
     {
       id: 'tx-ship',

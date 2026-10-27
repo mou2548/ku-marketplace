@@ -1,5 +1,5 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ReportStatus } from '../../common/enums/report.enums';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ReportStatus, Sanction } from '../../common/enums/report.enums';
 
 const RESOLVABLE_STATUSES = [
   ReportStatus.Violation_Confirmed,
@@ -10,7 +10,15 @@ export class ResolveReportDto {
   @IsEnum(RESOLVABLE_STATUSES)
   status: (typeof RESOLVABLE_STATUSES)[number];
 
+  /** §7.1 — only meaningful when `status` is `Violation_Confirmed`; ignored
+   * (treated as `none`) otherwise. Optional so older/manual calls without it
+   * still work. */
+  @IsOptional()
+  @IsEnum(Sanction)
+  sanction?: Sanction;
+
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   resolution_note?: string;
 }

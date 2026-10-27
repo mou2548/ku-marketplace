@@ -39,6 +39,8 @@ export interface SelectFieldProps<T extends object>
   items?: Iterable<T>;
   children: React.ReactNode | ((item: T) => React.ReactNode);
   className?: string;
+  /** `sm` is a compact trigger for dense toolbars (the chat inbox sort). */
+  size?: "sm" | "md";
 }
 
 export function SelectField<T extends object>({
@@ -49,6 +51,7 @@ export function SelectField<T extends object>({
   items,
   children,
   className,
+  size = "md",
   ...props
 }: SelectFieldProps<T>) {
   return (
@@ -60,24 +63,28 @@ export function SelectField<T extends object>({
       {label ? <Label>{label}</Label> : null}
       <Button
         className={cn(
-          "flex h-12 w-full items-center justify-between gap-2 px-3.5",
+          "flex w-full items-center justify-between gap-2",
           "rounded-control bg-surface-sunken shadow-sunken",
-          "text-left text-[0.9375rem] text-ink",
+          "text-left text-ink",
           "data-[disabled]:opacity-50",
+          size === "sm" ? "h-9 px-3 text-caption" : "h-12 px-3.5 text-body",
         )}
       >
         <SelectValue className="truncate data-[placeholder]:text-ink-disabled" />
-        <ChevronDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
+        <ChevronDown
+          aria-hidden
+          className={cn("shrink-0 text-ink-muted", size === "sm" ? "size-3.5" : "size-4")}
+        />
       </Button>
       {hint ? <FieldHint>{hint}</FieldHint> : null}
       <FieldError>{errorMessage}</FieldError>
 
       <Popover
         className={cn(
-          "w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
+          "z-[90] w-[--trigger-width] overflow-auto rounded-control bg-surface p-1 shadow-overlay",
           "max-h-64",
-          "data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95",
-          "data-[exiting]:animate-out data-[exiting]:fade-out",
+          "data-[entering]:anim-pop-in",
+          "data-[exiting]:anim-fade-out",
         )}
       >
         <ListBox items={items} className="outline-none">
@@ -98,7 +105,7 @@ export function SelectOption({
       {...props}
       className={cn(
         "flex cursor-pointer items-center justify-between gap-2 rounded-chip px-3 py-2.5",
-        "text-[0.9375rem] outline-none",
+        "text-body outline-none",
         "data-[focused]:bg-brand-subtle data-[focused]:text-ink-brand",
         "data-[selected]:font-semibold",
         className,
@@ -127,7 +134,7 @@ export function Checkbox({
     <AriaCheckbox
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-center gap-2.5 text-[0.9375rem]",
+        "group flex min-h-11 cursor-pointer items-center gap-2.5 text-body",
         className,
       )}
     >
@@ -200,7 +207,7 @@ export function Radio({
     <AriaRadio
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-start gap-2.5 text-[0.9375rem]",
+        "group flex min-h-11 cursor-pointer items-start gap-2.5 text-body",
         // With a description the whole row becomes a pressable card — the shape
         // the giveaway allocation picker needs, where each option must explain
         // itself (research R7).
@@ -225,7 +232,7 @@ export function Radio({
           <span className="flex flex-col gap-0.5">
             <span className={cn(isSelected && "font-medium")}>{children}</span>
             {description ? (
-              <span className="text-[0.8125rem] leading-[1.5] text-ink-muted">
+              <span className="text-caption leading-[1.5] text-ink-muted">
                 {description}
               </span>
             ) : null}
@@ -247,7 +254,7 @@ export function Switch({
     <AriaSwitch
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[0.9375rem]",
+        "group flex min-h-11 cursor-pointer items-center justify-between gap-3 text-body",
         className,
       )}
     >

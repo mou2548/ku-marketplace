@@ -1,3 +1,7 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -64,6 +68,79 @@ export function MasonryItem({
   return (
     <div className={cn("mb-3 break-inside-avoid md:mb-4", className)}>
       {children}
+    </div>
+  );
+}
+
+const BREAKPOINTS: Array<[query: string, columns: number]> = [
+  ["(min-width: 1280px)", 5],
+  ["(min-width: 1024px)", 4],
+  ["(min-width: 768px)", 3],
+];
+
+function columnCount() {
+  for (const [query, columns] of BREAKPOINTS)
+    if (window.matchMedia(query).matches) return columns;
+  return 2;
+}
+
+function subscribe(onChange: () => void) {
+  const lists = BREAKPOINTS.map(([query]) => window.matchMedia(query));
+  for (const list of lists) list.addEventListener("change", onChange);
+  return () => {
+    for (const list of lists) list.removeEventListener("change", onChange);
+  };
+}
+
+/**
+ * Masonry that reads left to right. Items are dealt into the columns in turn
+ * (1st to column 1, 2nd to column 2, ...), so the top row is the first items
+ * in order and each column still packs tightly. `MasonryGrid` above fills
+ * column by column instead, which puts the 2nd item under the 1st.
+ *
+ * The column count needs the viewport, which the server does not know: the
+ * server render (and the first client render) is a plain row-major grid, and
+ * the masonry takes over once the width is known.
+ */
+export function MasonryRows<T>({
+  items,
+  getKey,
+  renderItem,
+  className,
+}: {
+  items: T[];
+  getKey: (item: T) => React.Key;
+  renderItem: (item: T) => React.ReactNode;
+  className?: string;
+}) {
+  const columns = useSyncExternalStore(subscribe, columnCount, () => 0);
+
+  if (columns === 0) {
+    return (
+      <div
+        className={cn(
+          "grid grid-cols-2 items-start gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5",
+          className,
+        )}
+      >
+        {items.map((item) => (
+          <div key={getKey(item)}>{renderItem(item)}</div>
+        ))}
+      </div>
+    );
+  }
+
+  const stacks: T[][] = Array.from({ length: columns }, () => []);
+  items.forEach((item, index) => stacks[index % columns].push(item));
+  return (
+    <div className={cn("flex items-start gap-3 md:gap-4", className)}>
+      {stacks.map((stack, column) => (
+        <div key={column} className="flex min-w-0 flex-1 flex-col gap-3 md:gap-4">
+          {stack.map((item) => (
+            <div key={getKey(item)}>{renderItem(item)}</div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

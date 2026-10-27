@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   FieldError as AriaFieldError,
   Input as AriaInput,
@@ -32,7 +34,7 @@ export function Label({
     <AriaLabel
       {...props}
       className={cn(
-        "text-[0.875rem] leading-[1.65] font-medium text-ink-secondary",
+        "text-body-sm font-medium text-ink-secondary",
         className,
       )}
     />
@@ -47,7 +49,7 @@ export function FieldError({
     <AriaFieldError
       {...props}
       className={cn(
-        "text-[0.8125rem] leading-[1.5] font-medium text-tone-danger-fg",
+        "text-caption leading-[1.5] font-medium text-tone-danger-fg",
         className,
       )}
     />
@@ -62,7 +64,7 @@ export function FieldHint({
     <Text
       {...props}
       slot="description"
-      className={cn("text-[0.8125rem] leading-[1.5] text-ink-muted", className)}
+      className={cn("text-caption leading-[1.5] text-ink-muted", className)}
     />
   );
 }
@@ -89,11 +91,17 @@ export function TextInput({
   suffix,
   className,
   inputClassName,
+  type,
   ...props
 }: TextInputProps) {
+  const isPassword = type === "password";
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const resolvedType = isPassword && passwordVisible ? "text" : type;
+
   return (
     <AriaTextField
       {...props}
+      type={resolvedType}
       className={cn("flex flex-col gap-1.5", className)}
     >
       {label ? <Label>{label}</Label> : null}
@@ -110,16 +118,36 @@ export function TextInput({
           placeholder={placeholder}
           className={cn(
             controlBase,
-            "h-12 px-3.5 text-[0.9375rem]",
+            "h-12 px-3.5 text-body",
             icon && "pl-11",
-            suffix && "pr-11",
+            (suffix || isPassword) && "pr-12",
             inputClassName,
           )}
         />
         {suffix ? (
-          <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-ink-muted">
+          <span
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 text-ink-muted",
+              isPassword ? "right-12" : "right-3.5",
+            )}
+          >
             {suffix}
           </span>
+        ) : null}
+        {isPassword ? (
+          <button
+            type="button"
+            aria-label={passwordVisible ? "Hide password" : "Show password"}
+            aria-pressed={passwordVisible}
+            onClick={() => setPasswordVisible((visible) => !visible)}
+            className="absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-pill text-ink-muted transition-colors hover:bg-brand-subtle hover:text-ink-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+          >
+            {passwordVisible ? (
+              <EyeOff aria-hidden className="size-4.5" />
+            ) : (
+              <Eye aria-hidden className="size-4.5" />
+            )}
+          </button>
         ) : null}
       </div>
       {hint ? <FieldHint>{hint}</FieldHint> : null}
@@ -152,7 +180,7 @@ export function TextAreaField({
       <AriaTextArea
         rows={rows}
         placeholder={placeholder}
-        className={cn(controlBase, "resize-y px-3.5 py-3 text-[0.9375rem]")}
+        className={cn(controlBase, "resize-y px-3.5 py-3 text-body")}
       />
       {hint ? <FieldHint>{hint}</FieldHint> : null}
       <FieldError>{errorMessage}</FieldError>

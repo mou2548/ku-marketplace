@@ -1,6 +1,12 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { normalizePromptPayId } from '../common/utils/promptpay';
 
 const PROFILE_SELECT = {
   userId: true,
@@ -10,6 +16,9 @@ const PROFILE_SELECT = {
   firstNameTh: true,
   lastNameTh: true,
   phoneNumber: true,
+  avatarUrl: true,
+  // Only ever returned to its owner (this select backs /users/me alone).
+  promptpayId: true,
   status: true,
   emailVerifiedAt: true,
   isAdmin: true,
@@ -48,9 +57,83 @@ export class UsersService {
         firstNameTh: dto.first_name_th,
         lastNameTh: dto.last_name_th,
         phoneNumber: dto.phone_number,
+        avatarUrl: dto.avatar_url,
+        promptpayId: await this.resolvePromptPayId(userId, dto.promptpay_id),
       },
       select: PROFILE_SELECT,
     });
+  }
+
+  /** undefined leaves the stored ID alone; null clears it. */
+  private async resolvePromptPayId(
+    userId: number,
+    input: string | null | undefined,
+  ) {
+    if (input === undefined) return undefined;
+    if (input === null || input.trim() === '') {
+      await this.assertCanClearPromptPay(userId);
+      return null;
+    }
+    const promptpayId = normalizePromptPayId(input);
+    if (!promptpayId) {
+      throw new BadRequestException(
+        'PromptPay ต้องเป็นเบอร์มือถือ 10 หลัก เช่น 0812345678',
+      );
+    }
+    await this.assertPromptPayIsFree(userId, promptpayId);
+    return promptpayId;
+  }
+
+  /**
+   * One number, one account: a student has a single account, so a number
+   * already on another one is a typo or a second account (a banned seller
+   * coming back, say). A deleted account no longer holds its number.
+   *
+   * Checked here only — the column has no unique index, so two saves landing
+   * at the same instant could still both pass.
+   */
+  private async assertPromptPayIsFree(userId: number, promptpayId: string) {
+    const holder = await this.prisma.user.findFirst({
+      where: {
+        promptpayId,
+        userId: { not: userId },
+        OR: [{ status: null }, { status: { not: 'Deleted' } }],
+      },
+      select: { userId: true },
+    });
+    if (holder) {
+      throw new ConflictException('เบอร์ PromptPay นี้ถูกใช้กับบัญชีอื่นแล้ว');
+    }
+  }
+
+  /**
+   * A buyer pays through a QR built from this ID, so it has to stay while
+   * something of the user's can still be paid for: a listing with a price, or
+   * a deal in progress that carries money.
+   */
+  private async assertCanClearPromptPay(userId: number) {
+    const [sellingPosts, openDeals] = await Promise.all([
+      this.prisma.post.count({
+        where: {
+          item: { ownerId: userId },
+          postType: { in: ['SellOnly', 'Both'] },
+          status: 'Active',
+          deletedAt: null,
+        },
+      }),
+      this.prisma.transaction.count({
+        where: {
+          sellerId: userId,
+          status: { in: ['Pending', 'Processing'] },
+          totalAmount: { gt: 0 },
+        },
+      }),
+    ]);
+    if (sellingPosts > 0 || openDeals > 0) {
+      throw new ConflictException(
+        'ยังลบ PromptPay ไม่ได้ เพราะมีโพสต์ขายหรือรายการซื้อขายที่ยังไม่จบ',
+      );
+    }
   }
 
   /**

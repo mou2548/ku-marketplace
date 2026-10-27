@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -16,11 +17,14 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { TransactionModule } from './transaction/transaction.module';
 import { TransactionsController } from './transactions/transactions.controller';
 import { TransactionsService } from './transactions/transactions.service';
+import { AdminTransactionEvidenceController } from './transactions/admin-transaction-evidence.controller';
 import { AppointmentCardsModule } from './appointment-cards/appointment-cards.module';
+import { SellersModule } from './sellers/sellers.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     PostsModule,
     GiveawaysModule,
@@ -32,8 +36,13 @@ import { UsersModule } from './users/users.module';
     AppointmentCardsModule,
     CloudinaryModule,
     UsersModule,
+    SellersModule,
   ],
-  controllers: [AppController, TransactionsController],
+  controllers: [
+    AppController,
+    TransactionsController,
+    AdminTransactionEvidenceController,
+  ],
   providers: [AppService, TransactionsService],
 })
 export class AppModule {}

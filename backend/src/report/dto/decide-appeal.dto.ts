@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AppealStatus } from '../../common/enums/report.enums';
 
 const DECIDABLE_STATUSES = [
@@ -12,5 +12,6 @@ export class DecideAppealDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   resolution_note?: string;
 }

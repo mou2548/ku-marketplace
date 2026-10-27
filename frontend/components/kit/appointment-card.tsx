@@ -1,6 +1,8 @@
 "use client";
 
-import { Calendar, Check, MapPin, X } from "lucide-react";
+import { formatDateTime } from "@/lib/date-format";
+import { getCopy } from "@/lib/copy";
+import { Calendar, Check, MapPin, Pencil } from "lucide-react";
 
 import { APPOINTMENT_STATUS, type AppointmentStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -39,7 +41,13 @@ export interface AppointmentCardProps {
   /** True when the viewer is the one who must answer. */
   awaitingViewer?: boolean;
   onAccept?: () => void;
-  onDecline?: () => void;
+  /**
+   * Opens the pre-filled edit form in place of this card so a change can be
+   * resent — see room-screen.tsx. Rendered as a pencil icon in the header,
+   * and (for the awaiting side on a Pending card) as the row's secondary
+   * action instead of a bare reject.
+   */
+  onEdit?: () => void;
   className?: string;
 }
 
@@ -51,9 +59,10 @@ export function AppointmentCard({
   mapsApiKey,
   awaitingViewer = false,
   onAccept,
-  onDecline,
+  onEdit,
   className,
 }: AppointmentCardProps) {
+  const t = getCopy();
   const when = new Date(scheduledAt);
   const copy = APPOINTMENT_STATUS[status];
 
@@ -77,26 +86,36 @@ export function AppointmentCard({
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
-        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">Meetup</h4>
-        <StatusBadge status={copy} size="sm" />
+        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("appointment.meetup")}</h4>
+        <span className="flex items-center gap-1.5">
+          <StatusBadge status={copy} size="sm" />
+          {/* The awaiting side already gets an "Edit" button in the action
+              row below — showing the pencil here too would just duplicate
+              it, so this is for the other cases: the proposer touching up
+              their own still-Pending card, or either side rescheduling a
+              Confirmed one. */}
+          {onEdit && !(status === "Pending" && awaitingViewer) ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              pill
+              aria-label={t("appointment.edit")}
+              onPress={onEdit}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          ) : null}
+        </span>
       </div>
 
       <dl className="flex flex-col gap-2.5 p-4">
         <div className="flex items-start gap-2.5">
           <Calendar aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <dt className="sr-only">Date and time</dt>
+            <dt className="sr-only">{t("appointment.dateAndTime")}</dt>
             <dd>
               <time dateTime={scheduledAt} className="font-medium">
-                {when.toLocaleDateString("en-GB", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                })}{" "}
-                {when.toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDateTime(when)}
               </time>
             </dd>
           </div>
@@ -105,7 +124,7 @@ export function AppointmentCard({
         <div className="flex items-start gap-2.5">
           <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <dt className="sr-only">Place</dt>
+            <dt className="sr-only">{t("appointment.place")}</dt>
             <dd className="font-medium">{place}</dd>
           </div>
         </div>
@@ -124,22 +143,21 @@ export function AppointmentCard({
           href={`https://maps.google.com/?q=${encodeURIComponent(coordinates)}`}
           target="_blank"
           rel="noreferrer"
-          className="block px-4 pb-2 text-[0.875rem] font-medium text-ink-brand underline"
-        >
-          Open in Google Maps
-        </a>
+          className="block px-4 pb-2 text-body-sm font-medium text-ink-brand underline"
+        >{t("appointment.openInMaps")}</a>
       ) : null}
 
       {status === "Pending" && awaitingViewer ? (
-        <div className="flex gap-2 p-4 pt-3">
+        /* Two w-full buttons in a row gave each 144px inside a 296px card at
+           360px, and "Suggest another time" plus its icon needs about 200px.
+           button.tsx sets whitespace-nowrap so it could not wrap, and the
+           Surface is overflow-hidden so the label was cut off rather than
+           scrolled. Stacked below sm:, and the label is shorter. */
+        <div className="flex flex-col-reverse gap-2 p-4 pt-3 sm:flex-row">
+          <Button variant="secondary" block onPress={onEdit}>
+            <Pencil className="size-4" />{t("appointment.edit")}</Button>
           <Button variant="primary" block onPress={onAccept}>
-            <Check className="size-4" />
-            Accept
-          </Button>
-          <Button variant="secondary" block onPress={onDecline}>
-            <X className="size-4" />
-            Suggest another time
-          </Button>
+            <Check className="size-4" />{t("appointment.accept")}</Button>
         </div>
       ) : null}
     </Surface>

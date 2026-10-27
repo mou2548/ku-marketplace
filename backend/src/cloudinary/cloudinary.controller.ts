@@ -8,7 +8,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from './cloudinary.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  AllowRestrictedAccount,
+  JwtAuthGuard,
+} from '../auth/guards/jwt-auth.guard';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -23,11 +26,17 @@ export class CloudinaryController {
    * frontend ยิง multipart/form-data field ชื่อ "file" แล้วเอา url ที่ได้กลับมา
    * ไปใส่ในฟิลด์ image_url/slip_image_url ของ endpoint อื่นต่อ
    */
+  // A suspended or banned account still appeals, and the flow's appeal
+  // carries evidence photos, so it may upload. It cannot attach an image to
+  // anything else: every other write is closed to it.
+  @AllowRestrictedAccount()
   @Post('image')
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException('ต้องแนบไฟล์รูปภาพมาด้วย (field name: file)');
+      throw new BadRequestException(
+        'ต้องแนบไฟล์รูปภาพมาด้วย (field name: file)',
+      );
     }
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException('รองรับเฉพาะไฟล์ JPEG, PNG, WEBP เท่านั้น');

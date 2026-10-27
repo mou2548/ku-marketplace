@@ -1,4 +1,7 @@
-import { getMyItems, getPosts } from "@/lib/api/fixtures";
+import { redirect } from "next/navigation";
+
+import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getAccessToken } from "@/lib/api/session";
 
 import { InventoryScreen } from "./inventory-screen";
 
@@ -17,26 +20,23 @@ import { InventoryScreen } from "./inventory-screen";
 export const metadata = { title: "My inventory - KU Marketplace" };
 
 export default async function InventoryPage() {
-  const [allItems, posts] = await Promise.all([getMyItems(), getPosts()]);
+  if (!(await getAccessToken())) {
+    redirect("/login");
+  }
 
-  /**
-   * The third state never belongs on this screen. `Transferred` means the item
-   * has been handed to a buyer and is not the viewer's any more — it stayed
-   * here only because a transfer never reassigns `owner_id`, so a thing they
-   * had given away still sat in the grid and counted toward the item total.
-   *
-   * The inventory is now exactly the two states DatabaseSchema.pdf §2.2 names
-   * for something you still own: Unlisted and Listed. What left is in /history.
-   */
-  const items = allItems.filter((i) => i.status !== "Transferred");
+  const items = await getMyItems();
 
-  /**
-   * Flow 1 moves an item Unlisted → Listed when a post is created. The badge
-   * used to read `item.status` alone, which can disagree with the market it is
-   * standing next to; the screen sees the posts as well and derives the state
-   * from them.
-   */
-  const listedItemIds = posts.map((p) => p.item_id);
+  // Transferred rows remain as read-only item history. Hiding them would make
+  // the new sold/traded totals impossible to inspect from the inventory.
 
-  return <InventoryScreen items={items} listedItemIds={listedItemIds} />;
+  const summaries = Object.fromEntries(
+    await Promise.all(
+      items.map(async (item) => [
+        item.item_id,
+        await getItemHistorySummary(item.item_id).catch(() => undefined),
+      ] as const),
+    ),
+  );
+
+  return <InventoryScreen items={items} summaries={summaries} />;
 }

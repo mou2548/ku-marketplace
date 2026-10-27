@@ -2,12 +2,10 @@ import { z } from 'zod';
 import { isValidKuEmail } from '../../common/utils/ku-email.util';
 
 export const requestOtpSchema = z.object({
-  email: z
-    .string()
-    .email()
-    .refine(isValidKuEmail, {
-      message: 'ต้องใช้อีเมลมหาวิทยาลัยเกษตรศาสตร์ (@ku.th หรือ @ku.ac.th) เท่านั้น',
-    }),
+  email: z.string().email().refine(isValidKuEmail, {
+    message:
+      'ต้องใช้อีเมลมหาวิทยาลัยเกษตรศาสตร์ (@ku.th หรือ @ku.ac.th) เท่านั้น',
+  }),
   password: z
     .string()
     .min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร')

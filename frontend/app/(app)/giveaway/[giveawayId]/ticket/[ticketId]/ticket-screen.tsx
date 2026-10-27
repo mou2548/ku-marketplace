@@ -1,16 +1,22 @@
 "use client";
 
+import { formatDateTime } from "@/lib/date-format";
+
+
+import { getCopy } from "@/lib/copy";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, Gift, MapPin } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { ChatThread } from "@/components/kit/chat-thread";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { PostImage } from "@/components/kit/post-image";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
+import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { forfeitTicket, generateTicketQr } from "@/lib/actions/giveaways";
 import type { ApiError } from "@/lib/api/client";
@@ -18,6 +24,7 @@ import type { GiveawayTicket } from "@/lib/api/types";
 import { TICKET_STATUS } from "@/lib/status";
 
 export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
+  const t = getCopy();
   const { giveaway } = ticket;
   const router = useRouter();
   const toast = useToast();
@@ -32,52 +39,90 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
     setForfeiting(true);
     try {
       await forfeitTicket(ticket.ticket_id);
-      toast.show("Ticket forfeited.");
+      toast.success("Ticket forfeited.");
       router.push(`/giveaway/${giveaway.giveaway_id}`);
     } catch (error) {
-      toast.show((error as ApiError).message ?? "Could not forfeit. Try again.");
+      toast.error((error as ApiError).message ?? "Could not forfeit. Try again.");
     } finally {
       setForfeiting(false);
     }
   }
 
-  const pickupBy = giveaway.registered_deadline
-    ? new Date(giveaway.registered_deadline).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-      })
+  const pickupFrom = giveaway.pickup_start
+    ? formatDateTime(new Date(giveaway.pickup_start))
+    : null;
+  const pickupTo = giveaway.pickup_deadline
+    ? formatDateTime(new Date(giveaway.pickup_deadline))
     : null;
 
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="flex flex-1 flex-col gap-4">
-        <header className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-[1.5rem] leading-[1.25] font-bold tracking-[-0.016em]">
+        <header className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+          <span className="block overflow-hidden rounded-card shadow-flat">
+            <PostImage
+              src={giveaway.images[0]?.image_url}
+              alt=""
+              aspectRatio={1}
+              sizes="112px"
+              className="h-full"
+            />
+          </span>
+          <div className="flex min-w-0 flex-col justify-center gap-2">
+            <p className="text-overline font-semibold text-tone-warning-fg uppercase">
+              {t("giveaway.collectionTicket")}
+            </p>
+            <h1 className="text-h1 text-balance">
               {giveaway.item_name}
             </h1>
-            <p className="text-[0.875rem] text-ink-muted">You were selected</p>
+            <p data-numeric className="text-body-sm font-medium text-ink-secondary">
+              {t("giveaway.queueNumber", { number: ticket.queue_number })}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={TICKET_STATUS[ticket.status]} />
+              {ticket.status === "Waiting" || ticket.status === "Received" ? (
+                <span className="text-body-sm text-ink-muted">
+                  {t("giveaway.selected")}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <StatusBadge status={TICKET_STATUS[ticket.status]} />
         </header>
 
-        <Surface shape="panel" fill="plate" noise className="p-5">
-          <QrTicket onGenerate={generate} />
-        </Surface>
+        {ticket.status === "Waiting" ? (
+          <Surface shape="panel" className="overflow-hidden p-0">
+            <div aria-hidden className="h-1 bg-tone-warning-solid" />
+            <div className="p-5">
+              <QrTicket once onGenerate={generate} />
+            </div>
+            <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-caption text-tone-warning-fg">
+              <Gift aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("giveaway.ticketHint")}</span>
+            </div>
+          </Surface>
+        ) : (
+          <TicketOutcome status={ticket.status} />
+        )}
 
         <Surface shape="card" className="flex flex-col gap-2.5 p-4">
-          <p className="flex items-center gap-2 text-[0.9375rem]">
+          <p className="flex items-center gap-2 text-body">
             <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
             {giveaway.pickup_location}
           </p>
-          {pickupBy ? (
-            <p className="flex items-center gap-2 text-[0.9375rem]">
+          {pickupFrom && pickupTo ? (
+            <p className="flex items-center gap-2 text-body">
               <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
-              Collect by {pickupBy}
+              {t("giveaway.collectWindow", { from: pickupFrom, to: pickupTo })}
+            </p>
+          ) : pickupTo ? (
+            <p className="flex items-center gap-2 text-body">
+              <Clock aria-hidden className="size-4 shrink-0 text-ink-muted" />
+              {t("giveaway.collectBy", { date: pickupTo })}
             </p>
           ) : null}
           <TrustBadge
             name={giveaway.giver.name}
+            avatarUrl={giveaway.giver.avatar_url}
             isVerified={giveaway.giver.isVerified}
             faculty={giveaway.giver.faculty}
             size="sm"
@@ -88,11 +133,12 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           <OverlayTrigger>
             <Button variant="secondary">Forfeit this ticket</Button>
             <Overlay
+              isBusy={forfeiting}
               title="Forfeit this ticket?"
               description="You will lose your place. This cannot be undone, and it will not be offered to anyone else."
               footer={
                 <>
-                  <Button variant="ghost" slot="close">
+                  <Button variant="ghost" slot="close" isDisabled={forfeiting}>
                     Keep my ticket
                   </Button>
                   <Button variant="danger" isLoading={forfeiting} onPress={forfeit}>
@@ -101,7 +147,7 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
                 </>
               }
             >
-              <p className="text-[0.9375rem] leading-[1.7] text-ink-secondary">
+              <p className="text-body text-ink-secondary">
                 Forfeiting frees you from collecting {giveaway.item_name}, but
                 the giver will not re-open your place to anyone else.
               </p>
@@ -115,10 +161,10 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
       <Surface
         shape="card"
         elevation="raised"
-        className="flex min-h-[20rem] flex-col overflow-hidden lg:w-80"
+        className="flex min-h-[20rem] flex-col overflow-hidden lg:sticky lg:top-24"
       >
-        <h2 className="border-b border-line px-4 py-3 text-[0.8125rem] font-semibold tracking-[0.09em] text-ink-muted uppercase">
-          Notes from the giver
+        <h2 className="border-b border-line px-4 py-3 text-body font-semibold text-ink">
+          {t("giveaway.giverNotes")}
         </h2>
         <ChatThread
           viewerId={ticket.receiver_id}
@@ -135,5 +181,26 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
         />
       </Surface>
     </div>
+  );
+}
+
+function TicketOutcome({
+  status,
+}: {
+  status: Exclude<GiveawayTicket["status"], "Waiting">;
+}) {
+  const copy = {
+    Registered: "Your registration is recorded. Wait for the allocation result.",
+    Received: "Collection completed. The giver recorded the handover.",
+    Not_Selected: "You were not selected for this giveaway.",
+    Forfeited: "You chose to give up this collection before the deadline.",
+    Expired: "The pickup deadline passed before this item was collected.",
+  }[status];
+  const tone = status === "Received" ? "success" : "neutral";
+
+  return (
+    <Notice tone={tone}>
+      <p className="text-body font-medium">{copy}</p>
+    </Notice>
   );
 }

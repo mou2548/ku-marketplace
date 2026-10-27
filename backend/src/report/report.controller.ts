@@ -53,6 +53,17 @@ export class ReportController {
     return this.reportService.findAll();
   }
 
+  /** Opening the case is taking it on — see `ReportService.open`. */
+  @Post('admin/reports/:id/open')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  open(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.reportService.open(id, user.userId);
+  }
+
   @Post('admin/reports/:id/resolve')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard, AdminGuard)

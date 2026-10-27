@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 
@@ -8,7 +9,7 @@ export class OtpService {
   constructor(private redis: RedisService) {}
 
   private generateCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString(); // 6 หลัก
+    return randomInt(100000, 1000000).toString();
   }
 
   /**
@@ -20,8 +21,11 @@ export class OtpService {
     const otpKey = `register:otp:${email}`;
     const payloadKey = `register:pending:${email}`;
 
-    await this.redis.setex(otpKey, OTP_TTL_SECONDS, otp);
-    await this.redis.setex(payloadKey, OTP_TTL_SECONDS, JSON.stringify(pendingPayload));
+    await this.redis
+      .multi()
+      .setex(otpKey, OTP_TTL_SECONDS, otp)
+      .setex(payloadKey, OTP_TTL_SECONDS, JSON.stringify(pendingPayload))
+      .exec();
 
     return otp;
   }
@@ -29,24 +33,34 @@ export class OtpService {
   /**
    * ตรวจสอบ OTP กับที่เก็บไว้ ถ้าถูกต้องจะคืน payload ที่ pending ไว้ และลบ key ทิ้งทันที (กัน replay)
    */
-  async verify(email: string, otp: string): Promise<Record<string, any> | null> {
-    const otpKey = `register:otp:${email}`;
-    const payloadKey = `register:pending:${email}`;
-
-    const storedOtp = await this.redis.get(otpKey);
-    if (!storedOtp || storedOtp !== otp) {
-      return null;
-    }
-
-    const payloadRaw = await this.redis.get(payloadKey);
-    if (!payloadRaw) {
-      return null;
-    }
-
-    await this.redis.del(otpKey);
-    await this.redis.del(payloadKey);
-
-    return JSON.parse(payloadRaw);
+  async verify(
+    email: string,
+    otp: string,
+  ): Promise<{
+    email: string;
+    passwordHash: string;
+    phoneNumber?: string | null;
+  } | null> {
+    const payload = await this.redis.eval(
+      `
+      if redis.call('get', KEYS[1]) ~= ARGV[1] then return nil end
+      local payload = redis.call('get', KEYS[2])
+      if not payload then return nil end
+      redis.call('del', KEYS[1], KEYS[2])
+      return payload
+    `,
+      2,
+      `register:otp:${email}`,
+      `register:pending:${email}`,
+      otp,
+    );
+    return typeof payload === 'string'
+      ? (JSON.parse(payload) as {
+          email: string;
+          passwordHash: string;
+          phoneNumber?: string | null;
+        })
+      : null;
   }
 
   /**
@@ -55,20 +69,22 @@ export class OtpService {
    * pending อยู่เลย (หมดอายุไปแล้ว/ไม่เคยขอ) ให้ผู้ใช้กลับไปเริ่ม request-otp ใหม่
    */
   async resendRegisterOtp(email: string): Promise<string> {
-    const payloadKey = `register:pending:${email}`;
-    const payloadRaw = await this.redis.get(payloadKey);
-    if (!payloadRaw) {
-      throw new NotFoundException(
-        'ไม่พบคำขอสมัครสมาชิกที่รอการยืนยัน กรุณาเริ่มสมัครใหม่',
-      );
-    }
-
     const otp = this.generateCode();
-    await this.redis.setex(`register:otp:${email}`, OTP_TTL_SECONDS, otp);
-    // ต่ออายุ payload ให้ตรงกับ TTL ของ OTP ใหม่ด้วย ไม่งั้น payload อาจหมดอายุ
-    // ก่อน OTP ที่เพิ่งออกใหม่
-    await this.redis.setex(payloadKey, OTP_TTL_SECONDS, payloadRaw);
-
+    const updated = await this.redis.eval(
+      `
+      if redis.call('exists', KEYS[2]) == 0 then return 0 end
+      redis.call('setex', KEYS[1], ARGV[2], ARGV[1])
+      redis.call('expire', KEYS[2], ARGV[2])
+      return 1
+    `,
+      2,
+      `register:otp:${email}`,
+      `register:pending:${email}`,
+      otp,
+      OTP_TTL_SECONDS,
+    );
+    if (updated !== 1)
+      throw new NotFoundException('Registration request expired; start again');
     return otp;
   }
 
@@ -86,13 +102,16 @@ export class OtpService {
 
   /** ตรวจ OTP รีเซ็ตรหัสผ่าน ถ้าถูกต้องลบทิ้งทันที (กัน replay เหมือน verify() ฝั่งสมัคร) */
   async verifyPasswordResetOtp(email: string, otp: string): Promise<boolean> {
-    const key = `password-reset:otp:${email}`;
-    const stored = await this.redis.get(key);
-    if (!stored || stored !== otp) {
-      return false;
-    }
-    await this.redis.del(key);
-    return true;
+    const consumed = await this.redis.eval(
+      `
+      if redis.call('get', KEYS[1]) ~= ARGV[1] then return 0 end
+      return redis.call('del', KEYS[1])
+    `,
+      1,
+      `password-reset:otp:${email}`,
+      otp,
+    );
+    return consumed === 1;
   }
 
   /**

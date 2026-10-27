@@ -1,12 +1,13 @@
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
-import { ITEM_CONDITION, POST_TYPE, type ItemCondition, type PostType } from "@/lib/status";
+import { type ItemCondition, type PostType } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
-import { StatusIcon } from "./icon";
-import { Surface } from "./surface";
+import { ListingTypeBadge } from "./listing-type-badge";
+import { ItemConditionBadge } from "./item-condition-badge";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -32,8 +33,15 @@ export interface PostCardProps {
   description?: string | null;
   courseName?: string | null;
   wantedItemOffer?: string | null;
-  seller: { name: string; isVerified?: boolean; faculty?: string | null };
+  seller: {
+    user_id: number;
+    name: string;
+    isVerified?: boolean;
+    faculty?: string | null;
+    avatar_url?: string | null;
+  };
   className?: string;
+  hoverEffects?: boolean;
 }
 
 export function PostCard({
@@ -49,63 +57,57 @@ export function PostCard({
   wantedItemOffer,
   seller,
   className,
+  hoverEffects = true,
 }: PostCardProps) {
-  const rarity = ITEM_CONDITION[condition];
+  const t = getCopy();
   const showsPrice = postType !== "TradeOnly";
 
   return (
-    <Surface
-      as="article"
-      shape="card"
-      interactive
-      // Condition owns the card edge, the way it owns the inventory slot — one
-      // colour event per card instead of five. Set as custom properties so the
-      // ring is a class reading a variable, never a colour passed to `style`.
-      style={
-        {
-          "--slot-edge": rarity.edge,
-          "--slot-glow": rarity.glow,
-        } as React.CSSProperties
-      }
-      className={cn(
-        "overflow-hidden [box-shadow:var(--shadow-raised),var(--shadow-rarity)]",
-        className,
-      )}
-    >
-      <Link href={`/market/${postId}`} className="block focus:outline-none">
-        <div className="relative">
-          <PostImage src={imageUrl} alt={name} aspectRatio={aspectRatio} />
-          {/* Filled, with white text. Two hues only, both from the five the
-              product allows: green for anything sellable, amber for a pure
-              swap. The palette's own 600 steps are 4.04:1 and 3.50:1 against
-              white — below AA for a 12px label — so the fill is the 700 step
-              of the same colour. Same hue, deep enough to carry the text. */}
-          <span
-            className={cn(
-              "pointer-events-none absolute top-2 left-2 flex items-center gap-1.5",
-              "rounded-pill px-2.5 py-1 text-[0.75rem] font-semibold text-white shadow-raised",
-              postType === "TradeOnly" ? "bg-amber-700" : "bg-green-700",
-            )}
-          >
-            <StatusIcon name={POST_TYPE[postType].icon} className="size-3.5" />
-            {POST_TYPE[postType].label}
-          </span>
+    <article className={cn("break-inside-avoid", className)}>
+      <Link
+        href={`/market/${postId}`}
+        className={cn(
+          "block rounded-card focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand",
+          hoverEffects && "group/pin",
+        )}
+      >
+        <div className="relative overflow-hidden rounded-card bg-surface-sunken shadow-flat transition-[transform,box-shadow] duration-[--dur-base] ease-[--ease-out] group-hover/pin:-translate-y-0.5 group-hover/pin:shadow-floating group-focus-visible/pin:shadow-floating">
+          <PostImage
+            src={imageUrl}
+            alt={name}
+            aspectRatio={aspectRatio}
+            className="transition-transform duration-[--dur-slow] ease-[--ease-out] group-hover/pin:scale-[1.025]"
+          />
         </div>
 
-        <div className="flex flex-col gap-2 p-4">
-          <h3 className="line-clamp-2 text-[1rem] leading-[1.45] font-semibold text-ink">
+        <div className="flex flex-col gap-1.5 px-1 pt-2.5 pb-1">
+          <div className="flex items-center justify-between gap-2">
+            <ListingTypeBadge type={postType} className="min-w-0 truncate" />
+            {showsPrice ? (
+              <span
+                data-numeric
+                className="shrink-0 text-[1rem] leading-[1.4] font-bold text-ink-brand"
+              >
+                ฿{price.toLocaleString("en-GB")}
+              </span>
+            ) : null}
+          </div>
+
+          <h3 className="line-clamp-2 text-[0.9375rem] leading-[1.45] font-semibold text-ink">
             {name}
           </h3>
 
+          <ItemConditionBadge condition={condition} />
+
           {courseName ? (
-            <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-gray-100 px-2 py-0.5 text-[0.75rem] font-medium text-ink-secondary">
+            <span className="inline-flex w-fit items-center gap-1 rounded-chip bg-surface-sunken px-2 py-0.5 text-meta font-medium text-ink-secondary">
               <BookOpen aria-hidden className="size-3" />
               {courseName}
             </span>
           ) : null}
 
           {description ? (
-            <p className="line-clamp-2 text-[0.8125rem] leading-[1.6] font-normal text-ink-muted">
+            <p className="line-clamp-2 text-caption leading-[1.6] font-normal text-ink-muted">
               {description}
             </p>
           ) : null}
@@ -114,43 +116,37 @@ export function PostCard({
               container around one line of secondary text was the second violet
               on a card that only needed one. */}
           {postType !== "SellOnly" && wantedItemOffer ? (
-            <p className="flex items-start gap-1.5 text-[0.75rem] leading-[1.5] text-ink-muted">
-              <ArrowLeftRight aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            <p className="flex items-start gap-1.5 text-meta leading-[1.5] text-ink-muted">
+              <ArrowLeftRight
+                aria-hidden
+                className="mt-0.5 size-3.5 shrink-0"
+              />
               <span className="line-clamp-2">
-                <span className="font-medium text-ink-secondary">Wants</span>{" "}
+                <span className="font-medium text-ink-secondary">
+                  {t("card.wants")}
+                </span>{" "}
                 {wantedItemOffer}
               </span>
             </p>
           ) : null}
-
-          <div className="flex items-baseline justify-between gap-2 pt-1">
-            {showsPrice ? (
-              <span
-                data-numeric
-                className="text-[1.25rem] leading-[1.3] font-bold text-ink"
-              >
-                ฿{price.toLocaleString("en-GB")}
-              </span>
-            ) : (
-              <span className="text-[0.9375rem] font-semibold text-ink">
-                Trade only
-              </span>
-            )}
-            {/* Stated in words. The edge carries the colour, but condition can
-                never be colour alone (CLAUDE.md §6). */}
-            <span className="shrink-0 text-[0.75rem] font-medium text-ink-muted">
-              {rarity.label}
-            </span>
-          </div>
-
+        </div>
+      </Link>
+      <div className="flex min-h-11 items-center justify-between gap-2 px-1 pb-1">
+        <Link
+          href={`/sellers/${seller.user_id}`}
+          aria-label={t("seller.openProfile", { name: seller.name })}
+          className="flex min-h-11 min-w-0 flex-1 items-center rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
           <TrustBadge
             name={seller.name}
+            avatarUrl={seller.avatar_url}
             isVerified={seller.isVerified}
             faculty={seller.faculty}
             size="sm"
+            className="min-w-0"
           />
-        </div>
-      </Link>
-    </Surface>
+        </Link>
+      </div>
+    </article>
   );
 }

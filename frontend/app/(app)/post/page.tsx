@@ -1,4 +1,4 @@
-import { getMyItems, getPosts } from "@/lib/api/fixtures";
+import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
 
 import { PostComposer } from "./post-composer";
 
@@ -20,24 +20,44 @@ export const metadata = { title: "Post something - KU Marketplace" };
  * that ignored the inventory entirely; `?type=giveaway` now opens this screen
  * with that kind preselected. Read on the server, so no client hook and no
  * Suspense boundary is needed for a query string.
+ *
+ * `?item=1,2,3` preselects items — used by the inventory screen's "Select"
+ * bulk action (multiple ids) and by the listing form's "Give away" option,
+ * which hands off a single already-chosen item rather than asking the owner
+ * to find it again in the picker.
  */
 export default async function PostPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; item?: string }>;
 }) {
-  const [{ type }, items, posts] = await Promise.all([
+  const [{ type, item: itemParam }, items] = await Promise.all([
     searchParams,
     getMyItems(),
-    getPosts(),
   ]);
-  const listedItemIds = new Set(posts.map((p) => p.item_id));
+  const initialPicked = (itemParam ?? "")
+    .split(",")
+    .map((id) => Number(id.trim()))
+    .filter((id) => Number.isInteger(id) && id > 0);
 
+  const summaries = Object.fromEntries(
+    await Promise.all(
+      items.map(async (item) => [
+        item.item_id,
+        await getItemHistorySummary(item.item_id).catch(() => undefined),
+      ] as const),
+    ),
+  );
+
+  // A fully transferred item has nothing left to commit to a new channel
+  // (available_quantity is 0 with no open channels), so it naturally drops
+  // out of the composer's pickable list without a separate status filter.
   return (
     <PostComposer
-      items={items.filter((i) => i.status !== "Transferred")}
-      listedItemIds={[...listedItemIds]}
+      items={items}
+      summaries={summaries}
       initialKind={type === "giveaway" ? "Giveaway" : "SellOnly"}
+      initialPicked={initialPicked}
     />
   );
 }

@@ -1,5 +1,6 @@
-import { getMyTickets } from "@/lib/api/fixtures";
-import { getGiveaways } from "@/lib/api/giveaways";
+import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
+import { getCurrentUserId } from "@/lib/api/session";
+import type { GiveawayTicket } from "@/lib/api/types";
 
 import { GiveawayBrowser } from "./giveaway-browser";
 
@@ -23,10 +24,29 @@ export const metadata = { title: "Giveaways - KU Marketplace" };
 export const dynamic = "force-dynamic";
 
 export default async function GiveawayPage() {
-  const [giveaways, tickets] = await Promise.all([
-    getGiveaways(),
-    getMyTickets(),
-  ]);
+  const viewerId = await getCurrentUserId();
+  const giveaways = await getGiveaways();
 
-  return <GiveawayBrowser giveaways={giveaways} tickets={tickets} />;
+  // Browsing is public, so there may be no viewer. There is no "my tickets"
+  // endpoint either — when signed in, rebuild the list one giveaway at a time
+  // (same bounded N+1 as rooms-query.ts / history).
+  const tickets: GiveawayTicket[] = viewerId
+    ? (
+        await Promise.all(
+          giveaways.map((giveaway) =>
+            getMyTicket(giveaway.giveaway_id, giveaway, viewerId).catch(
+              () => undefined,
+            ),
+          ),
+        )
+      ).filter((ticket): ticket is GiveawayTicket => ticket !== undefined)
+    : [];
+
+  return (
+    <GiveawayBrowser
+      giveaways={giveaways}
+      tickets={tickets}
+      viewerId={viewerId ?? null}
+    />
+  );
 }

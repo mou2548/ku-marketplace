@@ -21,7 +21,7 @@ function Rule({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-2 text-[0.75rem]",
+        "flex items-center gap-2 text-meta",
         ok ? "text-ink-brand" : "text-ink-muted",
       )}
     >
@@ -58,7 +58,7 @@ export function ForgotPasswordForm() {
       />
 
       {state?.error ? (
-        <p role="alert" className="text-[0.8125rem] font-medium text-tone-danger-fg">
+        <p role="alert" className="text-caption font-medium text-tone-danger-fg">
           {state.error}
         </p>
       ) : null}
@@ -96,10 +96,10 @@ export function ResetPasswordForm() {
       <input type="hidden" name="otp" value={otp} />
 
       <div className="flex flex-col gap-1.5 rounded-card bg-surface-sunken p-4 shadow-sunken">
-        <span className="text-[0.75rem] font-semibold text-ink-secondary">
+        <span className="text-meta font-semibold text-ink-secondary">
           Resetting the password for
         </span>
-        <span className="text-[0.9375rem] font-semibold text-ink">
+        <span className="text-body font-semibold text-ink">
           {email || "no email given — go back and request a code"}
         </span>
       </div>
@@ -138,7 +138,7 @@ export function ResetPasswordForm() {
       />
 
       {state?.error ? (
-        <p role="alert" className="text-[0.8125rem] font-medium text-tone-danger-fg">
+        <p role="alert" className="text-caption font-medium text-tone-danger-fg">
           {state.error}
         </p>
       ) : null}
@@ -149,7 +149,7 @@ export function ResetPasswordForm() {
 
       <Link
         href="/login"
-        className="text-center text-[0.875rem] text-ink-muted hover:text-ink"
+        className="text-center text-body-sm text-ink-muted hover:text-ink"
       >
         Back to sign in
       </Link>

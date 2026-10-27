@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 /* Light theme only for now. Every token below is semantic, so a `.dark` block
    can be added later without touching a single component. */
@@ -19,22 +18,22 @@
   --green-500: #3ab572;  /*  2.60 */
   --green-600: #2e8f5a;  /*  4.04 — BRAND. Fills only, never normal text. */
   --green-700: #257248;  /*  5.88 — text + links. AA. */
-  --green-800: #1f5939;  /*  8.23 */
+  --green-800: #1d6d41;  /*  6.34 */
   --green-900: #19432c;  /* 11.16 */
   --green-950: #122b1d;  /* 15.04 — ink */
 
-  /* --- Neutral: green-tinted. Pure grays are banned. --- */
-  --gray-50: #f6f8f7;
-  --gray-100: #ebedec;
-  --gray-200: #d8dcda;
-  --gray-300: #bdc4c0;
-  --gray-400: #94a09a;   /*  2.70 — decorative / disabled glyphs only */
-  --gray-500: #708077;   /*  4.17 — large text and icons */
-  --gray-600: #58655e;   /*  6.12 — muted body text. AA. */
-  --gray-700: #46504b;   /*  8.34 */
-  --gray-800: #38403c;   /* 10.71 */
-  --gray-900: #2b312e;   /* 13.33 */
-  --gray-950: #1d201e;   /* 16.40 */
+  /* --- Neutral: blue-charcoal, adapted from the Chinese flat palette. --- */
+  --gray-50: #f8f9fb;
+  --gray-100: #f1f2f6;  /* Anti-Flash White */
+  --gray-200: #dfe4ea;  /* City Lights */
+  --gray-300: #ced6e0;  /* Twinkle Blue */
+  --gray-400: #a4b0be;  /* Peace — decorative / disabled only */
+  --gray-500: #747d8c;  /* Bay Wharf — large text and icons only */
+  --gray-600: #57606f;  /* AA body copy */
+  --gray-700: #46505d;
+  --gray-800: #3a414c;
+  --gray-900: #2f3542;  /* Prestige Blue — primary light-theme ink */
+  --gray-950: #222630;
 
   /* --- Amber: waiting, deadline approaching --- */
   --amber-50: #fbf8f1;
@@ -51,10 +50,10 @@
 
   /* --- Rose: cancelled, reported, expired --- */
   --rose-50: #f9f3f4;
-  --rose-100: #f3e5e7;
+  --rose-100: #fbe4e8;
   --rose-200: #e9cbd0;
   --rose-300: #dea3ae;
-  --rose-400: #d06478;   /*  3.63 */
+  --rose-400: #b3455a;   /*  5.36 */
   --rose-500: #be324b;   /*  5.61 — text. AA. */
   --rose-600: #96273b;   /*  7.93 */
   --rose-700: #771f2f;   /* 10.36 */
@@ -62,11 +61,27 @@
   --rose-900: #46161f;
   --rose-950: #2d1015;
 
-  /* Blue, violet and gold were retired: the palette is five hues — two greens,
-     two ambers, one rose — and those three had no consumer left. Info moved to
-     the light green, trade to neutral, membership to amber. Do not add a sixth
-     hue without deciding which of these five it replaces. */
+  /* --- Slate: info only. Added 2026-08-14 — info used to share the green
+     ramp with success (see the tone comment below), and a ticket list with
+     both on screen at once (Registered vs Collected) showed they cannot be
+     told apart at a glance. Cool and muted on purpose: it must read as
+     "the system is moving," not compete with the brand green. */
+  --slate-50: #f3f6f8;
+  --slate-100: #e4eaef;
+  --slate-400: #6f8fa3;  /*  3.42 — border only */
+  --slate-600: #3d6076;  /*  6.70 */
+  --slate-700: #2f4c5f;  /*  9.05 — text. AA. */
 
+  /* --- Marketplace categories: colour explains the transaction type. --- */
+  --blue-100: #e8f3ff;
+  --blue-400: #70a1ff;
+  --blue-600: #1767ad;
+  --blue-700: #145a97;
+
+  --violet-100: #ececff;
+  --violet-400: #7d7cff;
+  --violet-500: #5352ed;
+  --violet-700: #3f3bb0;
 }
 
 /* =========================================================================
@@ -75,19 +90,25 @@
 
 :root {
   /* --- Surfaces ---
-     Revised 2026-08-07. The first pass used green so sparingly that the only
-     saturated thing on screen was a violet badge. KU's own systems put the
-     green on the chrome and keep the content white; this follows that. */
-  --bg-page: #f4f7f5;
+     Revised 2026-08-14: page went fully white, matching --bg-surface. Cards
+     now separate from the page by shadow alone (--shadow-raised carries an
+     inset top highlight plus a soft drop shadow), not by a colour step —
+     the "depth over outline" principle applied to the page itself, not just
+     to individual surfaces. */
+  --bg-page: #ffffff;
   --bg-surface: #ffffff;
   --bg-surface-raised: #ffffff;
-  --bg-surface-sunken: var(--gray-50);
-  --bg-surface-inverse: var(--green-950);
+  --bg-surface-sunken: var(--gray-100);
+  --bg-surface-inverse: var(--gray-900);
+  /* Operational chrome stays dark in both themes. Unlike an inverse content
+     surface, admin navigation and a camera view must not flip to white when
+     the page switches to dark mode. */
+  --bg-immersive: var(--gray-900);
   /* Solid brand chrome: the header, hero bands, section headers. */
   --bg-brand-strong: var(--green-800);
   --bg-brand-band: var(--green-700);
   --on-brand-strong: #ffffff;
-  --bg-overlay: rgb(18 43 29 / 0.48);
+  --bg-overlay: rgb(47 53 66 / 0.52);
 
   /* --- Borders --- */
   --border-subtle: var(--gray-200);
@@ -96,10 +117,10 @@
   --border-brand: var(--green-600);
 
   /* --- Text. Every value below is AA or better on --bg-surface. --- */
-  --text-primary: var(--green-950);   /* 15.04 */
-  --text-secondary: var(--gray-700);  /*  8.34 */
-  --text-muted: var(--gray-600);      /*  6.12 */
-  --text-disabled: var(--gray-400);   /*  2.70 — non-informational only */
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-muted: var(--gray-600);
+  --text-disabled: var(--gray-400);   /* non-informational only */
   --text-brand: var(--green-700);     /*  5.88 */
   --text-inverse: #ffffff;
 
@@ -109,8 +130,22 @@
   --brand-active: var(--green-800);
   --brand-subtle: var(--green-100);
   --brand-subtle-hover: var(--green-200);
+  --auth-accent: #2ed573;
   --on-brand: #ffffff;                /* 4.04 on --brand: large/bold labels
                                          and button text at >=16px 600 only */
+
+  /* Listing type is not a severity. These tokens exist so the feed can use
+     colour for quick scanning without borrowing warning or error colours. */
+  --listing-sale-bg: #e8f7ee;
+  --listing-sale-fg: #1b6b3f;
+  --listing-trade-bg: var(--blue-100);
+  --listing-trade-fg: var(--blue-600);
+  --listing-both-bg: var(--violet-100);
+  --listing-both-fg: var(--violet-700);
+  --listing-giveaway-bg: #fff5d6;
+  --listing-giveaway-fg: #806000;
+  --membership-bg: #fff5d6;
+  --membership-fg: #806000;
 
   /* --- Focus --- */
   --ring: var(--green-600);
@@ -127,8 +162,8 @@
      that stays visible on both the page and a white card:
 
        neutral gray-400   2.51:1    warning amber-600 3.25:1
-       info    green-400  1.85:1    danger  rose-400  3.37:1
-       success green-600  4.04:1    trade   gray-400  2.51:1
+       info    slate-400  3.42:1    danger  rose-400  3.37:1
+       success green-600  4.04:1    trade   teal-400  2.87:1
 
      They were all 300 before, which measured 1.38-2.10:1 and was chosen for
      white only. Pair them with `TONE_CHIP`, never `TONE_WASH` alone.
@@ -138,15 +173,17 @@
   --tone-neutral-fg: var(--gray-700);
   --tone-neutral-solid: var(--gray-600);
 
-  /* Info is the light green, success the deep one — the same journey seen
-     twice, "on the way" and "arrived". Six tones over five hues means two
-     share, and these two are the pair that share best. The washes are only
-     1.14:1 apart, so the border and the icon carry the distinction; colour is
-     never the sole signal anyway (CLAUDE.md §6). */
-  --tone-info-bg: var(--green-100);
-  --tone-info-border: var(--green-400);
-  --tone-info-fg: var(--green-700);
-  --tone-info-solid: var(--green-400);
+  /* Revised 2026-08-14: info used to be the light green, on the theory that
+     it and success were "the same journey seen twice." On a real screen —
+     the giveaway ticket list — Registered (info) and Collected (success)
+     sat two rows apart in near-identical green pills, and the difference
+     that was supposed to carry the meaning (a 1.14:1 wash gap) did not
+     survive being printed. Info is slate now: it no longer competes with
+     success for the one hue that means "this went well." */
+  --tone-info-bg: var(--slate-100);
+  --tone-info-border: var(--slate-400);
+  --tone-info-fg: var(--slate-700);
+  --tone-info-solid: var(--slate-600);
 
   --tone-success-bg: var(--green-200);
   --tone-success-border: var(--green-600);
@@ -156,22 +193,20 @@
   --tone-warning-bg: var(--amber-100);
   --tone-warning-border: var(--amber-600);
   --tone-warning-fg: var(--amber-800);
-  --tone-warning-solid: var(--amber-500);
+  /* amber-500 (2.23:1) was fill-only and needed near-black text, which read as
+     a different, brighter family next to every other tone's deep-saturated,
+     white-on-top solid. amber-700 (5.20:1) takes white like the rest do. */
+  --tone-warning-solid: var(--amber-700);
 
   --tone-danger-bg: var(--rose-100);
   --tone-danger-border: var(--rose-400);
   --tone-danger-fg: var(--rose-600);
   --tone-danger-solid: var(--rose-500);
 
-  /* Trade is a category, not a severity, and the palette is five hues with no
-     violet in it. It reads as neutral now; where sale and trade genuinely have
-     to be told apart — the feed card — the chip is filled green or amber and
-     says which in words. The tone name stays so the enum maps keep compiling;
-     retiring it is a type change, not a colour one. */
-  --tone-trade-bg: var(--gray-100);
-  --tone-trade-border: var(--gray-400);
-  --tone-trade-fg: var(--gray-700);
-  --tone-trade-solid: var(--gray-600);
+  --tone-trade-bg: var(--blue-100);
+  --tone-trade-border: var(--blue-400);
+  --tone-trade-fg: var(--blue-600);
+  --tone-trade-solid: var(--blue-700);
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.
@@ -242,22 +277,39 @@
   --text-h3--font-weight: 600;
 
   --text-body-lg: 1.0625rem;
-  --text-body-lg--line-height: 1.75;
+  --text-body-lg--line-height: 1.6;
   --text-body-lg--font-weight: 400;
 
-  --text-body: 0.9375rem;
-  --text-body--line-height: 1.7;
+  /* 16px, revised 2026-09-03 (docs/design/register.md §6).
+     Was 15px/1.7. Two reasons, one of them mechanical: iOS Safari zooms the
+     viewport whenever a focused input is under 16px, which was a real defect
+     on every form in this product. And 1.7 was set for a 15px body — at 16px
+     it over-spaces the short strings this product is mostly made of (card
+     titles, status sentences, list rows) and pushes content below the fold on
+     exactly the screens the owner called too dense. */
+  --text-body: 1rem;
+  --text-body--line-height: 1.55;
   --text-body--font-weight: 400;
 
   --text-body-sm: 0.875rem;
-  --text-body-sm--line-height: 1.65;
+  --text-body-sm--line-height: 1.55;
   --text-body-sm--font-weight: 400;
 
   --text-caption: 0.8125rem;
   --text-caption--line-height: 1.5;
   --text-caption--font-weight: 500;
 
-  --text-overline: 0.6875rem;
+  /* 12px is the floor for anything a reader must take in to act
+     (register.md §6). Nothing smaller than this carries meaning; the two
+     sizes below it that used to exist were labels naming values people read
+     to make a decision. */
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.45;
+  --text-meta--font-weight: 500;
+
+  /* Was 0.6875rem (11px), under the floor, and used for ActionCard's title —
+     the single most important sentence on the deal screen. */
+  --text-overline: 0.75rem;
   --text-overline--line-height: 1.4;
   --text-overline--letter-spacing: 0.09em;
   --text-overline--font-weight: 600;
@@ -290,29 +342,29 @@
 :root {
   --shadow-flat:
     inset 0 1px 0 rgb(255 255 255 / 0.7),
-    0 0 0 1px rgb(18 43 29 / 0.045);
+    0 0 0 1px rgb(47 53 66 / 0.045);
 
   --shadow-raised:
     inset 0 1px 0 rgb(255 255 255 / 0.75),
-    0 1px 2px rgb(18 43 29 / 0.05),
-    0 2px 6px rgb(18 43 29 / 0.045),
-    0 0 0 1px rgb(18 43 29 / 0.04);
+    0 1px 2px rgb(47 53 66 / 0.05),
+    0 2px 6px rgb(47 53 66 / 0.045),
+    0 0 0 1px rgb(47 53 66 / 0.04);
 
   --shadow-floating:
     inset 0 1px 0 rgb(255 255 255 / 0.8),
-    0 2px 4px rgb(18 43 29 / 0.05),
-    0 8px 18px rgb(18 43 29 / 0.07),
-    0 0 0 1px rgb(18 43 29 / 0.04);
+    0 2px 4px rgb(47 53 66 / 0.05),
+    0 8px 18px rgb(47 53 66 / 0.07),
+    0 0 0 1px rgb(47 53 66 / 0.04);
 
   --shadow-overlay:
-    0 4px 8px rgb(18 43 29 / 0.06),
-    0 16px 32px rgb(18 43 29 / 0.12),
-    0 32px 64px rgb(18 43 29 / 0.10);
+    0 4px 8px rgb(47 53 66 / 0.06),
+    0 16px 32px rgb(47 53 66 / 0.12),
+    0 32px 64px rgb(47 53 66 / 0.10);
 
   /* Sunken: inventory slots, drop targets, the trade bench well. */
   --shadow-sunken:
-    inset 0 2px 4px rgb(18 43 29 / 0.10),
-    inset 0 0 0 1px rgb(18 43 29 / 0.06);
+    inset 0 2px 4px rgb(47 53 66 / 0.10),
+    inset 0 0 0 1px rgb(47 53 66 / 0.06);
 
   /* Rarity glow, applied on top of --shadow-sunken for a filled slot. */
   --shadow-rarity: 0 0 0 1.5px var(--slot-edge, transparent),
@@ -333,7 +385,7 @@
 
   --ease-out: cubic-bezier(0.22, 0.8, 0.24, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.42, 0.58, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* =========================================================================
@@ -346,9 +398,122 @@
   --z-card-overlay: 10;
   --z-sticky: 20;
   --z-header: 50;
-  --z-drag: 80;      /* an item being dragged clears the header */
   --z-dialog: 100;
   --z-toast: 120;
+}
+
+/* Dark follows the same relationship as Pinterest's themes: the canvas
+   changes from white to black while the brand hue stays an accent. */
+[data-theme="dark"] {
+  --green-50: #102017;
+  --green-100: #172d20;
+  --green-200: #1f3c2a;
+  --green-300: #315a40;
+  --green-400: #6bca96;
+  --green-500: #52c684;
+  --green-600: #3ab572;
+  --green-700: #8bdcad;
+  --green-800: #b9edcf;
+  --green-900: #d9f4e4;
+  --green-950: #f1f7f3;
+
+  --gray-50: #1a1e23;
+  --gray-100: #252a32;
+  --gray-200: #2f3542;
+  --gray-300: #46505d;
+  --gray-400: #747d8c;
+  --gray-500: #a4b0be;
+  --gray-600: #b8c1cd;
+  --gray-700: #d5dae2;
+  --gray-800: #dfe4ea;
+  --gray-900: #f1f2f6;
+  --gray-950: #f8f9fb;
+
+  --bg-page: #14171b;
+  --bg-surface: #1d2127;
+  --bg-surface-raised: #2f3542;
+  --bg-surface-sunken: #252a32;
+  --bg-surface-inverse: #f1f2f6;
+  --bg-immersive: #0d0f12;
+  --bg-brand-strong: #19432c;
+  --bg-brand-band: #257248;
+  --on-brand-strong: #ffffff;
+  --bg-overlay: rgb(7 9 12 / 0.76);
+
+  --border-subtle: #2f3542;
+  --border-default: #46505d;
+  --border-strong: #747d8c;
+  --border-brand: #52c684;
+
+  --text-primary: #f1f2f6;
+  --text-secondary: #d5dae2;
+  --text-muted: #a4b0be;
+  --text-disabled: #747d8c;
+  --text-brand: #88e3ac;
+  --text-inverse: #2f3542;
+
+  --brand: #2ed573;
+  --brand-hover: #4ae086;
+  --brand-active: #74e9a0;
+  --brand-subtle: #17452b;
+  --brand-subtle-hover: #205c3a;
+  --on-brand: #102519;
+  --ring: #2ed573;
+  --ring-offset: var(--bg-page);
+
+  --listing-sale-bg: #17452b;
+  --listing-sale-fg: #88e3ac;
+  --listing-trade-bg: #173a5e;
+  --listing-trade-fg: #86c5ff;
+  --listing-both-bg: #2d2a67;
+  --listing-both-fg: #b9b7ff;
+  --listing-giveaway-bg: #4c3b08;
+  --listing-giveaway-fg: #f4d66c;
+  --membership-bg: #4c3b08;
+  --membership-fg: #f4d66c;
+
+  --tone-neutral-bg: #28322c;
+  --tone-neutral-border: #637269;
+  --tone-neutral-fg: #d8e1db;
+  --tone-neutral-solid: #637269;
+  --tone-info-bg: #1b3442;
+  --tone-info-border: #6f8fa3;
+  --tone-info-fg: #c9e7f5;
+  --tone-info-solid: #3d6076;
+  --tone-success-bg: #193c28;
+  --tone-success-border: #52c684;
+  --tone-success-fg: #b9edcf;
+  --tone-success-solid: #257248;
+  --tone-warning-bg: #3d2d10;
+  --tone-warning-border: #bd7b00;
+  --tone-warning-fg: #f9d898;
+  --tone-warning-solid: #966200;
+  --tone-danger-bg: #3c1d24;
+  --tone-danger-border: #b3455a;
+  --tone-danger-fg: #f3c1ca;
+  --tone-danger-solid: #96273b;
+  --tone-trade-bg: #173a5e;
+  --tone-trade-border: #70a1ff;
+  --tone-trade-fg: #86c5ff;
+  --tone-trade-solid: #1767ad;
+
+  --shadow-flat:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 0 0 1px rgb(255 255 255 / 0.055);
+  --shadow-raised:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    0 1px 2px rgb(0 0 0 / 0.24),
+    0 4px 12px rgb(0 0 0 / 0.16),
+    0 0 0 1px rgb(255 255 255 / 0.045);
+  --shadow-floating:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 4px 10px rgb(0 0 0 / 0.24),
+    0 14px 30px rgb(0 0 0 / 0.22),
+    0 0 0 1px rgb(255 255 255 / 0.05);
+  --shadow-overlay: 0 18px 56px rgb(0 0 0 / 0.48);
+  --shadow-sunken:
+    inset 0 2px 5px rgb(0 0 0 / 0.3),
+    inset 0 0 0 1px rgb(255 255 255 / 0.04);
 }
 
 /* =========================================================================
@@ -406,6 +571,7 @@
   --color-surface-raised: var(--bg-surface-raised);
   --color-surface-sunken: var(--bg-surface-sunken);
   --color-surface-inverse: var(--bg-surface-inverse);
+  --color-immersive: var(--bg-immersive);
 
   --color-line: var(--border-subtle);
   --color-line-default: var(--border-default);
@@ -495,6 +661,10 @@
   --text-caption--line-height: var(--text-caption--line-height);
   --text-caption--font-weight: var(--text-caption--font-weight);
 
+  --text-meta: var(--text-meta);
+  --text-meta--line-height: var(--text-meta--line-height);
+  --text-meta--font-weight: var(--text-meta--font-weight);
+
   --text-overline: var(--text-overline);
   --text-overline--line-height: var(--text-overline--line-height);
   --text-overline--letter-spacing: var(--text-overline--letter-spacing);
@@ -543,6 +713,9 @@
     line-height: var(--text-body--line-height);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition:
+      background-color var(--dur-base) var(--ease-out),
+      color var(--dur-base) var(--ease-out);
   }
 
   /* Prices, quantities, countdowns and tracking numbers must not jitter as
@@ -566,6 +739,11 @@
   ::selection {
     background-color: var(--green-200);
     color: var(--green-950);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
   }
 }
 
@@ -591,13 +769,19 @@
   background-size: 40px 40px;
 }
 
+[data-theme="dark"] .texture-grid {
+  background-image:
+    linear-gradient(to right, rgb(139 220 173 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(139 220 173 / 0.055) 1px, transparent 1px);
+}
+
 /* The game panel: a lit plate rather than a flat rectangle. */
 .plate {
   position: relative;
   background-image: linear-gradient(
     180deg,
     var(--bg-surface) 0%,
-    var(--gray-50) 100%
+    var(--bg-surface-sunken) 100%
   );
   box-shadow: var(--shadow-raised);
 }
@@ -605,6 +789,94 @@
 /* =========================================================================
    11. REDUCED MOTION
    ========================================================================= */
+
+/* =========================================================================
+   TOUCH TARGETS
+
+   CLAUDE.md §5 sets a 44px floor. button.tsx carried a comment claiming the
+   floor held "on coarse pointers even at size=sm" — there was no
+   `pointer: coarse` rule anywhere in the codebase, so the claim was false and
+   36px shipped to every phone.
+
+   Density on a mouse is worth keeping, so the floor applies only where the
+   primary pointer is a finger. Everything that can be pressed gets the class;
+   a control already larger than 44px is unaffected.
+   ========================================================================= */
+
+/* Sticky action bars have to clear the phone tab bar (56px plus the home
+   indicator), which app-shell.tsx renders below 768px. Eight screens park a
+   primary action at the bottom edge; without this they sit under it. */
+.action-bar-bottom {
+  bottom: calc(4.25rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 48rem) {
+  .action-bar-bottom {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}
+
+/* =========================================================================
+   ENTER / EXIT ANIMATIONS
+
+   These replace `tw-animate-css`, which CLAUDE.md §2 lists as removed and
+   never to return. It was still imported and its utilities were live at five
+   components. The set below is only what those five actually used, named for
+   what it does rather than for the distance it travels, and it costs one
+   dependency less in every route bundle.
+
+   Durations come from the motion scale above, so a change there moves these
+   too. The reduced-motion block at the end of this file already collapses
+   every `animation-duration`, so nothing here needs its own guard.
+   ========================================================================= */
+
+@keyframes ku-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ku-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes ku-pop-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ku-rise-in {
+  from { opacity: 0; transform: translateY(var(--ku-rise, 1rem)); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ku-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+@keyframes ku-slide-out-left {
+  from { transform: none; }
+  to { transform: translateX(-100%); }
+}
+@keyframes ku-slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@keyframes ku-slide-out-right {
+  from { transform: none; }
+  to { transform: translateX(100%); }
+}
+
+@utility anim-fade-in { animation: ku-fade-in var(--dur-base) ease-out; }
+@utility anim-fade-out { animation: ku-fade-out var(--dur-fast) ease-in; }
+@utility anim-pop-in { animation: ku-pop-in var(--dur-base) ease-out; }
+@utility anim-rise-in { animation: ku-rise-in var(--dur-base) ease-out; }
+@utility anim-slide-in-left { animation: ku-slide-in-left var(--dur-base) ease-out; }
+@utility anim-slide-out-left { animation: ku-slide-out-left var(--dur-fast) ease-in; }
+@utility anim-slide-in-right { animation: ku-slide-in-right var(--dur-base) ease-out; }
+@utility anim-slide-out-right { animation: ku-slide-out-right var(--dur-fast) ease-in; }
 
 @media (prefers-reduced-motion: reduce) {
   *,

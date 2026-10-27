@@ -44,6 +44,35 @@ export const CATEGORY_OPTIONS = [
   "Other",
 ] as const;
 
+/**
+ * Category names reach the UI as whatever the backend stored — English, in the
+ * seed. They were being printed raw, which put "Home & Living" in the middle of
+ * a Thai filter bar. This maps the known ones to a message key; anything else
+ * keeps its own name, which is the only honest thing to show for a category
+ * this build has never heard of.
+ */
+const LABEL_KEYS: Record<string, string> = {
+  Books: "books",
+  Clothing: "clothing",
+  Electronics: "electronics",
+  "Home & Living": "homeLiving",
+  Bags: "bags",
+  Vehicles: "vehicles",
+  Sports: "sports",
+  Stationery: "stationery",
+  Tickets: "tickets",
+  Other: "other",
+};
+
+/** `null` when the category has no translation — callers print the raw name. */
+export function categoryLabelKey(category: string | null | undefined) {
+  if (!category) return null;
+  const key = Object.keys(LABEL_KEYS).find(
+    (c) => c.toLowerCase() === category.toLowerCase(),
+  );
+  return key ? LABEL_KEYS[key] : null;
+}
+
 const EXTRA_FIELDS: Record<string, readonly ItemExtraField[]> = {
   // หมวดหนังสือ/ชีทสรุป — persona P1 searches by course code, not title.
   Books: ["course_name"],

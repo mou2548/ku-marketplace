@@ -1,7 +1,8 @@
 "use client";
 
+import { getCopy } from "@/lib/copy";
 import Link from "next/link";
-import { ArrowLeftRight, Inbox } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, Inbox } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -16,8 +17,9 @@ import {
 } from "@/components/kit/tabs";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { OfferSummary } from "@/components/kit/offer-summary";
+import { PostImage } from "@/components/kit/post-image";
 import type { Offer } from "@/lib/api/types";
-import { describeOffer, offerSides } from "@/lib/offers";
+import { offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
 
 /**
@@ -31,42 +33,55 @@ export function OffersInbox({
   offers: Offer[];
   viewerId: number;
 }) {
+  const t = getCopy();
   const sent = offers.filter((o) => o.proposer_id === viewerId);
   const received = offers.filter((o) => o.post.seller.user_id === viewerId);
 
   return (
-    <Tabs defaultSelectedKey="received">
-      <TabList aria-label="Offers" variant="underline">
-        <UnderlineTab id="received" className="group">
-          Offers to me
-          {received.length > 0 ? <TabCount>{received.length}</TabCount> : null}
-        </UnderlineTab>
-        <UnderlineTab id="sent" className="group">
-          My offers
-          {sent.length > 0 ? <TabCount>{sent.length}</TabCount> : null}
-        </UnderlineTab>
-      </TabList>
+    <div className="flex flex-col gap-5">
+      <header>
+        <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+          {t("offer.tradeDesk")}
+        </p>
+        <h1 className="mt-1 text-h1">{t("offer.title")}</h1>
+        <p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+          {t("offer.inboxHint")}
+        </p>
+      </header>
 
-      <TabPanel id="received">
-        <OfferList
-          offers={received}
-          viewerId={viewerId}
-          direction="received"
-          emptyTitle="No one has offered you a trade yet"
-          emptyDescription="When someone offers a trade on one of your posts, it lands here with their whole stack visible"
-        />
-      </TabPanel>
+      <Tabs defaultSelectedKey="received">
+        <TabList aria-label={t("offer.title")} variant="underline">
+          <UnderlineTab id="received" className="group">
+            {t("offer.offersToMe")}
+            {received.length > 0 ? <TabCount>{received.length}</TabCount> : null}
+          </UnderlineTab>
+          <UnderlineTab id="sent" className="group">
+            {t("offer.myOffers")}
+            {sent.length > 0 ? <TabCount>{sent.length}</TabCount> : null}
+          </UnderlineTab>
+        </TabList>
 
-      <TabPanel id="sent">
-        <OfferList
-          offers={sent}
-          viewerId={viewerId}
-          direction="sent"
-          emptyTitle="You have not made any offers yet"
-          emptyDescription="Find a post that accepts trades, then put items from your inventory on the table"
-        />
-      </TabPanel>
-    </Tabs>
+        <TabPanel id="received">
+          <OfferList
+            offers={received}
+            viewerId={viewerId}
+            direction="received"
+            emptyTitle="No one has offered you a trade yet"
+            emptyDescription="When someone offers a trade on one of your posts, it lands here with their whole stack visible"
+          />
+        </TabPanel>
+
+        <TabPanel id="sent">
+          <OfferList
+            offers={sent}
+            viewerId={viewerId}
+            direction="sent"
+            emptyTitle="You have not made any offers yet"
+            emptyDescription="Find a post that accepts trades, then put items from your inventory on the table"
+          />
+        </TabPanel>
+      </Tabs>
+    </div>
   );
 }
 
@@ -83,6 +98,7 @@ function OfferList({
   emptyTitle: string;
   emptyDescription: string;
 }) {
+  const t = getCopy();
   if (offers.length === 0) {
     return (
       <EmptyState
@@ -92,9 +108,7 @@ function OfferList({
         action={
           direction === "sent" ? (
             <LinkButton href="/market">
-              <ArrowLeftRight className="size-4" />
-              Find items open to trade
-            </LinkButton>
+              <ArrowLeftRight className="size-4" />{t("offer.findTradeable")}</LinkButton>
           ) : undefined
         }
       />
@@ -102,31 +116,64 @@ function OfferList({
   }
 
   return (
-    <ul className="flex flex-col gap-2 pt-4">
+    <ul className="grid gap-3 pt-4 xl:grid-cols-2">
       {offers.map((offer) => {
         const sides = offerSides(offer, viewerId);
 
         return (
           <li key={offer.offer_id}>
-            <Link href={`/offers/${offer.offer_id}`}>
-              <Surface as="div" shape="card" interactive className="flex flex-col gap-3 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  {/* Who and about what. The old version led with the post's
-                      item name, which on a received offer is your own thing —
-                      so the row opened by telling you something you know. */}
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">
-                      {direction === "sent"
-                        ? `Your offer to ${sides.counterparty.name}`
-                        : `${sides.counterparty.name} wants to trade`}
+            <Link href={`/offers/${offer.offer_id}`} className="block h-full">
+              <Surface
+                as="div"
+                shape="card"
+                interactive
+                className="flex h-full min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-5"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="block size-14 shrink-0 overflow-hidden rounded-slot bg-surface-sunken">
+                    <PostImage
+                      src={
+                        offer.post.item.images.find((image) => image.is_primary)
+                          ?.image_url ?? offer.post.item.images[0]?.image_url
+                      }
+                      alt=""
+                      aspectRatio={1}
+                      sizes="56px"
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-overline font-semibold text-ink-muted uppercase">
+                      Offer for
                     </p>
-                    <p className="truncate text-[0.8125rem] text-ink-muted">
-                      {direction === "sent" ? "for their " : "for your "}
+                    <p className="line-clamp-2 font-semibold">
                       {offer.post.item.name}
                     </p>
+                    <span className="mt-1 flex min-w-0 items-center gap-1.5">
+                      <span className="shrink-0 text-meta text-ink-muted">
+                        {direction === "sent" ? "To" : "From"}
+                      </span>
+                      <TrustBadge
+                        name={sides.counterparty.name}
+                        avatarUrl={sides.counterparty.avatar_url}
+                        isVerified={sides.counterparty.isVerified}
+                        faculty={sides.counterparty.faculty}
+                        size="sm"
+                        className="min-w-0"
+                      />
+                    </span>
                   </div>
-                  <StatusBadge status={OFFER_STATUS[offer.status]} size="sm" />
+                  <StatusBadge
+                    status={OFFER_STATUS[offer.status]}
+                    size="sm"
+                    className="hidden shrink-0 sm:inline-flex"
+                  />
                 </div>
+
+                <StatusBadge
+                  status={OFFER_STATUS[offer.status]}
+                  size="sm"
+                  className="w-fit max-w-full sm:hidden"
+                />
 
                 {/* The piles themselves, with photos — fairness is judged by
                     looking, not by reading a count (research P3, principle 6). */}
@@ -138,20 +185,24 @@ function OfferList({
                   size="sm"
                 />
 
-                {/* And the same thing in words, for anyone who would rather
-                    read it than decode two rows of thumbnails. */}
-                <p className="text-[0.8125rem] leading-[1.6] text-ink-secondary">
-                  {describeOffer(sides)}
-                </p>
+                {/* The prose restated exactly what the two stacks above had
+                    just shown, which is a third block of the same information
+                    on a card the owner called too dense. It stays on the
+                    detail screen, where nothing else competes with it. */}
 
-                {direction === "received" ? (
-                  <TrustBadge
-                    name={sides.counterparty.name}
-                    isVerified={sides.counterparty.isVerified}
-                    faculty={sides.counterparty.faculty}
-                    size="sm"
-                  />
-                ) : null}
+                {/* The card had no action row at all. On a received offer the
+                    decision is the entire point of the row and it was
+                    invisible until the card was opened; register.md §5 wants a
+                    full-width 44px action. The whole card stays a link, so
+                    this reads as the affordance rather than a second target. */}
+                <span className="mt-auto flex min-h-11 items-center justify-between gap-2 rounded-control bg-brand-subtle px-3 text-body-sm font-medium text-ink-brand">
+                  {direction === "received"
+                    ? offer.status === "Pending"
+                      ? "Accept or decline"
+                      : "See this offer"
+                    : "See your offer"}
+                  <ChevronRight aria-hidden className="size-4 shrink-0" />
+                </span>
               </Surface>
             </Link>
           </li>

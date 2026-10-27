@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "step": "buy-Shipping",
+      "url": "/chat/14",
+      "text": "Skip to main content\nMarketplace\n3\nSo\nSomchai Jaidee\nVerified with a KU email address\nSale\nQA final Shipping\nNo photo\nQA final Shipping\nYour turn: transfer the money and upload the slip\nQA final Shipping\nAwaiting payment\n\nYour turn: transfer the money and upload the slip\n\nNot sent yet — waiting on the seller\n\nConfirm once it arrives and matches what was agreed. That closes the deal.\n\nRequest cancellation\n\nDEAL PROGRESS\n\nStep 2 of 5\n\nDeal agreed\n\nBoth of you\n\n2\n\nPay and upload the slip\n\nWaiting on you\n3\n\nSeller checks the slip\n\nSomchai Jaidee\n\n4\n\nEnter the tracking number\n\nSomchai Jaidee\n\n5\n\nConfirm the item arrived\n\nYou\n\nNot sent yet — waiting on the seller\nYour step - pay and upload the slip\nUpload your transfer slip\n฿25\nChoose a slip image\nJPG or PNG, up to 8 MB\n\nDeal created. A chat room has been opened for you.",
+      "overflow": false
+    },
+    {
+      "step": "database-Shipping",
+      "transactionId": 10,
+      "postId": 12,
+      "room": "/chat/14"
+    },
+    {
+      "step": "buy-Meetup",
+      "url": "/chat/15",
+      "text": "Skip to main content\nMarketplace\n4\nSo\nSomchai Jaidee\nVerified with a KU email address\nSale\nQA final Meetup\nNo photo\nQA final Meetup\nYour turn: transfer the money and upload the slip\nQA final Meetup\nAwaiting payment\n\nYour turn: transfer the money and upload the slip\n\nRequest cancellation\n\nDEAL PROGRESS\n\nStep 2 of 5\n\nDeal agreed\n\nBoth of you\n\n2\n\nPay and upload the slip\n\nWaiting on you\n3\n\nSeller checks the slip\n\nSomchai Jaidee\n\n4\n\nAgree a time and place\n\nBoth of you\n\n5\n\nScan the QR to confirm handover\n\nYou\n\nNo time agreed yet\nYour step - pay and upload the slip\nUpload your transfer slip\n฿25\nChoose a slip image\nJPG or PNG, up to 8 MB\n\nDeal created. A chat room has been opened for you.",
+      "overflow": false
+    },
+    {
+      "step": "database-Meetup",
+      "transactionId": 11,
+      "postId": 13,
+      "room": "/chat/15"
+    },
+    {
+      "step": "restricted-login",
+      "url": "/account/appeals",
+      "text": "Skip to main content\nMarketplace\n\nYour account is restricted. Marketplace actions are unavailable; you can review decisions and submit an appeal from My appeals.\n\nMy appeals\n\nReport #2\n\nSubmitted 9 Sept\nAppeal under review\n\nเพิ่งสอบเสร็จครับ กำลังจะไปส่งของ\n\nA different admin from the one who made the original decision reviews this. Original verdict: Violation confirmed.\n\nSubmit a new appeal\n\nHOW AN APPEAL MOVES\n\nAppeal submitted\nAppeal under review\nAppeal upheld\nAppeal rejected\n\nA different admin from the one who made the original decision reviews every appeal.",
+      "overflow": false
+    },
+    {
+      "step": "/admin/reports",
+      "url": "/admin/reports",
+      "text": "Skip to main content\nAdmin workspace\nReports\n3\nAppeals\n2\nMemberships\n2\nMarketplace\n\nMODERATION QUEUE\n\nReports\n\nOldest cases appear first so nothing is left behind.\n\n5 total\n\n#1 · Inappropriate Content\n\nPost #2\nAn\nAnan Suksan\nVerified with a KU email address\n9 Sept\nViolation confirmed\n\n#2 · Scam\n\nUser #10\nSo\nSomsri Maneerat\nVerified with a KU email address\n9 Sept\nUnder investigation\n\n#3 · Payment Issue\n\nTransaction #1\nSo\nSomchai Jaidee\nVerified with a KU email address\n9 Sept\nAwaiting review\n\n#4 · Duplicate Post\n\nPost #1\nKa\nKanya Thongdee\nVerified with a KU email address\n9 Sept\nDismissed\n\n#5 · Harassment\n\nUser #4\nNa\nNattapong Ruang\nVerified with a KU email address\n9 Sept\nAwaiting review",
+      "overflow": true
+    },
+    {
+      "step": "/admin/appeals",
+      "url": "/admin/appeals",
+      "text": "Skip to main content\nAdmin workspace\nReports\n3\nAppeals\n2\nMemberships\n2\nMarketplace\n\nINDEPENDENT REVIEW\n\nAppeals\n\nRe-check moderation decisions using the appellant's new evidence and recorded reasoning.\n\n3 total\n\nAppeal #1 · against report #1\n\n9 Sept\nAppeal submitted\nSo\nSomchai Jaidee\nVerified with a KU email address\n\nภาพถ่ายถูกต้องตามระเบียบครับ\n\nReasoning\nSent to the appellant. Required either way.\nReject appeal\nUphold appeal\n\nAppeal #2 · against report #2\n\n9 Sept\nAppeal under review\nBa\nBad Guy\nVerified with a KU email address\n\nเพิ่งสอบเสร็จครับ กำลังจะไปส่งของ\n\nReasoning\nSent to the appellant. Required either way.\nReject appeal\nUphold appeal\n\nAppeal #3 · against report #4\n\n9 Sept\nAppeal upheld\nKa\nKanya Thongdee\nVerified with a KU email address\n\nสเปคสินค้ามันคล้ายกัน แต่คนละชิ้นครับ\n\nAlready decided. Note: ปลดล็อคโพสต์ให้แล้ว",
+      "overflow": true
+    },
+    {
+      "step": "/admin/memberships",
+      "url": "/admin/memberships",
+      "text": "Skip to main content\nAdmin workspace\nReports\n3\nAppeals\n2\nMemberships\n2\nMarketplace\n\nPAYMENT REVIEW\n\nMembership requests\n\nMatch each transfer slip to the requested tier before granting access.\n\n2 waiting\nREQUEST #6\nDiamond\nCheck the slip and confirm payment\nBa\nBad\nVerified with a KU email address\nAmount due\n฿199\n\nBuyer uploaded 9 Sept, 20:58\n\nAmount is wrong\nConfirm payment received\nREQUEST #8\nFree\nCheck the slip and confirm payment\nNa\nNattapong\nVerified with a KU email address\nAmount due\n฿49\n\nBuyer uploaded 9 Sept, 20:58\n\nAmount is wrong\nConfirm payment received",
+      "overflow": true
+    }
+  ],
+  "errors": []
+}

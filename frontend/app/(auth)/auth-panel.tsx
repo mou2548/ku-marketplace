@@ -30,34 +30,37 @@ import { cn } from "@/lib/utils";
  * still land in the right place.
  *
  * The visual design of this screen is deliberately unchanged — it is the one
- * part of the product the team asked to keep (docs/PLAN.md §3).
+ * part of the product the team asked to keep.
  */
-export function AuthPanel() {
+export function AuthPanel({ returnTo }: { returnTo?: string }) {
   const [mode, setMode] = useState<"login" | "register">("login");
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-gradient-to-b from-white to-page">
       <div className="flex w-full flex-1 flex-col md:flex-row">
         <div className="relative hidden basis-1/2 flex-col justify-center p-16 text-white md:flex">
+          {/* Half the viewport from md: up, and hidden below it — without
+              `sizes`, next/image assumes 100vw and ships a full-width file. */}
           <Image
             src="/images/auth-hero.png"
             alt=""
             fill
+            sizes="(min-width: 768px) 50vw, 0px"
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/40" />
+          {/* The image is supporting context, so the copy sits on a stable
+              dark scrim rather than inheriting contrast from the photograph. */}
+          <div className="absolute inset-0 bg-black/55" />
           <div className="relative flex flex-col gap-6">
             <h1 className="text-[2.375rem] leading-[1.15] font-bold tracking-[-0.02em] lg:text-[3rem]">
-              <span className="text-brand">
-                A marketplace and item vault
-                <br />
-                for Kasetsart
-              </span>
+              A marketplace and item vault
+              <br />
+              for <span className="text-[var(--auth-accent)]">Kasetsart</span>
               <br />
               students
             </h1>
-            <p className="max-w-xl text-[1.0625rem] leading-[1.75] text-white/80">
+            <p className="max-w-xl text-body-lg text-white">
               The safest place to buy, sell, and trade inside the university.
               Every account is verified through the Nontri system, and everyone
               gets a personal item vault.
@@ -91,7 +94,7 @@ export function AuthPanel() {
             />
           </div>
 
-          {mode === "login" ? <LoginForm /> : <RegisterForm />}
+          {mode === "login" ? <LoginForm returnTo={returnTo} /> : <RegisterForm />}
         </div>
       </div>
     </div>
@@ -113,7 +116,7 @@ function ModeTab({
       onClick={onPress}
       aria-pressed={isActive}
       className={cn(
-        "flex h-12 flex-1 items-center justify-center rounded-pill text-[1.0625rem]",
+        "flex h-12 flex-1 items-center justify-center rounded-pill text-body-lg",
         "transition-colors duration-[--dur-fast]",
         isActive
           ? "bg-surface font-semibold text-ink shadow-raised"
@@ -125,11 +128,12 @@ function ModeTab({
   );
 }
 
-function LoginForm() {
+function LoginForm({ returnTo }: { returnTo?: string }) {
   const [state, formAction, isPending] = useActionState(login, undefined);
 
   return (
     <form action={formAction} className="flex w-full max-w-lg flex-col gap-6">
+      <input type="hidden" name="returnTo" value={returnTo ?? ""} />
       <TextInput
         name="email"
         label="KU email"
@@ -138,7 +142,7 @@ function LoginForm() {
         isRequired
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
+        inputClassName="h-14 text-body-lg"
       />
 
       <TextInput
@@ -149,11 +153,11 @@ function LoginForm() {
         isRequired
         placeholder="········"
         icon={<Lock className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
+        inputClassName="h-14 text-body-lg"
       />
 
       {state?.error ? (
-        <p role="alert" className="text-center text-[0.875rem] text-tone-danger-fg">
+        <p role="alert" className="text-center text-body-sm text-tone-danger-fg">
           {state.error}
         </p>
       ) : null}
@@ -165,7 +169,7 @@ function LoginForm() {
 
       <Link
         href="/forgot"
-        className="text-center text-[0.875rem] text-ink-muted hover:text-ink"
+        className="text-center text-body-sm text-ink-muted hover:text-ink"
       >
         Forgot your password?
       </Link>
@@ -211,7 +215,7 @@ function RegisterForm() {
         isRequired
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
-        inputClassName="h-14 text-[1.0625rem]"
+        inputClassName="h-14 text-body-lg"
         errorMessage={
           email !== "" && !emailOk
             ? `Only @${ALLOWED_EMAIL_DOMAINS.join(" and @")} addresses can register`
@@ -230,7 +234,7 @@ function RegisterForm() {
           isRequired
           placeholder="········"
           icon={<Lock className="size-5" />}
-          inputClassName="h-14 text-[1.0625rem]"
+          inputClassName="h-14 text-body-lg"
         />
         <ul className="flex flex-col gap-1">
           <PasswordRule
@@ -243,7 +247,7 @@ function RegisterForm() {
       </div>
 
       {state?.error ? (
-        <p role="alert" className="text-center text-[0.875rem] text-tone-danger-fg">
+        <p role="alert" className="text-center text-body-sm text-tone-danger-fg">
           {state.error}
         </p>
       ) : null}
@@ -260,7 +264,7 @@ function RegisterForm() {
         <ArrowRight className="size-5" />
       </Button>
 
-      <p className="text-center text-[0.875rem] leading-[1.65] text-ink-muted">
+      <p className="text-center text-body-sm text-ink-muted">
         We will email you a 6-digit code, valid for {OTP_TTL_MINUTES} minutes.
       </p>
 
@@ -273,7 +277,7 @@ function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-2 text-[0.75rem]",
+        "flex items-center gap-2 text-meta",
         ok ? "text-ink-brand" : "text-ink-muted",
       )}
     >
@@ -289,7 +293,7 @@ function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
 
 function Terms() {
   return (
-    <p className="text-center text-[0.875rem] text-ink-muted">
+    <p className="text-center text-body-sm text-ink-muted">
       By continuing, you agree to the{" "}
       {/* TODO: link to a real terms page once the legal copy exists. */}
       <span className="font-medium text-ink-brand">KU Marketplace Terms</span>.

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { UploadPaymentSlipDto } from './dto/upload-payment-slip.dto';
+import { RejectPaymentSlipDto } from './dto/reject-payment-slip.dto';
 import { ShipTransactionDto } from './dto/ship-transaction.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
@@ -40,7 +41,20 @@ export class TransactionController {
     return this.transactionService.findOneForUser(id, user.userId);
   }
 
-  /** §8.6 — buyer uploads the transfer slip and confirms: Pending → Processing */
+  /**
+   * §8.6 — the PromptPay QR the buyer scans to pay: the seller's account and
+   * the exact amount owed, both fixed server-side.
+   */
+  @Get(':id/payment-qr')
+  paymentQr(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.transactionService.paymentQr(id, user.userId);
+  }
+
+  /** §8.6 — buyer uploads the transfer slip and confirms: Pending → Processing.
+   * Also replaces a slip the seller rejected. */
   @Post(':id/payment-slip')
   @HttpCode(200)
   uploadPaymentSlip(
@@ -59,6 +73,20 @@ export class TransactionController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.transactionService.confirmPaymentReceived(id, user.userId);
+  }
+
+  /**
+   * §8.6 — seller rejects a slip that does not match. Stays Processing until
+   * the buyer sends a new slip or confirms the seller's refund.
+   */
+  @Post(':id/reject-payment-slip')
+  @HttpCode(200)
+  rejectPaymentSlip(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: RejectPaymentSlipDto,
+  ) {
+    return this.transactionService.rejectPaymentSlip(id, user.userId, dto);
   }
 
   /** §8.6 Shipping — seller records the tracking number (stays Processing) */

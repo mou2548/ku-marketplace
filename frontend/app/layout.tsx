@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Prompt } from "next/font/google";
 import "./globals.css";
+import { SessionNotice } from "@/components/patterns/session-notice";
 
 /**
- * Prompt covers Thai and Latin in one family, which matters here: the UI mixes
- * them in the same line constantly (a Thai label next to a course code next to
- * a price). Two families would mean two vertical rhythms in the same sentence.
+ * Prompt covers Thai and Latin in one family, which matters here: English UI and
+ * user-authored Thai listings can share the same line without mixing font families.
  */
 const prompt = Prompt({
   variable: "--font-prompt",
@@ -20,13 +21,22 @@ export const metadata: Metadata = {
     "Buy, sell, trade, and give away items inside Kasetsart University.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const theme =
+    cookieStore.get("ku-theme")?.value === "dark" ? "dark" : "light";
+
   return (
-    <html lang="en" className={`${prompt.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      data-theme={theme}
+      suppressHydrationWarning
+      className={`${prompt.variable} h-full antialiased`}
+    >
       <body className="min-h-full">
         <a
           href="#main"
@@ -34,6 +44,9 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
+        <SessionNotice
+          signedIn={cookieStore.has("session") || cookieStore.has("ku-refresh")}
+        />
         {children}
       </body>
     </html>

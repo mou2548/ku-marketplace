@@ -8,8 +8,11 @@ import { ManageGiveaway } from "./manage-giveaway";
 
 /**
  * E7, giver side. Flow 3 splits three ways at the draw: FirstCome and Random
- * are decided by the system, Manual is decided by a person. Only one of those
- * needs a screen, and this is it.
+ * are decided by the system, Manual is decided by a person — but every
+ * method still needs a giver to scan the recipient's QR to close the
+ * handover, and the scanner (`qr/scan`) accepts any allocation method. So
+ * this page is open to all three; `ManageGiveaway` renders the entrant
+ * picker only for Manual.
  *
  * `GET /giveaways/{id}/recipients` doubles as the entrant roster before the
  * giver has picked (everyone who joined is still `Waiting`) — see
@@ -31,7 +34,6 @@ export default async function ManageGiveawayPage({
   const giveaway = await getGiveaway(id).catch(() => undefined);
   if (!giveaway) notFound();
   if (giveaway.giver_id !== viewer.userId) notFound();
-  if (giveaway.allocation_method !== "Manual") notFound();
 
   const entrants = await getRecipients(id);
   return <ManageGiveaway giveaway={giveaway} entrants={entrants} />;

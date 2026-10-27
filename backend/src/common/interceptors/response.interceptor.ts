@@ -1,4 +1,9 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { map } from 'rxjs/operators';
 import { Paginated } from '../../dto/paginated.dto';
@@ -23,10 +28,11 @@ export class ResponseInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler) {
     const defaultMessage =
-      this.reflector.get<string>(RESPONSE_MESSAGE_KEY, context.getHandler()) ?? 'success';
+      this.reflector.get<string>(RESPONSE_MESSAGE_KEY, context.getHandler()) ??
+      'success';
 
     return next.handle().pipe(
-      map((result) => {
+      map((result: unknown) => {
         if (result instanceof Paginated) {
           return {
             success: true,
@@ -36,7 +42,11 @@ export class ResponseInterceptor implements NestInterceptor {
           };
         }
         if (result instanceof MessageOverride) {
-          return { success: true, message: result.message, data: result.data };
+          return {
+            success: true,
+            message: result.message,
+            data: result.data as unknown,
+          };
         }
         return { success: true, message: defaultMessage, data: result };
       }),

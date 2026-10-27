@@ -11,12 +11,15 @@ export interface AuthUser {
   userId: number;
   email: string;
   firstNameEn: string;
+  status?: "Active" | "Suspended" | "Banned" | "Deleted";
   isAdmin: boolean | null;
 }
 
-interface AuthResult {
+export interface AuthResult {
   user: AuthUser;
   accessToken: string;
+  refreshToken: string;
+  sessionExpiresAt: number;
 }
 
 /** `POST /auth/register` — password required here, phone dropped (optional, nothing reads it later). */
@@ -51,13 +54,12 @@ export function login(email: string, password: string) {
   });
 }
 
-/**
- * `POST /auth/logout` — stateless: clears the backend's own refresh cookie.
- * No token blacklist exists, so this does not revoke an access token already
- * held elsewhere; it just expires on its own within 15 minutes.
- */
-export function logout() {
-  return apiFetch<Record<string, never>>("/auth/logout", { method: "POST" });
+/** Revoke the session family, including its outstanding access tokens. */
+export function logout(refreshToken?: string) {
+  return apiFetch<Record<string, never>>("/auth/logout", {
+    method: "POST",
+    body: { refreshToken },
+  });
 }
 
 /**

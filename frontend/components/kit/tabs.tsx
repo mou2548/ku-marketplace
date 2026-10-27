@@ -60,7 +60,7 @@ export function Tab({ className, ...props }: TabProps) {
         "group-data-[variant=segment]:rounded-pill",
         "data-[selected]:font-semibold",
         // Both variants share the same padding so switching does not reflow.
-        "flex min-h-11 items-center gap-2 px-4 text-[0.9375rem] text-ink-muted",
+        "flex min-h-11 items-center gap-2 px-4 text-body text-ink-muted",
         "data-[selected]:text-ink",
         "data-[hovered]:text-ink",
         className,
@@ -106,7 +106,7 @@ export function TabCount({ children }: { children: React.ReactNode }) {
   return (
     <span
       data-numeric
-      className="rounded-pill bg-gray-200 px-1.5 text-[0.75rem] font-semibold text-ink-secondary group-data-[selected]:bg-brand-subtle group-data-[selected]:text-ink-brand"
+      className="rounded-pill bg-gray-200 px-1.5 text-meta font-semibold text-ink-secondary group-data-[selected]:bg-brand-subtle group-data-[selected]:text-ink-brand"
     >
       {children}
     </span>

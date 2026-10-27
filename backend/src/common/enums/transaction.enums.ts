@@ -8,18 +8,13 @@
  * Keep in sync with the CHECK constraints in init.sql.
  */
 
-/**
- * The CHECK constraint on Transaction.status also permits 'Pending Refund' and
- * 'Refunded', but the state machine deliberately does not use them: per the
- * payment philosophy (PROJECT_STANDARDS §1) the platform never holds or moves
- * user money, so a refund is evidence recorded against an already-Cancelled
- * transaction — not a status of its own (§10 open issue #1).
- */
 export const TransactionStatus = {
   Pending: 'Pending',
   Processing: 'Processing',
   Completed: 'Completed',
   Cancelled: 'Cancelled',
+  PendingRefund: 'Pending Refund',
+  Refunded: 'Refunded',
 } as const;
 export type TransactionStatus =
   (typeof TransactionStatus)[keyof typeof TransactionStatus];
@@ -47,14 +42,3 @@ export const CancellationResponse = {
 } as const;
 export type CancellationResponse =
   (typeof CancellationResponse)[keyof typeof CancellationResponse];
-
-/**
- * §8.2 — Transferred is terminal: it stays even if the transaction is later
- * cancelled, so ownership history can't silently rewind.
- */
-export const ItemStatus = {
-  Unlisted: 'Unlisted',
-  Listed: 'Listed',
-  Transferred: 'Transferred',
-} as const;
-export type ItemStatus = (typeof ItemStatus)[keyof typeof ItemStatus];
