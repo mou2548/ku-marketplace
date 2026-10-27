@@ -78,6 +78,7 @@ const rejected = (fields: Partial<TransactionWithChildren> = {}) =>
   row({ payments: [payment({ status: 'Rejected' })], ...fields });
 
 const LOCK = [{ reportId: 30, targetId: 7 }];
+const NO_MONEY = { reason: 'No money arrived' };
 
 function setup(current: TransactionWithChildren, locks: typeof LOCK = []) {
   const tx = {
@@ -141,11 +142,12 @@ function setup(current: TransactionWithChildren, locks: typeof LOCK = []) {
 describe('TransactionService.rejectPaymentSlip', () => {
   it('marks the slip Rejected, keeps the transaction Processing and notifies the buyer', async () => {
     const { service, tx } = setup(row());
-    await service.rejectPaymentSlip(7, 2);
+    await service.rejectPaymentSlip(7, 2, NO_MONEY);
     expect(tx.transactionPayment.update).toHaveBeenCalledWith({
       where: { paymentId: 11 },
       data: expect.objectContaining({
         status: 'Rejected',
+        rejectionReason: 'No money arrived',
         handledBy: 2,
       }) as unknown,
     });
@@ -154,13 +156,14 @@ describe('TransactionService.rejectPaymentSlip', () => {
       data: expect.objectContaining({
         userId: 1,
         eventKey: 'transaction:7:payment-slip-rejected:11',
+        body: expect.stringContaining('No money arrived') as unknown,
       }) as unknown,
     });
   });
 
   it('is seller-only', async () => {
     const { service, writes } = setup(row());
-    await expect(service.rejectPaymentSlip(7, 1)).rejects.toThrow(
+    await expect(service.rejectPaymentSlip(7, 1, NO_MONEY)).rejects.toThrow(
       ForbiddenException,
     );
     expect(writes()).toBe(0);
@@ -182,7 +185,7 @@ describe('TransactionService.rejectPaymentSlip', () => {
     ['an admin is reviewing', row(), LOCK],
   ])('refuses when %s', async (_case, current, locks) => {
     const { service, writes } = setup(current, locks);
-    await expect(service.rejectPaymentSlip(7, 2)).rejects.toThrow(
+    await expect(service.rejectPaymentSlip(7, 2, NO_MONEY)).rejects.toThrow(
       BadRequestException,
     );
     expect(writes()).toBe(0);

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { UploadPaymentSlipDto } from './dto/upload-payment-slip.dto';
+import { RejectPaymentSlipDto } from './dto/reject-payment-slip.dto';
 import { ShipTransactionDto } from './dto/ship-transaction.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
@@ -83,8 +84,9 @@ export class TransactionController {
   rejectPaymentSlip(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: RejectPaymentSlipDto,
   ) {
-    return this.transactionService.rejectPaymentSlip(id, user.userId);
+    return this.transactionService.rejectPaymentSlip(id, user.userId, dto);
   }
 
   /** §8.6 Shipping — seller records the tracking number (stays Processing) */

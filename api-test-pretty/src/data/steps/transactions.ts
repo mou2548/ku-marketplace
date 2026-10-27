@@ -58,6 +58,15 @@ export const transactionsStep: StepGroup = {
       label: 'ผู้ขายปฏิเสธสลิป (ยังเป็น Processing จนกว่าจะส่งสลิปใหม่หรือคืนเงิน)',
       needsAuth: true,
       params: [{ name: 'id', label: 'Transaction ID', sessionKey: 'transactionId' }],
+      fields: [
+        {
+          name: 'reason',
+          label: 'เหตุผลที่ปฏิเสธ (ผู้ซื้อจะเห็น)',
+          type: 'textarea',
+          defaultValue: 'ตรวจแอปธนาคารแล้วไม่พบเงินเข้า',
+          required: true,
+        },
+      ],
     },
     {
       id: 'tx-ship',

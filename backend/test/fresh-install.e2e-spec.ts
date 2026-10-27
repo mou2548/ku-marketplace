@@ -1397,21 +1397,30 @@ describe('Fresh clone database', () => {
 
     // First slip is rejected: the deal stays Processing with the claim standing.
     await service.uploadPaymentSlip(id, 4, slip('first'));
-    expect(await service.rejectPaymentSlip(id, 3)).toMatchObject({
+    expect(
+      await service.rejectPaymentSlip(id, 3, { reason: 'No money arrived' }),
+    ).toMatchObject({
       status: 'Processing',
+      paymentRejectionReason: 'No money arrived',
       slipImageUrl: null,
       paymentConfirmedBySellerAt: null,
     });
     await expect(service.confirmPaymentReceived(id, 3)).rejects.toThrow(
       'rejected',
     );
+    expect((await service.findOneForUser(id, 4)).payment_rejection_reason).toBe(
+      'No money arrived',
+    );
 
     // A second slip replaces it and is rejected too; the seller sends the
     // money back and the buyer confirms, which returns the deal to Pending.
     expect(
       await service.uploadPaymentSlip(id, 4, slip('second')),
-    ).toMatchObject({ slipImageUrl: 'https://example.test/second.png' });
-    await service.rejectPaymentSlip(id, 3);
+    ).toMatchObject({
+      slipImageUrl: 'https://example.test/second.png',
+      paymentRejectionReason: null,
+    });
+    await service.rejectPaymentSlip(id, 3, { reason: 'No money arrived' });
     await service.uploadRefundSlip(id, 3, refundSlip('returned'));
     await expect(
       service.uploadPaymentSlip(id, 4, slip('too-late')),
@@ -1557,7 +1566,7 @@ describe('Fresh clone database', () => {
       slip_image_url: 'https://example.test/qr-paid.png',
     });
     await expect(service.paymentQr(id, 4)).rejects.toThrow();
-    await service.rejectPaymentSlip(id, seller);
+    await service.rejectPaymentSlip(id, seller, { reason: 'Amount differs' });
     expect((await service.paymentQr(id, 4)).amount).toBe(300);
   });
 
@@ -1640,6 +1649,12 @@ describe('Fresh clone database', () => {
       await request(app.getHttpServer())
         .get(`/transactions/${owed.transactionId}/payment-qr`)
         .expect(401);
+      // A rejection has to say why.
+      await request(app.getHttpServer())
+        .post(`/transactions/${owed.transactionId}/reject-payment-slip`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
+        .send({})
+        .expect(400);
       await request(app.getHttpServer())
         .post('/auth/register')
         .send({ email: 'invalid@example.test', password: 'x' })

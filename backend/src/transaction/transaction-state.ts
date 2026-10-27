@@ -71,6 +71,8 @@ export interface TransactionState {
   /** Set while the buyer's claim to have paid still stands. */
   paymentConfirmedByBuyerAt: Date | null;
   paymentConfirmedBySellerAt: Date | null;
+  /** Why the seller turned the latest slip down; null unless it was rejected. */
+  paymentRejectionReason: string | null;
   trackingNumber: string | null;
   estimatedDeliveryDate: Date | null;
   cancellationRequestedBy: number | null;
@@ -153,6 +155,10 @@ export function toTransactionSnapshot(
     paymentConfirmedBySellerAt:
       payment?.status === PaymentStatus.Confirmed
         ? (payment.handledAt ?? payment.createdAt ?? fallbackDate)
+        : null,
+    paymentRejectionReason:
+      !payment && latestPayment?.status === PaymentStatus.Rejected
+        ? latestPayment.rejectionReason
         : null,
     trackingNumber: row.shipment?.trackingNumber ?? null,
     estimatedDeliveryDate: row.shipment?.estimatedDeliveryDate ?? null,

@@ -16,6 +16,7 @@ import {
 } from '../common/enums/transaction.enums';
 import { ReportStatus, ReportType } from '../common/enums/report.enums';
 import { UploadPaymentSlipDto } from './dto/upload-payment-slip.dto';
+import { RejectPaymentSlipDto } from './dto/reject-payment-slip.dto';
 import { ShipTransactionDto } from './dto/ship-transaction.dto';
 import { ScanQrDto } from './dto/scan-qr.dto';
 import { UploadRefundSlipDto } from './dto/upload-refund-slip.dto';
@@ -137,6 +138,7 @@ export class TransactionService {
       estimated_delivery_date: state.estimatedDeliveryDate,
       payment_confirmed_by_buyer_at: state.paymentConfirmedByBuyerAt,
       payment_confirmed_by_seller_at: state.paymentConfirmedBySellerAt,
+      payment_rejection_reason: state.paymentRejectionReason,
       item_received_confirmed_by_buyer_at: state.itemReceivedConfirmedByBuyerAt,
       item_received_confirmed_by_seller_at:
         state.itemReceivedConfirmedBySellerAt,
@@ -484,7 +486,11 @@ export class TransactionService {
    * Not allowed once the seller has confirmed the money, once the goods have
    * been handed over, or while an admin is reviewing the transaction.
    */
-  async rejectPaymentSlip(transactionId: number, userId: number) {
+  async rejectPaymentSlip(
+    transactionId: number,
+    userId: number,
+    dto: RejectPaymentSlipDto,
+  ) {
     return this.mutate(transactionId, async (tx, transaction) => {
       this.assertIsSeller(transaction, userId);
       this.assertStatus(transaction, TransactionStatus.Processing);
@@ -506,6 +512,7 @@ export class TransactionService {
         where: { paymentId: transaction.paymentId },
         data: {
           status: PaymentStatus.Rejected,
+          rejectionReason: dto.reason,
           handledBy: userId,
           handledAt: new Date(),
         },
@@ -517,7 +524,7 @@ export class TransactionService {
           userId: transaction.buyerId,
           eventKey: `transaction:${transactionId}:payment-slip-rejected:${transaction.paymentId}`,
           title: 'Payment slip rejected',
-          body: `The seller could not match your slip for transaction #${transactionId}. Upload a new one, or wait for the seller to return what you sent.`,
+          body: `The seller could not match your slip for transaction #${transactionId}: ${dto.reason}. Upload a new one, or wait for the seller to return what you sent.`,
           href: `/history/${transactionId}`,
         },
       });
