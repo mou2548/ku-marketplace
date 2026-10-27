@@ -143,6 +143,7 @@ describe('Who hears about moderation', () => {
       report_type: 'User',
       target_id: 9,
       reason_category: 'Scam',
+      details: 'The seller never showed up at the agreed place.',
     });
 
     expect(notificationsSent(prisma)).toEqual([

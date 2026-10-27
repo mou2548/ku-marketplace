@@ -27,7 +27,8 @@ export interface CreateReportInput {
   report_type: "Post" | "User" | "Transaction";
   target_id: number;
   reason_category: string;
-  details?: string;
+  /** Required, at least `REPORT_DETAILS_MIN` characters once trimmed. */
+  details: string;
   evidence_urls?: string[];
 }
 

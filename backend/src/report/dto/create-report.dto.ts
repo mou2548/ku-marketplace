@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -6,6 +7,7 @@ import {
   IsPositive,
   IsString,
   MaxLength,
+  MinLength,
 } from 'class-validator';
 import { ReportType } from '../../common/enums/report.enums';
 
@@ -21,10 +23,18 @@ export class CreateReportDto {
   @MaxLength(100)
   reason_category: string;
 
-  @IsOptional()
+  /**
+   * Required, at least 10 characters once trimmed: an admin cannot decide a
+   * report from a bare category. The pipe runs with `transform: true`, so the
+   * service receives the trimmed text.
+   */
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
+  @MinLength(10, { message: 'details must be at least 10 characters' })
   @MaxLength(2000)
-  details?: string;
+  details: string;
 
   @IsOptional()
   @IsArray()

@@ -874,7 +874,7 @@ const COPY: { [key: string]: CopyNode } = {
       "reason": "Reason",
       "details": "Details",
       "placeholder": "Describe what happened",
-      "hint": "Optional. Add details that can help an admin review your report.",
+      "hint": "Required, at least {min} characters. Describe what happened so an admin can review your report.",
       "error": "Could not submit the report."
     },
     "photo": {
