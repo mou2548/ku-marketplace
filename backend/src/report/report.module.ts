@@ -15,5 +15,7 @@ import { RedisService } from '../redis/redis.service';
   // RedisService declared here rather than imported — no shared RedisModule
   // yet, same as transaction.module.ts (§7.3 rate limit needs it now too).
   providers: [ReportService, AppealService, RedisService],
+  // AdminModule: suspending and reinstating accounts from the Users screen.
+  exports: [ReportService],
 })
 export class ReportModule {}

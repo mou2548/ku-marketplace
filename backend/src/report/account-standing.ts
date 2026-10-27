@@ -57,18 +57,14 @@ export async function reportedUserId(
 }
 
 /**
- * The standing the account's confirmed verdicts call for right now, or `null`
- * when a legacy verdict has no recorded sanction and it is not safe to guess.
+ * Every `Violation_Confirmed` report that is against this user, oldest first.
  * `excludeReportId` leaves out a verdict that is being reversed.
  */
-export async function standingFromVerdicts(
+export async function verdictsAgainst(
   db: Db,
   userId: number,
-  {
-    excludeReportId,
-    now = new Date(),
-  }: { excludeReportId?: number; now?: Date } = {},
-): Promise<Standing | null> {
+  { excludeReportId }: { excludeReportId?: number } = {},
+) {
   const [posts, transactions] = await Promise.all([
     db.post.findMany({
       where: { item: { ownerId: userId } },
@@ -97,12 +93,33 @@ export async function standingFromVerdicts(
         },
       ],
     },
+    orderBy: { reportId: 'asc' },
   });
-
-  let standing: Standing = 'Active';
+  const verdicts: typeof candidates = [];
   for (const verdict of candidates) {
     // A transaction party who filed the report is not the one it is against.
-    if ((await reportedUserId(db, verdict)) !== userId) continue;
+    if ((await reportedUserId(db, verdict)) === userId) verdicts.push(verdict);
+  }
+  return verdicts;
+}
+
+/**
+ * The standing the account's confirmed verdicts call for right now, or `null`
+ * when a legacy verdict has no recorded sanction and it is not safe to guess.
+ * `excludeReportId` leaves out a verdict that is being reversed.
+ */
+export async function standingFromVerdicts(
+  db: Db,
+  userId: number,
+  {
+    excludeReportId,
+    now = new Date(),
+  }: { excludeReportId?: number; now?: Date } = {},
+): Promise<Standing | null> {
+  const verdicts = await verdictsAgainst(db, userId, { excludeReportId });
+
+  let standing: Standing = 'Active';
+  for (const verdict of verdicts) {
     if (verdict.sanction === null) return null;
     if (verdict.sanction === Sanction.Suspend_Permanent) return 'Banned';
     if (

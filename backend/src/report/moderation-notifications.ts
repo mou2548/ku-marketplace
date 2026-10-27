@@ -159,3 +159,26 @@ export async function notifyAppealDecided(
     skipDuplicates: true,
   });
 }
+
+/** An admin lifted the account's suspension or ban by hand. Keyed by time, as
+ * an account can be reinstated more than once. */
+export async function notifyReinstated(
+  db: Db,
+  userId: number,
+  { note, at }: { note: string | null; at: Date },
+) {
+  await db.notification.createMany({
+    data: [
+      {
+        userId,
+        eventKey: `moderation:user:${userId}:reinstated:${at.getTime()}`,
+        title: 'Your account is restored',
+        body: ['An admin lifted the penalty on your account.', note]
+          .filter(Boolean)
+          .join(' '),
+        href: '/account',
+      },
+    ],
+    skipDuplicates: true,
+  });
+}
