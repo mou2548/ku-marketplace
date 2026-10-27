@@ -12,7 +12,7 @@ import { getMe } from "@/lib/api/users";
 
 /**
  * Moderation is a different job from using the marketplace, so it gets its own
- * shell: a left rail of four sections with their waiting counts on desktop, a
+ * shell: a left rail of seven sections (queues with their waiting counts) on desktop, a
  * bottom tab bar on phones, and a thin top bar with notifications and a way
  * back out.
  *

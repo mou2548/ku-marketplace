@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   CreditCard,
   Flag,
   LayoutDashboard,
+  Package,
   Scale,
+  Users,
 } from "lucide-react";
 
 import type { AdminQueueCounts } from "@/lib/admin-labels";
@@ -19,6 +22,27 @@ const SECTIONS = [
     label: "Dashboard",
     short: "Dashboard",
     icon: LayoutDashboard,
+    count: null,
+  },
+  {
+    href: "/admin/transactions",
+    label: "Transactions",
+    short: "Deals",
+    icon: ArrowLeftRight,
+    count: null,
+  },
+  {
+    href: "/admin/users",
+    label: "Users",
+    short: "Users",
+    icon: Users,
+    count: null,
+  },
+  {
+    href: "/admin/items",
+    label: "Items",
+    short: "Items",
+    icon: Package,
     count: null,
   },
   {
@@ -105,13 +129,15 @@ export function AdminSidebar({ counts }: { counts: AdminQueueCounts }) {
   );
 }
 
-/** Phone and tablet: the bottom tab bar. */
+/** Phone and tablet: the bottom tab bar. Seven sections do not fit at 360px,
+ * so the bar scrolls sideways (team choice 2026-10-27) with every tab kept
+ * at full touch size. */
 export function AdminTabBar({ counts }: { counts: AdminQueueCounts }) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Admin sections"
-      className="fixed inset-x-0 bottom-0 z-[40] flex justify-around border-t border-line bg-page px-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-[40] flex snap-x gap-1 overflow-x-auto overscroll-x-contain border-t border-line bg-page px-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 [scrollbar-width:none] sm:justify-around lg:hidden"
     >
       {SECTIONS.map(({ href, short, icon: Icon, count }) => {
         const active = isActive(pathname, href);
@@ -122,7 +148,7 @@ export function AdminTabBar({ counts }: { counts: AdminQueueCounts }) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex min-h-12 min-w-11 flex-col items-center justify-center gap-0.5 px-1.5 text-[0.66rem]",
+              "relative flex min-h-12 min-w-16 shrink-0 snap-start flex-col items-center justify-center gap-0.5 px-1.5 text-[0.66rem]",
               active ? "font-medium text-ink" : "text-ink-muted",
             )}
           >
