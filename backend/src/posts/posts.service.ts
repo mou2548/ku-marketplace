@@ -172,6 +172,21 @@ export class PostsService {
       );
   }
 
+  private async requirePromptPay(
+    tx: Pick<Prisma.TransactionClient, 'user'>,
+    sellerId: number,
+  ) {
+    const seller = await tx.user.findUnique({
+      where: { userId: sellerId },
+      select: { promptpayId: true },
+    });
+    if (!seller?.promptpayId?.trim()) {
+      throw new ConflictException(
+        'กรุณาตั้งค่า PromptPay ของผู้ขายก่อนทำรายการที่มีการชำระเงิน',
+      );
+    }
+  }
+
   async createPost(payload: CreatePostPayload, userId: number) {
     validateText(payload.description, 'description', 2000);
     validateText(payload.wanted_item_offer, 'wanted_item_offer', 500);
@@ -211,6 +226,9 @@ export class PostsService {
         throw new ForbiddenException('Only the owner can list this item');
       if (item.deletedAt)
         throw new ConflictException('Item is not available for listing');
+      if (postType !== 'TradeOnly') {
+        await this.requirePromptPay(tx, userId);
+      }
       const { available } = await getItemAvailability(tx, itemId);
       if (quantity > available)
         throw new BadRequestException(
@@ -410,6 +428,9 @@ export class PostsService {
           'price is required for SellOnly and Both',
         );
       }
+      if ((payload.post_type ?? found.postType) !== 'TradeOnly') {
+        await this.requirePromptPay(tx, userId);
+      }
 
       let quantityTotal = found.quantityTotal;
       let quantityRemaining = found.quantityRemaining;
@@ -567,6 +588,7 @@ export class PostsService {
       if (post.quantityRemaining < quantity) {
         throw new ConflictException('สินค้าเหลือไม่เพียงพอ');
       }
+      await this.requirePromptPay(tx, post.item.ownerId);
       const buyer = await tx.user.findUnique({ where: { userId: buyerId } });
       if (!buyer) throw new NotFoundException('ไม่พบผู้ซื้อ');
       const totalAmount = post.price.mul(quantity);
@@ -830,6 +852,10 @@ export class PostsService {
       }
       if (offer.post.quantityRemaining < 1)
         throw new ConflictException('สินค้าไม่มีเหลือแล้ว');
+
+      if (new Prisma.Decimal(offer.additionalMoney ?? 0).greaterThan(0)) {
+        await this.requirePromptPay(tx, offer.post.item.ownerId);
+      }
 
       const offeredIds = offer.items
         .map((entry) => entry.itemId)

@@ -25,11 +25,14 @@ describe('PostsService schema v3', () => {
           .fn()
           .mockResolvedValue({ ...post, price: null, postType: 'TradeOnly' }),
         findUnique: jest.fn().mockResolvedValue(post),
+        update: jest.fn().mockResolvedValue(post),
         count: jest.fn().mockResolvedValue(1),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       user: {
-        findUnique: jest.fn().mockResolvedValue({ userId: 12 }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ userId: 12, promptpayId: '0812345678' }),
         count: jest.fn().mockResolvedValue(1),
       },
       transaction: {
@@ -84,6 +87,66 @@ describe('PostsService schema v3', () => {
     });
   });
 
+  it.each(['SellOnly', 'Both'])(
+    'requires seller PromptPay when creating %s',
+    async (postType) => {
+      const { service, tx, post } = setup();
+      tx.item.findUnique.mockResolvedValueOnce({ ...post.item, quantity: 3 });
+      tx.user.findUnique.mockResolvedValue({ promptpayId: null });
+      await expect(
+        service.createPost({ item_id: 10, post_type: postType, price: 10 }, 99),
+      ).rejects.toThrow('PromptPay');
+      expect(tx.post.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('requires the seller, rather than buyer, to have PromptPay on purchase', async () => {
+    const { service, tx } = setup();
+    tx.user.findUnique.mockResolvedValue({ promptpayId: null });
+    await expect(service.buyPost('1', { buyer_id: 12 })).rejects.toThrow(
+      'PromptPay',
+    );
+    expect(tx.user.findUnique).toHaveBeenCalledWith({
+      where: { userId: 99 },
+      select: { promptpayId: true },
+    });
+    expect(tx.transaction.create).not.toHaveBeenCalled();
+    expect(tx.post.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('requires seller PromptPay when accepting a cash top-up', async () => {
+    const { service, tx } = setup();
+    tx.user.findUnique.mockResolvedValue({ promptpayId: null });
+    await expect(service.acceptOffer('1', '3', {}, 99)).rejects.toThrow(
+      'PromptPay',
+    );
+    expect(tx.transaction.create).not.toHaveBeenCalled();
+    expect(tx.offer.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('requires PromptPay when changing a trade listing into a sale', async () => {
+    const { service, tx, post } = setup();
+    tx.post.findUnique.mockResolvedValue({ ...post, postType: 'TradeOnly' });
+    tx.user.findUnique.mockResolvedValue({ promptpayId: null });
+    await expect(
+      service.updatePost('1', { post_type: 'SellOnly', price: 10 }, 99),
+    ).rejects.toThrow('PromptPay');
+    expect(tx.post.update).not.toHaveBeenCalled();
+  });
+
+  it('requires a price when changing a price-less trade listing into a sale', async () => {
+    const { service, tx, post } = setup();
+    tx.post.findUnique.mockResolvedValue({
+      ...post,
+      postType: 'TradeOnly',
+      price: null,
+    });
+    await expect(
+      service.updatePost('1', { post_type: 'Both' }, 99),
+    ).rejects.toThrow('price');
+    expect(tx.post.update).not.toHaveBeenCalled();
+  });
+
   it('snapshots only the agreed additional cash for a trade', async () => {
     const { service, tx } = setup();
     tx.post.findMany = jest.fn().mockResolvedValue([]);
@@ -107,6 +170,7 @@ describe('PostsService schema v3', () => {
   it('creates a TradeOnly listing without a price', async () => {
     const { service, tx, post } = setup();
     tx.item.findUnique.mockResolvedValueOnce({ ...post.item, quantity: 3 });
+    tx.user.findUnique.mockResolvedValue({ promptpayId: null });
     const result = await service.createPost(
       { item_id: 10, post_type: 'TradeOnly' },
       99,
@@ -121,6 +185,7 @@ describe('PostsService schema v3', () => {
 
   it('records zero total_amount for a trade without additional cash', async () => {
     const { service, tx, post } = setup();
+    tx.user.findUnique.mockResolvedValue({ promptpayId: null });
     tx.offer.findFirst.mockResolvedValue({
       offerId: 3,
       proposerId: 12,
