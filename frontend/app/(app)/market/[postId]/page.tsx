@@ -1,8 +1,8 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
-import { BookOpen, Package, ShieldCheck } from "lucide-react";
+import { Package, ShieldCheck } from "lucide-react";
 
 import { PostCard } from "@/components/kit/post-card";
+import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
@@ -79,26 +79,19 @@ export default async function PostDetailPage({
           is what stops it inflating into a 670px slab that sets the page
           height. Everything else takes the width it is given. */}
       <div className="lg:w-[24rem] lg:shrink-0 xl:w-[28rem]">
-        <Surface
-          shape="card"
-          // Portrait is a phone shape. On a wide screen the same 4:5 made the
-          // photo the tallest thing on the page by a wide margin.
-          className="relative aspect-[4/5] w-full overflow-hidden lg:aspect-[4/3]"
-        >
-          {image ? (
-            <Image
-              src={image}
-              alt={post.item.name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-          ) : (
-            <span className="absolute inset-0 grid place-items-center bg-surface-sunken text-ink-disabled">
-              <BookOpen aria-hidden className="size-10" />
-            </span>
-          )}
+        <Surface shape="card" className="relative overflow-hidden">
+          {/* Same crop as the inventory item detail hero
+              (inventory/[itemId]/page.tsx) — this used to be a hand-rolled
+              `next/image` at a responsive 4:5/4:3 ratio, so the same photo
+              cropped differently depending on which screen you viewed it
+              from below the `lg` breakpoint. */}
+          <PostImage
+            src={image}
+            alt={post.item.name}
+            aspectRatio={4 / 3}
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            priority
+          />
           <span
             aria-hidden
             style={{ "--slot-edge": rarity.edge } as React.CSSProperties}
