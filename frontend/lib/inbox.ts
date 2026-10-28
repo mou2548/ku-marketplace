@@ -60,10 +60,8 @@ export function deadlineFor(tx: Transaction): Deadline | undefined {
       ? returnResponseDeadline(tx.cancellation_requested_at)
       : cancelResponseDeadline(tx.cancellation_requested_at);
   }
-  // A refund slip after a rejected payment slip runs on the same clock as
-  // any other refund (transaction-deadline.service.ts).
   if (
-    (tx.status === "Pending Refund" || tx.status === "Cancelled" || isSlipRejected(tx)) &&
+    (tx.status === "Pending Refund" || tx.status === "Cancelled") &&
     tx.refund_submitted_at &&
     tx.refund_slip_url &&
     !tx.refund_confirmed_by_buyer

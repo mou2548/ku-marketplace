@@ -666,14 +666,8 @@ export function resolveTransactionActor(
       );
 
     case "Processing":
-      // A rejected slip hands the turn back to the buyer: send a new slip,
-      // or — once the seller has returned what arrived — confirm that refund.
-      // The API refuses a new slip while a refund slip is on file
-      // (`assertAwaitingPayment` in transaction.service.ts).
+      // A rejected slip hands the turn back to the buyer to send a new one.
       if (requiresPayment(tx) && isSlipRejected(tx)) {
-        if (tx.refund_slip_url) {
-          return you("buyer", "prompt.confirm-refund.you", "prompt.confirm-refund.them", "warning", "confirm-refund");
-        }
         return you("buyer", "prompt.upload-slip.you", "prompt.upload-slip.them", "warning", "upload-slip");
       }
       if (requiresPayment(tx) && !tx.payment_confirmed_by_seller_at) {

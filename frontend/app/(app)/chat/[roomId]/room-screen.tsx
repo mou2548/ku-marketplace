@@ -725,75 +725,18 @@ export function RoomScreen({
     );
   }
 
-  /** The buyer answers the seller's refund slip; the deal then goes back to unpaid. */
-  function confirmRefundCard(): React.ReactNode {
-    if (!transaction?.refund_slip_url) return null;
-    return (
-      <ActionCard title={t("deal.stepConfirmRefund")}>
-        <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-ink-secondary">{t("deal.confirmRefundBody")}</p>
-          {deadline ? <CountdownPill deadline={deadline} className="w-fit" /> : null}
-          <SlipViewer
-            embedded
-            slipUrl={transaction.refund_slip_url}
-            title={t("slip.refundSlip")}
-            uploadedAt={transaction.refund_submitted_at}
-          />
-          <Button
-            block
-            isLoading={busy}
-            onPress={() =>
-              act(
-                () => unwrapAction(confirmRefundReceived(transaction.transaction_id)),
-                t("deal.refundConfirmed"),
-                "Could not confirm the refund",
-              )
-            }
-          >
-            {t("deal.confirmRefundButton")}
-          </Button>
-        </div>
-      </ActionCard>
-    );
-  }
-
   /**
-   * The seller rejected the slip. The buyer either sends a new one or, once
-   * the seller has sent back what arrived, confirms that refund first. The
-   * seller is not on the clock here, but is the only one who can return the
-   * money, so the refund uploader is offered to them throughout.
+   * The seller rejected the slip. The only way on is a new slip from the
+   * buyer; the seller just waits for it.
    */
   function slipRejectedAction(): React.ReactNode {
     if (!transaction) return null;
-    const refundSent = !!transaction.refund_slip_url;
-    if (viewer === "buyer") {
-      return refundSent ? confirmRefundCard() : uploadSlipCard(true);
-    }
+    if (viewer === "buyer") return uploadSlipCard(true);
     return (
-      <ActionCard
-        title={refundSent ? t("deal.refundSentTitle") : t("deal.slipRejectedSellerTitle")}
-      >
-        <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-ink-secondary">
-            {refundSent ? t("deal.refundSentBody") : t("deal.slipRejectedSellerBody")}
-          </p>
-          {refundSent && deadline ? (
-            <CountdownPill deadline={deadline} className="w-fit" />
-          ) : null}
-          <SlipUploader
-            embedded
-            title={t("slip.refundSlip")}
-            slipUrl={transaction.refund_slip_url}
-            isUploaded={refundSent}
-            uploadedAt={transaction.refund_submitted_at}
-            onUpload={(file) =>
-              uploadAndRefresh(
-                () => uploadSlip("refund", file),
-                t("deal.refundSlipUploaded"),
-              )
-            }
-          />
-        </div>
+      <ActionCard title={t("deal.slipRejectedSellerTitle")}>
+        <p className="text-body-sm text-ink-secondary">
+          {t("deal.slipRejectedSellerBody")}
+        </p>
       </ActionCard>
     );
   }
@@ -853,8 +796,7 @@ export function RoomScreen({
         </div>
       </ActionCard>;
     }
-    // After a rejected slip the seller may return what arrived; until the
-    // buyer confirms that refund the API refuses a new slip (audit B16).
+    // A rejected slip waits on a new one from the buyer.
     if (requiresPayment(transaction) && isSlipRejected(transaction)) {
       return slipRejectedAction();
     }
@@ -1079,9 +1021,9 @@ export function RoomScreen({
           </ActionCard>
         );
       case "confirm-refund":
-        // Only reached after a rejected slip; a cancellation's refund is
-        // handled by the return card above.
-        return slipRejectedAction();
+        // Only a cancellation's refund asks for this, and the return card
+        // above already handles Pending Refund.
+        return null;
       case undefined:
         return null;
       default: {

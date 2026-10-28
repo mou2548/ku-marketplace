@@ -53,13 +53,13 @@ test('a rejected slip with no refund yet is the buyer\'s turn to send a new slip
   assert.equal(prompt.action, 'upload-slip');
 });
 
-test('once the seller sends a refund slip, the buyer confirms it instead of re-uploading', () => {
+test('a refund slip on a rejected slip does not take the buyer off re-uploading', () => {
   const buyer = status.resolveTransactionActor(refunded(), 'buyer');
-  assert.equal(buyer.action, 'confirm-refund');
-  assert.equal(buyer.labelKey, 'prompt.confirm-refund.you');
+  assert.equal(buyer.action, 'upload-slip');
+  assert.equal(buyer.labelKey, 'prompt.upload-slip.you');
   const seller = status.resolveTransactionActor(refunded(), 'seller');
   assert.equal(seller.actor, 'buyer');
-  assert.equal(seller.labelKey, 'prompt.confirm-refund.them');
+  assert.equal(seller.labelKey, 'prompt.upload-slip.them');
 });
 
 test('a refund slip on a Pending Refund deal hands the turn to the buyer', () => {
@@ -69,10 +69,8 @@ test('a refund slip on a Pending Refund deal hands the turn to the buyer', () =>
   assert.equal(status.resolveTransactionActor(owed, 'seller').action, 'refund-slip');
 });
 
-test('the refund clock after a rejected slip is 24 hours from the refund slip', () => {
-  const deadline = deadlineFor(refunded());
-  assert.equal(deadline.kind, 'refund-confirmation');
-  assert.equal(deadline.expiresAt, Date.parse('2026-10-21T10:00:00.000Z') + 24 * HOUR);
+test('a rejected slip runs no refund clock', () => {
+  assert.equal(deadlineFor(refunded()), undefined);
   assert.equal(deadlineFor(rejected()), undefined);
 });
 
@@ -86,11 +84,11 @@ test('a pending cancellation carries 72 hours, a pending return 24', () => {
   assert.equal(ret.expiresAt, Date.parse(at) + 24 * HOUR);
 });
 
-test('the deal headline asks the buyer to confirm the refund', () => {
+test('the deal headline after a rejected slip asks the buyer for a new one', () => {
   const buyer = describeDeal(refunded(), BUYER, []);
   assert.equal(buyer.waitingOn, 'you');
-  assert.match(buyer.headline, /confirm it reached you/);
+  assert.match(buyer.headline, /upload a new one/);
   const seller = describeDeal(refunded(), SELLER, []);
   assert.equal(seller.waitingOn, 'them');
-  assert.match(seller.headline, /confirm the refund/);
+  assert.match(seller.headline, /send a new slip/);
 });
