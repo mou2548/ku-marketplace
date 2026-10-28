@@ -177,6 +177,12 @@ export interface Transaction {
   shipped_at?: string | null;
   payment_confirmed_by_buyer_at?: string | null;
   payment_confirmed_by_seller_at?: string | null;
+  /**
+   * The seller's reason for turning down the latest slip. Set only while that
+   * rejection stands (no newer slip on file); the buyer reads it to know what
+   * to fix before uploading again.
+   */
+  payment_rejection_reason?: string | null;
   item_received_confirmed_by_buyer_at?: string | null;
   item_received_confirmed_by_seller_at?: string | null;
   cancellation_requested_by?: number | null;

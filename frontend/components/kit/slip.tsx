@@ -7,11 +7,15 @@ import { getCopy } from "@/lib/copy";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button as AriaButton } from "react-aria-components";
-import { Check, ImagePlus, RotateCcw, Send, X, ZoomIn } from "lucide-react";
+import { AlertTriangle, Check, ImagePlus, RotateCcw, Send, X, ZoomIn } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+import { Notice } from "@/components/patterns/notice";
+
 import { Button } from "./button";
+import { TextAreaField } from "./field";
+import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
 import { Surface } from "./surface";
 import { TrustBadge } from "./trust-badge";
@@ -406,6 +410,10 @@ export interface SlipReviewerProps {
   onConfirm: () => void;
   onReject: () => void;
   isBusy?: boolean;
+  /** Heading; defaults to the deal wording ("Check the slip and confirm payment"). */
+  title?: string;
+  /** "buyer" labels the time "Buyer uploaded"; "plain" says "Uploaded" for slips that are not from a deal. */
+  uploader?: "buyer" | "plain";
   className?: string;
 }
 
@@ -423,6 +431,8 @@ export function SlipReviewer({
   onConfirm,
   onReject,
   isBusy = false,
+  title,
+  uploader = "buyer",
   className,
 }: SlipReviewerProps) {
   const t = getCopy();
@@ -430,7 +440,7 @@ export function SlipReviewer({
   return (
     <Surface shape="card" className={cn("p-4", className)}>
       <header className="mb-3 flex flex-col gap-2">
-        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("slip.check")}</h4>
+        <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{title ?? t("slip.check")}</h4>
         <TrustBadge name={buyer.name} isVerified={buyer.isVerified} avatarUrl={buyer.avatar_url} size="sm" />
       </header>
 
@@ -447,7 +457,10 @@ export function SlipReviewer({
           {formatAmount(amount)}
         </dd>
       </dl>
-      <UploadedAt at={uploadedAt} labelKey="slip.uploadedByBuyerAt" />
+      <UploadedAt
+        at={uploadedAt}
+        labelKey={uploader === "buyer" ? "slip.uploadedByBuyerAt" : "slip.uploadedAt"}
+      />
 
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
         <Button variant="secondary" block onPress={onReject} isDisabled={isBusy}>
@@ -456,5 +469,102 @@ export function SlipReviewer({
           <Check className="size-4" />{t("slip.confirmReceived")}</Button>
       </div>
     </Surface>
+  );
+}
+
+/** `Transaction_Payment.rejection_reason` is VARCHAR(500); the API checks it too. */
+export const SLIP_REJECT_REASON_MAX = 500;
+
+/**
+ * The seller's "Amount is wrong", as a decision with a reason attached.
+ *
+ * The reason is required (the API refuses a blank one) because it is the only
+ * thing the buyer gets back: without it they would be told "rejected" and
+ * left to guess whether to transfer again, top up, or wait for a refund.
+ * Closing waits for `onReject` to resolve, so a failed request keeps the typed
+ * reason and the dialog open beside the error toast.
+ */
+export function SlipRejectDialog({
+  isOpen,
+  onOpenChange,
+  isBusy = false,
+  onReject,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  isBusy?: boolean;
+  /** Resolves `true` once the API accepted the rejection. */
+  onReject: (reason: string) => Promise<boolean>;
+}) {
+  const t = getCopy("slip");
+  const [reason, setReason] = useState("");
+  const trimmed = reason.trim();
+
+  return (
+    <Overlay
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      isBusy={isBusy}
+      title={t("rejectTitle")}
+      description={t("rejectBody")}
+      footer={
+        <>
+          <Button variant="ghost" slot="close" isDisabled={isBusy}>
+            {t("rejectKeep")}
+          </Button>
+          <Button
+            variant="danger"
+            isLoading={isBusy}
+            isDisabled={trimmed.length === 0 || trimmed.length > SLIP_REJECT_REASON_MAX}
+            onPress={async () => {
+              if (await onReject(trimmed)) {
+                setReason("");
+                onOpenChange(false);
+              }
+            }}
+          >
+            {t("rejectSend")}
+          </Button>
+        </>
+      }
+    >
+      <TextAreaField
+        label={t("rejectReason")}
+        value={reason}
+        onChange={setReason}
+        isRequired
+        maxLength={SLIP_REJECT_REASON_MAX}
+        rows={3}
+        placeholder={t("rejectPlaceholder")}
+        hint={t("rejectHint", { count: reason.length, max: SLIP_REJECT_REASON_MAX })}
+      />
+    </Overlay>
+  );
+}
+
+/**
+ * What the buyer sees above the uploader after a rejection: that it happened,
+ * and the seller's words for why, so the next slip fixes the right thing.
+ */
+export function SlipRejectedNotice({
+  reason,
+  className,
+}: {
+  /** `null` for a rejection made before the API stored reasons. */
+  reason?: string | null;
+  className?: string;
+}) {
+  const t = getCopy("slip");
+  return (
+    <Notice tone="danger" className={cn("flex items-start gap-3", className)}>
+      <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="text-body-sm font-semibold">{t("rejectedTitle")}</p>
+        <p className="text-body-sm break-words">
+          {reason ? reason : t("rejectedNoReason")}
+        </p>
+        <p className="text-caption text-ink-secondary">{t("rejectedNext")}</p>
+      </div>
+    </Notice>
   );
 }

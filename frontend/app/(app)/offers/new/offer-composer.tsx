@@ -26,7 +26,12 @@ import type { InventoryItem } from "@/components/kit/inventory-slot";
 import { unwrapAction } from "@/lib/action-result";
 import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { sendOffer } from "@/lib/actions/posts";
-import type { Item, Post } from "@/lib/api/types";
+import type { ItemWithStatus } from "@/lib/api/items";
+import type { Item, ItemHistorySummary, Post } from "@/lib/api/types";
+import {
+  UNAVAILABLE_REASON_LABEL,
+  unavailableReason,
+} from "@/lib/item-availability";
 
 /**
  * Persona P3, design principle 6.
@@ -43,9 +48,11 @@ import type { Item, Post } from "@/lib/api/types";
 export function OfferComposer({
   post,
   inventory,
+  summaries,
 }: {
   post: Post;
-  inventory: Item[];
+  inventory: ItemWithStatus[];
+  summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
   const t = getCopy();
   const toast = useToast();
@@ -91,6 +98,23 @@ export function OfferComposer({
           image_url: i.images[0]?.image_url ?? null,
         })),
     [items],
+  );
+
+  // Read off the inventory as loaded, not the local copy: a staged split
+  // lowers a stack's local quantity, which must not make it look partly
+  // listed. An offer takes items whole, so anything short of fully free is
+  // shown but cannot be placed.
+  const unavailable = useMemo(
+    () =>
+      new Map(
+        inventory.flatMap((item) => {
+          const reason = unavailableReason(item, summaries[item.item_id], "whole");
+          return reason
+            ? [[item.item_id, UNAVAILABLE_REASON_LABEL[reason]] as const]
+            : [];
+        }),
+      ),
+    [inventory, summaries],
   );
 
   const wanted: InventoryItem[] = [
@@ -384,6 +408,7 @@ export function OfferComposer({
           className="order-1 lg:order-2"
           inventory={stash}
           offeredIds={offeredIds}
+          unavailable={unavailable}
           onAdd={tapStash}
         />
 

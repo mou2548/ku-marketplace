@@ -17,7 +17,8 @@ import { getItem, getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { listPosts } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 import type { Item } from "@/lib/api/types";
-import { ITEM_CONDITION, ITEM_TRANSFERRED_STATUS, isItemTransferred } from "@/lib/status";
+import { freeUnits, isHandedOver } from "@/lib/item-availability";
+import { ITEM_CONDITION, ITEM_TRANSFERRED_STATUS } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 /** Owner-facing counterpart of the market detail: photo, facts, then action. */
@@ -79,8 +80,10 @@ export default async function ItemDetailPage({
       (total, channel) => total + (channel.quantity_total - channel.quantity_claimed),
       0,
     );
-  const isTransferred = summary ? isItemTransferred(summary) : false;
-  const available = summary?.available_quantity ?? item.quantity;
+  // `item_status` Transferred counts too (D3): a traded-away item's summary
+  // still reports every unit as available.
+  const isTransferred = isHandedOver(item, summary);
+  const available = freeUnits(item, summary);
   const rarity = ITEM_CONDITION[item.condition];
 
   const restSummaries = Object.fromEntries(
@@ -96,7 +99,7 @@ export default async function ItemDetailPage({
   const rest = items.filter((candidate) => {
     if (candidate.item_id === item.item_id) return false;
     const candidateSummary = restSummaries[candidate.item_id];
-    return candidateSummary ? !isItemTransferred(candidateSummary) : true;
+    return !isHandedOver(candidate, candidateSummary);
   });
 
   const specs: Array<[string, string]> = [
@@ -120,7 +123,7 @@ export default async function ItemDetailPage({
         <span className="flex items-center gap-2 text-body-sm font-semibold">
           <Store aria-hidden className="size-4 text-ink-brand" />
           {isTransferred
-            ? "Transferred"
+            ? "Handed over"
             : hasOpenChannel
               ? t("inventory.onTheMarket")
               : t("inventory.notListed")}
@@ -354,7 +357,7 @@ export default async function ItemDetailPage({
                     <ActivityMetric
                       icon={<Plus className="size-4" />}
                       label="Unlisted"
-                      value={summary.available_quantity}
+                      value={available}
                     />
                   </dl>
                 </div>

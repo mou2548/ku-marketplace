@@ -122,8 +122,16 @@ export function QrTicket({
         if (!once && lifeMs > 5_000) {
           timer = setTimeout(() => void cycle(), lifeMs - 5_000);
         }
-      } catch {
-        if (!cancelled) setError("Could not generate a code. Try again.");
+      } catch (err) {
+        // The API's reason ("confirm the latest meetup first", say) says what
+        // to do next; a fixed sentence hid it.
+        if (!cancelled) {
+          setError(
+            err instanceof Error && err.message
+              ? err.message
+              : "Could not generate a code. Try again.",
+          );
+        }
       }
     }
 
@@ -171,7 +179,9 @@ export function QrTicket({
         >
           Code expired
         </p>
-      ) : (
+      ) : issuedAt === null ? null : (
+        // No countdown until a code exists: a timer over an empty box read
+        // as a code that was already running out.
         <p
           data-numeric
           aria-live="polite"

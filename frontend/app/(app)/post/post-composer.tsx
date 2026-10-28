@@ -35,8 +35,14 @@ import { useStatusText } from "@/lib/status-text";
 import { unwrapAction } from "@/lib/action-result";
 import { createGiveaway } from "@/lib/actions/giveaways";
 import { publishListing } from "@/lib/actions/posts";
+import type { ItemWithStatus } from "@/lib/api/items";
 import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item, ItemHistorySummary } from "@/lib/api/types";
+import {
+  UNAVAILABLE_REASON_LABEL,
+  freeUnits,
+  unavailableReason,
+} from "@/lib/item-availability";
 import {
   ALLOCATION_METHOD,
   ITEM_CONDITION,
@@ -87,7 +93,7 @@ export function PostComposer({
   initialPicked = [],
   hasPromptPay = true,
 }: {
-  items: Item[];
+  items: ItemWithStatus[];
   /** Per-item availability — how much of each item can still be committed
    * to a new channel right now. An item with some already listed for sale
    * can still have stock free to trade or give away. */
@@ -105,8 +111,10 @@ export function PostComposer({
   const tz = getLocalTimeZone();
   const nowDT = toCalendarDateTime(now(tz));
 
-  const available = (item: Item) =>
-    summaries[item.item_id]?.available_quantity ?? item.quantity;
+  // Shared with the inventory card's Unlisted number and the offer stash,
+  // so a handed-over item reads 0 here too (lib/item-availability.ts).
+  const available = (item: ItemWithStatus) =>
+    freeUnits(item, summaries[item.item_id]);
 
   const [picked, setPicked] = useState<Set<number>>(
     () =>
@@ -149,7 +157,7 @@ export function PostComposer({
 
   const pickedItems = items.filter((i) => picked.has(i.item_id));
 
-  function quantityFor(item: Item): number {
+  function quantityFor(item: ItemWithStatus): number {
     const raw = quantities[item.item_id];
     return raw !== undefined ? Number(raw) : available(item);
   }
@@ -344,11 +352,19 @@ export function PostComposer({
             {unavailable.length} with nothing left to list
           </summary>
           <ul className="mt-2 flex flex-col gap-1.5">
-            {unavailable.map((item) => (
-              <li key={item.item_id} className="flex items-center gap-2">
-                <span className="truncate">{item.name}</span>
-              </li>
-            ))}
+            {unavailable.map((item) => {
+              const reason = unavailableReason(item, summaries[item.item_id], "some");
+              return (
+                <li key={item.item_id} className="flex items-center gap-2">
+                  <span className="truncate">{item.name}</span>
+                  {reason ? (
+                    <span className="shrink-0 font-medium text-ink-secondary">
+                      {UNAVAILABLE_REASON_LABEL[reason]}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </details>
       ) : null}

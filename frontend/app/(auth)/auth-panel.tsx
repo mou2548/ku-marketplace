@@ -198,27 +198,56 @@ function RegisterForm() {
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // The domain error waits for blur or a submit attempt, so it does not
+  // flash red on every keystroke while the address is still being typed.
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [attempted, setAttempted] = useState(false);
 
   const emailOk = isKuEmail(email);
   const passwordOk = isPasswordValid(password);
   const rules = checkPassword(password);
   const canSubmit = emailOk && passwordOk;
+  const showEmailError =
+    !emailOk && (attempted || (emailTouched && email.trim() !== ""));
 
   return (
-    <form action={formAction} className="flex w-full max-w-lg flex-col gap-6">
+    <form
+      action={formAction}
+      // The browser's own checks (the "@" tooltip) would run before onSubmit
+      // and say something different from the field errors below.
+      noValidate
+      // The button used to be disabled until both fields passed, which left a
+      // non-KU address with no explanation at all (audit F05): a disabled
+      // button cannot be pressed, so nothing could say why. It stays
+      // pressable and the submit is stopped here instead, with the reason on
+      // the field that needs fixing.
+      onSubmit={(event) => {
+        if (canSubmit) return;
+        event.preventDefault();
+        setAttempted(true);
+        const field = event.currentTarget.elements.namedItem(emailOk ? "password" : "email");
+        if (field instanceof HTMLInputElement) field.focus();
+      }}
+      className="flex w-full max-w-lg flex-col gap-6"
+    >
       <TextInput
         name="email"
         label="KU email"
         type="email"
         value={email}
         onChange={setEmail}
+        onBlur={() => setEmailTouched(true)}
         isRequired
+        // The rule above decides; the browser's own "@" check would pop a
+        // tooltip in its place.
+        validationBehavior="aria"
         placeholder={`username@${ALLOWED_EMAIL_DOMAINS[0]}`}
         icon={<Mail className="size-5" />}
         inputClassName="h-14 text-body-lg"
+        isInvalid={showEmailError}
         errorMessage={
-          email !== "" && !emailOk
-            ? `Only @${ALLOWED_EMAIL_DOMAINS.join(" and @")} addresses can register`
+          showEmailError
+            ? "Use your Kasetsart University email (@ku.th or @ku.ac.th)."
             : undefined
         }
       />
@@ -235,6 +264,10 @@ function RegisterForm() {
           placeholder="········"
           icon={<Lock className="size-5" />}
           inputClassName="h-14 text-body-lg"
+          isInvalid={attempted && !passwordOk}
+          errorMessage={
+            attempted && !passwordOk ? "The password does not meet the rules below." : undefined
+          }
         />
         <ul className="flex flex-col gap-1">
           <PasswordRule
@@ -257,7 +290,6 @@ function RegisterForm() {
         size="lg"
         block
         pill
-        isDisabled={!canSubmit}
         isLoading={isPending}
       >
         Send me the code

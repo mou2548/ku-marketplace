@@ -11,6 +11,7 @@
  */
 
 import type { Offer, Transaction } from "@/lib/api/types";
+import { isSlipRejected } from "@/lib/slip-state";
 import {
   cancelResponseDeadline,
   resolveTransactionActor,
@@ -72,7 +73,9 @@ export function deadlineFor(tx: Transaction): Deadline | undefined {
   if (
     tx.status === "Processing" &&
     tx.payment_confirmed_by_buyer_at &&
-    !tx.payment_confirmed_by_seller_at
+    !tx.payment_confirmed_by_seller_at &&
+    // Once the seller rejects the slip there is nothing left for them to check.
+    !isSlipRejected(tx)
   ) {
     return sellerConfirmDeadline(tx.payment_confirmed_by_buyer_at);
   }

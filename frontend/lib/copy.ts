@@ -542,7 +542,8 @@ const COPY: { [key: string]: CopyNode } = {
       "reasonHint": "A reason helps a lot. If the other side rejects it, this is the context an admin will see.",
       "progress": "Deal progress",
       "photoLimit": "Only the first 5 photos were attached.",
-      "slipRejectUnsupported": "Rejecting a slip is not supported yet. Ask the buyer in chat, or request a cancellation.",
+      "timePassed": "That time has already passed. Pick a later one.",
+      "estimatedDelivery": "Estimated delivery date",
       "waitingOnYou": "Waiting on you"
     },
     "history": {
@@ -690,6 +691,7 @@ const COPY: { [key: string]: CopyNode } = {
       "formats": "JPG or PNG, up to 5 MB",
       "uploading": "Uploading",
       "check": "Check the slip and confirm payment",
+      "checkMembership": "Check the slip against the requested tier",
       "amountDue": "Amount due",
       "amountWrong": "Amount is wrong",
       "confirmReceived": "Confirm payment received",
@@ -706,11 +708,26 @@ const COPY: { [key: string]: CopyNode } = {
       "errorTooLarge": "The file is larger than 5 MB",
       "errorUploadFailed": "Upload failed. The slip is still here, try sending it again.",
       "refundSlip": "Refund slip",
-      "paymentSlipOnFile": "Payment slip"
+      "paymentSlipOnFile": "Payment slip",
+      "rejectTitle": "Reject this slip",
+      "rejectBody": "Check your bank app first. The buyer sees your reason and can send a new slip.",
+      "rejectReason": "What did you find?",
+      "rejectPlaceholder": "e.g. Only 80 baht arrived, the price is 100",
+      "rejectHint": "The buyer sees this. {count}/{max} characters.",
+      "rejectKeep": "Back",
+      "rejectSend": "Reject the slip",
+      "rejected": "Slip rejected. The buyer has been told why.",
+      "rejectedTitle": "The seller rejected your slip",
+      "rejectedNoReason": "The seller could not match it to a transfer.",
+      "rejectedNext": "Sort it out with the seller in chat if needed, then upload a new slip below."
     },
     "delivery": {
       "reportAfter": "You can report a problem after this",
       "copyTracking": "Copy the tracking number"
+    },
+    "datePicker": {
+      "minDate": "Pick {date} or later",
+      "maxDate": "Pick {date} or earlier"
     },
     "qr": {
       "confirm": "Confirm",

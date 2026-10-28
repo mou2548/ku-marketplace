@@ -297,15 +297,20 @@ export function TradeBench({
  * The proposer's inventory panel. Kept separate from TradeBench so a page can
  * place it wherever the layout needs — a sheet on mobile, a rail on desktop.
  * Tapping an item hands it to `onAdd`, which places it on the bench.
+ * Items in `unavailable` stay visible but disabled, with their reason on the
+ * slot, so the stash still matches the inventory screen.
  */
 export function TradeSourcePanel({
   inventory,
   offeredIds,
+  unavailable,
   onAdd,
   className,
 }: {
   inventory: InventoryItem[];
   offeredIds: Set<number>;
+  /** item_id to the short reason it cannot be offered. */
+  unavailable?: ReadonlyMap<number, string>;
   onAdd: (item: InventoryItem) => void;
   className?: string;
 }) {
@@ -337,12 +342,16 @@ export function TradeSourcePanel({
           aria-label={t("offer.myInventory")}
           items={inventory}
           selectionMode="none"
+          // Also set per slot; on the grid it keeps arrow keys from stopping
+          // on them.
+          disabledKeys={unavailable ? [...unavailable.keys()] : undefined}
         >
           {(item: InventoryItem) => (
             <InventorySlot
               id={item.item_id}
               item={item}
               isPlaced={offeredIds.has(item.item_id)}
+              unavailableReason={unavailable?.get(item.item_id)}
               showName
               onAction={() => onAdd(item)}
             />

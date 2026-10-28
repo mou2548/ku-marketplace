@@ -23,7 +23,8 @@ import {
   type TimeValue,
 } from "react-aria-components";
 
-import { DATE_LOCALE } from "@/lib/date-format";
+import { getCopy } from "@/lib/copy";
+import { DATE_LOCALE, formatFieldDate } from "@/lib/date-format";
 
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,9 @@ import { FieldError, FieldHint, Label } from "./field";
  *   - giveaway registration deadline and pickup window (research R7)
  *   - the seller's estimated delivery date
  *
- * A fixed British Gregorian locale keeps the input day-first in every browser.
+ * A fixed British Gregorian locale keeps the input day-first (dd/mm/yyyy, the
+ * Thai convention) in every browser, with the full year: a two-digit year hid
+ * that a typed "2020" was in the past.
  * The segmented input stays keyboard operable — a plain `<input type="date">` renders
  * inconsistently across Thai Android browsers, and a JS date library would cost
  * more than the whole component.
@@ -67,6 +70,7 @@ export function DatePickerField<T extends DateValue>({
   showTimeField = false,
   ...props
 }: DatePickerFieldProps<T>) {
+  const t = getCopy("datePicker");
   /**
    * `TimeField` reports back a bare `TimeValue` (hour/minute/second only) —
    * it has no year/month/day of its own. Passing that straight to the
@@ -118,15 +122,7 @@ export function DatePickerField<T extends DateValue>({
                   "data-[focused]:bg-brand data-[focused]:text-on-brand",
                   "data-[placeholder]:text-ink-disabled",
                 )}
-              >
-                {({ text, type, isPlaceholder, isFocused }) =>
-                  type === "year" && !isFocused
-                    ? isPlaceholder
-                      ? "yy"
-                      : text.slice(-2)
-                    : text
-                }
-              </DateSegment>
+              />
             )}
           </DateInput>
           <Button
@@ -138,7 +134,17 @@ export function DatePickerField<T extends DateValue>({
         </Group>
 
         {hint ? <FieldHint>{hint}</FieldHint> : null}
-        <FieldError>{errorMessage}</FieldError>
+        {/* react-aria's own range message formats the bound in the browser's
+            locale ("10/28/2026"), the opposite order to the field above it. */}
+        <FieldError>
+          {errorMessage ??
+            ((validation) =>
+              validation.validationDetails.rangeUnderflow && props.minValue
+                ? t("minDate", { date: formatFieldDate(props.minValue) })
+                : validation.validationDetails.rangeOverflow && props.maxValue
+                  ? t("maxDate", { date: formatFieldDate(props.maxValue) })
+                  : validation.validationErrors.join(" "))}
+        </FieldError>
 
         <Popover
           className={cn(

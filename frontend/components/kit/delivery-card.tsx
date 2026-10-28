@@ -43,14 +43,40 @@ export function DeliveryCard({
   const etaLabel = eta
     ? formatDate(new Date(eta))
     : null;
+  const receivedAt = transaction.item_received_confirmed_by_buyer_at;
+  // A finished deal has nothing left to wait for: no report countdown (it
+  // read "Past due" on every completed deal) and no "confirm once it
+  // arrives". Every status is listed so a new one is a compile error here.
+  const isOver = ((status: Transaction["status"]): boolean => {
+    switch (status) {
+      case "Pending":
+      case "Processing":
+        return false;
+      case "Completed":
+      case "Cancelled":
+      case "Refunded":
+      case "Pending Refund":
+        return true;
+      default: {
+        const unhandled: never = status;
+        return unhandled;
+      }
+    }
+  })(transaction.status);
 
-  const headline = !tracking
-    ? viewer === "seller"
-      ? "Not sent yet — enter the tracking number"
-      : "Not sent yet — waiting on the seller"
-    : etaLabel
-      ? `Arriving around ${etaLabel}`
-      : "On its way";
+  const headline = receivedAt
+    ? `Delivered ${formatDate(new Date(receivedAt))}`
+    : isOver
+      ? tracking
+        ? "Shipped"
+        : "Never shipped"
+      : !tracking
+        ? viewer === "seller"
+          ? "Not sent yet — enter the tracking number"
+          : "Not sent yet — waiting on the seller"
+        : etaLabel
+          ? `Arriving around ${etaLabel}`
+          : "On its way";
 
   async function copy() {
     if (!tracking) return;
@@ -108,18 +134,20 @@ export function DeliveryCard({
 
       {/* The +3 day grace period from flow 1, visible before it matters rather
           than as a surprise when the report button appears. */}
-      {eta ? (
+      {eta && !isOver ? (
         <div className="flex flex-col gap-1.5">
           <p className="text-meta text-ink-muted">{t("delivery.reportAfter")}</p>
           <CountdownPill deadline={shippingDeadline(eta)} />
         </div>
       ) : null}
 
-      <p className="text-caption leading-[1.6] text-ink-secondary">
-        {viewer === "buyer"
-          ? "Confirm once it arrives and matches what was agreed. That closes the deal."
-          : "The buyer confirms when it arrives. Nothing else is needed from you."}
-      </p>
+      {isOver ? null : (
+        <p className="text-caption leading-[1.6] text-ink-secondary">
+          {viewer === "buyer"
+            ? "Confirm once it arrives and matches what was agreed. That closes the deal."
+            : "The buyer confirms when it arrives. Nothing else is needed from you."}
+        </p>
+      )}
     </Notice>
   );
 }

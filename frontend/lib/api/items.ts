@@ -19,6 +19,8 @@ interface RawItem {
   condition: string;
   quantity: number;
   description: string | null;
+  /** `item_status` — see lib/item-availability.ts for the one value that matters. */
+  status: string | null;
   courseName: string | null;
   brandModel: string | null;
   warrantyExpiry: string | null;
@@ -27,8 +29,14 @@ interface RawItem {
   images: RawItemImage[];
 }
 
+/**
+ * An `Item` plus its raw `item_status`. Kept here rather than on `Item` itself:
+ * only availability reads it, and only for `Transferred` (decision D3).
+ */
+export type ItemWithStatus = Item & { status: string | null };
+
 /** Adapts the real shape to `lib/api/types.ts`'s `Item` (snake_case, mirrors the PDF). */
-function toItem(raw: RawItem): Item {
+function toItem(raw: RawItem): ItemWithStatus {
   return {
     item_id: raw.itemId,
     owner_id: raw.ownerId,
@@ -41,6 +49,7 @@ function toItem(raw: RawItem): Item {
     brand_model: raw.brandModel,
     warranty_expiry: raw.warrantyExpiry,
     size: raw.size,
+    status: raw.status ?? null,
     created_at: raw.createdAt,
     images: raw.images.map((img) => ({
       image_id: img.imageId,
@@ -67,13 +76,13 @@ export interface ItemPayload {
 }
 
 /** `GET /items` — public, no owner filter. */
-export async function getItems(opts?: RequestOptions): Promise<Item[]> {
+export async function getItems(opts?: RequestOptions): Promise<ItemWithStatus[]> {
   const raw = await apiFetch<RawItem[]>("/items", opts);
   return raw.map(toItem);
 }
 
 /** `GET /items/:item_id` — public. */
-export async function getItem(id: number): Promise<Item> {
+export async function getItem(id: number): Promise<ItemWithStatus> {
   return toItem(await apiFetch<RawItem>(`/items/${id}`));
 }
 
@@ -92,14 +101,14 @@ export async function getItemHistorySummary(
  * Named to match `lib/api/fixtures.ts`'s `getMyItems()` so pages only change
  * their import, not their call site (see `lib/api/types.ts`'s header comment).
  */
-export async function getMyItems(opts?: RequestOptions): Promise<Item[]> {
+export async function getMyItems(opts?: RequestOptions): Promise<ItemWithStatus[]> {
   const userId = await getCurrentUserId();
   if (!userId) return [];
   const items = await getItems(opts);
   return items.filter((i) => i.owner_id === userId);
 }
 
-export async function createItem(payload: ItemPayload): Promise<Item> {
+export async function createItem(payload: ItemPayload): Promise<ItemWithStatus> {
   return toItem(
     await apiFetch<RawItem>("/items", {
       method: "POST",
@@ -109,7 +118,7 @@ export async function createItem(payload: ItemPayload): Promise<Item> {
   );
 }
 
-export async function updateItem(id: number, payload: Partial<ItemPayload>): Promise<Item> {
+export async function updateItem(id: number, payload: Partial<ItemPayload>): Promise<ItemWithStatus> {
   return toItem(
     await apiFetch<RawItem>(`/items/${id}`, {
       method: "PATCH",

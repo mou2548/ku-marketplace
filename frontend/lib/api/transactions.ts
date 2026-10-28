@@ -83,6 +83,18 @@ export async function confirmPaymentReceived(
   return post<Transaction>(`/transactions/${transactionId}/confirm-payment-received`, {});
 }
 
+/**
+ * POST /transactions/{id}/reject-payment-slip — the seller turns the slip down.
+ * `reason` is required (max 500) and shown to the buyer; the deal stays
+ * Processing until a new slip arrives.
+ */
+export async function rejectPaymentSlip(
+  transactionId: number,
+  reason: string,
+): Promise<Transaction> {
+  return post<Transaction>(`/transactions/${transactionId}/reject-payment-slip`, { reason });
+}
+
 /** POST /transactions/{id}/ship — tracking details. Shipping deliveries only. */
 export async function shipTransaction(
   transactionId: number,

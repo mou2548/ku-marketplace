@@ -9,6 +9,7 @@ import {
   generateHandoverQr,
   getPaymentQr,
   getTransaction,
+  rejectPaymentSlip,
   requestCancellation,
   respondToCancellation,
   scanHandoverQr,
@@ -89,6 +90,16 @@ export async function confirmSlip(transactionId: number): Promise<ActionResult<T
   return runAction(async () => {
     await requireSession();
     return confirmPaymentReceived(transactionId);
+  });
+}
+
+export async function rejectSlip(
+  transactionId: number,
+  reason: string,
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return rejectPaymentSlip(transactionId, reason);
   });
 }
 

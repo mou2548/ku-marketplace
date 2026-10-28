@@ -6,6 +6,7 @@ import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { getMe } from "@/lib/api/users";
+import { freeUnits } from "@/lib/item-availability";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
@@ -39,7 +40,8 @@ export default async function ListItemPage({
   ]);
   const item = items.find((i) => i.item_id === Number(itemId));
   if (!item) notFound();
-  const available = summary?.available_quantity ?? item.quantity;
+  // Same count as the inventory card and /post: 0 for a handed-over item.
+  const available = freeUnits(item, summary);
 
   const rarity = ITEM_CONDITION[item.condition];
 

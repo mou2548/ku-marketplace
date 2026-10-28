@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getMyItems } from "@/lib/api/items";
+import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
 import { getPost } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 
@@ -25,5 +25,15 @@ export default async function NewOfferPage({
   if (!post) notFound();
 
   const items = await getMyItems({ token });
-  return <OfferComposer post={post} inventory={items} />;
+  // Same per-item summary the inventory and /post read, so the stash marks
+  // the same items unavailable those screens do (lib/item-availability.ts).
+  const summaries = Object.fromEntries(
+    await Promise.all(
+      items.map(async (item) => [
+        item.item_id,
+        await getItemHistorySummary(item.item_id).catch(() => undefined),
+      ] as const),
+    ),
+  );
+  return <OfferComposer post={post} inventory={items} summaries={summaries} />;
 }

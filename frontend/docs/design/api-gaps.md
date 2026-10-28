@@ -441,8 +441,13 @@ status word describes it. `GET /items/:id/history-summary` returns
 `available_quantity` and a `channels[]` array of currently open Post/Giveaway
 rows instead, but no `is_transferred` boolean.
 
-What the UI does: `lib/status.ts`'s `isItemTransferred(summary)` derives it
-as `available_quantity === 0 && channels.length === 0`. This is accurate for
+What the UI does: `lib/item-availability.ts`'s `isHandedOver(item, summary)`
+derives it as `available_quantity === 0 && channels.length === 0` with no
+unfinished deal (`ongoing_quantity === 0`). Update 2026-10-28 (decision D3):
+`GET /items` does still return the raw `status` column, and the API writes
+`Transferred` on offered items when a trade completes; that value now wins
+over the summary, since a traded-away item's summary still reports every unit
+as available. This is accurate for
 every case except one: `channels` only lists channels that are still
 `Active`. A Random/Manual giveaway that has closed registration but still has
 unclaimed tickets sitting with a receiver drops out of `channels` even though

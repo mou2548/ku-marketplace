@@ -14,12 +14,10 @@ import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useStatusText } from "@/lib/status-text";
-import type { Item, ItemHistorySummary } from "@/lib/api/types";
-import {
-  ITEM_CONDITION,
-  ITEM_TRANSFERRED_STATUS,
-  isItemTransferred,
-} from "@/lib/status";
+import type { ItemWithStatus } from "@/lib/api/items";
+import type { ItemHistorySummary } from "@/lib/api/types";
+import { freeUnits, isHandedOver } from "@/lib/item-availability";
+import { ITEM_CONDITION, ITEM_TRANSFERRED_STATUS } from "@/lib/status";
 import { ChannelChips } from "@/components/kit/channel-chips";
 
 /**
@@ -32,7 +30,7 @@ export function InventoryScreen({
   items,
   summaries,
 }: {
-  items: Item[];
+  items: ItemWithStatus[];
   summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
   const t = getCopy();
@@ -41,20 +39,31 @@ export function InventoryScreen({
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Selection>(new Set());
 
+  // `item_status` Transferred counts as well as an all-gone summary (D3): an
+  // item traded away still reports its units as available in the summary.
   const isTransferred = useCallback(
-    (item: Item) => {
-      const summary = summaries[item.item_id];
-      return summary ? isItemTransferred(summary) : false;
-    },
+    (item: ItemWithStatus) => isHandedOver(item, summaries[item.item_id]),
     [summaries],
   );
   const transferredIds = useMemo(
     () => new Set(items.filter(isTransferred).map((item) => item.item_id)),
     [items, isTransferred],
   );
+  // Selecting is for listing, so an item with nothing free to list cannot be
+  // picked either — the same rule the /post picker applies.
+  const unlistableIds = useMemo(
+    () =>
+      new Set(
+        items
+          .filter((item) => freeUnits(item, summaries[item.item_id]) === 0)
+          .map((item) => item.item_id),
+      ),
+    [items, summaries],
+  );
   const openCount = items.filter((item) => {
     const summary = summaries[item.item_id];
-    return summary ? summary.channels.length > 0 : false;
+    if (!summary || isTransferred(item)) return false;
+    return summary.channels.length > 0;
   }).length;
   const activeCount = items.length - transferredIds.size;
 
@@ -74,7 +83,7 @@ export function InventoryScreen({
   const selectedIds =
     selected === "all"
       ? items
-          .filter((item) => !transferredIds.has(item.item_id))
+          .filter((item) => !unlistableIds.has(item.item_id))
           .map((item) => item.item_id)
       : [...selected].map(Number);
 
@@ -116,7 +125,7 @@ export function InventoryScreen({
             </span>
             {transferredIds.size > 0 ? (
               <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-muted">
-                {transferredIds.size} transferred
+                {transferredIds.size} handed over
               </span>
             ) : null}
           </div>
@@ -150,7 +159,7 @@ export function InventoryScreen({
           aria-label={t("inventory.itemsIn")}
           items={slots}
           selectionMode={selecting ? "multiple" : "none"}
-          disabledKeys={selecting ? transferredIds : undefined}
+          disabledKeys={selecting ? unlistableIds : undefined}
           selectedKeys={selected}
           onSelectionChange={setSelected}
           // RAC fires this for Enter as well as click, so the keyboard path is
@@ -253,7 +262,7 @@ export function InventoryScreen({
                             <Package aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
                             <span className="text-meta text-ink-muted">Unlisted</span>
                             <span data-numeric className="text-body-sm font-semibold">
-                              {summary.available_quantity}
+                              {freeUnits(item, summary)}
                             </span>
                           </span>
                         </div>

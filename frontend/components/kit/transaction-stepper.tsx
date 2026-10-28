@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { TONE_CHIP, TONE_DOT } from "./tone";
+import { isSlipRejected } from "@/lib/slip-state";
 
 /**
  * Research risk R3: flow 1 has four terminal paths — Shipping, Meetup, trade
@@ -53,7 +54,8 @@ export function buildSteps(
       id: "pay",
       label: "Pay and upload the slip",
       actor: "buyer",
-      done: !!tx.payment_confirmed_by_buyer_at,
+      // A rejected slip means the buyer has to pay-and-upload again.
+      done: !!tx.payment_confirmed_by_buyer_at && !isSlipRejected(tx),
     });
     raw.push({
       id: "confirm-pay",

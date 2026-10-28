@@ -53,9 +53,9 @@ export default async function PostPage({
     ),
   );
 
-  // A fully transferred item has nothing left to commit to a new channel
-  // (available_quantity is 0 with no open channels), so it naturally drops
-  // out of the composer's pickable list without a separate status filter.
+  // The composer reads free units through lib/item-availability.ts, which
+  // also honours `item_status` Transferred: a traded-away item still reports
+  // every unit available in its summary, and must not show as listable.
   return (
     <PostComposer
       items={items}

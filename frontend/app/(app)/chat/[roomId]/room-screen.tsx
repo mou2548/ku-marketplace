@@ -7,7 +7,7 @@ import { getCopy } from "@/lib/copy";
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
+import { parseDate, today, type DateValue } from "@internationalized/date";
 import {
   ArrowLeft,
   CalendarClock,
@@ -32,7 +32,13 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { PaymentQr } from "@/components/kit/payment-qr";
-import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
+import {
+  SlipRejectDialog,
+  SlipRejectedNotice,
+  SlipReviewer,
+  SlipUploader,
+  SlipViewer,
+} from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
@@ -46,6 +52,7 @@ import {
   confirmSlip,
   createHandoverToken,
   fetchTransaction,
+  rejectSlip,
   saveTracking,
   submitPaymentSlip,
   submitRefundSlip,
@@ -77,9 +84,9 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
-import { describeDeal } from "@/lib/deal-progress";
+import { describeDeal, isSlipRejected } from "@/lib/deal-progress";
 import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
-import { useNow } from "@/lib/use-now";
+import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
 import {
@@ -97,6 +104,8 @@ import {
 } from "@/lib/status";
 import { usePolling } from "@/lib/use-polling";
 import { cn } from "@/lib/utils";
+
+const BANGKOK = "Asia/Bangkok";
 
 /** Past this many, the rail sends the giver to the manage screen instead. */
 const ROSTER_LIMIT = 5;
@@ -138,7 +147,18 @@ function ProposeMeetup({
   onDiscard?: () => void;
 }) {
   const t = getCopy();
-  const tz = getLocalTimeZone();
+  // Bangkok, not the device zone: the card and the past-time check below are
+  // both Bangkok time, and a phone set to UTC would disagree about "today".
+  const tz = BANGKOK;
+  // Minute resolution is enough to tell a past meetup time.
+  const now = useNow(60_000);
+  // The date field flags a past day but still reports it, and the API accepts
+  // any date, so the button is what has to refuse it. Today with a time that
+  // has already gone counts as past too. Bangkok time, like the card itself.
+  const startsAt =
+    when && time ? Date.parse(`${when.toString()}T${time}+07:00`) : NaN;
+  const inPast = Number.isFinite(startsAt) && now !== UNKNOWN_TIME && startsAt <= now;
+  const timePassed = inPast && !!when && when.compare(today(tz)) >= 0;
 
   return (
     <Surface shape="card" className="flex flex-col gap-3 p-4">
@@ -147,7 +167,9 @@ function ProposeMeetup({
         the same card from then on.
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* Stacked on phones: a full dd/mm/yyyy field and its calendar button
+          do not fit half of a 360px sheet. */}
+      <div className="grid gap-3 sm:grid-cols-2">
         <DatePickerField
           label={t("deal.date")}
           value={when}
@@ -161,8 +183,18 @@ function ProposeMeetup({
             type="time"
             value={time}
             onChange={(e) => onTimeChange(e.target.value)}
+            aria-invalid={timePassed || undefined}
+            aria-describedby={timePassed ? "meetup-time-passed" : undefined}
             className={cn(controlBase, "h-12 px-3.5 text-body")}
           />
+          {timePassed ? (
+            <span
+              id="meetup-time-passed"
+              className="text-caption leading-[1.5] font-medium text-tone-danger-fg"
+            >
+              {t("deal.timePassed")}
+            </span>
+          ) : null}
         </label>
       </div>
 
@@ -183,7 +215,7 @@ function ProposeMeetup({
         ) : null}
         <Button
           block
-          isDisabled={!when || place.trim().length === 0}
+          isDisabled={!when || !time || !Number.isFinite(startsAt) || inPast || place.trim().length === 0}
           isLoading={isBusy}
           onPress={onPropose}
         >
@@ -255,6 +287,8 @@ export function RoomScreen({
    * disclosures fixed above the thread that squeezed the conversation.
    */
   const [detailsOpen, setDetailsOpen] = useState(false);
+  /** The seller's "Amount is wrong" sheet, closed only once the API agrees. */
+  const [rejectOpen, setRejectOpen] = useState(false);
 
   // Real messages refresh on a poll (no realtime transport exists) — for
   // either a transaction room or a giveaway group room. Appointments are a
@@ -587,6 +621,35 @@ export function RoomScreen({
     }
   }
 
+  /** The buyer's pay-and-upload step; `rejected` puts the seller's reason on top. */
+  function uploadSlipCard(rejected: boolean): React.ReactNode {
+    if (!transaction) return null;
+    return (
+      <ActionCard title={t("deal.stepUploadSlip")}>
+        {rejected ? (
+          <SlipRejectedNotice
+            reason={transaction.payment_rejection_reason}
+            className="mb-3"
+          />
+        ) : null}
+        {/* Where to pay comes before proof of paying. */}
+        <PaymentQr transactionId={transaction.transaction_id} className="mb-3" />
+        <SlipUploader
+          amount={transaction.final_amount}
+          slipUrl={transaction.slip_image_url}
+          isUploaded={!!transaction.slip_image_url}
+          uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
+          onUpload={(file) =>
+            uploadAndRefresh(
+              () => uploadSlip("payment", file),
+              "Slip uploaded. Waiting on the seller.",
+            )
+          }
+        />
+      </ActionCard>
+    );
+  }
+
   function currentAction(): React.ReactNode {
     if (!transaction) return null;
     if (transaction.cancellation_response === "Pending") {
@@ -697,24 +760,9 @@ export function RoomScreen({
           </ActionCard>
         );
       case "upload-slip":
-        return (
-          <ActionCard title={t("deal.stepUploadSlip")}>
-            {/* Where to pay comes before proof of paying. */}
-            <PaymentQr transactionId={transaction.transaction_id} className="mb-3" />
-            <SlipUploader
-              amount={transaction.final_amount}
-              slipUrl={transaction.slip_image_url}
-              isUploaded={!!transaction.slip_image_url}
-              uploadedAt={transaction.payment_confirmed_by_buyer_at}
-              onUpload={(file) =>
-                uploadAndRefresh(
-                  () => uploadSlip("payment", file),
-                  "Slip uploaded. Waiting on the seller.",
-                )
-              }
-            />
-          </ActionCard>
-        );
+        // Also the buyer's turn after the seller rejected the slip
+        // (lib/status.ts); the card then leads with the seller's reason.
+        return uploadSlipCard(isSlipRejected(transaction));
       case "review-slip":
         return transaction.slip_image_url &&
           transaction.payment_confirmed_by_buyer_at ? (
@@ -735,15 +783,17 @@ export function RoomScreen({
                   "Could not confirm the payment",
                 )
               }
-              // There is no reject endpoint. `API_Marketplace.pdf` gives the
-              // seller `confirm-payment-received` and nothing else; the only
-              // contract route out of a bad slip is a cancellation request,
-              // and routing this button there is a product decision nobody has
-              // taken. Until then it says so rather than reporting a rejection
-              // that never reached the buyer. See docs/design/api-gaps.md.
-              onReject={() =>
-                toast.warning(
-                  "Rejecting a slip is not supported yet. Ask the buyer in chat, or request a cancellation.",
+              onReject={() => setRejectOpen(true)}
+            />
+            <SlipRejectDialog
+              isOpen={rejectOpen}
+              onOpenChange={setRejectOpen}
+              isBusy={busy}
+              onReject={(reason) =>
+                act(
+                  () => unwrapAction(rejectSlip(transaction.transaction_id, reason)),
+                  t("slip.rejected"),
+                  "Could not reject the slip",
                 )
               }
             />
@@ -761,10 +811,22 @@ export function RoomScreen({
                 icon={<Truck className="size-4" />}
                 hint={t("deal.trackingHint")}
               />
-              <TextInput label="Estimated delivery date" type="date" value={deliveryDate} onChange={setDeliveryDate} isRequired />
+              {/* Not before today: a past date made the deal "Past due" the
+                  moment it was saved. The API accepts one, so the form refuses. */}
+              <DatePickerField
+                label={t("deal.estimatedDelivery")}
+                value={deliveryDate ? parseDate(deliveryDate) : null}
+                onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
+                minValue={today(BANGKOK)}
+                isRequired
+              />
               <Button
                 block
-                isDisabled={!tracking.trim() || !deliveryDate}
+                isDisabled={
+                  !tracking.trim() ||
+                  !deliveryDate ||
+                  parseDate(deliveryDate).compare(today(BANGKOK)) < 0
+                }
                 isLoading={busy}
                 onPress={() =>
                   act(
@@ -1066,15 +1128,21 @@ export function RoomScreen({
         size="lg"
       >
         <div className="flex flex-col gap-5">
-          {transaction && viewer ? (
+          {/* A shipping deal's handover is the delivery card, which
+              DealDetails below already shows; rendering it here as well put
+              it on screen twice. A return still needs this section, since
+              getting the item back is a meetup whatever the delivery. */}
+          {transaction &&
+          viewer &&
+          (transaction.active_report_id ||
+            transaction.delivery_method === "Meetup" ||
+            transaction.status === "Pending Refund") ? (
             <section aria-label="Handover" className="flex flex-col gap-3">
               {transaction.active_report_id ? (
                 <p className="rounded-control border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-body-sm text-tone-danger-fg">
                   An admin is reviewing this deal. Meetups, payments and
                   handover are paused until they decide.
                 </p>
-              ) : (transaction.delivery_method !== "Meetup" && transaction.status !== "Pending Refund") ? (
-                <DeliveryCard transaction={transaction} viewer={viewer} />
               ) : appointment && editingAppointment ? (
                 // Pre-filled from the card it replaces — "Resend" updates that
                 // same card in place, "Discard" brings it back untouched.

@@ -10,8 +10,17 @@
 /** §1.1 — the only two domains that may register. */
 export const ALLOWED_EMAIL_DOMAINS = ["ku.th", "ku.ac.th"] as const;
 
+/**
+ * How an email is sent to the API. Autofill adds spaces around it (audit F03).
+ * Case is left alone: the API stores and compares addresses as typed, so
+ * lowercasing here would lock out any account registered with capitals.
+ */
+export function normalizeEmail(email: string): string {
+  return email.trim();
+}
+
 export function isKuEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase();
+  const normalized = normalizeEmail(email).toLowerCase();
   return ALLOWED_EMAIL_DOMAINS.some((domain) => normalized.endsWith(`@${domain}`));
 }
 

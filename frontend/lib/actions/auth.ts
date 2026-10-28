@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import * as authApi from "@/lib/api/auth";
 import { errorText } from "@/lib/api-errors";
+import { normalizeEmail } from "@/lib/auth-rules";
 import { clearSession, getRefreshToken, setSession } from "@/lib/api/session";
 
 export interface LoginState {
@@ -14,7 +15,7 @@ export async function login(
   _prevState: LoginState | undefined,
   formData: FormData,
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
@@ -53,7 +54,7 @@ export async function requestRegisterOtp(
   _prevState: RegisterState | undefined,
   formData: FormData,
 ): Promise<RegisterState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const password = String(formData.get("password") ?? "");
 
   try {
@@ -74,7 +75,7 @@ export async function verifyRegisterOtp(
   _prevState: VerifyState | undefined,
   formData: FormData,
 ): Promise<VerifyState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const otp = String(formData.get("otp") ?? "");
 
   let accessToken: string;
@@ -101,7 +102,7 @@ export async function resendOtp(
   _prevState: ResendState | undefined,
   formData: FormData,
 ): Promise<ResendState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
 
   try {
     await authApi.resendOtp(email);
@@ -128,7 +129,7 @@ export async function forgotPassword(
   _prevState: ForgotPasswordState | undefined,
   formData: FormData,
 ): Promise<ForgotPasswordState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
 
   try {
     await authApi.forgotPassword(email);
@@ -147,7 +148,7 @@ export async function resetPassword(
   _prevState: ResetPasswordState | undefined,
   formData: FormData,
 ): Promise<ResetPasswordState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
   const otp = String(formData.get("otp") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");
 

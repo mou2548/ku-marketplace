@@ -28,6 +28,7 @@ import { requiresPayment, type Tone } from "@/lib/status";
 export type DealEventKind =
   | "started"
   | "slip"
+  | "slip-rejected"
   | "paid"
   | "meetup-proposed"
   | "meetup-confirmed"
@@ -102,6 +103,17 @@ export function buildDealTimeline(
       detail: baht(tx.final_amount),
       tone: "info",
       at: tx.payment_confirmed_by_buyer_at,
+    });
+
+  // Shown only while the rejection stands: the API drops the reason once a
+  // new slip is on file, and records no time for the rejection itself.
+  if (tx.payment_rejection_reason)
+    push({
+      id: "slip-rejected",
+      kind: "slip-rejected",
+      title: `${name(tx.seller_id)} rejected the payment slip`,
+      detail: tx.payment_rejection_reason,
+      tone: "danger",
     });
 
   if (tx.payment_confirmed_by_seller_at)

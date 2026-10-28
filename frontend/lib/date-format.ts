@@ -83,8 +83,24 @@ export function formatDate(value: DateInput): string {
   return `${day} ${MONTH_SHORT[month - 1]} ${year}`;
 }
 
-/** "Mon 10 Aug, 13:00" — for appointments and deadlines, where the hour matters. */
-export function formatDateTime(value: DateInput): string {
-  const { month, day, hour, minute, weekday } = bangkokParts(value);
-  return `${WEEKDAY_SHORT[weekday]} ${day} ${MONTH_SHORT[month - 1]}, ${pad2(hour)}:${pad2(minute)}`;
+/**
+ * "Mon 10 Aug, 13:00" — for appointments and deadlines, where the hour matters.
+ *
+ * The year is left out only when it is the current one (in Bangkok). Without
+ * it, a meetup saved for 2020 read "Wed 1 Jan, 10:00" and passed for next
+ * January. `now` exists for tests.
+ */
+export function formatDateTime(value: DateInput, now: DateInput = Date.now()): string {
+  const { year, month, day, hour, minute, weekday } = bangkokParts(value);
+  const yearPart = year === bangkokParts(now).year ? "" : ` ${year}`;
+  return `${WEEKDAY_SHORT[weekday]} ${day} ${MONTH_SHORT[month - 1]}${yearPart}, ${pad2(hour)}:${pad2(minute)}`;
+}
+
+/**
+ * "28/10/2026" — a calendar date in the same day/month/year order as the date
+ * field, for messages about what the field accepts. Takes the field's own
+ * parts, so no timezone is involved.
+ */
+export function formatFieldDate(date: { year: number; month: number; day: number }): string {
+  return `${pad2(date.day)}/${pad2(date.month)}/${date.year}`;
 }

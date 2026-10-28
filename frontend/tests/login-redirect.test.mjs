@@ -9,7 +9,7 @@ class Redirect extends Error {
   }
 }
 
-async function loginAs(user) {
+async function loginAs(user, email = 'someone@ku.th', sent = {}) {
   const { login } = loadTs('lib/actions/auth.ts', {
     'next/navigation': {
       redirect: (to) => {
@@ -17,13 +17,17 @@ async function loginAs(user) {
       },
     },
     '@/lib/api/auth': {
-      login: async () => ({
-        accessToken: 'a',
-        refreshToken: 'r',
-        sessionExpiresAt: 0,
-        user,
-      }),
+      login: async (to) => {
+        sent.email = to;
+        return {
+          accessToken: 'a',
+          refreshToken: 'r',
+          sessionExpiresAt: 0,
+          user,
+        };
+      },
     },
+    '@/lib/auth-rules': loadTs('lib/auth-rules.ts'),
     '@/lib/api/client': { ApiError: class ApiError extends Error {} },
     '@/lib/api-errors': { errorText: (err) => err.message },
     '@/lib/api/session': {
@@ -33,7 +37,7 @@ async function loginAs(user) {
     },
   });
   const form = new FormData();
-  form.set('email', 'someone@ku.th');
+  form.set('email', email);
   form.set('password', 'secret');
   try {
     await login(undefined, form);
@@ -55,4 +59,10 @@ test('a student lands on the feed', async () => {
 test('a suspended or banned account lands on its appeals', async () => {
   for (const status of ['Suspended', 'Banned'])
     assert.equal(await loginAs({ status, isAdmin: false }), '/account/appeals');
+});
+
+test('the email is trimmed, but its case is kept, before it is sent', async () => {
+  const sent = {};
+  await loginAs({ status: 'Active', isAdmin: false }, '  User1@ku.th ', sent);
+  assert.equal(sent.email, 'User1@ku.th');
 });

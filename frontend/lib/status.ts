@@ -1,3 +1,5 @@
+import { isSlipRejected } from "@/lib/slip-state";
+
 /**
  * The single place where a backend enum becomes something a user can read.
  *
@@ -174,21 +176,6 @@ export const ITEM_TRANSFERRED_STATUS: StatusPresentation = {
   labelKey: "item.Transferred.label",
   icon: "PackageCheck",
 };
-
-/**
- * True once every unit this item ever had is gone: sold, traded, or given
- * away, with nothing left in an open channel. Derived from
- * `ItemHistorySummary` rather than a stored field — see
- * docs/design/api-gaps.md for the one edge case this doesn't catch (a
- * closed-but-not-fully-claimed giveaway won't appear in `channels`, so it
- * won't register as fully transferred; the safe direction to be wrong in).
- */
-export function isItemTransferred(summary: {
-  available_quantity: number;
-  channels: unknown[];
-}): boolean {
-  return summary.available_quantity === 0 && summary.channels.length === 0;
-}
 
 export type PostType = "SellOnly" | "TradeOnly" | "Both";
 
@@ -673,6 +660,10 @@ export function resolveTransactionActor(
       );
 
     case "Processing":
+      // A rejected slip hands the turn back to the buyer.
+      if (requiresPayment(tx) && isSlipRejected(tx)) {
+        return you("buyer", "prompt.upload-slip.you", "prompt.upload-slip.them", "warning", "upload-slip");
+      }
       if (requiresPayment(tx) && !tx.payment_confirmed_by_seller_at) {
         return you("seller", "prompt.review-slip.you", "prompt.review-slip.them", "warning", "review-slip");
       }
