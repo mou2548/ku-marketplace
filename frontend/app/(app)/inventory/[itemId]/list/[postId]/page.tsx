@@ -12,6 +12,8 @@ import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "../list-form";
 
+export const metadata = { title: "Edit listing - KU Marketplace" };
+
 /**
  * E5 — edit the terms of one specific channel already on the market for this
  * item. Keyed by `post_id`, not `item_id`: an item can carry more than one

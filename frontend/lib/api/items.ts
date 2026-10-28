@@ -96,6 +96,29 @@ export async function getItemHistorySummary(
 }
 
 /**
+ * `getItemHistorySummary` for each item, in parallel, keyed by `item_id`.
+ * A lookup that fails is left undefined rather than failing the page; the
+ * callers fall back on the item's own quantity (lib/item-availability.ts).
+ * The inventory, `/post` and the trade composer all read this, so they mark
+ * the same items unavailable.
+ */
+export async function getItemHistorySummaries(
+  items: ReadonlyArray<Pick<Item, "item_id">>,
+): Promise<Record<number, ItemHistorySummary | undefined>> {
+  return Object.fromEntries(
+    await Promise.all(
+      items.map(
+        async (item) =>
+          [
+            item.item_id,
+            await getItemHistorySummary(item.item_id).catch(() => undefined),
+          ] as const,
+      ),
+    ),
+  );
+}
+
+/**
  * `GET /items` filtered to the signed-in owner — there is no owner query
  * param on the real endpoint, so this fetches everything and filters here.
  * Named to match `lib/api/fixtures.ts`'s `getMyItems()` so pages only change

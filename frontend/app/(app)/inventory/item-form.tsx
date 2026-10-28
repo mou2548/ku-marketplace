@@ -223,218 +223,232 @@ export function ItemForm({
     </Surface>
   );
 
+  const actions = (
+    <>
+      <Button
+        variant="secondary"
+        block
+        onPress={() => router.back()}
+        isDisabled={busy}
+      >{t("inventory.cancel")}</Button>
+      <Button block size="lg" isDisabled={!canSave} isLoading={busy} onPress={save}>
+        <Save className="size-5" />
+        {mode === "create" ? "Add to inventory" : "Save"}
+      </Button>
+    </>
+  );
+
   return (
-    <TwoColumn rail={preview}>
-      <header>
-        <p className="text-overline font-semibold text-ink-brand uppercase">
-          {t("inventory.myStuff")}
-        </p>
-        <h1 className="mt-1 text-h1">
-          {mode === "create" ? t("inventory.addItem") : t("inventory.editDetails")}
-        </h1>
-      </header>
+    <>
+      <TwoColumn rail={preview}>
+        <header>
+          <p className="text-overline font-semibold text-ink-brand uppercase">
+            {t("inventory.myStuff")}
+          </p>
+          <h1 className="mt-1 text-h1">
+            {mode === "create" ? t("inventory.addItem") : t("inventory.editDetails")}
+          </h1>
+        </header>
 
-      {/* Photos first: it is the fastest field to fill and the one that makes
-          the rest feel worth doing. */}
-      <Surface shape="card" className="flex flex-col gap-3 p-4">
-        <p className="text-body-sm font-medium text-ink-secondary">{t("inventory.photos")}<span className="ml-1 font-normal text-ink-muted">
-            the first one is the cover
-          </span>
-        </p>
+        {/* Photos first: it is the fastest field to fill and the one that makes
+            the rest feel worth doing. */}
+        <Surface shape="card" className="flex flex-col gap-3 p-4">
+          <p className="text-body-sm font-medium text-ink-secondary">{t("inventory.photos")}<span className="ml-1 font-normal text-ink-muted">
+              the first one is the cover
+            </span>
+          </p>
 
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {photos.map((p, i) => (
-            <div
-              key={p.key}
-              className="relative aspect-square overflow-hidden rounded-slot bg-surface-sunken shadow-sunken"
-            >
-              {/* `fill` with no `sizes` makes next/image emit sizes="100vw",
-                  so a thumbnail in a four-column grid downloads a full-width
-                  image on every device. */}
-              <Image
-                src={p.previewUrl}
-                alt=""
-                fill
-                sizes="(min-width: 768px) 25vw, 33vw"
-                className="object-cover"
-              />
-              <button
-                type="button"
-                aria-label={`Remove photo ${i + 1}`}
-                onClick={() =>
-                  setPhotos((list) => list.filter((x) => x.key !== p.key))
-                }
-                // The smallest control in the product at 24px, sitting in a photo corner
-                // where a thumb has the least room. touch-target lifts the hit area
-                // to 44px on a phone without growing the drawn circle.
-                className="touch-target absolute top-1 right-1 grid size-7 place-items-center rounded-pill bg-surface-inverse/80 text-white"
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {photos.map((p, i) => (
+              <div
+                key={p.key}
+                className="relative aspect-square overflow-hidden rounded-slot bg-surface-sunken shadow-sunken"
               >
-                <X aria-hidden className="size-3.5" />
-              </button>
-            </div>
-          ))}
+                {/* `fill` with no `sizes` makes next/image emit sizes="100vw",
+                    so a thumbnail in a four-column grid downloads a full-width
+                    image on every device. */}
+                <Image
+                  src={p.previewUrl}
+                  alt=""
+                  fill
+                  sizes="(min-width: 768px) 25vw, 33vw"
+                  className="object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label={`Remove photo ${i + 1}`}
+                  onClick={() =>
+                    setPhotos((list) => list.filter((x) => x.key !== p.key))
+                  }
+                  // The smallest control in the product at 24px, sitting in a photo corner
+                  // where a thumb has the least room. touch-target lifts the hit area
+                  // to 44px on a phone without growing the drawn circle.
+                  className="touch-target absolute top-1 right-1 grid size-7 place-items-center rounded-pill bg-surface-inverse/80 text-white"
+                >
+                  <X aria-hidden className="size-3.5" />
+                </button>
+              </div>
+            ))}
 
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="grid aspect-square place-items-center rounded-slot border-2 border-dashed border-line-default bg-surface-sunken text-ink-muted transition-colors hover:border-brand hover:text-ink-brand"
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="grid aspect-square place-items-center rounded-slot border-2 border-dashed border-line-default bg-surface-sunken text-ink-muted transition-colors hover:border-brand hover:text-ink-brand"
+            >
+              <ImagePlus aria-hidden className="size-5" />
+              <span className="sr-only">{t("inventory.addPhotos")}</span>
+            </button>
+          </div>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            aria-label={t("inventory.addPhotos")}
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              setPhotos((list) => [
+                ...list,
+                ...files.map((f) => ({
+                  key: `new-${f.name}-${f.lastModified}-${Math.random()}`,
+                  file: f,
+                  previewUrl: URL.createObjectURL(f),
+                })),
+              ]);
+            }}
+          />
+        </Surface>
+
+        <Surface shape="panel" className="flex flex-col gap-5 p-4 sm:p-5">
+          <h2 className="text-h3">{t("market.productInfo")}</h2>
+          <TextInput
+            className="max-w-2xl"
+            label={t("inventory.itemName")}
+            value={name}
+            onChange={setName}
+            isRequired
+            placeholder={t("inventory.itemNamePlaceholder")}
+          />
+
+        <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+          <SelectField
+            label={t("inventory.category")}
+            selectedKey={category}
+            onSelectionChange={(k) => setCategory(k as ItemCategory)}
           >
-            <ImagePlus aria-hidden className="size-5" />
-            <span className="sr-only">{t("inventory.addPhotos")}</span>
-          </button>
+            {CATEGORY_OPTIONS.map((c) => (
+              <SelectOption key={c} id={c} textValue={c}>
+                {c}
+              </SelectOption>
+            ))}
+          </SelectField>
+
+          <TextInput
+            label={t("inventory.quantity")}
+            value={quantity}
+            onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
+            inputMode="numeric"
+          />
         </div>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            setPhotos((list) => [
-              ...list,
-              ...files.map((f) => ({
-                key: `new-${f.name}-${f.lastModified}-${Math.random()}`,
-                file: f,
-                previewUrl: URL.createObjectURL(f),
-              })),
-            ]);
-          }}
-        />
-      </Surface>
-
-      <Surface shape="panel" className="flex flex-col gap-5 p-4 sm:p-5">
-        <h2 className="text-h3">{t("market.productInfo")}</h2>
-        <TextInput
-          className="max-w-2xl"
-          label={t("inventory.itemName")}
-          value={name}
-          onChange={setName}
-          isRequired
-          placeholder={t("inventory.itemNamePlaceholder")}
-        />
-
-      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
-        <SelectField
-          label={t("inventory.category")}
-          selectedKey={category}
-          onSelectionChange={(k) => setCategory(k as ItemCategory)}
-        >
-          {CATEGORY_OPTIONS.map((c) => (
-            <SelectOption key={c} id={c} textValue={c}>
-              {c}
-            </SelectOption>
-          ))}
-        </SelectField>
-
-        <TextInput
-          label={t("inventory.quantity")}
-          value={quantity}
-          onChange={(v) => setQuantity(v.replace(/\D/g, ""))}
-          inputMode="numeric"
-        />
-      </div>
-
-      {needsCourse ? (
-        <TextInput
-          className="max-w-2xl"
-          label={t("inventory.courseCode")}
-          value={courseName}
-          onChange={setCourseName}
-          placeholder="e.g. 01417111"
-          hint={t("inventory.courseHint")}
-        />
-      ) : null}
-
-      {needsBrand ? (
-        <TextInput
-          label={t("inventory.brandModel")}
-          value={brandModel}
-          onChange={setBrandModel}
-          placeholder={t("inventory.brandPlaceholder")}
-        />
-      ) : null}
-
-      {needsWarranty ? (
-        <DatePickerField
-          label={t("inventory.warranty")}
-          value={warranty}
-          onChange={setWarranty}
-          hint={t("inventory.warrantyHint")}
-        />
-      ) : null}
-
-        {needsSize ? (
+        {needsCourse ? (
           <TextInput
-            label={t("inventory.size")}
-            value={size}
-            onChange={setSize}
-            placeholder={t("inventory.sizePlaceholder")}
-            hint={t("inventory.sizeHint")}
+            className="max-w-2xl"
+            label={t("inventory.courseCode")}
+            value={courseName}
+            onChange={setCourseName}
+            placeholder="e.g. 01417111"
+            hint={t("inventory.courseHint")}
           />
         ) : null}
-      </Surface>
 
-      {/* Rendered from the map rather than hand-written, which is how this
-          form came to offer four grades while the market filtered on five —
-          "Very Good" was missing, and it is the grade the seed uses most. */}
-      <RadioGroupField
-        label={t("inventory.condition")}
-        value={condition}
-        onChange={(v) => setCondition(v as ItemCondition)}
-        variant="card"
-        hint={t("inventory.conditionHint")}
-      >
-        {CONDITION_ORDER.map((value) => (
-          <Radio key={value} value={value} description={CONDITION_HINT[value]}>
-            {st.of(ITEM_CONDITION[value]).label}
-          </Radio>
-        ))}
-      </RadioGroupField>
-
-      <TextAreaField
-        className="max-w-2xl"
-        label={t("inventory.details")}
-        value={description}
-        onChange={setDescription}
-        placeholder={t("inventory.descHint")}
-        rows={5}
-      />
-
-      {mode === "edit" && item ? (
-        <div className="flex justify-end">
-          <ConfirmButton
-            title="Delete this item?"
-            description="This removes it from your inventory for good. Only possible while nothing of it is committed to a listing or a giveaway — unlist everything first if this is blocked."
-            confirmLabel="Delete item"
-            doneMessage="Item deleted."
-            icon={<Trash2 className="size-4" />}
-            onConfirm={() => unwrapAction(removeItem(item.item_id))}
-            onDone={() => router.push("/inventory")}
-            trigger={
-              <>
-                <Trash2 className="size-4" />
-                Delete item
-              </>
-            }
-            triggerProps={{ variant: "ghost", size: "sm" }}
+        {needsBrand ? (
+          <TextInput
+            label={t("inventory.brandModel")}
+            value={brandModel}
+            onChange={setBrandModel}
+            placeholder={t("inventory.brandPlaceholder")}
           />
-        </div>
-      ) : null}
+        ) : null}
 
-      <ActionBar>
-        <Button
-          variant="secondary"
-          block
-          onPress={() => router.back()}
-          isDisabled={busy}
-        >{t("inventory.cancel")}</Button>
-        <Button block size="lg" isDisabled={!canSave} isLoading={busy} onPress={save}>
-          <Save className="size-5" />
-          {mode === "create" ? "Add to inventory" : "Save"}
-        </Button>
-      </ActionBar>
-    </TwoColumn>
+        {needsWarranty ? (
+          <DatePickerField
+            label={t("inventory.warranty")}
+            value={warranty}
+            onChange={setWarranty}
+            hint={t("inventory.warrantyHint")}
+          />
+        ) : null}
+
+          {needsSize ? (
+            <TextInput
+              label={t("inventory.size")}
+              value={size}
+              onChange={setSize}
+              placeholder={t("inventory.sizePlaceholder")}
+              hint={t("inventory.sizeHint")}
+            />
+          ) : null}
+        </Surface>
+
+        {/* Rendered from the map rather than hand-written, which is how this
+            form came to offer four grades while the market filtered on five —
+            "Very Good" was missing, and it is the grade the seed uses most. */}
+        <RadioGroupField
+          label={t("inventory.condition")}
+          value={condition}
+          onChange={(v) => setCondition(v as ItemCondition)}
+          variant="card"
+          hint={t("inventory.conditionHint")}
+        >
+          {CONDITION_ORDER.map((value) => (
+            <Radio key={value} value={value} description={CONDITION_HINT[value]}>
+              {st.of(ITEM_CONDITION[value]).label}
+            </Radio>
+          ))}
+        </RadioGroupField>
+
+        <TextAreaField
+          className="max-w-2xl"
+          label={t("inventory.details")}
+          value={description}
+          onChange={setDescription}
+          placeholder={t("inventory.descHint")}
+          rows={5}
+        />
+
+        {mode === "edit" && item ? (
+          <div className="flex justify-end">
+            <ConfirmButton
+              title="Delete this item?"
+              description="This removes it from your inventory for good. Only possible while nothing of it is committed to a listing or a giveaway — unlist everything first if this is blocked."
+              confirmLabel="Delete item"
+              doneMessage="Item deleted."
+              icon={<Trash2 className="size-4" />}
+              onConfirm={() => unwrapAction(removeItem(item.item_id))}
+              onDone={() => router.push("/inventory")}
+              trigger={
+                <>
+                  <Trash2 className="size-4" />
+                  Delete item
+                </>
+              }
+              triggerProps={{ variant: "ghost", size: "sm" }}
+            />
+          </div>
+        ) : null}
+
+        <ActionBar className="hidden lg:flex">{actions}</ActionBar>
+      </TwoColumn>
+
+      {/* Below `lg` the preview stacks under the form, so a sticky bar at the
+          end of the form column left its own slot empty between "Delete item"
+          and the preview while it floated at the bottom of the screen (audit
+          F16). On a phone the bar is the last thing on the page instead; only
+          one of the two is ever displayed. */}
+      <ActionBar className="mt-6 lg:hidden">{actions}</ActionBar>
+    </>
   );
 }

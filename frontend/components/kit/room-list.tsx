@@ -4,8 +4,9 @@ import { formatDate } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import {
   Banknote,
   CalendarClock,
@@ -37,12 +38,12 @@ import { EmptyState } from "./empty-state";
 import { PostImage } from "./post-image";
 import { SearchField } from "./search-field";
 import { StatusBadge } from "./status-badge";
-import { TabList, Tabs, UnderlineTab } from "./tabs";
 import { TONE_DOT, TONE_TEXT } from "./tone";
 
-/** The list is lighter to keep fresh than an open thread, so it polls slower
- * than the room's own 5s. Enough that a reply surfaces without a reload. */
-const ROOM_LIST_POLL_INTERVAL_MS = 10000;
+/** The list matters less than an open thread, so it polls well below the
+ * room's message poll. An open room floats itself on send (`markRoomActive`),
+ * so this only has to catch the other side's replies (audit B05). */
+const ROOM_LIST_POLL_INTERVAL_MS = 20000;
 
 const SORT_MODES: RoomSortMode[] = ["recent", "name", "counterparty"];
 
@@ -135,7 +136,11 @@ export function RoomList({
     setServerRooms(rooms);
     setLiveRooms(rooms);
   }
+  const rootRef = useRef<HTMLDivElement>(null);
   usePolling(() => {
+    // Beside an open room the list is `display: none` below `xl`, but still
+    // mounted; nobody can see it, so it does not fetch.
+    if (rootRef.current && rootRef.current.getClientRects().length === 0) return;
     unwrapAction(fetchRoomSummaries(viewerId)).then(setLiveRooms).catch(() => {});
   }, ROOM_LIST_POLL_INTERVAL_MS);
 
@@ -199,7 +204,7 @@ export function RoomList({
     : byKind;
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", className)}>
+    <div ref={rootRef} className={cn("flex h-full min-h-0 flex-col", className)}>
       {/* The column's own header. It stays put while the list scrolls under
           it — a list whose filters scroll away is a list you cannot refilter
           without going back to the top. */}
@@ -221,34 +226,43 @@ export function RoomList({
           className="mb-3"
         />
 
-        {/* Filter tabs and the sort control share one bar: the tabs grow and
-            scroll on a narrow screen, the sort select keeps its width on the
-            right so it never gets pushed off. */}
+        {/* Filter row and the sort control share one bar: the filter grows,
+            the sort select keeps its width on the right so it never gets
+            pushed off. */}
         <div className="mb-3 flex items-end gap-3">
-          <Tabs
-            selectedKey={filter}
-            onSelectionChange={(k) => setFilter(k as "all" | RoomKind)}
-            className="min-w-0 flex-1"
-          >
-            {/* Fixed, non-scrolling bar: the four tabs share the width evenly
-                (flex-1) and the row never scrolls sideways, so it stays put
-                instead of sliding on a narrow column. */}
-            <TabList
+          <div className="min-w-0 flex-1">
+            {/* Drawn like the underline tabs, but it filters the one list below
+                rather than switching panels, so it is a single-choice group
+                (radiogroup/radio) instead of a tablist with no tabpanels
+                (audit P04). Fixed, non-scrolling bar: the four options share
+                the width evenly (flex-1) and the row never scrolls sideways. */}
+            <ToggleButtonGroup
               aria-label={t("chat.conversationType")}
-              variant="underline"
-              className="w-full gap-1 overflow-x-clip"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={[filter]}
+              onSelectionChange={(keys) => {
+                const [k] = keys;
+                if (k !== undefined) setFilter(k as "all" | RoomKind);
+              }}
+              className="flex w-full gap-1 overflow-x-clip border-b border-line"
             >
               {(["all", "Sale", "Trade", "Giveaway"] as const).map((id) => (
-                <UnderlineTab
+                <ToggleButton
                   key={id}
                   id={id}
-                  className="flex-1 justify-center whitespace-nowrap px-1 text-caption"
+                  className={cn(
+                    "flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 whitespace-nowrap px-1 text-caption text-ink-muted",
+                    "-mb-px border-b-2 border-transparent transition-all duration-[--dur-fast] ease-[--ease-out]",
+                    "data-[hovered]:text-ink",
+                    "data-[selected]:border-brand data-[selected]:font-semibold data-[selected]:text-ink",
+                  )}
                 >
                   {id === "all" ? t("history.all") : t(`chat.${id.toLowerCase()}`)}
-                </UnderlineTab>
+                </ToggleButton>
               ))}
-            </TabList>
-          </Tabs>
+            </ToggleButtonGroup>
+          </div>
 
           <SelectField
             aria-label={t("chat.sortBy")}
@@ -386,6 +400,7 @@ function RoomRow({
           ) : null}
           {isUnread ? (
             <span
+              role="img"
               aria-label="Unread conversation"
               className="size-2.5 shrink-0 rounded-full bg-tone-info-solid ring-2 ring-surface"
             />

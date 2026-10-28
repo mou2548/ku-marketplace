@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDateTime } from "@/lib/date-format";
+import { formatPrice } from "@/lib/format-price";
 
 
 import { getCopy } from "@/lib/copy";
@@ -9,6 +10,7 @@ import Image from "next/image";
 import { Button as AriaButton } from "react-aria-components";
 import { AlertTriangle, Check, ImagePlus, RotateCcw, Send, X, ZoomIn } from "lucide-react";
 
+import { isDecodableImage } from "@/lib/image-check";
 import { cn } from "@/lib/utils";
 
 import { Notice } from "@/components/patterns/notice";
@@ -18,6 +20,7 @@ import { TextAreaField } from "./field";
 import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
 import { Surface } from "./surface";
+import { useToast } from "./toast";
 import { TrustBadge } from "./trust-badge";
 
 /**
@@ -44,10 +47,6 @@ import { TrustBadge } from "./trust-badge";
  */
 
 const MAX_BYTES = 5 * 1024 * 1024;
-
-export function formatAmount(amount: number) {
-  return `฿${amount.toLocaleString("en-GB")}`;
-}
 
 /**
  * `next/image` refuses any src that is neither a rooted path nor an http(s)
@@ -184,7 +183,7 @@ export function SlipViewer({
         <h4 className="text-body font-semibold">{heading}</h4>
         {amount !== undefined ? (
           <span data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
-            {formatAmount(amount)}
+            {formatPrice(amount)}
           </span>
         ) : null}
       </header>
@@ -193,7 +192,7 @@ export function SlipViewer({
         src={slipUrl}
         alt={heading}
         title={heading}
-        caption={amount !== undefined ? formatAmount(amount) : undefined}
+        caption={amount !== undefined ? formatPrice(amount) : undefined}
       />
 
       {uploadedAt ? <UploadedAt at={uploadedAt} labelKey="slip.uploadedAt" /> : null}
@@ -202,7 +201,11 @@ export function SlipViewer({
 }
 
 export interface SlipUploaderProps {
-  amount: number;
+  /**
+   * Shown beside the heading. Omitted when the sum is not known — a refund
+   * after a rejected slip returns whatever arrived, not the deal total.
+   */
+  amount?: number;
   onUpload: (file: File) => Promise<void>;
   isUploaded?: boolean;
   uploadedAt?: string | null;
@@ -230,7 +233,9 @@ export function SlipUploader({
   className,
 }: SlipUploaderProps) {
   const t = getCopy();
+  const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   /**
    * Picking a file used to send it. There was no beat between the two, so the
    * preview it set was decoration — by the time it painted, the upload was
@@ -243,6 +248,22 @@ export function SlipUploader({
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The API's own reason for a failed upload, under the generic sentence. */
+  const [reason, setReason] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  /**
+   * Bumped on every pick. Decoding is async, so a second pick made while the
+   * first is still decoding would otherwise race it: whichever finished last
+   * won, and whichever finished first cleared `checking` early. Only the
+   * latest pick may touch state.
+   */
+  const pickRef = useRef(0);
+
+  // At 390px the slip preview is taller than the space the action card gets,
+  // so an error rendered below it was off screen (audit B03). Bring it in.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest" });
+  }, [error]);
 
   // Object URLs are held by the document until they are revoked; a sender who
   // swaps through four screenshots looking for the right one leaks all four.
@@ -256,19 +277,29 @@ export function SlipUploader({
 
   const choose = useCallback(() => {
     setError(null);
+    setReason(null);
     inputRef.current?.click();
   }, []);
 
-  function handleFile(file: File) {
-    if (!file.type.startsWith("image/")) {
-      setError(t("slip.errorNotImage"));
-      return;
-    }
+  async function handleFile(file: File) {
+    const pick = ++pickRef.current;
     if (file.size > MAX_BYTES) {
+      setChecking(false);
       setError(t("slip.errorTooLarge"));
       return;
     }
+    // The MIME type comes from the file name; only decoding reads the bytes
+    // (audit B04), so a renamed text file never previews as a slip.
+    setChecking(true);
+    const isImage = await isDecodableImage(file);
+    if (pick !== pickRef.current) return;
+    setChecking(false);
+    if (!isImage) {
+      setError(t("slip.errorNotImage"));
+      return;
+    }
     setError(null);
+    setReason(null);
     setSent(false);
     setPending({ file, url: URL.createObjectURL(file) });
   }
@@ -277,6 +308,7 @@ export function SlipUploader({
     if (!pending || busy) return;
     setBusy(true);
     setError(null);
+    setReason(null);
     try {
       await onUpload(pending.file);
       // The preview stays on screen. The parent refetches the transaction and
@@ -284,14 +316,34 @@ export function SlipUploader({
       // the meantime would blank the card at the exact moment the sender is
       // looking for confirmation that it went.
       setSent(true);
-    } catch {
+    } catch (err) {
       // Deliberately keeps `pending`. A failed upload used to clear the
       // preview, so retrying meant finding the screenshot again.
+      const why = err instanceof Error && err.message ? err.message : null;
       setError(t("slip.errorUploadFailed"));
+      setReason(why);
+      // Also a toast: the inline line can sit below a tall preview.
+      toast.error(why ?? t("slip.errorUploadFailed"));
     } finally {
       setBusy(false);
     }
   }
+
+  const errorLine = error ? (
+    <div
+      ref={errorRef}
+      role="alert"
+      className="mt-3 flex scroll-mb-4 items-start gap-2 text-body-sm font-medium text-tone-danger-fg"
+    >
+      <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span>{error}</span>
+        {reason && reason !== error ? (
+          <span className="font-normal break-words">{reason}</span>
+        ) : null}
+      </span>
+    </div>
+  ) : null;
 
   const displayed = pending?.url ?? slipUrl ?? null;
   const awaitingSend = !!pending && !sent;
@@ -306,9 +358,11 @@ export function SlipUploader({
     >
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{heading}</h4>
-        <span data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
-          {formatAmount(amount)}
-        </span>
+        {amount !== undefined ? (
+          <span data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
+            {formatPrice(amount)}
+          </span>
+        ) : null}
       </header>
 
       {showDropzone ? (
@@ -333,7 +387,7 @@ export function SlipUploader({
           src={displayed}
           alt={heading}
           title={heading}
-          caption={formatAmount(amount)}
+          caption={amount !== undefined ? formatPrice(amount) : undefined}
         />
       ) : null}
 
@@ -342,20 +396,31 @@ export function SlipUploader({
         type="file"
         accept="image/*"
         hidden
+        aria-label={t("slip.choose")}
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          if (file) void handleFile(file);
           // Same file twice in a row fires no change event otherwise, which is
           // exactly what happens after a failed upload.
           e.target.value = "";
         }}
       />
 
+      {checking ? (
+        <p role="status" className="mt-3 text-body-sm text-ink-muted">
+          {t("slip.errorChecking")}
+        </p>
+      ) : null}
+
       {awaitingSend ? (
         <>
-          <p className="mt-3 text-body-sm text-ink-secondary">
-            {t("slip.previewHint")}
-          </p>
+          {error ? (
+            errorLine
+          ) : (
+            <p className="mt-3 text-body-sm text-ink-secondary">
+              {t("slip.previewHint")}
+            </p>
+          )}
           <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row">
             <Button
               variant="secondary"
@@ -366,7 +431,7 @@ export function SlipUploader({
               <ImagePlus aria-hidden className="size-4" />
               {t("slip.change")}
             </Button>
-            <Button variant="primary" block onPress={send} isLoading={busy}>
+            <Button variant="primary" block onPress={send} isLoading={busy} isDisabled={checking}>
               {error ? (
                 <RotateCcw aria-hidden className="size-4" />
               ) : (
@@ -393,11 +458,8 @@ export function SlipUploader({
 
       {uploadedAt ? <UploadedAt at={uploadedAt} labelKey="slip.uploadedAt" /> : null}
 
-      {error ? (
-        <p role="alert" className="mt-3 text-body-sm font-medium text-tone-danger-fg">
-          {error}
-        </p>
-      ) : null}
+      {/* A picking error with no preview yet has no button row to sit beside. */}
+      {error && !awaitingSend ? errorLine : null}
     </Surface>
   );
 }
@@ -448,13 +510,13 @@ export function SlipReviewer({
         src={slipUrl}
         alt={t("slip.transferSlip")}
         title={t("slip.transferSlip")}
-        caption={formatAmount(amount)}
+        caption={formatPrice(amount)}
       />
 
       <dl className="mt-3 flex items-baseline justify-between text-body-sm">
         <dt className="text-ink-muted">{t("slip.amountDue")}</dt>
         <dd data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
-          {formatAmount(amount)}
+          {formatPrice(amount)}
         </dd>
       </dl>
       <UploadedAt
@@ -472,7 +534,11 @@ export function SlipReviewer({
   );
 }
 
-/** `Transaction_Payment.rejection_reason` is VARCHAR(500); the API checks it too. */
+/**
+ * `Transaction_Payment.rejection_reason` and
+ * `Subscription_Payment.rejection_reason` are both VARCHAR(500); the API
+ * checks it too.
+ */
 export const SLIP_REJECT_REASON_MAX = 500;
 
 /**
@@ -489,12 +555,28 @@ export function SlipRejectDialog({
   onOpenChange,
   isBusy = false,
   onReject,
+  title,
+  description,
+  label,
+  placeholder,
+  hint,
+  keepLabel,
+  submitLabel,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   isBusy?: boolean;
   /** Resolves `true` once the API accepted the rejection. */
   onReject: (reason: string) => Promise<boolean>;
+  /** The wording below defaults to the deal slip; membership passes its own. */
+  title?: string;
+  description?: string;
+  label?: string;
+  placeholder?: string;
+  /** Under the field, given the typed length and the limit. */
+  hint?: (count: number, max: number) => string;
+  keepLabel?: string;
+  submitLabel?: string;
 }) {
   const t = getCopy("slip");
   const [reason, setReason] = useState("");
@@ -505,12 +587,12 @@ export function SlipRejectDialog({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isBusy={isBusy}
-      title={t("rejectTitle")}
-      description={t("rejectBody")}
+      title={title ?? t("rejectTitle")}
+      description={description ?? t("rejectBody")}
       footer={
         <>
           <Button variant="ghost" slot="close" isDisabled={isBusy}>
-            {t("rejectKeep")}
+            {keepLabel ?? t("rejectKeep")}
           </Button>
           <Button
             variant="danger"
@@ -523,20 +605,24 @@ export function SlipRejectDialog({
               }
             }}
           >
-            {t("rejectSend")}
+            {submitLabel ?? t("rejectSend")}
           </Button>
         </>
       }
     >
       <TextAreaField
-        label={t("rejectReason")}
+        label={label ?? t("rejectReason")}
         value={reason}
         onChange={setReason}
         isRequired
         maxLength={SLIP_REJECT_REASON_MAX}
         rows={3}
-        placeholder={t("rejectPlaceholder")}
-        hint={t("rejectHint", { count: reason.length, max: SLIP_REJECT_REASON_MAX })}
+        placeholder={placeholder ?? t("rejectPlaceholder")}
+        hint={
+          hint
+            ? hint(reason.length, SLIP_REJECT_REASON_MAX)
+            : t("rejectHint", { count: reason.length, max: SLIP_REJECT_REASON_MAX })
+        }
       />
     </Overlay>
   );

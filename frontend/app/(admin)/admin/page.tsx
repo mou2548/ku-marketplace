@@ -213,13 +213,17 @@ function Stat({
   label: string;
 }) {
   return (
+    // A <dl> group may hold only <dt> and <dd>, so the icon lives inside the
+    // <dd> (audit P04). The label still reads after the figure on screen.
     <div className="flex items-center gap-2 whitespace-nowrap px-3 py-0.5 text-body-sm text-ink-muted [&+div]:border-l [&+div]:border-line">
-      <span aria-hidden className="[&_svg]:size-4">
-        {icon}
-      </span>
       <dt className="order-last">{label}</dt>
-      <dd data-numeric className="text-body font-semibold text-ink">
-        {value}
+      <dd className="flex items-center gap-2">
+        <span aria-hidden className="[&_svg]:size-4">
+          {icon}
+        </span>
+        <span data-numeric className="text-body font-semibold text-ink">
+          {value}
+        </span>
       </dd>
     </div>
   );

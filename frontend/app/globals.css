@@ -120,7 +120,10 @@
   --text-primary: var(--gray-900);
   --text-secondary: var(--gray-700);
   --text-muted: var(--gray-600);
-  --text-disabled: var(--gray-400);   /* non-informational only */
+  /* Was gray-400 (2.20:1). The chat list, select placeholders and the empty
+     slot label read it as real text, so it is AA now (audit P05): 5.23:1 on
+     white, 4.68:1 on --bg-surface-sunken. Still a step lighter than muted. */
+  --text-disabled: #646d7b;
   --text-brand: var(--green-700);     /*  5.88 */
   --text-inverse: #ffffff;
 
@@ -131,8 +134,9 @@
   --brand-subtle: var(--green-100);
   --brand-subtle-hover: var(--green-200);
   --auth-accent: #2ed573;
-  --on-brand: #ffffff;                /* 4.04 on --brand: large/bold labels
-                                         and button text at >=16px 600 only */
+  --on-brand: #ffffff;                /* 4.04 on --brand: large text only —
+                                         >=18.66px at 700 (text-action), per
+                                         decision D2 in docs/ui-fix-plan.md */
 
   /* Single-series chart mark (admin sales trend). Checked with the dataviz
      validator against each theme's surface: lightness band and >=3:1. */
@@ -150,6 +154,9 @@
   --listing-giveaway-fg: #806000;
   --membership-bg: #fff5d6;
   --membership-fg: #806000;
+
+  /* Edge shade on a horizontally scrolling table (`scroll-fade-x`). */
+  --scroll-fade-shadow: rgb(47 53 66 / 0.18);
 
   /* --- Focus --- */
   --ring: var(--green-600);
@@ -224,20 +231,24 @@
      -------------------------------------------------------------------- */
   --rarity-new-edge: var(--green-600);
   --rarity-new-glow: rgb(46 143 90 / 0.32);
-  --rarity-new-fg: var(--green-700);
+  /* The -fg steps are chip text on the -glow fill (12px, so 4.5:1). Over
+     white / surface-sunken: New 7.52 / 6.89, Very Good 5.18 / 4.76, Good
+     6.06 / 5.54, Acceptable 7.97 / 7.25, Poor 5.27 / 4.79. One step darker
+     than before for the first four, which measured 3.6-4.4:1. */
+  --rarity-new-fg: var(--green-900);
 
   /* Very Good sits between New and Good — the seed's fifth grade. */
   --rarity-verygood-edge: var(--green-400);
   --rarity-verygood-glow: rgb(107 202 150 / 0.30);
-  --rarity-verygood-fg: var(--green-700);
+  --rarity-verygood-fg: var(--green-800);
 
   --rarity-good-edge: var(--amber-400);
   --rarity-good-glow: rgb(240 156 0 / 0.26);
-  --rarity-good-fg: var(--amber-700);
+  --rarity-good-fg: var(--amber-800);
 
   --rarity-acceptable-edge: var(--amber-600);
   --rarity-acceptable-glow: rgb(189 123 0 / 0.24);
-  --rarity-acceptable-fg: var(--amber-800);
+  --rarity-acceptable-fg: var(--amber-900);
 
   --rarity-poor-edge: var(--rose-500);
   --rarity-poor-glow: rgb(190 50 75 / 0.26);
@@ -317,6 +328,14 @@
   --text-overline--line-height: 1.4;
   --text-overline--letter-spacing: 0.09em;
   --text-overline--font-weight: 600;
+
+  /* The label on a brand fill (primary buttons). White on --brand is 4.04:1,
+     which only passes as large text: 14pt bold = 18.66px at 700. 19px keeps
+     rounding from ever landing under it. Decision D2, docs/ui-fix-plan.md. */
+  --text-action: 1.1875rem;
+  --text-action--line-height: 1.2;
+  --text-action--letter-spacing: -0.008em;
+  --text-action--font-weight: 700;
 
   /* Tabular figures for prices, quantities, countdowns, tracking numbers. */
   --text-numeric: 0.9375rem;
@@ -452,7 +471,8 @@
   --text-primary: #f1f2f6;
   --text-secondary: #d5dae2;
   --text-muted: #a4b0be;
-  --text-disabled: #747d8c;
+  /* Was #747d8c (3.47:1 on sunken). 5.72:1 on sunken, 4.87:1 raised. */
+  --text-disabled: #9aa4b2;
   --text-brand: #88e3ac;
   --text-inverse: #2f3542;
 
@@ -503,6 +523,20 @@
   --tone-trade-border: #70a1ff;
   --tone-trade-fg: #86c5ff;
   --tone-trade-solid: #1767ad;
+
+  /* The light rarity text steps (amber-700, amber-800, rose-600) are not
+     remapped in dark, so a condition chip measured 1.56-1.88:1 on its glow
+     (audit P05). Light steps of the same hues: 6.2:1 or better. New and
+     Very Good are pinned too, so they never rest on the ramp: on
+     surface-raised Very Good measured 4.16:1 with #8bdcad; #b9edcf is
+     5.17:1 or better on every dark surface. */
+  --rarity-new-fg: #d9f4e4;
+  --rarity-verygood-fg: #b9edcf;
+  --rarity-good-fg: #f9d898;
+  --rarity-acceptable-fg: #f3cf8f;
+  --rarity-poor-fg: #f3c1ca;
+
+  --scroll-fade-shadow: rgb(0 0 0 / 0.55);
 
   --shadow-flat:
     inset 0 1px 0 rgb(255 255 255 / 0.04),
@@ -673,6 +707,11 @@
   --text-meta--line-height: var(--text-meta--line-height);
   --text-meta--font-weight: var(--text-meta--font-weight);
 
+  --text-action: var(--text-action);
+  --text-action--line-height: var(--text-action--line-height);
+  --text-action--letter-spacing: var(--text-action--letter-spacing);
+  --text-action--font-weight: var(--text-action--font-weight);
+
   --text-overline: var(--text-overline);
   --text-overline--line-height: var(--text-overline--line-height);
   --text-overline--letter-spacing: var(--text-overline--letter-spacing);
@@ -732,15 +771,23 @@
     font-variant-numeric: tabular-nums;
   }
 
-  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline: none;
+  /* The ring is drawn twice, in the same place: as an outline and as a box
+     shadow. Either alone was lost somewhere. A shadow utility on the element
+     (`shadow-raised` on every solid button, the selected segment tab) beats
+     this base-layer box-shadow, so those had no visible focus at all; and
+     forced-colors mode drops box-shadows entirely. An `outline-none` utility
+     still removes the outline, so the shadow stays as the fallback there. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
     box-shadow: var(--shadow-focus);
   }
 
   /* react-aria-components emits data-focus-visible rather than :focus-visible
      on composite widgets (GridList rows, drop targets, menu items). */
   :where([data-focus-visible]) {
-    outline: none;
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
     box-shadow: var(--shadow-focus);
   }
 
@@ -828,6 +875,41 @@
     min-height: 2.75rem;
     min-width: 2.75rem;
   }
+}
+
+/* A text link that keeps its visual size but gets a 44px-tall hit area on a
+   finger (audit P09): inline-flex so min-height applies, items-center so the
+   text stays on its own line. */
+@utility touch-link {
+  @media (pointer: coarse) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+}
+
+/* =========================================================================
+   SCROLL AFFORDANCE
+
+   A table wider than the phone scrolls inside its own box (CLAUDE.md §5), but
+   a clipped right edge reads as the end of the table (audit P08). The two
+   `local` gradients scroll with the content and cover the two `scroll`
+   shadows when an edge is reached, so a shade shows only on a side that still
+   has columns past it, and nothing shows when the table fits. Background
+   colour stays the element's own; set --scroll-fade-bg if it is not
+   --bg-surface. Rows must not paint an opaque background over it.
+   ========================================================================= */
+
+@utility scroll-fade-x {
+  background-image:
+    linear-gradient(to right, var(--scroll-fade-bg, var(--bg-surface)) 40%, transparent),
+    linear-gradient(to left, var(--scroll-fade-bg, var(--bg-surface)) 40%, transparent),
+    linear-gradient(to right, var(--scroll-fade-shadow), transparent),
+    linear-gradient(to left, var(--scroll-fade-shadow), transparent);
+  background-position: left center, right center, left center, right center;
+  background-size: 2.5rem 100%, 2.5rem 100%, 1.25rem 100%, 1.25rem 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }
 
 /* =========================================================================

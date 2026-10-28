@@ -5,6 +5,7 @@ import type {
   AppointmentStatus,
   ReportStatus,
 } from "@/lib/status";
+import { formatPrice } from "@/lib/format-price";
 
 /**
  * The admin workspace's vocabulary: labels, predicates and time formatting.
@@ -168,10 +169,16 @@ export function transactionStatusLabel(status: string | null): AdminLabel {
   }
 }
 
-const BAHT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+/** "฿12,500", "฿99.50" — the app-wide price format (`lib/format-price`). */
+export const formatBaht = formatPrice;
 
-/** "฿12,500" — the admin pages' one money format. */
-export const formatBaht = (amount: number) => `฿${BAHT.format(amount)}`;
+/**
+ * A name as link text. The API accepts whitespace-only names, and a link whose
+ * only text is blank has no accessible name, so it falls back to the record's
+ * number ("Item #12").
+ */
+export const nameOr = (name: string | null | undefined, fallback: string) =>
+  name?.trim() || fallback;
 
 const COUNT = new Intl.NumberFormat("en-US");
 export const formatCount = (n: number) => COUNT.format(n);

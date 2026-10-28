@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getItemHistorySummaries, getMyItems } from "@/lib/api/items";
 import { getAccessToken } from "@/lib/api/session";
 
 import { InventoryScreen } from "./inventory-screen";
@@ -29,14 +29,7 @@ export default async function InventoryPage() {
   // Transferred rows remain as read-only item history. Hiding them would make
   // the new sold/traded totals impossible to inspect from the inventory.
 
-  const summaries = Object.fromEntries(
-    await Promise.all(
-      items.map(async (item) => [
-        item.item_id,
-        await getItemHistorySummary(item.item_id).catch(() => undefined),
-      ] as const),
-    ),
-  );
+  const summaries = await getItemHistorySummaries(items);
 
   return <InventoryScreen items={items} summaries={summaries} />;
 }

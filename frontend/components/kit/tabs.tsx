@@ -50,12 +50,19 @@ export function TabList<T extends object>({
   );
 }
 
+/**
+ * Every Tab needs a mounted TabPanel with the same id, or its `aria-controls`
+ * points at nothing (axe critical, audit P04). A pure filter row with no
+ * panels is a ToggleButtonGroup instead, as the chat inbox is.
+ */
 export function Tab({ className, ...props }: TabProps) {
   return (
     <AriaTab
       {...props}
       className={cn(
-        "cursor-pointer whitespace-nowrap outline-none transition-all duration-[--dur-fast] ease-[--ease-out]",
+        // No `outline-none`: the selected segment's `shadow-raised` replaces
+        // the base focus shadow, so the outline is the ring that survives.
+        "cursor-pointer whitespace-nowrap transition-all duration-[--dur-fast] ease-[--ease-out]",
         // segment
         "group-data-[variant=segment]:rounded-pill",
         "data-[selected]:font-semibold",

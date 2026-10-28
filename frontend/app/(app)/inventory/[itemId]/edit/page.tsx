@@ -5,6 +5,8 @@ import { getAccessToken } from "@/lib/api/session";
 
 import { ItemForm } from "../../item-form";
 
+export const metadata = { title: "Edit item - KU Marketplace" };
+
 export default async function EditItemPage({
   params,
 }: {

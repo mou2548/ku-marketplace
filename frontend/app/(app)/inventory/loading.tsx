@@ -1,6 +1,6 @@
 export default function InventoryLoading() {
   return (
-    <div aria-busy="true" aria-label="Loading inventory" className="flex flex-col gap-6">
+    <div role="status" aria-busy="true" aria-label="Loading inventory" className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <span className="h-8 w-40 animate-pulse rounded-control bg-surface-sunken" />

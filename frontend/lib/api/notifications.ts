@@ -5,6 +5,7 @@ import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getMyOffers } from "@/lib/api/offers";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
+import { formatPrice } from "@/lib/format-price";
 import { TICKET_STATUS, transactionStatusPresentation } from "@/lib/status";
 
 /**
@@ -36,7 +37,7 @@ const OFFSET: Record<string, number> = {
 const nid = (bucket: keyof typeof OFFSET | string, id: number) =>
   (OFFSET[bucket] ?? 9_000_000) + id;
 
-const baht = (n: number) => `฿${n.toLocaleString("en-GB")}`;
+const baht = formatPrice;
 
 export async function getNotifications(): Promise<Notification[]> {
   /* Server-side counterpart of useStatusText: this file assembles notification

@@ -199,7 +199,7 @@ export default async function AccountPage() {
                 ? "Upgrade your membership"
                 : `${membership.tier} member`}
             </span>
-            <span className="text-body-sm opacity-85">
+            <span className="text-body-sm">
               {membership.tier === "Free"
                 ? "List more items every month"
                 : "See your plan and listing quota"}
@@ -245,7 +245,7 @@ function ShortcutCard({
         {action ? (
           <Link
             href={action.href}
-            className="flex items-center gap-0.5 text-body-sm text-ink-muted hover:text-ink-brand"
+            className="touch-link flex items-center gap-0.5 text-body-sm text-ink-muted hover:text-ink-brand"
           >
             {action.label}
             <ChevronRight aria-hidden className="size-4" />

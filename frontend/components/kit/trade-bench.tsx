@@ -1,6 +1,7 @@
 "use client";
 
 import { getCopy } from "@/lib/copy";
+import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Coins, PackageOpen, X } from "lucide-react";
 
 import type { InventoryItem } from "./inventory-slot";
@@ -8,6 +9,8 @@ import { EmptySlot, InventoryGrid, InventorySlot } from "./inventory-slot";
 import { Surface } from "./surface";
 import { TextInput } from "./field";
 import type { MoneyDirection } from "@/lib/offers";
+import { formatPrice, formatPriceAmount } from "@/lib/format-price";
+import { parseMoneyInput } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,6 +47,12 @@ export interface TradeBenchProps {
   youGet: InventoryItem[];
   additionalMoney: number;
   onAdditionalMoneyChange: (value: number) => void;
+  /**
+   * Whether the typed cash is a valid amount. While it is not, the field
+   * shows why and `onAdditionalMoneyChange` keeps the last valid value, so
+   * the page must hold its submit until this reports true again.
+   */
+  onCashValidityChange?: (valid: boolean) => void;
   /** Which way the cash travels, so the field can say whose it is. */
   moneyDirection: MoneyDirection;
   /**
@@ -66,6 +75,7 @@ export function TradeBench({
   youGet,
   additionalMoney,
   onAdditionalMoneyChange,
+  onCashValidityChange,
   moneyDirection,
   counterpartyName,
   minSlots = 3,
@@ -77,6 +87,25 @@ export function TradeBench({
     onYouGiveChange(youGive.filter((i) => i.item_id !== id));
 
   const emptyWells = Math.max(0, minSlots - youGive.length);
+
+  // The field keeps exactly what was typed. It used to strip every non-digit,
+  // so "12.345" became 12345 and "-50" became 50 without a word (audit T03).
+  const [cashText, setCashText] = useState(
+    additionalMoney ? String(additionalMoney) : "",
+  );
+  const [cashError, setCashError] = useState<string | null>(null);
+
+  function changeCash(text: string) {
+    setCashText(text);
+    const parsed = parseMoneyInput(text);
+    if (parsed.ok) {
+      setCashError(null);
+      onAdditionalMoneyChange(parsed.value);
+    } else {
+      setCashError(parsed.error);
+    }
+    onCashValidityChange?.(parsed.ok);
+  }
   const youPay = moneyDirection === "you-pay";
 
   return (
@@ -172,7 +201,7 @@ export function TradeBench({
                   ? t("offer.personAdds", { name: counterpartyName })
                   : t("offer.theyAdd")}
             </span>{" "}
-            <span data-numeric>฿{additionalMoney.toLocaleString()}</span>
+            <span data-numeric>{formatPrice(additionalMoney)}</span>
           </p>
         ) : null}
 
@@ -192,12 +221,18 @@ export function TradeBench({
               youPay ? t("offer.yourExtraCash") : t("offer.theirExtraCash")
             }
             label={youPay ? t("offer.youAdd") : t("offer.theyAdd")}
-            value={additionalMoney ? String(additionalMoney) : ""}
-            onChange={(v) =>
-              onAdditionalMoneyChange(Number(v.replace(/\D/g, "")) || 0)
+            value={
+              isReadOnly
+                ? additionalMoney
+                  ? formatPriceAmount(additionalMoney)
+                  : ""
+                : cashText
             }
+            onChange={changeCash}
             isReadOnly={isReadOnly}
-            inputMode="numeric"
+            isInvalid={!isReadOnly && cashError !== null}
+            errorMessage={cashError ?? undefined}
+            inputMode="decimal"
             placeholder="0"
             icon={<Coins className="size-4" />}
             suffix={<span className="text-caption">{t("listing.thb")}</span>}

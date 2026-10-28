@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import * as authApi from "@/lib/api/auth";
 import { errorText } from "@/lib/api-errors";
-import { normalizeEmail } from "@/lib/auth-rules";
+import { normalizeEmail, safeReturnTo } from "@/lib/auth-rules";
 import { clearSession, getRefreshToken, setSession } from "@/lib/api/session";
 
 export interface LoginState {
@@ -38,8 +38,8 @@ export async function login(
   }
 
   await setSession(accessToken, session);
-  const requestedReturn = String(formData.get("returnTo") ?? "");
-  const returnTo = /^\/sellers\/[1-9]\d{0,9}$/.test(requestedReturn) && Number(requestedReturn.split("/").pop()) <= 2147483647 ? requestedReturn : undefined;
+  // Any same-origin path; everything else falls back to the role's home.
+  const returnTo = safeReturnTo(formData.get("returnTo"));
   redirect(
     restricted ? "/account/appeals" : returnTo ?? (isAdmin ? "/admin" : "/feed"),
   );

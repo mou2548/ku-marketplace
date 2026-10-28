@@ -7,6 +7,7 @@ const { buildDealTimeline } = loadTs('lib/deal-timeline.ts', {
     formatDate: (d) => String(d),
     formatDateTime: (d) => String(d),
   },
+  '@/lib/format-price': loadTs('lib/format-price.ts'),
   '@/lib/status': { requiresPayment: () => true },
 });
 

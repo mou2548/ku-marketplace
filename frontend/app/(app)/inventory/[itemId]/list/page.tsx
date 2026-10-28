@@ -11,6 +11,8 @@ import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
 
+export const metadata = { title: "List an item - KU Marketplace" };
+
 /**
  * E5 — put an owned item on the market. Always a new listing: an item can
  * carry several open channels at once now (a sale post and a trade post

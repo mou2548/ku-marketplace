@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDate } from "@/lib/date-format";
+import { formatPrice } from "@/lib/format-price";
 
 
 import { getCopy } from "@/lib/copy";
@@ -177,7 +178,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                   </div>
 
                   <p data-numeric className="text-[1.5rem] leading-[1.2] font-bold">
-                    ฿{t.price}
+                    {formatPrice(t.price)}
                     <span className="text-caption font-normal text-ink-muted">
                       {" "}
                       / {MEMBERSHIP_DURATION_DAYS} days
@@ -210,7 +211,16 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
           "what do I actually get". */}
       <section className="flex flex-col gap-3">
         <h2 className="text-h2">What each tier includes</h2>
-        <Surface as="div" shape="panel" className="overflow-x-auto">
+        <Surface
+          as="div"
+          shape="panel"
+          // Wider than a phone: a named, focusable scroll region, shaded on
+          // the side that still has columns (audit P04, P08).
+          role="region"
+          aria-label="What each tier includes"
+          tabIndex={0}
+          className="scroll-fade-x overflow-x-auto focus-visible:-outline-offset-2"
+        >
           <table className="w-full min-w-[34rem] border-collapse text-left">
             <thead>
               <tr className="border-b border-line">

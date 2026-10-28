@@ -28,6 +28,15 @@ import { TrustBadge } from "./trust-badge";
  * tracking-number form, and the QR launcher all render through it.
  */
 
+/** `CreateMessageDto.content` is `@MaxLength(2000)` in the API. */
+export const CHAT_MESSAGE_MAX = 2000;
+
+/** The counter appears once this close to the limit, not on every message. */
+const COUNTER_FROM = CHAT_MESSAGE_MAX - 200;
+
+/** Tallest the composer grows before it scrolls, in px (about five lines). */
+const COMPOSER_MAX_PX = 136;
+
 export interface ChatMessage {
   message_id: number;
   sender_id: number;
@@ -57,7 +66,8 @@ export interface ChatThreadProps {
    * with no messages at all yet).
    */
   systemCards?: Array<{ afterMessageId: number; node: React.ReactNode }>;
-  onSend?: (text: string) => void | Promise<void>;
+  /** Resolving `false` means the send failed: the text goes back in the box. */
+  onSend?: (text: string) => void | boolean | Promise<void | boolean>;
   onAttach?: (files: FileList) => void | Promise<void>;
   /** Giveaway rooms let only the giver type (flow 3). */
   isReadOnly?: boolean;
@@ -164,7 +174,8 @@ export function ChatThread({
 }: ChatThreadProps) {
   const t = getCopy();
   const endRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [draft, setDraft] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -181,6 +192,26 @@ export function ChatThread({
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, events.length]);
+
+  // Grow with the text up to a cap, then scroll inside. Measured from
+  // scrollHeight after resetting, so deleting lines shrinks it again.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_PX)}px`;
+  }, [draft]);
+
+  const canSend = draft.trim().length > 0;
+
+  async function submit() {
+    const value = draft.trim();
+    if (!value) return;
+    setDraft("");
+    const result = await onSend?.(value);
+    // Keep what was typed if the send failed and nothing new was typed since.
+    if (result === false) setDraft((current) => (current ? current : value));
+  }
 
   const cardsByMessage = new Map(
     systemCards.map((c) => [c.afterMessageId, c.node]),
@@ -296,7 +327,8 @@ export function ChatThread({
                   {m.content ? (
                     <p
                       className={cn(
-                        "rounded-card px-3.5 py-2.5 text-body",
+                        // Line breaks typed in the composer survive.
+                        "rounded-card px-3.5 py-2.5 text-body whitespace-pre-wrap break-words",
                         mine
                           ? // Body text needs 4.5:1; white on --brand is 4.04.
                             "rounded-br-chip bg-brand-strong text-on-brand-strong"
@@ -360,10 +392,7 @@ export function ChatThread({
           className="flex shrink-0 items-end gap-2 border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           onSubmit={(e) => {
             e.preventDefault();
-            const value = inputRef.current?.value.trim();
-            if (!value) return;
-            void onSend?.(value);
-            if (inputRef.current) inputRef.current.value = "";
+            void submit();
           }}
         >
           {action ? (
@@ -406,19 +435,56 @@ export function ChatThread({
             accept="image/*"
             multiple
             hidden
+            aria-label={t("chat.attachImages")}
             onChange={(e) => {
               if (e.target.files?.length) void onAttach?.(e.target.files);
             }}
           />
 
-          <input
-            ref={inputRef}
-            aria-label={t("chat.message")}
-            placeholder={t("chat.writeMessage")}
-            className="h-11 min-w-0 flex-1 rounded-pill bg-surface-sunken px-4 text-body shadow-sunken"
-          />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={draft}
+              maxLength={CHAT_MESSAGE_MAX}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends and Shift+Enter breaks the line, on a keyboard.
+                // A touch keyboard's return key keeps adding lines — the Send
+                // button is right there — and an IME confirming a word (Thai
+                // input) must never send half a message.
+                if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                if (window.matchMedia("(pointer: coarse)").matches) return;
+                e.preventDefault();
+                void submit();
+              }}
+              aria-label={t("chat.message")}
+              aria-describedby={draft.length >= COUNTER_FROM ? "chat-char-count" : undefined}
+              placeholder={t("chat.writeMessage")}
+              className="block min-h-11 w-full resize-none rounded-card bg-surface-sunken px-4 py-2.5 text-body leading-6 shadow-sunken"
+            />
+            {draft.length >= COUNTER_FROM ? (
+              <p
+                id="chat-char-count"
+                aria-live="polite"
+                data-numeric
+                className={cn(
+                  "px-3 text-meta",
+                  draft.length >= CHAT_MESSAGE_MAX ? "text-tone-danger-fg" : "text-ink-muted",
+                )}
+              >
+                {t("chat.charCount", { count: draft.length, max: CHAT_MESSAGE_MAX })}
+              </p>
+            ) : null}
+          </div>
 
-          <Button type="submit" size="icon" pill aria-label={t("chat.send")}>
+          <Button
+            type="submit"
+            size="icon"
+            pill
+            aria-label={t("chat.send")}
+            isDisabled={!canSend}
+          >
             <Send className="size-5" />
           </Button>
         </form>

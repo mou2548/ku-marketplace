@@ -10,6 +10,8 @@ import { getTransaction } from "@/lib/api/transactions";
 
 import { DealQr } from "./deal-qr";
 
+export const metadata = { title: "Handover QR - KU Marketplace" };
+
 /**
  * The Meetup handover, seller side. Full screen, no chrome — design principle
  * 7: this is the moment the whole transaction exists for, and a QR competing

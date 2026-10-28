@@ -69,6 +69,12 @@ export function AuthPanel({ returnTo }: { returnTo?: string }) {
         </div>
 
         <div className="flex basis-1/2 flex-col items-center justify-center gap-8 bg-surface p-8 sm:p-16">
+          {/* The hero and its h1 are hidden below md, so a phone had no page
+              heading at all (audit P07). Visually hidden, so the screen's look
+              stays deliberately unchanged. */}
+          <h1 className="sr-only md:hidden">
+            {mode === "login" ? "Sign in to KU Marketplace" : "Register for KU Marketplace"}
+          </h1>
           <Image
             src="/images/ku-logo.png"
             alt="Kasetsart University"
@@ -326,9 +332,9 @@ function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
 function Terms() {
   return (
     <p className="text-center text-body-sm text-ink-muted">
-      By continuing, you agree to the{" "}
-      {/* TODO: link to a real terms page once the legal copy exists. */}
-      <span className="font-medium text-ink-brand">KU Marketplace Terms</span>.
+      {/* Plain text, not link-coloured: there is no terms page to open yet
+          (audit F08). Make it a link once the legal copy exists. */}
+      By continuing, you agree to the KU Marketplace Terms.
     </p>
   );
 }

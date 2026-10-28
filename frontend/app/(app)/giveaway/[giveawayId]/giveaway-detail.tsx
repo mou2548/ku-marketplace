@@ -12,6 +12,7 @@ import { ArrowLeft, Clock, Dices, Gift, Lock, MapPin, Sparkles, Users } from "lu
 import { Button, LinkButton } from "@/components/kit/button";
 import { ConfirmButton } from "@/components/kit/confirm-button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
+import { GiveawayPhaseBadge } from "@/components/kit/giveaway-phase-badge";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
@@ -22,8 +23,18 @@ import { useStatusText } from "@/lib/status-text";
 import { unwrapAction } from "@/lib/action-result";
 import { closeGiveawayRegistration, drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
-import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS, type Deadline } from "@/lib/status";
+import { giveawayPhase, type GiveawayPhase } from "@/lib/giveaway-phase";
+import { ALLOCATION_METHOD, TICKET_STATUS, type Deadline } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
+
+/** What a receiver is told when there is nothing to register for. */
+const CLOSED_MESSAGE: Record<Exclude<GiveawayPhase, "open">, string> = {
+  upcoming: "Registration has not opened yet. Come back when it opens.",
+  full: "Every place has been taken, so registration has closed.",
+  closed: "Registration for this giveaway has closed. Recipients are being chosen.",
+  pickup: "Registration has closed and recipients have been chosen.",
+  finished: "This giveaway has finished.",
+};
 
 /**
  * Research risk R7: registering and then waiting had no shape at all in the
@@ -75,6 +86,7 @@ export function GiveawayDetail({
   // The backend refuses to draw or select before the deadline no matter
   // what — this only mirrors that so the button doesn't invite a dead click.
   const canDraw = known && registerEndMs !== null && now >= registerEndMs;
+  const phase = giveawayPhase(giveaway, known ? now : null);
 
   // Before registration opens, count down to opening; once open, count down
   // to the draw/close instead.
@@ -241,27 +253,24 @@ export function GiveawayDetail({
           : "If you are selected, a chat room opens and a QR ticket is issued automatically. You do not need to watch this page."}
       </p>
     </Notice>
-  ) : giveaway.registration_open ? (
+  ) : phase === "open" ? (
     <Button size="lg" block isLoading={busy} onPress={join}>
       <Gift className="size-5" />
       Register for this giveaway
     </Button>
-  ) : known && registerStartMs && now < registerStartMs && giveaway.status === "Active" ? (
-    // Not open yet, not closed — the browse list now surfaces this giveaway
-    // before its window starts (like a concert listing showing "on sale
-    // Friday") specifically so a receiver knows to come back, so the CTA
-    // must not read as "closed".
-    <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
-      <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
-      <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
-        Registration has not opened yet. Come back when it opens.
-      </p>
-    </Surface>
+  ) : phase === null ? (
+    // Shut, but which reason only the clock can tell: say nothing until it
+    // is known rather than a sentence that changes after hydration.
+    null
   ) : (
+    // The badge and the sentence both come from `phase`, so the badge can no
+    // longer say "Open for entries" over "registration has closed" (G01).
+    // An upcoming giveaway is listed on purpose, so a receiver knows to come
+    // back; its message must not read as closed.
     <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
-      <StatusBadge status={GIVEAWAY_STATUS[giveaway.status]} size="sm" />
+      <GiveawayPhaseBadge phase={phase} />
       <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
-        Registration for this giveaway has closed.
+        {CLOSED_MESSAGE[phase]}
       </p>
     </Surface>
   );

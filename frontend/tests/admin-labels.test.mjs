@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadTs } from './load-ts.mjs';
 
-const labels = loadTs('lib/admin-labels.ts');
+const labels = loadTs('lib/admin-labels.ts', {
+  '@/lib/format-price': loadTs('lib/format-price.ts'),
+});
 const NOW = Date.parse('2026-10-06T12:00:00Z');
 const ago = (ms) => new Date(NOW - ms).toISOString();
 const MIN = 60_000;
@@ -65,5 +67,5 @@ test('presetRange covers whole Bangkok days ending today', () => {
 
 test('formatBaht groups thousands and keeps satang', () => {
   assert.equal(labels.formatBaht(12500), '฿12,500');
-  assert.equal(labels.formatBaht(99.5), '฿99.5');
+  assert.equal(labels.formatBaht(99.5), '฿99.50');
 });

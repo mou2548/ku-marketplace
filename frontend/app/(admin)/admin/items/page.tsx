@@ -16,7 +16,7 @@ import {
   param,
 } from "@/components/admin/admin-table";
 import { listAdminItems, listItemCategories } from "@/lib/api/admin";
-import { formatCount } from "@/lib/admin-labels";
+import { formatCount, nameOr } from "@/lib/admin-labels";
 import { formatDate } from "@/lib/date-format";
 
 export const metadata = { title: "Items - Admin" };
@@ -50,7 +50,7 @@ export default async function AdminItemsPage({
       <AdminBox aria-labelledby="items-title">
         <AdminBoxHeader icon={<Package />} title="Inventory" titleId="items-title">
           {filters.owner_id ? (
-            <Link href="/admin/items" className="text-meta text-ink-brand hover:underline">
+            <Link href="/admin/items" className="touch-link text-meta text-ink-brand hover:underline">
               Show every owner
             </Link>
           ) : null}
@@ -95,9 +95,9 @@ export default async function AdminItemsPage({
               <AdminTd>
                 <Link
                   href={`/admin/items/${item.item_id}`}
-                  className="font-medium text-ink hover:underline"
+                  className="touch-link font-medium text-ink hover:underline"
                 >
-                  {item.name}
+                  {nameOr(item.name, `Item #${item.item_id}`)}
                 </Link>
                 <span className="block text-meta text-ink-muted">
                   #{item.item_id} · {item.category} · {item.condition}

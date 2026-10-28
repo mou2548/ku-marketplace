@@ -45,6 +45,10 @@ export function InventoryGrid<T extends object>({
 }: GridListProps<T>) {
   return (
     <GridList
+      // The slots sit in rows and columns, so the arrows move in both
+      // directions: ArrowLeft/Right along a row, ArrowUp/Down between rows.
+      // The default "stack" layout only answered Up/Down (audit T04).
+      layout="grid"
       {...props}
       // Two image-led cards on a phone, opening up into a compact catalogue.
       className={cn(

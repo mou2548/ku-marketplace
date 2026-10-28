@@ -4,7 +4,7 @@ import { formatDateTime } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { parseDate, today, type DateValue } from "@internationalized/date";
@@ -18,6 +18,7 @@ import {
   QrCode,
   ScanLine,
   Truck,
+  Undo2,
   XCircle,
 } from "lucide-react";
 
@@ -88,6 +89,8 @@ import { describeDeal, isSlipRejected } from "@/lib/deal-progress";
 import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
+import { isDecodableImage } from "@/lib/image-check";
+import { openReturnWindow } from "@/lib/return-window";
 import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
 import {
   ALLOCATION_METHOD,
@@ -95,9 +98,7 @@ import {
   ENTRANT_STATUS,
   requiresPayment,
   resolveTransactionActor,
-  TRANSACTION_STATUS,
   transactionStatusPresentation,
-  type ActorPrompt,
   type Deadline,
   type Party,
   type Tone,
@@ -109,10 +110,23 @@ const BANGKOK = "Asia/Bangkok";
 
 /** Past this many, the rail sends the giver to the manage screen instead. */
 const ROSTER_LIMIT = 5;
+/** §6.1 — photos per chat message. */
+const MAX_ATTACH_PHOTOS = 5;
+/** The upload endpoint's own limit. */
+const MAX_ATTACH_BYTES = 5 * 1024 * 1024;
 
 /** No realtime transport exists — a short poll keeps the thread from going
- * stale instead. See lib/use-polling.ts. */
+ * stale instead. See lib/use-polling.ts. Messages are what people wait on,
+ * so they keep the short interval. */
 const CHAT_POLL_INTERVAL_MS = 5000;
+
+/**
+ * The transaction and its appointment cards change far less often than the
+ * thread, so they are fetched every third message poll — about 15s — instead
+ * of every one (audit B05). A new message also pulls them at once, since the
+ * other side's step usually arrives with one (a slip is posted into the chat).
+ */
+const DEAL_POLL_EVERY = 3;
 
 /** §7.5.2 — the system-provided reasons for a user report. */
 /**
@@ -289,6 +303,15 @@ export function RoomScreen({
   const [detailsOpen, setDetailsOpen] = useState(false);
   /** The seller's "Amount is wrong" sheet, closed only once the API agrees. */
   const [rejectOpen, setRejectOpen] = useState(false);
+  /**
+   * The cancellation / return request. Lives here rather than inside Deal
+   * details because the return also opens from the action area (audit B10).
+   * Controlled, so closing waits for the API: a failure keeps the reason.
+   */
+  const [cancelOpen, setCancelOpen] = useState(false);
+  // The reason was once collected by an input bound to nothing. A rejected
+  // cancellation goes to an admin at once, so this text is their context.
+  const [cancelReason, setCancelReason] = useState("");
 
   // Real messages refresh on a poll (no realtime transport exists) — for
   // either a transaction room or a giveaway group room. Appointments are a
@@ -307,24 +330,57 @@ export function RoomScreen({
   // card — until they reloaded the page by hand.
   const [transaction, setTransaction] = useState(initialTransaction);
 
+  function refreshDeal(transactionId: number) {
+    unwrapAction(fetchAppointmentCards(transactionId))
+      .then((cards) => {
+        const { pinned, pending } = deriveAppointmentView(cards);
+        setAppointment(pending ?? pinned);
+        setAppointmentCards(cards);
+      })
+      .catch(() => {});
+    unwrapAction(fetchTransaction(transactionId)).then(setTransaction).catch(() => {});
+  }
+
+  /** Everything at once — after the viewer's own action. */
   function refreshRoom() {
     if (transaction) {
       const transactionId = transaction.transaction_id;
       unwrapAction(fetchChatHistory(transactionId)).then(setMessages).catch(() => {});
-      unwrapAction(fetchAppointmentCards(transactionId))
-        .then((cards) => {
-          const { pinned, pending } = deriveAppointmentView(cards);
-          setAppointment(pending ?? pinned);
-          setAppointmentCards(cards);
-        })
-        .catch(() => {});
-      unwrapAction(fetchTransaction(transactionId)).then(setTransaction).catch(() => {});
+      refreshDeal(transactionId);
     } else if (giveaway) {
       unwrapAction(fetchGiveawayMessages(giveaway.giveaway_id)).then(setMessages).catch(() => {});
     }
   }
 
-  usePolling(refreshRoom, CHAT_POLL_INTERVAL_MS);
+  const pollTick = useRef(0);
+  const lastMessageCount = useRef(initialMessages.length);
+  // Every path that sets `messages` (send, attach, slip, refreshRoom, the
+  // poll) lands here, so the poll compares against what is on screen. Only
+  // the poll used to update it, so the viewer's own sent message later read
+  // as new and cost an extra refreshDeal.
+  useEffect(() => {
+    lastMessageCount.current = messages.length;
+  }, [messages]);
+  function pollRoom() {
+    if (!transaction) {
+      refreshRoom();
+      return;
+    }
+    const transactionId = transaction.transaction_id;
+    pollTick.current += 1;
+    const dealDue = pollTick.current % DEAL_POLL_EVERY === 0;
+    unwrapAction(fetchChatHistory(transactionId))
+      .then((next) => {
+        const grew = next.length !== lastMessageCount.current;
+        lastMessageCount.current = next.length;
+        setMessages(next);
+        if (grew && !dealDue) refreshDeal(transactionId);
+      })
+      .catch(() => {});
+    if (dealDue) refreshDeal(transactionId);
+  }
+
+  usePolling(pollRoom, CHAT_POLL_INTERVAL_MS);
 
   const viewer: Party | undefined = transaction
     ? transaction.buyer_id === viewerId
@@ -521,7 +577,7 @@ export function RoomScreen({
     return updated;
   }
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string): Promise<boolean> {
     try {
       const sent = transaction
         ? await unwrapAction(sendChatMessage(transaction.transaction_id, { content: text }))
@@ -533,8 +589,10 @@ export function RoomScreen({
         // Float this room to the top of the inbox now, not on the next poll.
         markRoomActive(summary.room_id);
       }
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not send the message.");
+      return false;
     }
   }
 
@@ -542,10 +600,27 @@ export function RoomScreen({
    * than rejected outright, since the picker has no way to un-select some. */
   async function handleAttach(files: FileList) {
     if (!transaction && !giveaway) return;
-    const selected = Array.from(files).slice(0, 5);
-    if (files.length > 5) toast.warning(t("deal.photoLimit"));
-
+    const picked = Array.from(files);
+    // Size and the cap are free to check; decoding is not, so both run first
+    // and only the survivors are decoded, one at a time.
+    const sized = picked.filter((file) => file.size <= MAX_ATTACH_BYTES);
+    if (sized.length < picked.length) toast.error(t("errors.api.fileTooLarge"));
+    const candidates = sized.slice(0, MAX_ATTACH_PHOTOS);
+    if (sized.length > MAX_ATTACH_PHOTOS) toast.warning(t("deal.photoLimit"));
+    if (!candidates.length) return;
     setBusy(true);
+    // Read the bytes, not the file name (audit B04).
+    const selected: File[] = [];
+    for (const file of candidates) {
+      if (await isDecodableImage(file)) selected.push(file);
+    }
+    const notImages = candidates.length - selected.length;
+    if (notImages) toast.error(t("chat.notAnImage", { count: notImages }));
+    if (!selected.length) {
+      setBusy(false);
+      return;
+    }
+
     try {
       const image_urls: string[] = [];
       for (const file of selected) {
@@ -650,13 +725,99 @@ export function RoomScreen({
     );
   }
 
+  /** The buyer answers the seller's refund slip; the deal then goes back to unpaid. */
+  function confirmRefundCard(): React.ReactNode {
+    if (!transaction?.refund_slip_url) return null;
+    return (
+      <ActionCard title={t("deal.stepConfirmRefund")}>
+        <div className="flex flex-col gap-3">
+          <p className="text-body-sm text-ink-secondary">{t("deal.confirmRefundBody")}</p>
+          {deadline ? <CountdownPill deadline={deadline} className="w-fit" /> : null}
+          <SlipViewer
+            embedded
+            slipUrl={transaction.refund_slip_url}
+            title={t("slip.refundSlip")}
+            uploadedAt={transaction.refund_submitted_at}
+          />
+          <Button
+            block
+            isLoading={busy}
+            onPress={() =>
+              act(
+                () => unwrapAction(confirmRefundReceived(transaction.transaction_id)),
+                t("deal.refundConfirmed"),
+                "Could not confirm the refund",
+              )
+            }
+          >
+            {t("deal.confirmRefundButton")}
+          </Button>
+        </div>
+      </ActionCard>
+    );
+  }
+
+  /**
+   * The seller rejected the slip. The buyer either sends a new one or, once
+   * the seller has sent back what arrived, confirms that refund first. The
+   * seller is not on the clock here, but is the only one who can return the
+   * money, so the refund uploader is offered to them throughout.
+   */
+  function slipRejectedAction(): React.ReactNode {
+    if (!transaction) return null;
+    const refundSent = !!transaction.refund_slip_url;
+    if (viewer === "buyer") {
+      return refundSent ? confirmRefundCard() : uploadSlipCard(true);
+    }
+    return (
+      <ActionCard
+        title={refundSent ? t("deal.refundSentTitle") : t("deal.slipRejectedSellerTitle")}
+      >
+        <div className="flex flex-col gap-3">
+          <p className="text-body-sm text-ink-secondary">
+            {refundSent ? t("deal.refundSentBody") : t("deal.slipRejectedSellerBody")}
+          </p>
+          {refundSent && deadline ? (
+            <CountdownPill deadline={deadline} className="w-fit" />
+          ) : null}
+          <SlipUploader
+            embedded
+            title={t("slip.refundSlip")}
+            slipUrl={transaction.refund_slip_url}
+            isUploaded={refundSent}
+            uploadedAt={transaction.refund_submitted_at}
+            onUpload={(file) =>
+              uploadAndRefresh(
+                () => uploadSlip("refund", file),
+                t("deal.refundSlipUploaded"),
+              )
+            }
+          />
+        </div>
+      </ActionCard>
+    );
+  }
+
   function currentAction(): React.ReactNode {
     if (!transaction) return null;
     if (transaction.cancellation_response === "Pending") {
       const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+      const asked = transaction.cancellation_requested_by === myId;
       return <ActionCard title="Cancellation / return request">
         <p>{transaction.cancellation_reason}</p>
-        {transaction.cancellation_requested_by !== myId ? <div className="flex gap-3">
+        {/* The request dialog promises an answer window (72 hours, 24 for a
+            return); both sides see it run down (audit A08). */}
+        {deadline ? (
+          <div className="my-3 flex flex-col gap-1.5">
+            <CountdownPill deadline={deadline} className="w-fit" />
+            <p className="text-caption text-ink-muted">
+              {asked
+                ? t("deal.cancelWaitingBy", { name: summary.counterparty.name })
+                : t("deal.cancelAnswerBy")}
+            </p>
+          </div>
+        ) : null}
+        {!asked ? <div className="flex gap-3">
           <Button isLoading={busy} onPress={() => act(() => unwrapAction(answerCancellation(transaction.transaction_id, "accept")), "Request accepted", "Could not respond")}>Accept</Button>
           <Button variant="danger" isLoading={busy} onPress={() => act(() => unwrapAction(answerCancellation(transaction.transaction_id, "reject")), "Sent for review", "Could not respond")}>Reject</Button>
         </div> : <p>Waiting for the other party to respond.</p>}
@@ -691,6 +852,11 @@ export function RoomScreen({
           ) : null}
         </div>
       </ActionCard>;
+    }
+    // After a rejected slip the seller may return what arrived; until the
+    // buyer confirms that refund the API refuses a new slip (audit B16).
+    if (requiresPayment(transaction) && isSlipRejected(transaction)) {
+      return slipRejectedAction();
     }
     // Flow 1, step 4: either side may propose the meetup and the other
     // accepts it. `resolveTransactionActor` only knows the transaction, so it
@@ -903,16 +1069,19 @@ export function RoomScreen({
               slipUrl={transaction.refund_slip_url}
               isUploaded={!!transaction.refund_slip_url}
               uploadedAt={transaction.refund_submitted_at}
-              onUpload={async (file) => {
-                await act(
+              onUpload={(file) =>
+                uploadAndRefresh(
                   () => uploadSlip("refund", file),
-                  "Refund slip uploaded",
-                  "Could not upload the refund slip",
-                );
-              }}
+                  t("deal.refundSlipUploaded"),
+                )
+              }
             />
           </ActionCard>
         );
+      case "confirm-refund":
+        // Only reached after a rejected slip; a cancellation's refund is
+        // handled by the return card above.
+        return slipRejectedAction();
       case undefined:
         return null;
       default: {
@@ -970,6 +1139,30 @@ export function RoomScreen({
 
   const stepAction = currentAction() ?? sellerQr;
 
+  // A completed deal can still be returned for 7 days, and that used to be
+  // reachable only from inside Deal details (audit B10). Offered in the action
+  // area while the window is open, with the days left.
+  const returnWindow =
+    transaction && now !== UNKNOWN_TIME ? openReturnWindow(transaction, now) : undefined;
+  const returnEntry =
+    !stepAction && returnWindow ? (
+      <ActionCard title={t("deal.dealComplete")}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-body-sm text-ink-secondary">
+            {t("deal.returnDaysLeft", { count: returnWindow.daysLeft })}
+          </p>
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            onPress={() => setCancelOpen(true)}
+          >
+            <Undo2 className="size-4" />
+            {t("deal.requestReturn")}
+          </Button>
+        </div>
+      </ActionCard>
+    ) : null;
+
   /*
    * A slip is posted into the thread as a labelled receipt when it is
    * uploaded, so a "sent the slip" line beside it says the same thing twice.
@@ -1025,6 +1218,11 @@ export function RoomScreen({
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface">
       {/* Header: who, what kind, what about. */}
       <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+        {/* The header shows who and what visually; this names the page for
+            screen readers and heading navigation (audit P07). */}
+        <h1 className="sr-only">
+          {`Chat with ${summary.counterparty.name} about ${summary.subject}`}
+        </h1>
         <Link
           href="/chat"
           aria-label={t("deal.backToConversations")}
@@ -1034,8 +1232,12 @@ export function RoomScreen({
         </Link>
 
         {/* In a group room the counterparty is the giver, so the bare name
-            reads as "the person you are talking to" when it is not. */}
-        <span className="flex min-w-0 items-center gap-2">
+            reads as "the person you are talking to" when it is not.
+            The name is who you are talking to, so it keeps its width; the item
+            link on the right gives way first (audit B06): that side shrinks
+            at six times the rate, and the name only truncates once the item
+            is down to its chip and the details button. */}
+        <span className="flex min-w-0 shrink items-center gap-2">
           <ProfileLink
             userId={summary.counterparty.user_id}
             name={summary.counterparty.name}
@@ -1065,7 +1267,7 @@ export function RoomScreen({
           />
         </span>
 
-        <span className="ml-auto flex min-w-0 items-center gap-2">
+        <span className="ml-auto flex min-w-0 shrink-[6] items-center justify-end gap-2">
           <span
             className={cn(
               "shrink-0 rounded-chip border px-1.5 py-0.5 text-meta font-semibold",
@@ -1111,7 +1313,7 @@ export function RoomScreen({
         receipts={receipts}
         senders={senders}
         showSenders={isGroupRoom}
-        action={stepAction}
+        action={stepAction ?? returnEntry}
         events={progressEvents}
         isReadOnly={giveawayReadOnly}
         readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
@@ -1201,14 +1403,11 @@ export function RoomScreen({
               currentStepNumber={currentStepNumber}
               deadline={deadline}
               reportable={reportable}
-              busy={busy}
-              onCancel={(reason) =>
-                act(
-                  () => unwrapAction(askToCancel(transaction.transaction_id, reason)),
-                  "Cancellation requested",
-                  "Could not send the cancellation request",
-                )
-              }
+              onRequestCancel={() => {
+                // One dialog at a time: the request opens over the thread.
+                setDetailsOpen(false);
+                setCancelOpen(true);
+              }}
             />
           ) : null}
 
@@ -1221,6 +1420,46 @@ export function RoomScreen({
           ) : null}
         </div>
       </Overlay>
+
+      {transaction ? (
+        <Overlay
+          isOpen={cancelOpen}
+          onOpenChange={setCancelOpen}
+          isBusy={busy}
+          title={transaction.status === "Completed" ? t("deal.returnTitle") : t("deal.cancelTitle")}
+          description={transaction.status === "Completed" ? t("deal.returnBody") : t("deal.cancelBody")}
+          footer={
+            <>
+              <Button variant="ghost" slot="close" isDisabled={busy}>{t("deal.keepDeal")}</Button>
+              <Button
+                variant="danger"
+                isLoading={busy}
+                isDisabled={!cancelReason.trim()}
+                onPress={async () => {
+                  const ok = await act(
+                    () => unwrapAction(askToCancel(transaction.transaction_id, cancelReason.trim())),
+                    "Cancellation requested",
+                    "Could not send the cancellation request",
+                  );
+                  if (ok) {
+                    setCancelOpen(false);
+                    setCancelReason("");
+                  }
+                }}
+              >{t("deal.sendCancelRequest")}</Button>
+            </>
+          }
+        >
+          <TextInput
+            label={t("deal.reason")}
+            value={cancelReason}
+            onChange={setCancelReason}
+            isRequired
+            placeholder={t("deal.reasonPlaceholder")}
+            hint={t("deal.reasonHint")}
+          />
+        </Overlay>
+      ) : null}
     </div>
   );
 }
@@ -1346,8 +1585,7 @@ function DealDetails({
   currentStepNumber,
   deadline,
   reportable,
-  busy,
-  onCancel,
+  onRequestCancel,
 }: {
   transaction: Transaction;
   viewer: Party;
@@ -1360,21 +1598,11 @@ function DealDetails({
   currentStepNumber: number;
   deadline?: Deadline;
   reportable: boolean;
-  busy: boolean;
-  onCancel: (reason: string) => Promise<boolean>;
+  /** Opens the request dialog, which RoomScreen owns. */
+  onRequestCancel: () => void;
 }) {
   const t = getCopy();
   const st = useStatusText();
-  // The reason was collected by an input bound to nothing and thrown away. A
-  // rejected cancellation flips dispute_status to under_review immediately, so
-  // this text is the only context the admin who picks it up will have.
-  const [cancelReason, setCancelReason] = useState("");
-  // Controlled rather than `OverlayTrigger`'s own uncontrolled open state,
-  // because closing on success has to wait for `onCancel` to resolve — an
-  // uncontrolled dialog has no "close only if this succeeded" hook, which is
-  // exactly why this one used to stay open (looking stuck) after a
-  // successful submit.
-  const [cancelOpen, setCancelOpen] = useState(false);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
@@ -1455,40 +1683,10 @@ function DealDetails({
           {!transaction.active_report_id &&
           (transaction.status === "Pending" ||
           transaction.status === "Processing" || (transaction.status === "Completed" && !transaction.cancellation_requested_by)) ? (
-            <>
-              <Button variant="ghost" size="sm" onPress={() => setCancelOpen(true)}>
-                <XCircle className="size-4" />{transaction.status === "Completed" ? "Request return (within 7 days)" : t("deal.requestCancellation")}</Button>
-              <Overlay
-                isOpen={cancelOpen}
-                onOpenChange={setCancelOpen}
-                isBusy={busy}
-                title={transaction.status === "Completed" ? "Request a return" : t("deal.cancelTitle")}
-                description={transaction.status === "Completed" ? "Explain the reason. The other party must respond before goods or money are returned." : t("deal.cancelBody")}
-                footer={
-                  <>
-                    <Button variant="ghost" slot="close" isDisabled={busy}>{t("deal.keepDeal")}</Button>
-                    <Button
-                      variant="danger"
-                      isLoading={busy}
-                      isDisabled={!cancelReason.trim()}
-                      onPress={async () => {
-                        const ok = await onCancel(cancelReason.trim());
-                        if (ok) setCancelOpen(false);
-                      }}
-                    >{t("deal.sendCancelRequest")}</Button>
-                  </>
-                }
-              >
-                <TextInput
-                  label={t("deal.reason")}
-                  value={cancelReason}
-                  onChange={setCancelReason}
-                  isRequired
-                  placeholder={t("deal.reasonPlaceholder")}
-                  hint={t("deal.reasonHint")}
-                />
-              </Overlay>
-            </>
+            <Button variant="ghost" size="sm" onPress={onRequestCancel}>
+              <XCircle className="size-4" />
+              {transaction.status === "Completed" ? t("deal.requestReturn") : t("deal.requestCancellation")}
+            </Button>
           ) : null}
         </div>
       </div>

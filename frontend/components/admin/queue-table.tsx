@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { SelectOption } from "@/components/kit/choice";
 
 import { AdminButton } from "./admin-controls";
+import { AdminScroll } from "./admin-table";
 import { AdminPill } from "./admin-ui";
 
 const KIND_ICON: Record<QueueKind, typeof Flag> = {
@@ -105,7 +106,7 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
               aria-pressed={filter === f.id}
               onClick={() => setFilter(f.id)}
               className={cn(
-                "min-h-8 rounded-[6px] px-2.5 text-meta transition-colors",
+                "touch-target min-h-8 rounded-[6px] px-2.5 text-meta transition-colors",
                 filter === f.id
                   ? "bg-surface-sunken font-medium text-ink"
                   : "text-ink-muted hover:text-ink",
@@ -148,7 +149,10 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
         </Select>
       </div>
 
-      <div className="relative -mx-4 mt-3 overflow-x-auto border-t border-line">
+      <AdminScroll
+        label="Queue cases"
+        className="relative -mx-4 mt-3 border-t border-line"
+      >
         {shown.length === 0 ? (
           <p className="px-4 py-8 text-center text-body-sm text-ink-muted">
             Nothing waiting here. New cases appear as soon as they are filed.
@@ -181,7 +185,7 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
                         <div className="min-w-0">
                           <Link
                             href={row.href}
-                            className="font-medium text-ink hover:underline"
+                            className="touch-link font-medium text-ink hover:underline"
                           >
                             {row.title}
                           </Link>
@@ -214,7 +218,7 @@ export function QueueTable({ rows, now }: { rows: QueueRow[]; now: number }) {
             </tbody>
           </table>
         )}
-      </div>
+      </AdminScroll>
     </>
   );
 }

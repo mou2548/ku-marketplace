@@ -120,7 +120,7 @@ export function AdminSidebar({ counts }: { counts: AdminQueueCounts }) {
       </nav>
       <Link
         href="/feed"
-        className="mt-auto flex min-h-9 items-center gap-2.5 rounded-[8px] px-2.5 text-body-sm text-ink-secondary hover:bg-surface-sunken hover:text-ink"
+        className="touch-target mt-auto flex min-h-9 items-center gap-2.5 rounded-[8px] px-2.5 text-body-sm text-ink-secondary hover:bg-surface-sunken hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to marketplace

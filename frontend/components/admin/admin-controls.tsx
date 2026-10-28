@@ -24,8 +24,10 @@ import { cn } from "@/lib/utils";
  */
 
 const BUTTON_TONE = {
+  // White on the brand fill passes only as large text, so the primary label
+  // is 19px bold like the student kit's (decision D2, audit P05).
   primary:
-    "border-brand bg-brand font-medium [color:var(--on-brand)] hover:bg-brand-hover data-[pressed]:bg-brand-active",
+    "border-brand bg-brand text-action font-bold text-balance text-center [color:var(--on-brand)] hover:bg-brand-hover data-[pressed]:bg-brand-active",
   secondary:
     "border-line-default bg-surface text-ink hover:bg-surface-sunken data-[pressed]:bg-surface-sunken",
   plain:
@@ -50,7 +52,7 @@ export function AdminButton({
       {...props}
       isDisabled={isDisabled || isLoading}
       className={cn(
-        "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[10px] border px-3.5 text-body-sm transition-colors",
+        "touch-target inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[10px] border px-3.5 text-body-sm transition-colors",
         "outline-none data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-brand",
         "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 [&_svg]:size-4",
         BUTTON_TONE[tone],

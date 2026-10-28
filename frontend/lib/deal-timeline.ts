@@ -23,6 +23,7 @@
 
 import type { AppointmentCardData, Transaction } from "@/lib/api/types";
 import { formatDate, formatDateTime } from "@/lib/date-format";
+import { formatPrice } from "@/lib/format-price";
 import { requiresPayment, type Tone } from "@/lib/status";
 
 export type DealEventKind =
@@ -59,7 +60,7 @@ export interface DealEvent {
   placeAt: number;
 }
 
-const baht = (amount: number) => `฿${amount.toLocaleString("en-US")}`;
+const baht = formatPrice;
 
 /** Prefixed, because the card also shows when the proposal was made. */
 function meetupWhen(card: AppointmentCardData): string {

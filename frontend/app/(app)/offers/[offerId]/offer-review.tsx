@@ -33,6 +33,7 @@ import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
+import { formatPrice } from "@/lib/format-price";
 
 /** The bench takes inventory slots; an offer carries full items. */
 const toSlot = (item: Item) => ({
@@ -309,8 +310,8 @@ export function OfferReview({
           {decision === "accept" ? (
             offer.additional_money > 0 ? (
               <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-                This offer adds cash: ฿
-                {offer.additional_money.toLocaleString("en-GB")} — a slip
+                This offer adds cash:{" "}
+                {formatPrice(offer.additional_money)} — a slip
                 upload and slip check are added before the QR.
               </p>
             ) : (

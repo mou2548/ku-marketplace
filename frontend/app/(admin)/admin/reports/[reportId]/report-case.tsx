@@ -29,6 +29,7 @@ import {
 import type { AdminTransactionEvidence } from "@/lib/api/reports";
 import type { EvidenceMessage, Report } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/date-format";
+import { formatPrice } from "@/lib/format-price";
 
 import { ReportDecision } from "./report-decision";
 
@@ -71,7 +72,7 @@ export function ReportCase({
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
       <Link
         href="/admin/reports"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to reports
@@ -110,7 +111,7 @@ export function ReportCase({
                     href={targetHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 font-medium text-ink-brand hover:underline"
+                    className="touch-link inline-flex items-center gap-1 font-medium text-ink-brand hover:underline"
                   >
                     {report.report_type} #{report.target_id}
                     <ExternalLink aria-hidden className="size-3.5" />
@@ -150,7 +151,7 @@ export function ReportCase({
                 href={targetHref}
                 target="_blank"
                 rel="noreferrer"
-                className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+                className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
               >
                 Open the reported {report.report_type.toLowerCase()}
                 <ExternalLink aria-hidden className="size-4" />
@@ -231,7 +232,7 @@ function Parties({ report }: { report: Report }) {
               href={`/sellers/${target.user_id}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex w-fit items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
+              className="touch-link inline-flex w-fit items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
             >
               Open their profile
               <ExternalLink aria-hidden className="size-3.5" />
@@ -327,7 +328,7 @@ function TransactionEvidence({
             [
               "Amount",
               <span key="amount" data-numeric>
-                ฿{transaction.final_amount.toLocaleString("en-GB")}
+                {formatPrice(transaction.final_amount)}
               </span>,
             ],
             ["Delivery", transaction.delivery_method],

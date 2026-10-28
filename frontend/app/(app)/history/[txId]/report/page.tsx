@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { PostImage } from "@/components/kit/post-image";
@@ -8,12 +8,14 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
 import { getChatHistory } from "@/lib/api/chat";
 import { getTransaction } from "@/lib/api/transactions";
-import { getAccessToken } from "@/lib/api/session";
-import { getMe } from "@/lib/api/users";
+import { formatPrice } from "@/lib/format-price";
 import { deadlineFor } from "@/lib/inbox";
 import { canReport, requiresPayment, transactionStatusPresentation } from "@/lib/status";
+import { requireViewer } from "@/lib/viewer";
 
 import { ReportForm } from "./report-form";
+
+export const metadata = { title: "Report a problem - KU Marketplace" };
 
 /**
  * E8 — reporting a transaction.
@@ -33,9 +35,8 @@ export default async function ReportPage({
 }: {
   params: Promise<{ txId: string }>;
 }) {
-  if (!(await getAccessToken())) redirect("/login");
-  const viewerProfile = await getMe().catch(() => undefined);
-  if (!viewerProfile) redirect("/login");
+  // Only a 401 means signed out (audit N01); see `requireViewer`.
+  const viewerProfile = await requireViewer();
 
   const { txId } = await params;
   const tx = await getTransaction(Number(txId)).catch(() => undefined);
@@ -100,7 +101,7 @@ export default async function ReportPage({
           <dt className="text-ink-muted">Amount</dt>
           <dd data-numeric>
             {requiresPayment(tx)
-              ? `฿${tx.final_amount.toLocaleString("en-GB")}`
+              ? formatPrice(tx.final_amount)
               : "Trade, no money"}
           </dd>
         </div>

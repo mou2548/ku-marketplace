@@ -383,6 +383,10 @@ const COPY: { [key: string]: CopyNode } = {
           "you": "Your turn: transfer the refund and upload the slip",
           "them": "Waiting on the seller to transfer the money back"
         },
+        "confirm-refund": {
+          "you": "Your turn: confirm the refund reached you",
+          "them": "Waiting on the buyer to confirm the refund"
+        },
         "completed": {
           "you": "This deal is complete",
           "them": "This deal is complete"
@@ -544,7 +548,23 @@ const COPY: { [key: string]: CopyNode } = {
       "photoLimit": "Only the first 5 photos were attached.",
       "timePassed": "That time has already passed. Pick a later one.",
       "estimatedDelivery": "Estimated delivery date",
-      "waitingOnYou": "Waiting on you"
+      "waitingOnYou": "Waiting on you",
+      "stepConfirmRefund": "Your step - confirm the money came back",
+      "confirmRefundBody": "The seller sent back what arrived. Check your bank app, then confirm. After that you can pay again or cancel.",
+      "confirmRefundButton": "I received the refund",
+      "refundConfirmed": "Refund confirmed",
+      "slipRejectedSellerTitle": "Slip rejected - waiting on the buyer",
+      "slipRejectedSellerBody": "The buyer can send a new slip. If some money did reach your account, send it back and upload the refund slip here.",
+      "refundSentTitle": "Refund sent - waiting on the buyer",
+      "refundSentBody": "The buyer confirms once the money is back. Until then they cannot send a new payment slip.",
+      "refundSlipUploaded": "Refund slip uploaded",
+      "cancelAnswerBy": "Answer before the time runs out, or the request goes to an admin.",
+      "cancelWaitingBy": "If {name} does not answer in time, the request goes to an admin.",
+      "dealComplete": "Deal complete",
+      "returnDaysLeft": "{count, plural, one {# day} other {# days}} left to ask for a return.",
+      "requestReturn": "Request a return",
+      "returnTitle": "Request a return",
+      "returnBody": "Explain the reason. The other party must respond before goods or money are returned."
     },
     "history": {
       "title": "History",
@@ -574,6 +594,7 @@ const COPY: { [key: string]: CopyNode } = {
       "confirmDelivery": "Confirm it arrived",
       "scanHandover": "Scan at handover",
       "refundSlip": "Upload refund slip",
+      "confirmRefund": "Confirm the refund",
       "openDeal": "Open the deal",
       "goToChat": "Go to chat"
     },
@@ -645,6 +666,8 @@ const COPY: { [key: string]: CopyNode } = {
       "attachImages": "Attach images, up to 5",
       "message": "Message",
       "writeMessage": "Write a message",
+      "charCount": "{count} of {max} characters",
+      "notAnImage": "{count, plural, one {# file was} other {# files were}} not an image and left out.",
       "send": "Send",
       "searchConversations": "Search conversations",
       "search": "Search",
@@ -707,6 +730,7 @@ const COPY: { [key: string]: CopyNode } = {
       "errorNotImage": "The file must be an image",
       "errorTooLarge": "The file is larger than 5 MB",
       "errorUploadFailed": "Upload failed. The slip is still here, try sending it again.",
+      "errorChecking": "Checking the image",
       "refundSlip": "Refund slip",
       "paymentSlipOnFile": "Payment slip",
       "rejectTitle": "Reject this slip",

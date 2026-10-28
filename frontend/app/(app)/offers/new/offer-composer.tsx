@@ -28,6 +28,7 @@ import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { sendOffer } from "@/lib/actions/posts";
 import type { ItemWithStatus } from "@/lib/api/items";
 import type { Item, ItemHistorySummary, Post } from "@/lib/api/types";
+import { formatPrice } from "@/lib/format-price";
 import {
   UNAVAILABLE_REASON_LABEL,
   unavailableReason,
@@ -58,6 +59,9 @@ export function OfferComposer({
   const toast = useToast();
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);
+  // False while the cash field holds text that is not a valid amount; `money`
+  // then still has the last valid value, so it must not be sent.
+  const [cashValid, setCashValid] = useState(true);
   const [busy, setBusy] = useState(false);
   // Confirming in place rather than navigating: the offer now really is in
   // the inbox, but the sender's next question is "what did I just send?", and
@@ -133,7 +137,7 @@ export function OfferComposer({
     [offered],
   );
 
-  const canSubmit = offered.length > 0 || money > 0;
+  const canSubmit = cashValid && (offered.length > 0 || money > 0);
 
   function addToOffer(item: InventoryItem) {
     setOffered((list) =>
@@ -312,7 +316,7 @@ export function OfferComposer({
           {offered.length > 0
             ? `${offered.length} ${offered.length === 1 ? "item" : "items"}`
             : "no items"}
-          {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""} for{" "}
+          {money > 0 ? ` plus ${formatPrice(money)}` : ""} for{" "}
           {post.item.name}. They will see it and can accept or decline.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -419,6 +423,7 @@ export function OfferComposer({
           onYouGiveChange={handleOfferedChange}
           additionalMoney={money}
           onAdditionalMoneyChange={setMoney}
+          onCashValidityChange={setCashValid}
           // Composing an offer, you are always the one putting the cash up.
           moneyDirection="you-pay"
           counterpartyName={post.seller.name}
@@ -464,7 +469,7 @@ export function OfferComposer({
           {offered.length > 0
             ? `You give ${offered.length} ${offered.length === 1 ? "item" : "items"}`
             : "Nothing on the table yet"}
-          {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""}
+          {money > 0 ? ` plus ${formatPrice(money)}` : ""}
         </p>
         <Button size="lg" isDisabled={!canSubmit} isLoading={busy} onPress={submit}>
           <ArrowLeftRight className="size-5" />{t("offer.send")}</Button>

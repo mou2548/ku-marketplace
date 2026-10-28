@@ -10,6 +10,7 @@ const ghost = "animate-pulse rounded-control bg-surface-sunken motion-reduce:ani
 export function DetailLoading({ label = "Loading details" }: { label?: string }) {
   return (
     <div
+      role="status"
       aria-busy="true"
       aria-label={label}
       className="flex flex-col gap-7 pb-6"

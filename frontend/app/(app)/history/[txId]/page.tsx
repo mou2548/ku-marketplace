@@ -4,6 +4,8 @@ import { getRoomSummaries } from "@/lib/api/rooms-query";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransaction } from "@/lib/api/transactions";
 
+export const metadata = { title: "Deal - KU Marketplace" };
+
 /**
  * A deal and its chat room are the same conversation, so there is one screen
  * for them and it lives at `/chat/[roomId]`. This route stays because it was

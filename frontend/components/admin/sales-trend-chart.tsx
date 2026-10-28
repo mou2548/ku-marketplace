@@ -1,42 +1,29 @@
 "use client";
 
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  type TooltipContentProps,
-} from "recharts";
-import type {
-  NameType,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent";
+import dynamic from "next/dynamic";
 
 import type { TrendPoint } from "@/lib/api/admin";
 import { formatBaht, formatCount } from "@/lib/admin-labels";
 
-const DAY_LABEL = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-const DAY_LONG = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-/** Points are Bangkok calendar days ("2026-10-05"); read them as plain dates. */
-const asDate = (day: string) => new Date(`${day}T00:00:00Z`);
+import { AdminScroll } from "./admin-table";
+import { DAY_LONG, asDate } from "./sales-trend-format";
 
-const COMPACT = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
+/**
+ * recharts is the heaviest single dependency on the admin overview, and the
+ * plot is decoration over the table below it, so it loads after the page is
+ * interactive instead of in the route's first-load JavaScript (audit P03).
+ * The placeholder holds the plot's exact height so nothing shifts when it
+ * arrives.
+ */
+const SalesTrendPlot = dynamic(
+  () => import("./sales-trend-plot").then((m) => m.SalesTrendPlot),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="size-full animate-pulse rounded-[8px] bg-surface-sunken" />
+    ),
+  },
+);
 
 /**
  * Sales volume per day: one series, so one hue and no legend box (the heading
@@ -55,62 +42,18 @@ export function SalesTrendChart({ points }: { points: TrendPoint[] }) {
             No sales in this range yet.
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={points}
-              margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-            >
-              <CartesianGrid
-                vertical={false}
-                stroke="var(--color-line)"
-                strokeDasharray="0"
-              />
-              <XAxis
-                dataKey="day"
-                tickFormatter={(day: string) => DAY_LABEL.format(asDate(day))}
-                tickLine={false}
-                axisLine={{ stroke: "var(--color-line-default)" }}
-                tick={{ fill: "var(--color-ink-muted)", fontSize: 12 }}
-                minTickGap={24}
-              />
-              <YAxis
-                tickFormatter={(v: number) => `฿${COMPACT.format(v)}`}
-                tickLine={false}
-                axisLine={false}
-                tick={{ fill: "var(--color-ink-muted)", fontSize: 12 }}
-                width={56}
-                allowDecimals={false}
-              />
-              <Tooltip
-                content={TrendTooltip}
-                cursor={{ stroke: "var(--color-line-strong)", strokeWidth: 1 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="amount"
-                name="Sales"
-                stroke="var(--color-chart-series)"
-                strokeWidth={2}
-                fill="var(--color-chart-series)"
-                fillOpacity={0.12}
-                activeDot={{
-                  r: 4,
-                  fill: "var(--color-chart-series)",
-                  stroke: "var(--color-surface)",
-                  strokeWidth: 2,
-                }}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <SalesTrendPlot points={points} />
         )}
       </div>
 
       <details className="text-body-sm">
-        <summary className="cursor-pointer text-meta text-ink-muted hover:text-ink">
+        <summary className="touch-target cursor-pointer text-meta text-ink-muted hover:text-ink">
           Show as a table
         </summary>
-        <div className="mt-2 max-h-64 overflow-auto rounded-[8px] border border-line">
+        <AdminScroll
+          label="Sales per day"
+          className="mt-2 max-h-64 overflow-y-auto rounded-[8px] border border-line"
+        >
           <table className="w-full border-collapse text-body-sm">
             <caption className="sr-only">Sales per day</caption>
             <thead>
@@ -134,28 +77,8 @@ export function SalesTrendChart({ points }: { points: TrendPoint[] }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </AdminScroll>
       </details>
     </figure>
-  );
-}
-
-function TrendTooltip({
-  active,
-  payload,
-}: TooltipContentProps<ValueType, NameType>) {
-  const point = payload?.[0]?.payload as TrendPoint | undefined;
-  if (!active || !point) return null;
-  return (
-    <div className="rounded-[8px] border border-line bg-surface px-3 py-2 text-body-sm shadow-overlay">
-      <p className="text-meta text-ink-muted">{DAY_LONG.format(asDate(point.day))}</p>
-      <p data-numeric className="font-semibold text-ink">
-        {formatBaht(point.amount)}
-      </p>
-      <p data-numeric className="text-meta text-ink-secondary">
-        {formatCount(point.count)} {point.count === 1 ? "deal" : "deals"},{" "}
-        {formatCount(point.completed_count)} completed
-      </p>
-    </div>
   );
 }

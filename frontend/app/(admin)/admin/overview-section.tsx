@@ -23,6 +23,7 @@ import {
   RANGE_PRESETS,
   formatBaht,
   formatCount,
+  nameOr,
   presetRange,
   type RangePreset,
 } from "@/lib/admin-labels";
@@ -83,7 +84,7 @@ export async function OverviewSection({
               aria-current={p.id === preset ? "page" : undefined}
               scroll={false}
               className={cn(
-                "inline-flex min-h-9 items-center rounded-[6px] px-2.5 text-meta transition-colors",
+                "touch-target inline-flex min-h-9 items-center rounded-[6px] px-2.5 text-meta transition-colors",
                 p.id === preset
                   ? "bg-surface-sunken font-medium text-ink"
                   : "text-ink-muted hover:text-ink",
@@ -142,7 +143,7 @@ export async function OverviewSection({
           >
             <Link
               href="/admin/transactions"
-              className="text-meta text-ink-brand hover:underline"
+              className="touch-link text-meta text-ink-brand hover:underline"
             >
               All transactions
             </Link>
@@ -163,7 +164,7 @@ export async function OverviewSection({
                 <AdminTd>
                   <Link
                     href={`/admin/transactions?status=${encodeURIComponent(row.status)}&from=${overview.range.from}&to=${overview.range.to}`}
-                    className="hover:underline"
+                    className="touch-link hover:underline"
                   >
                     <AdminPill status={transactionStatusLabel(row.status)} />
                   </Link>
@@ -187,7 +188,7 @@ export async function OverviewSection({
           >
             <Link
               href="/admin/memberships?tab=all"
-              className="text-meta text-ink-brand hover:underline"
+              className="touch-link text-meta text-ink-brand hover:underline"
             >
               All memberships
             </Link>
@@ -239,9 +240,9 @@ export async function OverviewSection({
               <AdminTd>
                 <Link
                   href={`/admin/items/${post.item_id}`}
-                  className="font-medium text-ink hover:underline"
+                  className="touch-link font-medium text-ink hover:underline"
                 >
-                  {post.item_name}
+                  {nameOr(post.item_name, `Item #${post.item_id}`)}
                 </Link>
                 <span className="block text-meta text-ink-muted">
                   Post #{post.post_id} · {post.category}
@@ -281,9 +282,12 @@ function Tile({
   return (
     <div className="flex min-w-0 flex-col gap-0.5 rounded-[12px] border border-line bg-surface px-4 py-3">
       <dt className="text-meta text-ink-muted">{label}</dt>
+      {/* No `truncate`: its clipping box cut the tops off the digits at this
+          size, and on a 360px two-column grid it hid the end of the amount
+          (audit P08). The figure wraps instead of disappearing. */}
       <dd
         data-numeric
-        className="truncate text-[1.5rem] font-semibold leading-tight tracking-[-0.02em] text-ink"
+        className="text-h2 font-semibold tracking-[-0.02em] text-ink wrap-anywhere"
       >
         {value}
       </dd>

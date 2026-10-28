@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import type { AdminUserRef } from "@/lib/api/admin";
+import { nameOr } from "@/lib/admin-labels";
 import { cn } from "@/lib/utils";
 
 import { AdminInitials } from "./admin-ui";
@@ -34,7 +35,7 @@ export function AdminTable({
       </p>
     );
   return (
-    <div className="overflow-x-auto border-t border-line">
+    <AdminScroll label={caption} className="border-t border-line">
       <table
         className="w-full border-collapse text-body-sm"
         style={{ minWidth }}
@@ -47,6 +48,41 @@ export function AdminTable({
         </thead>
         <tbody>{children}</tbody>
       </table>
+    </AdminScroll>
+  );
+}
+
+/**
+ * A table that is wider than a phone scrolls inside this box. Two things make
+ * that usable rather than a clipped right edge (audit P04, P08):
+ *
+ *  - it is a named, focusable region, so a keyboard user can scroll it with
+ *    the arrow keys and a screen reader announces what it holds;
+ *  - `scroll-fade-x` (globals.css) shades whichever edge still has columns
+ *    past it, and shows nothing when the table fits.
+ *
+ * The focus outline is drawn inside the box because AdminBox clips overflow.
+ */
+export function AdminScroll({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="region"
+      aria-label={label}
+      tabIndex={0}
+      className={cn(
+        "scroll-fade-x overflow-x-auto focus-visible:-outline-offset-2",
+        className,
+      )}
+    >
+      {children}
     </div>
   );
 }
@@ -102,10 +138,12 @@ export function AdminUserCell({ user }: { user: AdminUserRef }) {
   return (
     <Link
       href={`/admin/users/${user.user_id}`}
-      className="flex min-w-0 items-center gap-2 hover:underline"
+      className="touch-link flex min-w-0 items-center gap-2 hover:underline"
     >
       <AdminInitials name={user.name} size="sm" />
-      <span className="min-w-0 truncate">{user.name}</span>
+      <span className="min-w-0 truncate">
+        {nameOr(user.name, `User #${user.user_id}`)}
+      </span>
     </Link>
   );
 }
@@ -156,7 +194,7 @@ export function AdminFilterBar({
               name="q"
               defaultValue={query}
               placeholder={placeholder}
-              className="min-h-10 w-full rounded-[10px] border border-line-default bg-surface pl-9 pr-3 text-body-sm text-ink placeholder:text-ink-disabled outline-none focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="touch-target min-h-10 w-full rounded-[10px] border border-line-default bg-surface pl-9 pr-3 text-body-sm text-ink placeholder:text-ink-disabled outline-none focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             />
           </span>
         </label>
@@ -167,7 +205,7 @@ export function AdminFilterBar({
           <select
             name={select.name}
             defaultValue={select.value}
-            className="min-h-10 rounded-[10px] border border-line-default bg-surface px-3 text-body-sm text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="touch-target min-h-10 rounded-[10px] border border-line-default bg-surface px-3 text-body-sm text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             {select.options.map((option) => (
               <option key={option.value} value={option.value}>
@@ -179,7 +217,7 @@ export function AdminFilterBar({
       ))}
       <button
         type="submit"
-        className="min-h-10 rounded-[10px] border border-line-default bg-surface px-3.5 text-body-sm text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="touch-target min-h-10 rounded-[10px] border border-line-default bg-surface px-3.5 text-body-sm text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         Apply
       </button>
@@ -204,7 +242,7 @@ export function AdminPagination({
   const href = (p: number) =>
     `${path}?${new URLSearchParams({ ...params, page: String(p) })}`;
   const linkClass =
-    "inline-flex min-h-10 items-center gap-1 rounded-[10px] border border-line-default px-3 text-body-sm text-ink hover:bg-surface-sunken";
+    "touch-target inline-flex min-h-10 items-center gap-1 rounded-[10px] border border-line-default px-3 text-body-sm text-ink hover:bg-surface-sunken";
   return (
     <nav
       aria-label="Pages"

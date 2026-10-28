@@ -31,6 +31,7 @@ import {
   accountStatusLabel,
   formatBaht,
   formatCount,
+  nameOr,
 } from "@/lib/admin-labels";
 import { formatDate, formatDateTime } from "@/lib/date-format";
 
@@ -160,7 +161,7 @@ export default async function AdminUserPage({
                       href={payment.slip_image_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="hover:underline"
+                      className="touch-link hover:underline"
                     >
                       {payment.status}
                     </a>
@@ -196,7 +197,7 @@ export default async function AdminUserPage({
               <AdminTd>
                 <Link
                   href={`/admin/reports/${verdict.report_id}`}
-                  className="font-medium hover:underline"
+                  className="touch-link font-medium hover:underline"
                 >
                   #{verdict.report_id}
                 </Link>
@@ -225,7 +226,7 @@ export default async function AdminUserPage({
         <AdminBoxHeader icon={<Package />} title="Inventory" titleId="items-title">
           <Link
             href={`/admin/items?owner_id=${user.user_id}`}
-            className="text-meta text-ink-brand hover:underline"
+            className="touch-link text-meta text-ink-brand hover:underline"
           >
             Open in Items
           </Link>
@@ -248,9 +249,9 @@ export default async function AdminUserPage({
               <AdminTd>
                 <Link
                   href={`/admin/items/${item.item_id}`}
-                  className="font-medium hover:underline"
+                  className="touch-link font-medium hover:underline"
                 >
-                  {item.name}
+                  {nameOr(item.name, `Item #${item.item_id}`)}
                 </Link>
                 <span className="block text-meta text-ink-muted">
                   {item.category}
@@ -305,9 +306,9 @@ export default async function AdminUserPage({
                 <AdminTd>
                   <Link
                     href={`/admin/items/${deal.item_id}`}
-                    className="hover:underline"
+                    className="touch-link hover:underline"
                   >
-                    {deal.item_name}
+                    {nameOr(deal.item_name, `Item #${deal.item_id}`)}
                   </Link>
                   <span className="block text-meta text-ink-muted">
                     {formatCount(deal.quantity)} ×{" "}

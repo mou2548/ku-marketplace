@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useStatusText } from "@/lib/status-text";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
+import { formatPrice } from "@/lib/format-price";
 import { deadlineFor } from "@/lib/inbox";
 import {
   resolveTransactionActor,
@@ -232,6 +233,7 @@ const ACTION_CTA: Record<PromptAction | "none", string> = {
   "confirm-delivery": "confirmDelivery",
   "scan-qr": "scanHandover",
   "refund-slip": "refundSlip",
+  "confirm-refund": "confirmRefund",
   none: "openDeal",
 };
 
@@ -247,7 +249,7 @@ function DealRow({ tx, viewerId }: { tx: HistoryTransaction; viewerId: number })
 
   const amount =
     tx.final_amount > 0
-      ? `฿${tx.final_amount.toLocaleString("en-GB")}`
+      ? formatPrice(tx.final_amount)
       : t("history.noMoney");
 
   return (

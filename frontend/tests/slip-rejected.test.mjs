@@ -17,6 +17,7 @@ const { isSlipRejected, describeDeal } = loadTs('lib/deal-progress.ts', {
 });
 const { buildDealTimeline } = loadTs('lib/deal-timeline.ts', {
   '@/lib/date-format': dateStub,
+  '@/lib/format-price': loadTs('lib/format-price.ts'),
   '@/lib/status': statusStub,
 });
 

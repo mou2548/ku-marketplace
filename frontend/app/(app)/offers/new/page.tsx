@@ -1,10 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getItemHistorySummaries, getMyItems } from "@/lib/api/items";
 import { getPost } from "@/lib/api/posts";
 import { getAccessToken } from "@/lib/api/session";
 
 import { OfferComposer } from "./offer-composer";
+
+export const metadata = { title: "Make an offer - KU Marketplace" };
 
 /**
  * E4 — composing a trade offer. The screen the brief asked to feel like a game
@@ -27,13 +29,6 @@ export default async function NewOfferPage({
   const items = await getMyItems({ token });
   // Same per-item summary the inventory and /post read, so the stash marks
   // the same items unavailable those screens do (lib/item-availability.ts).
-  const summaries = Object.fromEntries(
-    await Promise.all(
-      items.map(async (item) => [
-        item.item_id,
-        await getItemHistorySummary(item.item_id).catch(() => undefined),
-      ] as const),
-    ),
-  );
+  const summaries = await getItemHistorySummaries(items);
   return <OfferComposer post={post} inventory={items} summaries={summaries} />;
 }

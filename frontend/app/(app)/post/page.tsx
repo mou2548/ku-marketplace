@@ -1,4 +1,4 @@
-import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getItemHistorySummaries, getMyItems } from "@/lib/api/items";
 import { getMe } from "@/lib/api/users";
 
 import { PostComposer } from "./post-composer";
@@ -44,14 +44,7 @@ export default async function PostPage({
     .map((id) => Number(id.trim()))
     .filter((id) => Number.isInteger(id) && id > 0);
 
-  const summaries = Object.fromEntries(
-    await Promise.all(
-      items.map(async (item) => [
-        item.item_id,
-        await getItemHistorySummary(item.item_id).catch(() => undefined),
-      ] as const),
-    ),
-  );
+  const summaries = await getItemHistorySummaries(items);
 
   // The composer reads free units through lib/item-availability.ts, which
   // also honours `item_status` Transferred: a traded-away item still reports

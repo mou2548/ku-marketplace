@@ -47,7 +47,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
     <>
       <Link
         href="/account"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to account

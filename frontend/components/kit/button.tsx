@@ -15,8 +15,13 @@ import { cn } from "@/lib/utils";
  * edge via --shadow-raised, and presses by translating 1px rather than only
  * changing colour.
  *
- * `bg-brand text-on-brand` is 4.04:1 — allowed here and only here, because
- * button labels are >=15px at weight 600, which WCAG counts as large text.
+ * `bg-brand text-on-brand` is 4.04:1, which passes only as large text. WCAG's
+ * large text is 18.66px at weight 700 (14pt bold); the old 15-17px at 500 was
+ * normal text and failed (audit P05). Decision D2 keeps the brand fill and
+ * makes the primary label large: `text-action` is 19px at 700, set in the
+ * compound variants below so no size can shrink it again. A bigger label
+ * needs room, so a primary button may wrap to a second line instead of
+ * running out of a 360px screen; its height becomes a minimum for that.
  * Never use --brand for body copy. See docs/design/tokens.md §2.
  */
 const button = cva(
@@ -60,6 +65,16 @@ const button = cva(
       block: { true: "w-full", false: "" },
       pill: { true: "rounded-pill", false: "" },
     },
+    compoundVariants: [
+      {
+        variant: "primary",
+        className:
+          "text-action font-bold whitespace-normal text-balance text-center",
+      },
+      { variant: "primary", size: "sm", className: "h-auto min-h-9 py-1" },
+      { variant: "primary", size: "md", className: "h-auto min-h-11 py-1.5" },
+      { variant: "primary", size: "lg", className: "h-auto min-h-13 py-2" },
+    ],
     defaultVariants: { variant: "primary", size: "md", block: false },
   },
 );

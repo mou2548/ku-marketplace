@@ -66,6 +66,9 @@ export function HeroAvatar({
         ref={fileRef}
         type="file"
         accept="image/*"
+        // Opened by the "Change profile photo" button, but axe still finds it
+        // and wants a name of its own (audit P04).
+        aria-label="Profile photo"
         className="sr-only"
         tabIndex={-1}
         onChange={(event) => {

@@ -291,6 +291,7 @@ export async function SellerProfileView({
                 </Link>
               ) : (
                 <span
+                  role="link"
                   aria-disabled="true"
                   aria-label={t("previous")}
                   className="grid size-11 place-items-center rounded-control bg-surface text-ink-muted opacity-40"
@@ -308,6 +309,7 @@ export async function SellerProfileView({
                 </Link>
               ) : (
                 <span
+                  role="link"
                   aria-disabled="true"
                   aria-label={t("next")}
                   className="grid size-11 place-items-center rounded-control bg-surface text-ink-muted opacity-40"

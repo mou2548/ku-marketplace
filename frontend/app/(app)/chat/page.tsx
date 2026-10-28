@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 
 import { RoomList } from "@/components/kit/room-list";
 import { EmptyState } from "@/components/kit/empty-state";
@@ -6,8 +5,7 @@ import { MessagesSquare } from "lucide-react";
 import { getCopy } from "@/lib/copy";
 
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
-import { getAccessToken } from "@/lib/api/session";
-import { getMe } from "@/lib/api/users";
+import { requireViewer } from "@/lib/viewer";
 
 import { RoomScreen } from "./[roomId]/room-screen";
 
@@ -34,9 +32,8 @@ export const metadata = { title: "Chat - KU Marketplace" };
  */
 export default async function ChatInboxPage() {
   const t = await getCopy();
-  if (!(await getAccessToken())) redirect("/login");
-  const viewer = await getMe().catch(() => undefined);
-  if (!viewer) redirect("/login");
+  // Only a 401 means signed out (audit N01); see `requireViewer`.
+  const viewer = await requireViewer();
 
   const rooms = await getRoomSummaries(viewer.userId);
   const first = rooms[0]

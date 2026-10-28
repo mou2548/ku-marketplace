@@ -68,7 +68,7 @@ export function RestrictedShell({
 
   const linkClass = (href: string) =>
     cn(
-      "flex min-h-10 items-center gap-1.5 rounded-control px-3 text-body-sm transition-colors",
+      "touch-target flex min-h-10 items-center gap-1.5 rounded-control px-3 text-body-sm transition-colors",
       pathname.startsWith(href)
         ? "bg-brand-subtle font-semibold text-ink-brand"
         : "text-ink-secondary hover:bg-surface-sunken hover:text-ink",
@@ -93,7 +93,12 @@ export function RestrictedShell({
             </span>
           </span>
           <nav aria-label="Account" className="ml-auto flex items-center gap-1">
-            <Link href="/account/appeals" className={linkClass("/account/appeals")}>
+            <Link
+              href="/account/appeals"
+              // The text is hidden below 640px; the link still needs a name.
+              aria-label="My appeals"
+              className={linkClass("/account/appeals")}
+            >
               <Scale aria-hidden className="size-4" />
               <span className="hidden sm:inline">My appeals</span>
             </Link>
@@ -112,7 +117,7 @@ export function RestrictedShell({
             <form action={logout}>
               <button
                 type="submit"
-                className="flex min-h-10 items-center gap-1.5 rounded-control px-3 text-body-sm font-medium text-tone-danger-fg transition-colors hover:bg-tone-danger-bg"
+                className="touch-target flex min-h-10 items-center gap-1.5 rounded-control px-3 text-body-sm font-medium text-tone-danger-fg transition-colors hover:bg-tone-danger-bg"
               >
                 <LogOut aria-hidden className="size-4" />
                 Sign out

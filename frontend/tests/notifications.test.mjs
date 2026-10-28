@@ -26,6 +26,7 @@ const { getNotifications } = loadTs('lib/api/notifications.ts', {
   '@/lib/api/offers': { getMyOffers: async () => [] },
   '@/lib/api/session': { getCurrentUserId: async () => 9 },
   '@/lib/api/transactions': { getTransactions: async () => [] },
+  '@/lib/format-price': loadTs('lib/format-price.ts'),
   '@/lib/status': {
     TICKET_STATUS: {},
     transactionStatusPresentation: () => ({}),

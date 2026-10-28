@@ -17,7 +17,7 @@ import {
   param,
 } from "@/components/admin/admin-table";
 import { listAdminUsers } from "@/lib/api/admin";
-import { accountStatusLabel, formatCount } from "@/lib/admin-labels";
+import { accountStatusLabel, formatCount, nameOr } from "@/lib/admin-labels";
 import { formatDate } from "@/lib/date-format";
 
 export const metadata = { title: "Users - Admin" };
@@ -89,12 +89,12 @@ export default async function AdminUsersPage({
               <AdminTd>
                 <Link
                   href={`/admin/users/${user.user_id}`}
-                  className="flex min-w-0 items-center gap-2.5"
+                  className="touch-link flex min-w-0 items-center gap-2.5"
                 >
                   <AdminInitials name={user.name} />
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-ink hover:underline">
-                      {user.name}
+                      {nameOr(user.name, `User #${user.user_id}`)}
                     </span>
                     <span className="block truncate text-meta text-ink-muted">
                       {user.email}

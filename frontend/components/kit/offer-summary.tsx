@@ -7,6 +7,7 @@ import { ITEM_CONDITION } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
+import { formatPrice } from "@/lib/format-price";
 
 /**
  * What is on the table, both sides, with photos — from the viewer's side.
@@ -134,8 +135,7 @@ function Stack({
               data-numeric
               className="flex items-center gap-1 rounded-pill bg-tone-trade-bg px-2.5 py-1 text-caption font-semibold whitespace-nowrap text-tone-trade-fg"
             >
-              <Coins aria-hidden className="size-3.5" />+฿
-              {money.toLocaleString("en-GB")}
+              <Coins aria-hidden className="size-3.5" />+{formatPrice(money)}
             </span>
           </li>
         ) : null}

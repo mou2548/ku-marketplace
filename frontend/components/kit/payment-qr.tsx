@@ -8,11 +8,11 @@ import { unwrapAction } from "@/lib/action-result";
 import { fetchPaymentQr } from "@/lib/actions/transactions";
 import type { PaymentQr as PaymentQrData } from "@/lib/api/transactions";
 import { getCopy } from "@/lib/copy";
+import { formatPrice } from "@/lib/format-price";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
 import { QR_COLOR } from "./qr-ticket";
-import { formatAmount } from "./slip";
 import { Surface } from "./surface";
 
 const SIZE = 224;
@@ -76,7 +76,7 @@ export function PaymentQr({ transactionId, className }: { transactionId: number;
     <Surface shape="card" elevation="raised" className={cn("flex flex-col items-center gap-3 p-4 text-center", className)}>
       <h4 className="flex items-center gap-2 text-[1.125rem] leading-[1.4] font-semibold">
         <QrCode aria-hidden className="size-5 text-ink-brand" />
-        {qr ? t("payTitle", { amount: formatAmount(qr.amount) }) : t("payLoading")}
+        {qr ? t("payTitle", { amount: formatPrice(qr.amount) }) : t("payLoading")}
       </h4>
       {/* The quiet zone has to stay light in dark mode too. */}
       <div
@@ -86,7 +86,7 @@ export function PaymentQr({ transactionId, className }: { transactionId: number;
         <canvas
           ref={canvasRef}
           role="img"
-          aria-label={qr ? t("payQrLabel", { amount: formatAmount(qr.amount) }) : t("payLoading")}
+          aria-label={qr ? t("payQrLabel", { amount: formatPrice(qr.amount) }) : t("payLoading")}
           className={cn("rounded-[6px]", !qr && "animate-pulse bg-surface-sunken")}
           width={SIZE}
           height={SIZE}

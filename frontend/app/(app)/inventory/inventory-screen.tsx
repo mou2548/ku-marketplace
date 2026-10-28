@@ -231,7 +231,9 @@ export function InventoryScreen({
                       <span className="truncate text-caption text-ink-muted">{item.category}</span>
                       <span
                         className="w-fit rounded-pill bg-[var(--slot-glow)] px-2 py-0.5 text-meta font-medium text-[var(--slot-edge)]"
-                        style={{ "--slot-glow": rarity.glow } as React.CSSProperties}
+                        // Text reads the -fg step, not the slot rim's -edge
+                        // it would otherwise inherit (2-3:1 on the glow).
+                        style={{ "--slot-edge": rarity.fg, "--slot-glow": rarity.glow } as React.CSSProperties}
                       >
                         {statusText.of(rarity).label}
                       </span>

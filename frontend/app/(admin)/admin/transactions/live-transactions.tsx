@@ -19,6 +19,7 @@ import {
   transactionStatusLabel,
   formatBaht,
   formatCount,
+  nameOr,
 } from "@/lib/admin-labels";
 import { formatDateTime } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
@@ -163,9 +164,9 @@ export function LiveTransactions({
               <AdminTd>
                 <Link
                   href={`/admin/items/${row.item_id}`}
-                  className="hover:underline"
+                  className="touch-link hover:underline"
                 >
-                  {row.item_name}
+                  {nameOr(row.item_name, `Item #${row.item_id}`)}
                 </Link>
                 <span className="block text-meta text-ink-muted">
                   {row.kind === "buy" ? "Purchase" : "Trade"} ·{" "}
@@ -190,7 +191,7 @@ export function LiveTransactions({
                   {row.locking_report_id ? (
                     <Link
                       href={`/admin/reports/${row.locking_report_id}`}
-                      className="inline-flex items-center gap-1 text-meta text-ink-secondary hover:underline"
+                      className="touch-link inline-flex items-center gap-1 text-meta text-ink-secondary hover:underline"
                     >
                       <Lock aria-hidden className="size-3.5" />
                       Report #{row.locking_report_id}

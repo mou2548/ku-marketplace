@@ -5,6 +5,8 @@ import { getCurrentUserId } from "@/lib/api/session";
 
 import { OfferReview } from "./offer-review";
 
+export const metadata = { title: "Offer - KU Marketplace" };
+
 /**
  * E4 — an offer, shown on the bench. Design principle 6: a trade is a
  * comparison, not a form. The post owner has to answer "am I getting the
