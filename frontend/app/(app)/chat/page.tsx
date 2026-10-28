@@ -69,6 +69,7 @@ export default async function ChatInboxPage() {
             key={first.summary.room_id}
             summary={first.summary}
             viewerId={viewer.userId}
+            viewerHasPromptPay={!!viewer.promptpayId}
             transaction={first.transaction}
             giveaway={first.giveaway}
             appointment={first.appointment}

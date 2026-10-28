@@ -8,6 +8,7 @@ import {
   confirmRefund,
   generateHandoverQr,
   getPaymentQr,
+  getRefundQr,
   getTransaction,
   rejectPaymentSlip,
   requestCancellation,
@@ -60,9 +61,21 @@ export async function fetchPaymentQr(transactionId: number): Promise<ActionResul
   });
 }
 
+export async function fetchRefundQr(transactionId: number): Promise<ActionResult<PaymentQr>> {
+  return runAction(async () => {
+    await requireSession();
+    return getRefundQr(transactionId);
+  });
+}
+
 /**
  * The slip is two calls — host the image, then attach the URL — and they are
  * one action so a client component never has to hold the intermediate URL.
+ *
+ * The deal is read back with `GET /transactions/{id}` because the upload
+ * endpoints answer in the backend's internal camelCase shape, not the
+ * snake_case `Transaction`: `refund_slip_url` came back undefined, so the
+ * room never posted the slip into the chat.
  */
 export async function submitPaymentSlip(
   transactionId: number,
@@ -71,7 +84,8 @@ export async function submitPaymentSlip(
   return runAction(async () => {
     await requireSession();
     const url = await uploadImage(file);
-    return uploadPaymentSlip(transactionId, url);
+    await uploadPaymentSlip(transactionId, url);
+    return getTransaction(transactionId);
   });
 }
 
@@ -82,7 +96,8 @@ export async function submitRefundSlip(
   return runAction(async () => {
     await requireSession();
     const url = await uploadImage(file);
-    return uploadRefundSlip(transactionId, url);
+    await uploadRefundSlip(transactionId, url);
+    return getTransaction(transactionId);
   });
 }
 

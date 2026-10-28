@@ -33,6 +33,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { PaymentQr } from "@/components/kit/payment-qr";
+import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import {
   SlipRejectDialog,
   SlipRejectedNotice,
@@ -255,6 +256,7 @@ function ProposeMeetup({
 export function RoomScreen({
   summary,
   viewerId,
+  viewerHasPromptPay,
   transaction: initialTransaction,
   giveaway,
   appointment: initialAppointment,
@@ -264,6 +266,8 @@ export function RoomScreen({
 }: {
   summary: RoomSummary;
   viewerId: number;
+  /** A refund goes to the buyer's PromptPay; without one it cannot be sent. */
+  viewerHasPromptPay: boolean;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
   /**
@@ -726,6 +730,35 @@ export function RoomScreen({
   }
 
   /**
+   * The seller's refund: the QR for the buyer's PromptPay and this deal's
+   * amount, then the slip. The API refuses both until the buyer has PromptPay,
+   * and the QR card shows that refusal.
+   */
+  function refundSlipStep(): React.ReactNode {
+    if (!transaction) return null;
+    return (
+      <div className="flex flex-col gap-3">
+        {!transaction.refund_slip_url ? (
+          <PaymentQr kind="refund" transactionId={transaction.transaction_id} />
+        ) : null}
+        <SlipUploader
+          amount={transaction.final_amount}
+          title={t("slip.refundSlip")}
+          slipUrl={transaction.refund_slip_url}
+          isUploaded={!!transaction.refund_slip_url}
+          uploadedAt={transaction.refund_submitted_at}
+          onUpload={(file) =>
+            uploadAndRefresh(
+              () => uploadSlip("refund", file),
+              t("deal.refundSlipUploaded"),
+            )
+          }
+        />
+      </div>
+    );
+  }
+
+  /**
    * The seller rejected the slip. The only way on is a new slip from the
    * buyer; the seller just waits for it.
    */
@@ -786,8 +819,21 @@ export function RoomScreen({
       return <ActionCard title="Return and refund">
         <div className="flex flex-col gap-3">
           {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => uploadAndRefresh(() => uploadSlip("refund", file), "Refund slip uploaded")} /> :
-            transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
+            viewer === "seller" ? refundSlipStep() :
+            transaction.refund_slip_url ? (
+              <>
+                {/* Check the amount against the bank app before confirming. */}
+                <SlipViewer
+                  embedded
+                  slipUrl={transaction.refund_slip_url}
+                  title={t("slip.refundSlip")}
+                  amount={transaction.final_amount}
+                  uploadedAt={transaction.refund_submitted_at}
+                />
+                <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button>
+              </>
+            ) :
+            viewerHasPromptPay ? <p>Waiting for the refund slip.</p> : <PromptPayNotice message={t("deal.refundPromptPayNeeded")} />
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
             transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
@@ -1004,21 +1050,7 @@ export function RoomScreen({
         );
       case "refund-slip":
         return (
-          <ActionCard title={t("deal.stepRefundSlip")}>
-            <SlipUploader
-              amount={transaction.final_amount}
-              title={t("slip.refundSlip")}
-              slipUrl={transaction.refund_slip_url}
-              isUploaded={!!transaction.refund_slip_url}
-              uploadedAt={transaction.refund_submitted_at}
-              onUpload={(file) =>
-                uploadAndRefresh(
-                  () => uploadSlip("refund", file),
-                  t("deal.refundSlipUploaded"),
-                )
-              }
-            />
-          </ActionCard>
+          <ActionCard title={t("deal.stepRefundSlip")}>{refundSlipStep()}</ActionCard>
         );
       case "confirm-refund":
         // Only a cancellation's refund asks for this, and the return card

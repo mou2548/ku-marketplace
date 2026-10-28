@@ -51,6 +51,7 @@ export default async function RoomPage({
           key={detail.summary.room_id}
           summary={detail.summary}
           viewerId={viewer.userId}
+          viewerHasPromptPay={!!viewer.promptpayId}
           transaction={detail.transaction}
           giveaway={detail.giveaway}
           appointment={detail.appointment}
