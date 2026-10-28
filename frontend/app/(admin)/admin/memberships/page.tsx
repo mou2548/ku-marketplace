@@ -6,7 +6,9 @@ import { Surface } from "@/components/kit/surface";
 import { listPendingPayments } from "@/lib/api/membership";
 import { getAccessToken, isCurrentUserAdmin } from "@/lib/api/session";
 
+import { AllMemberships } from "./all-memberships";
 import { MembershipReview } from "./membership-review";
+import { MembershipTabs } from "./membership-tabs";
 
 export const metadata = { title: "Memberships - Admin" };
 
@@ -16,7 +18,11 @@ export const metadata = { title: "Memberships - Admin" };
  * the shape means an admin who has handled a deal dispute already knows what
  * this queue expects.
  */
-export default async function AdminMembershipsPage() {
+export default async function AdminMembershipsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!(await getAccessToken())) {
     redirect("/login");
   }
@@ -24,20 +30,27 @@ export default async function AdminMembershipsPage() {
     redirect("/feed");
   }
 
+  const params = await searchParams;
+  if (params.tab === "all") return <AllMemberships params={params} />;
+
   const requests = await listPendingPayments();
 
   if (requests.length === 0) {
     return (
-      <EmptyState
-        icon={<Crown className="size-6" />}
-        title="No membership slips waiting"
-        description="Subscription slips appear here for checking before a tier is granted."
-      />
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+        <MembershipTabs current="pending" />
+        <EmptyState
+          icon={<Crown className="size-6" />}
+          title="No membership slips waiting"
+          description="Subscription slips appear here for checking before a tier is granted."
+        />
+      </div>
     );
   }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+      <MembershipTabs current="pending" />
       <header className="flex items-end justify-between gap-4">
         <div>
           <p className="text-overline font-semibold text-tone-warning-fg uppercase">

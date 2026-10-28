@@ -134,6 +134,10 @@
   --on-brand: #ffffff;                /* 4.04 on --brand: large/bold labels
                                          and button text at >=16px 600 only */
 
+  /* Single-series chart mark (admin sales trend). Checked with the dataviz
+     validator against each theme's surface: lightness band and >=3:1. */
+  --chart-series: #2e8f5a;
+
   /* Listing type is not a severity. These tokens exist so the feed can use
      colour for quick scanning without borrowing warning or error colours. */
   --listing-sale-bg: #e8f7ee;
@@ -458,6 +462,9 @@
   --brand-subtle: #17452b;
   --brand-subtle-hover: #205c3a;
   --on-brand: #102519;
+  /* Its own dark step, not the dark --brand: #2ed573 sits above the dark
+     lightness band for marks. */
+  --chart-series: #33a066;
   --ring: #2ed573;
   --ring-offset: var(--bg-page);
 
@@ -589,6 +596,7 @@
   --color-brand-active: var(--brand-active);
   --color-brand-subtle: var(--brand-subtle);
   --color-on-brand: var(--on-brand);
+  --color-chart-series: var(--chart-series);
 
   --color-tone-neutral-bg: var(--tone-neutral-bg);
   --color-tone-neutral-border: var(--tone-neutral-border);
