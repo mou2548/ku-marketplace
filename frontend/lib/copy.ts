@@ -764,6 +764,8 @@ const COPY: { [key: string]: CopyNode } = {
       "saveChanges": "Save changes"
     },
     "listing": {
+      "promptPayNeeded": "Add your PromptPay number before selling. Buyers transfer the payment to it.",
+      "promptPayAction": "Add PromptPay",
       "kind": "What kind of listing is this",
       "sellOnly": "Cash only, no trades",
       "tradeOnly": "Trades only, not for sale",

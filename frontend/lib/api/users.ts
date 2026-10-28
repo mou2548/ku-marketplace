@@ -18,6 +18,8 @@ export interface Profile {
   lastNameTh: string;
   phoneNumber: string | null;
   avatarUrl: string | null;
+  /** Normalised to 10 digits. Returned to its owner only. */
+  promptpayId: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   emailVerifiedAt: string | null;
   isAdmin: boolean;
@@ -32,6 +34,8 @@ export interface UpdateProfilePayload {
   last_name_th?: string;
   phone_number?: string;
   avatar_url?: string;
+  /** A mobile number; spaces and dashes are accepted. `null` or "" clears it. */
+  promptpay_id?: string | null;
 }
 
 async function authedInit(): Promise<RequestInit> {
@@ -71,6 +75,7 @@ export function toUser(profile: Profile): User {
     first_name_th: profile.firstNameTh,
     last_name_th: profile.lastNameTh,
     phone_number: profile.phoneNumber,
+    promptpay_id: profile.promptpayId,
     avatar_url: profile.avatarUrl,
     status: profile.status,
     email_verified_at: profile.emailVerifiedAt,

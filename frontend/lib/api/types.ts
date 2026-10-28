@@ -38,6 +38,8 @@ export interface User {
   first_name_th: string;
   last_name_th: string;
   phone_number?: string | null;
+  /** Only present on the viewer's own profile (`GET /users/me`). */
+  promptpay_id?: string | null;
   avatar_url?: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   email_verified_at?: string | null;

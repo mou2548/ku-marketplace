@@ -5,6 +5,7 @@ import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getMe } from "@/lib/api/users";
 import { getPost } from "@/lib/api/posts";
 import type { Post } from "@/lib/api/types";
 import { ITEM_CONDITION } from "@/lib/status";
@@ -26,7 +27,7 @@ export default async function EditListItemPage({
   const tStatus = await getCopy("status");
   const t = await getCopy();
   const { itemId, postId } = await params;
-  const [items, publicPost, summary] = await Promise.all([
+  const [items, publicPost, summary, me] = await Promise.all([
     getMyItems(),
     // GET /posts/:id is the public listing endpoint — it filters to
     // quantityRemaining > 0, so a sold-out channel (still open, still worth
@@ -35,6 +36,9 @@ export default async function EditListItemPage({
     // history summary below rather than treating that as "not found".
     getPost(postId).catch(() => undefined),
     getItemHistorySummary(Number(itemId)).catch(() => undefined),
+    // Only decides whether to show the PromptPay notice; the API has the
+    // final say, so a failed lookup leaves the form as it was.
+    getMe().catch(() => undefined),
   ]);
   const item = items.find((i) => i.item_id === Number(itemId));
   const channel = summary?.channels.find(
@@ -131,6 +135,7 @@ export default async function EditListItemPage({
         post={post}
         priceKnown={priceKnown}
         available={summary?.available_quantity ?? 0}
+        hasPromptPay={me ? !!me.promptpayId : true}
       />
     </TwoColumn>
   );

@@ -1,4 +1,5 @@
 import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getMe } from "@/lib/api/users";
 
 import { PostComposer } from "./post-composer";
 
@@ -31,9 +32,12 @@ export default async function PostPage({
 }: {
   searchParams: Promise<{ type?: string; item?: string }>;
 }) {
-  const [{ type, item: itemParam }, items] = await Promise.all([
+  const [{ type, item: itemParam }, items, me] = await Promise.all([
     searchParams,
     getMyItems(),
+    // Only decides whether to show the PromptPay notice; the API has the
+    // final say, so a failed lookup leaves the form as it was.
+    getMe().catch(() => undefined),
   ]);
   const initialPicked = (itemParam ?? "")
     .split(",")
@@ -58,6 +62,7 @@ export default async function PostPage({
       summaries={summaries}
       initialKind={type === "giveaway" ? "Giveaway" : "SellOnly"}
       initialPicked={initialPicked}
+      hasPromptPay={me ? !!me.promptpayId : true}
     />
   );
 }

@@ -12,6 +12,7 @@ import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import { useStatusText } from "@/lib/status-text";
 import { unwrapAction } from "@/lib/action-result";
 import { publishListing, updateListing } from "@/lib/actions/posts";
@@ -36,6 +37,7 @@ export function ListItemForm({
   post,
   available,
   priceKnown = true,
+  hasPromptPay = true,
 }: {
   item: Item;
   post?: Post;
@@ -47,6 +49,8 @@ export function ListItemForm({
    * (a sold-out post drops out of the public endpoint this reads from) —
    * the price field starts empty instead of seeding a wrong "0". */
   priceKnown?: boolean;
+  /** The API refuses a sale channel until the seller has a PromptPay number. */
+  hasPromptPay?: boolean;
 }) {
   const t = getCopy();
   const st = useStatusText();
@@ -78,7 +82,8 @@ export function ListItemForm({
     Number.isInteger(quantityValue) &&
     quantityValue >= minQuantity &&
     quantityValue <= maxQuantity;
-  const canPost = (!wantsPrice || Number(price) > 0) && quantityValid;
+  const needsPromptPay = wantsPrice && !hasPromptPay;
+  const canPost = (!wantsPrice || Number(price) > 0) && quantityValid && !needsPromptPay;
 
   async function publish() {
     setBusy(true);
@@ -243,6 +248,8 @@ export function ListItemForm({
           placeholder={t("listing.descPlaceholder")}
         />
       </Surface>
+
+      {needsPromptPay ? <PromptPayNotice /> : null}
 
       <ActionBar>
         <Button variant="secondary" block onPress={() => router.back()}>{t("inventory.cancel")}</Button>

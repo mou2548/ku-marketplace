@@ -29,6 +29,7 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
+import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
 import { unwrapAction } from "@/lib/action-result";
@@ -84,6 +85,7 @@ export function PostComposer({
   summaries,
   initialKind = "SellOnly",
   initialPicked = [],
+  hasPromptPay = true,
 }: {
   items: Item[];
   /** Per-item availability — how much of each item can still be committed
@@ -94,6 +96,8 @@ export function PostComposer({
   /** Preselected item ids — from the inventory screen's "Select" bulk
    * action, or handed off from the listing form's "Give away" option. */
   initialPicked?: number[];
+  /** The API refuses a sale channel until the seller has a PromptPay number. */
+  hasPromptPay?: boolean;
 }) {
   const st = useStatusText();
   const router = useRouter();
@@ -167,7 +171,7 @@ export function PostComposer({
         !!closeAt &&
         !!pickupStart &&
         !!pickupTo
-      : quantitiesValid && (!wantsPrice || Number(price) > 0));
+      : quantitiesValid && (!wantsPrice || (Number(price) > 0 && hasPromptPay)));
 
   function toggle(id: number) {
     setPicked((prev) => {
@@ -599,6 +603,8 @@ export function PostComposer({
               </ul>
             </div>
           ) : null}
+
+          {wantsPrice && !hasPromptPay ? <PromptPayNotice /> : null}
 
           {wantsPrice ? (
             <TextInput
