@@ -30,6 +30,8 @@ export interface CreateReportInput {
   /** Required, at least `REPORT_DETAILS_MIN` characters once trimmed. */
   details: string;
   evidence_urls?: string[];
+  /** Chat messages the reporter picked; only from their own deal chat. */
+  evidence_message_ids?: number[];
 }
 
 export interface ResolveReportInput {

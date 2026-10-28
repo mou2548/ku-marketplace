@@ -10,6 +10,7 @@ import {
   AdminPill,
   EvidenceGrid,
 } from "@/components/admin/admin-ui";
+import { FlaggedMessages } from "@/components/admin/flagged-messages";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { adminOpenAppeal } from "@/lib/actions/appeals";
@@ -143,6 +144,7 @@ export function AppealCase({ appeal: initialAppeal }: { appeal: AdminAppeal }) {
             urls={report.evidence_urls}
             label="Reporter's evidence"
           />
+          <FlaggedMessages messages={report.evidence_messages} />
         </AdminBox>
       </div>
 

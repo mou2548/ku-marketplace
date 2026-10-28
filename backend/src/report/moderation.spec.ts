@@ -56,6 +56,7 @@ function makePrisma() {
     },
     post: { findUnique: jest.fn(), update: jest.fn() },
     transaction: { findUnique: jest.fn() },
+    chatMessage: { findMany: jest.fn().mockResolvedValue([]) },
     notification: { createMany: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -267,5 +268,121 @@ describe('Who hears about moderation', () => {
         title: 'Your appeal was rejected',
       }),
     ]);
+  });
+});
+
+describe('Chat messages picked as report evidence', () => {
+  /** A message in the chat of deal 7, between buyer 5 and seller 9. */
+  const dealMessage = (transactionId = 7, buyerId = 5, sellerId = 9) => ({
+    room: { transactionId, transaction: { buyerId, sellerId } },
+  });
+
+  function reportingUser9(prisma: ReturnType<typeof makePrisma>) {
+    prisma.user.findUnique.mockResolvedValue(person(9, 'Target'));
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.report.create.mockImplementation(
+      ({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve(reportRow({ evidenceUrls: data.evidenceUrls })),
+    );
+  }
+
+  it('stores messages from a chat with the reported user beside the photos', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([
+      dealMessage(),
+      dealMessage(),
+    ]);
+
+    const report = await reports.create(5, {
+      report_type: 'User',
+      target_id: 9,
+      reason_category: 'Rude',
+      details: 'Insulted me twice in the chat',
+      evidence_urls: ['https://img.example/a.png'],
+      evidence_message_ids: [11, 12, 11],
+    });
+
+    const [[stored]] = prisma.report.create.mock.calls as [
+      [{ data: { evidenceUrls: unknown } }],
+    ];
+    expect(stored.data.evidenceUrls).toEqual([
+      'https://img.example/a.png',
+      'chat-message:11',
+      'chat-message:12',
+    ]);
+    expect(report).toMatchObject({
+      evidence_urls: ['https://img.example/a.png'],
+      evidence_message_ids: [11, 12],
+    });
+  });
+
+  it('refuses a message from a chat the reporter is not in', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([dealMessage(7, 9, 20)]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'User',
+        target_id: 9,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [11],
+      }),
+    ).rejects.toThrow('Chat messages must come from your own chat');
+    expect(prisma.report.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a message from a chat without the reported user', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([dealMessage(7, 5, 20)]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'User',
+        target_id: 9,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [11],
+      }),
+    ).rejects.toThrow('Chat messages must come from your own chat');
+  });
+
+  it("refuses a message from another deal's chat on a transaction report", async () => {
+    const { prisma, reports } = makeServices();
+    prisma.transaction.findUnique.mockResolvedValue({
+      transactionId: 7,
+      buyerId: 5,
+      sellerId: 9,
+    });
+    prisma.chatMessage.findMany.mockResolvedValue([dealMessage(8)]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'Transaction',
+        target_id: 7,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [11],
+      }),
+    ).rejects.toThrow('Chat messages must come from your own chat');
+  });
+
+  it('refuses a message id that does not exist', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'User',
+        target_id: 9,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [99],
+      }),
+    ).rejects.toThrow('Some chat messages were not found');
   });
 });

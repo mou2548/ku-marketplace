@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, Flag } from "lucide-react";
 
 import { AdminTakePanel } from "@/components/admin/admin-controls";
 import {
@@ -11,6 +11,11 @@ import {
   AdminPill,
   EvidenceGrid,
 } from "@/components/admin/admin-ui";
+import {
+  FlaggedMessageBody,
+  FlaggedMessages,
+} from "@/components/admin/flagged-messages";
+import { Switch } from "@/components/kit/choice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { adminOpenReport } from "@/lib/actions/reports";
@@ -22,7 +27,7 @@ import {
 } from "@/lib/admin-labels";
 import type { ApiError } from "@/lib/api/client";
 import type { AdminTransactionEvidence } from "@/lib/api/reports";
-import type { Report } from "@/lib/api/types";
+import type { EvidenceMessage, Report } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/date-format";
 
 import { ReportDecision } from "./report-decision";
@@ -128,10 +133,14 @@ export function ReportCase({
         </AdminBox>
 
         {report.report_type === "Transaction" ? (
-          <TransactionEvidence evidence={evidence} />
+          <TransactionEvidence
+            evidence={evidence}
+            flagged={report.evidence_messages ?? []}
+          />
         ) : (
-          <AdminBox className="flex flex-col gap-2 p-4">
+          <AdminBox className="flex flex-col gap-3 p-4">
             <h2 className="text-body font-medium">Evidence</h2>
+            <FlaggedMessages messages={report.evidence_messages} />
             <p className="text-body-sm text-ink-secondary">
               A {report.report_type.toLowerCase()} report has no deal attached.
               Check the reported {report.report_type.toLowerCase()} directly.
@@ -276,17 +285,21 @@ function DecidedSummary({ report }: { report: Report }) {
  * times, the payment slip, appointment cards and the chat. Read-only. */
 function TransactionEvidence({
   evidence,
+  flagged,
 }: {
   evidence?: AdminTransactionEvidence;
+  /** Messages the reporter picked; highlighted in the transcript. */
+  flagged: EvidenceMessage[];
 }) {
   if (!evidence) {
     return (
-      <AdminBox className="p-4">
+      <AdminBox className="flex flex-col gap-3 p-4">
         <h2 className="text-body font-medium">Evidence</h2>
-        <p className="mt-1 text-body-sm text-ink-secondary">
+        <p className="text-body-sm text-ink-secondary">
           The transaction evidence could not be loaded. Reload the page to try
           again.
         </p>
+        <FlaggedMessages messages={flagged} />
       </AdminBox>
     );
   }
@@ -379,39 +392,113 @@ function TransactionEvidence({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2 p-4">
+      <Transcript messages={messages} flagged={flagged} />
+    </AdminBox>
+  );
+}
+
+/**
+ * The deal's whole chat, with the reporter's picked messages marked (tint,
+ * left rule and a "Flagged" label, so it is not colour alone). Opens
+ * scrolled to the first one; a switch narrows it to the picked messages.
+ */
+function Transcript({
+  messages,
+  flagged,
+}: {
+  messages: AdminTransactionEvidence["messages"];
+  flagged: EvidenceMessage[];
+}) {
+  const flaggedIds = new Set(flagged.map((m) => m.message_id));
+  const [onlyFlagged, setOnlyFlagged] = useState(false);
+  const listRef = useRef<HTMLOListElement>(null);
+  const firstFlaggedRef = useRef<HTMLLIElement>(null);
+  const shown = onlyFlagged
+    ? messages.filter((m) => flaggedIds.has(m.message_id))
+    : messages;
+  const firstFlaggedId = shown.find((m) => flaggedIds.has(m.message_id))
+    ?.message_id;
+
+  // Scroll the transcript box itself, never the page.
+  useEffect(() => {
+    const list = listRef.current;
+    const first = firstFlaggedRef.current;
+    if (list && first) list.scrollTop = Math.max(0, first.offsetTop - 8);
+  }, [onlyFlagged]);
+
+  return (
+    <div className="flex flex-col gap-2 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-meta text-ink-muted">
           Chat transcript ({messages.length})
+          {flaggedIds.size ? (
+            <span className="text-tone-danger-fg">
+              {" "}
+              · {flaggedIds.size} flagged by the reporter
+            </span>
+          ) : null}
         </p>
-        {messages.length === 0 ? (
-          <p className="text-body-sm text-ink-muted">No messages.</p>
-        ) : (
-          <ol className="flex max-h-72 flex-col gap-1.5 overflow-y-auto text-body-sm">
-            {messages.map((m) => (
-              <li key={m.message_id}>
-                <span className="font-medium text-ink">
-                  {m.sender?.name ?? `User #${m.sender_id}`}
-                </span>
-                <span className="text-ink-muted">
-                  {" "}
-                  {formatDateTime(new Date(m.created_at))}
-                </span>
-                <p className="text-ink-secondary">
-                  {m.images_expired ? (
-                    <span className="italic text-ink-muted">(photo expired) </span>
-                  ) : m.image_urls?.length ? (
-                    <span className="italic text-ink-muted">
-                      ({m.image_urls.length} photo
-                      {m.image_urls.length === 1 ? "" : "s"}){" "}
-                    </span>
-                  ) : null}
-                  {m.content}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
+        {flaggedIds.size ? (
+          <Switch isSelected={onlyFlagged} onChange={setOnlyFlagged}>
+            <span className="text-meta">Flagged only</span>
+          </Switch>
+        ) : null}
       </div>
-    </AdminBox>
+      {shown.length === 0 ? (
+        <p className="text-body-sm text-ink-muted">No messages.</p>
+      ) : (
+        <ol
+          ref={listRef}
+          className="relative flex max-h-72 flex-col gap-1.5 overflow-y-auto text-body-sm"
+        >
+          {shown.map((m) => {
+            const isFlagged = flaggedIds.has(m.message_id);
+            const picked = flagged.find((f) => f.message_id === m.message_id);
+            return (
+              <li
+                key={m.message_id}
+                ref={m.message_id === firstFlaggedId ? firstFlaggedRef : undefined}
+                className={
+                  isFlagged
+                    ? "rounded-[8px] border-l-2 border-tone-danger-border bg-tone-danger-bg px-3 py-2"
+                    : undefined
+                }
+              >
+                {isFlagged ? (
+                  <p className="mb-0.5 flex items-center gap-1 text-meta font-medium text-tone-danger-fg">
+                    <Flag aria-hidden className="size-3" />
+                    Flagged by the reporter
+                  </p>
+                ) : null}
+                {picked ? (
+                  <FlaggedMessageBody message={picked} />
+                ) : (
+                  <>
+                    <span className="font-medium text-ink">
+                      {m.sender?.name ?? `User #${m.sender_id}`}
+                    </span>
+                    <span className="text-ink-muted">
+                      {" "}
+                      {formatDateTime(new Date(m.created_at))}
+                    </span>
+                    <p className="text-ink-secondary">
+                      {m.images_expired ? (
+                        <span className="italic text-ink-muted">(photo expired) </span>
+                      ) : m.image_urls?.length ? (
+                        <span className="italic text-ink-muted">
+                          ({m.image_urls.length} photo
+                          {m.image_urls.length === 1 ? "" : "s"}){" "}
+                        </span>
+                      ) : null}
+                      {m.content}
+                    </p>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
   );
 }

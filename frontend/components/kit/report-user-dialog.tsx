@@ -3,7 +3,11 @@
 import { Flag } from "lucide-react";
 
 import { Button } from "./button";
-import { ReportDialog, type ReportReasonOption } from "./report-dialog";
+import {
+  ReportDialog,
+  type ReportChat,
+  type ReportReasonOption,
+} from "./report-dialog";
 
 /**
  * §7.5.2 — the system-provided reasons for reporting a person, the same
@@ -38,17 +42,21 @@ export function ReportUserDialog({
   userId,
   name,
   compact = false,
+  chat,
 }: {
   userId: number;
   name: string;
   /** An icon-only trigger, for tight spots like a chat header. */
   compact?: boolean;
+  /** The deal chat this report starts from, so its messages can be picked. */
+  chat?: ReportChat;
 }) {
   return (
     <ReportDialog
       reportType="User"
       targetId={userId}
       reasons={USER_REPORT_REASONS}
+      chat={chat}
       trigger={
         compact ? (
           <Button

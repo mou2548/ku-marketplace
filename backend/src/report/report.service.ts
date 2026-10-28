@@ -20,6 +20,13 @@ import {
   notifySanctioned,
 } from './moderation-notifications';
 import { reportedUserId, standingFromVerdicts } from './account-standing';
+import {
+  assertMessagesBelong,
+  joinEvidence,
+  loadEvidenceMessages,
+  pickMessages,
+  splitEvidence,
+} from './report-evidence';
 import { displayName } from '../common/utils/display-name';
 
 /** §7.3 — block further reports once a user has filed more than 5 within
@@ -101,7 +108,7 @@ export class ReportService {
       target_id: report.targetId,
       reason_category: report.reasonCategory,
       details: report.details,
-      evidence_urls: report.evidenceUrls,
+      ...this.serializeEvidence(report.evidenceUrls),
       status: report.status,
       sanction: report.sanction,
       handled_by: report.handledBy,
@@ -111,6 +118,15 @@ export class ReportService {
       resolution_note: report.resolutionNote,
       handled_at: report.handledAt,
       created_at: report.createdAt,
+    };
+  }
+
+  /** Photos and picked chat messages, split apart (see `report-evidence.ts`). */
+  private serializeEvidence(stored: unknown) {
+    const { urls, messageIds } = splitEvidence(stored);
+    return {
+      evidence_urls: urls.length ? urls : null,
+      evidence_message_ids: messageIds,
     };
   }
 
@@ -132,6 +148,10 @@ export class ReportService {
       ? await this.prisma.user.findMany({ where: { userId: { in: ids } } })
       : [];
     const byId = new Map(users.map((user) => [user.userId, user]));
+    const picked = reports.map(
+      (report) => splitEvidence(report.evidenceUrls).messageIds,
+    );
+    const messages = await loadEvidenceMessages(this.prisma, picked.flat());
     return reports.map((report, index) => {
       const target = byId.get(targetIds[index] ?? -1);
       return {
@@ -139,6 +159,7 @@ export class ReportService {
         reported_user: target
           ? { ...this.serializeUserSummary(target), status: target.status }
           : null,
+        evidence_messages: pickMessages(messages, picked[index]),
       };
     });
   }
@@ -158,7 +179,7 @@ export class ReportService {
       target_id: report.targetId,
       reason_category: report.reasonCategory,
       details: report.details,
-      evidence_urls: report.evidenceUrls,
+      ...this.serializeEvidence(report.evidenceUrls),
       created_at: report.createdAt,
     };
   }
@@ -193,6 +214,11 @@ export class ReportService {
     ) {
       throw new NotFoundException('User not found');
     }
+    await assertMessagesBelong(
+      this.prisma,
+      { reporterId, reportType: dto.report_type, targetId: dto.target_id },
+      dto.evidence_message_ids ?? [],
+    );
     await this.assertUnderRateLimit(reporterId);
     const report = await this.prisma.report.create({
       data: {
@@ -201,7 +227,10 @@ export class ReportService {
         targetId: dto.target_id,
         reasonCategory: dto.reason_category,
         details: dto.details,
-        evidenceUrls: dto.evidence_urls,
+        evidenceUrls: joinEvidence(
+          dto.evidence_urls,
+          dto.evidence_message_ids && [...new Set(dto.evidence_message_ids)],
+        ),
       },
       include: this.reportInclude,
     });
