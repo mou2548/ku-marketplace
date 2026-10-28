@@ -13,13 +13,13 @@ import {
 import { FlaggedMessages } from "@/components/admin/flagged-messages";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { adminOpenAppeal } from "@/lib/actions/appeals";
 import {
   ADMIN_APPEAL_STATUS,
   ADMIN_REPORT_STATUS,
   ADMIN_SANCTION,
 } from "@/lib/admin-labels";
-import type { ApiError } from "@/lib/api/client";
 import type { AdminAppeal } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/date-format";
 
@@ -37,9 +37,9 @@ export function AppealCase({ appeal: initialAppeal }: { appeal: AdminAppeal }) {
 
   async function take() {
     try {
-      setAppeal(await adminOpenAppeal(appeal.appeal_id));
+      setAppeal(await unwrapAction(adminOpenAppeal(appeal.appeal_id)));
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not take the appeal.");
+      toast.error(error instanceof Error ? error.message : "Could not take the appeal.");
     }
   }
 

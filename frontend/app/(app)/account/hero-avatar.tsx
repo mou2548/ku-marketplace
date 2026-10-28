@@ -7,6 +7,7 @@ import { Camera } from "lucide-react";
 import { AvatarCropDialog } from "@/components/kit/avatar-crop-dialog";
 import { useToast } from "@/components/kit/toast";
 import { UserAvatar } from "@/components/kit/user-avatar";
+import { unwrapAction } from "@/lib/action-result";
 import { updateProfile } from "@/lib/actions/account";
 import { uploadFile } from "@/lib/actions/uploads";
 
@@ -32,8 +33,8 @@ export function HeroAvatar({
   async function pick(file: File) {
     setBusy(true);
     try {
-      const uploaded = await uploadFile(file);
-      await updateProfile({ avatar_url: uploaded });
+      const uploaded = await unwrapAction(uploadFile(file));
+      await unwrapAction(updateProfile({ avatar_url: uploaded }));
       setUrl(uploaded);
       toast.success("Profile photo saved");
       router.refresh();

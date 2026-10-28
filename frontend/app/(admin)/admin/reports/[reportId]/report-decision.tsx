@@ -12,12 +12,12 @@ import {
 } from "@/components/admin/admin-controls";
 import { AdminBox } from "@/components/admin/admin-ui";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { adminResolveReport } from "@/lib/actions/reports";
 import {
   APPEAL_WINDOW_DAYS,
   TEMPORARY_SUSPENSION_DAYS,
 } from "@/lib/admin-labels";
-import type { ApiError } from "@/lib/api/client";
 import type { Sanction } from "@/lib/api/types";
 
 const VERDICTS = [
@@ -93,17 +93,17 @@ export function ReportDecision({
     setBusy(true);
     try {
       if (verdict === "dismiss") {
-        await adminResolveReport(reportId, {
+        await unwrapAction(adminResolveReport(reportId, {
           status: "Report_Dismissed",
           resolution_note: note,
-        });
+        }));
         toast.success("Report dismissed.");
       } else {
-        await adminResolveReport(reportId, {
+        await unwrapAction(adminResolveReport(reportId, {
           status: "Violation_Confirmed",
           sanction: SANCTION_BY_VERDICT[verdict],
           resolution_note: note,
-        });
+        }));
         toast.success(
           verdict === "warn"
             ? "Warning recorded. The reported user is told."
@@ -113,7 +113,7 @@ export function ReportDecision({
       router.push("/admin/reports");
     } catch (error) {
       toast.error(
-        (error as ApiError).message ?? "Could not record the decision.",
+        error instanceof Error ? error.message : "Could not record the decision.",
       );
       setBusy(false);
     }

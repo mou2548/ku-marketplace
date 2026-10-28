@@ -25,6 +25,7 @@ async function loginAs(user) {
       }),
     },
     '@/lib/api/client': { ApiError: class ApiError extends Error {} },
+    '@/lib/api-errors': { errorText: (err) => err.message },
     '@/lib/api/session': {
       setSession: async () => {},
       clearSession: async () => {},

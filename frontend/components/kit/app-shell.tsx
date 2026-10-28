@@ -273,7 +273,9 @@ export function AppShell({
            page now runs edge to edge and only the reading measure of prose and
            form fields is capped — line length is legibility, not centring. */
         className={cn(
-          "w-full flex-1",
+          // Inherited by every screen: user text (names, notes, messages) can
+          // hold an unbroken URL that would otherwise widen the page.
+          "w-full flex-1 wrap-anywhere",
           isChat
             ? "min-h-0 overflow-hidden"
             : "px-3 py-4 pb-12 sm:px-4 lg:px-8 lg:py-6",

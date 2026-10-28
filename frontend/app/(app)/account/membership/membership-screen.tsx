@@ -15,6 +15,7 @@ import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
+import { unwrapAction } from "@/lib/action-result";
 import { subscribeToMembership } from "@/lib/actions/membership";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { Membership, MembershipTier } from "@/lib/api/membership";
@@ -282,8 +283,8 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
             embedded
             amount={current?.price ?? 0}
             onUpload={async (file) => {
-              const url = await uploadFile(file);
-              await subscribeToMembership(selected, url);
+              const url = await unwrapAction(uploadFile(file));
+              await unwrapAction(subscribeToMembership(selected, url));
               toast.success("Slip uploaded. An admin will review it shortly.");
               router.refresh();
             }}

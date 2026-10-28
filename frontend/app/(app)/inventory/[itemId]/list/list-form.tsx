@@ -13,6 +13,7 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { publishListing, updateListing } from "@/lib/actions/posts";
 import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item, Post } from "@/lib/api/types";
@@ -83,19 +84,19 @@ export function ListItemForm({
     setBusy(true);
     try {
       if (isEditing) {
-        await updateListing(post.post_id, {
+        await unwrapAction(updateListing(post.post_id, {
           post_type: postType,
           price: wantsPrice ? Number(price) : 0,
           quantity_total: quantityValue,
           description: description.trim() || undefined,
           wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
-        });
+        }));
         setBusy(false);
         toast.success("Listing updated.");
         router.push(`/market/${post.post_id}`);
         return;
       }
-      const created: PostSummary = await publishListing({
+      const created: PostSummary = await unwrapAction(publishListing({
         item_id: item.item_id,
         post_type: postType,
         // A trade-only post still needs a number the API will accept; the
@@ -104,7 +105,7 @@ export function ListItemForm({
         quantity_total: quantityValue,
         description: description.trim() || undefined,
         wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
-      });
+      }));
       setBusy(false);
       toast.success("Listed. It is live in the market now.");
       router.push(`/market/${wireIdToNumber(created.post_id)}`);

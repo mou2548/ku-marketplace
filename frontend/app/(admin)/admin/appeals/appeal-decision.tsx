@@ -10,9 +10,9 @@ import {
 } from "@/components/admin/admin-controls";
 import { AdminBox } from "@/components/admin/admin-ui";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { adminDecideAppeal } from "@/lib/actions/appeals";
 import { ADMIN_SANCTION } from "@/lib/admin-labels";
-import type { ApiError } from "@/lib/api/client";
 import type { Sanction } from "@/lib/api/types";
 
 const MIN_NOTE = 20;
@@ -40,10 +40,10 @@ export function AppealDecision({
   async function decide(upheld: boolean) {
     setBusy(upheld ? "uphold" : "reject");
     try {
-      await adminDecideAppeal(appealId, {
+      await unwrapAction(adminDecideAppeal(appealId, {
         status: upheld ? "Approved" : "Rejected",
         resolution_note: note,
-      });
+      }));
       toast.success(
         upheld
           ? `Appeal #${appealId} upheld. The ${penalty} is lifted.`
@@ -52,7 +52,7 @@ export function AppealDecision({
       router.refresh();
     } catch (error) {
       toast.error(
-        (error as ApiError).message ?? "Could not record the decision.",
+        error instanceof Error ? error.message : "Could not record the decision.",
       );
     } finally {
       setBusy(null);

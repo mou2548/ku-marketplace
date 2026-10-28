@@ -20,6 +20,7 @@ import {
 import type { DealFactKind, DealProgress } from "@/lib/deal-progress";
 import type { RoomKind, RoomSortMode, RoomSummary } from "@/lib/rooms";
 import { ROOM_KIND_TONE, sortRooms } from "@/lib/rooms";
+import { unwrapAction } from "@/lib/action-result";
 import { fetchRoomSummaries } from "@/lib/actions/chat";
 import {
   getChatActivitySnapshot,
@@ -135,7 +136,7 @@ export function RoomList({
     setLiveRooms(rooms);
   }
   usePolling(() => {
-    fetchRoomSummaries(viewerId).then(setLiveRooms).catch(() => {});
+    unwrapAction(fetchRoomSummaries(viewerId)).then(setLiveRooms).catch(() => {});
   }, ROOM_LIST_POLL_INTERVAL_MS);
 
   const readMarkersSnapshot = useSyncExternalStore(

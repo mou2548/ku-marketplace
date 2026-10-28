@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleCheck } from "lucide-react";
 
+import { isActionFailure } from "@/lib/action-result";
+
 import { Button, type ButtonProps } from "./button";
 import { Overlay, OverlayTrigger } from "./overlay";
 
@@ -49,7 +51,9 @@ export function ConfirmButton({
     setBusy(true);
     setError(undefined);
     try {
-      await onConfirm();
+      // onConfirm may be a bound Server Action, which reports failure as data.
+      const result = await onConfirm();
+      if (isActionFailure(result)) throw new Error(result.error);
       setDone(true);
       onDone?.();
     } catch (err) {

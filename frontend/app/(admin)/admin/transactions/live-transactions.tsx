@@ -11,6 +11,7 @@ import {
   AdminTh,
   AdminUserCell,
 } from "@/components/admin/admin-table";
+import { unwrapAction } from "@/lib/action-result";
 import { pollAdminTransactions } from "@/lib/actions/admin";
 import type { AdminTransactionRow } from "@/lib/api/admin";
 import type { PageResult } from "@/lib/api/sellers";
@@ -61,7 +62,7 @@ export function LiveTransactions({
       if (inFlight || document.visibilityState !== "visible") return;
       inFlight = true;
       try {
-        const next = await pollAdminTransactions(query);
+        const next = await unwrapAction(pollAdminTransactions(query));
         if (cancelled) return;
         const now = Date.now();
         const changed: number[] = [];

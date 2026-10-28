@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/admin-controls";
 import { Overlay } from "@/components/kit/overlay";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { reinstateUser, suspendUser } from "@/lib/actions/admin";
 import type { AccountStatus, AdminSanction } from "@/lib/api/admin";
 import {
@@ -57,7 +58,7 @@ function SuspendButton({ userId, name }: { userId: number; name: string }) {
   async function submit() {
     setBusy(true);
     try {
-      await suspendUser(userId, sanction, trimmed);
+      await unwrapAction(suspendUser(userId, sanction, trimmed));
     } catch (err) {
       setBusy(false);
       toast.error(
@@ -144,7 +145,7 @@ function ReinstateButton({ userId, name }: { userId: number; name: string }) {
   async function submit() {
     setBusy(true);
     try {
-      await reinstateUser(userId, note.trim() || undefined);
+      await unwrapAction(reinstateUser(userId, note.trim() || undefined));
     } catch (err) {
       setBusy(false);
       toast.error(

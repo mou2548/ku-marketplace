@@ -4,9 +4,9 @@ import { useState } from "react";
 import { getCopy } from "@/lib/copy";
 import { CircleCheck, Flag, Info } from "lucide-react";
 
+import { unwrapAction } from "@/lib/action-result";
 import { createReport } from "@/lib/actions/reports";
 import { uploadFile } from "@/lib/actions/uploads";
-import type { ApiError } from "@/lib/api/client";
 import type { ChatMessage } from "@/lib/api/types";
 import { isReportDetailsValid, REPORT_DETAILS_MIN } from "@/lib/report-rules";
 
@@ -90,19 +90,19 @@ export function ReportDialog({
     setError(undefined);
     try {
       const evidence_urls: string[] = [];
-      for (const photo of photos) evidence_urls.push(await uploadFile(photo));
+      for (const photo of photos) evidence_urls.push(await unwrapAction(uploadFile(photo)));
       const label = reasons.find((r) => r.id === reason)?.label ?? reason;
-      await createReport({
+      await unwrapAction(createReport({
         report_type: reportType,
         target_id: targetId,
         reason_category: label,
         details: details.trim(),
         evidence_urls: evidence_urls.length ? evidence_urls : undefined,
         evidence_message_ids: messageIds.length ? messageIds : undefined,
-      });
+      }));
       setSubmitted(true);
     } catch (e) {
-      setError((e as ApiError).message ?? t("error"));
+      setError(e instanceof Error ? e.message : t("error"));
     } finally {
       setBusy(false);
     }

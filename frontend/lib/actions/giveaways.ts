@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import { getAccessToken } from "@/lib/api/session";
 import {
   closeGiveawayRegistration as closeGiveawayRegistrationApi,
@@ -22,73 +23,95 @@ async function requireSession() {
   if (!(await getAccessToken())) throw new Error("Not signed in");
 }
 
-export async function createGiveaway(input: CreateGiveawayInput): Promise<GiveawayPost> {
-  await requireSession();
-  return createGiveawayApi(input);
+export async function createGiveaway(input: CreateGiveawayInput): Promise<ActionResult<GiveawayPost>> {
+  return runAction(async () => {
+    await requireSession();
+    return createGiveawayApi(input);
+  });
 }
 
-export async function joinGiveaway(giveawayId: number): Promise<GiveawayTicket> {
-  await requireSession();
-  const giveaway = await getGiveaway(giveawayId);
-  return joinGiveawayApi(giveawayId, giveaway);
+export async function joinGiveaway(giveawayId: number): Promise<ActionResult<GiveawayTicket>> {
+  return runAction(async () => {
+    await requireSession();
+    const giveaway = await getGiveaway(giveawayId);
+    return joinGiveawayApi(giveawayId, giveaway);
+  });
 }
 
-export async function closeGiveawayRegistration(giveawayId: number): Promise<void> {
-  await requireSession();
-  await closeGiveawayRegistrationApi(giveawayId);
+export async function closeGiveawayRegistration(giveawayId: number): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    await requireSession();
+    await closeGiveawayRegistrationApi(giveawayId);
+  });
 }
 
 export async function drawGiveaway(giveawayId: number) {
-  await requireSession();
-  return drawGiveawayApi(giveawayId);
+  return runAction(async () => {
+    await requireSession();
+    return drawGiveawayApi(giveawayId);
+  });
 }
 
 export async function selectRecipients(giveawayId: number, receiverIds: number[]) {
-  await requireSession();
-  return selectRecipientsApi(giveawayId, receiverIds);
+  return runAction(async () => {
+    await requireSession();
+    return selectRecipientsApi(giveawayId, receiverIds);
+  });
 }
 
-export async function forfeitTicket(ticketId: number): Promise<void> {
-  await requireSession();
-  await forfeitTicketApi(ticketId);
+export async function forfeitTicket(ticketId: number): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    await requireSession();
+    await forfeitTicketApi(ticketId);
+  });
 }
 
 export async function generateTicketQr(
   giveawayId: number,
   ticketId: number,
-): Promise<{ token: string; expiresInSeconds: number }> {
-  await requireSession();
-  return generateTicketQrApi(giveawayId, ticketId);
+): Promise<ActionResult<{ token: string; expiresInSeconds: number }>> {
+  return runAction(async () => {
+    await requireSession();
+    return generateTicketQrApi(giveawayId, ticketId);
+  });
 }
 
 export async function scanTicketQr(
   giveawayId: number,
   ticketId: number,
   token: string,
-): Promise<boolean> {
-  await requireSession();
-  return scanTicketQrApi(giveawayId, ticketId, token);
+): Promise<ActionResult<boolean>> {
+  return runAction(async () => {
+    await requireSession();
+    return scanTicketQrApi(giveawayId, ticketId, token);
+  });
 }
 
 export async function confirmTicketQr(
   giveawayId: number,
   ticketId: number,
   token: string,
-): Promise<boolean> {
-  await requireSession();
-  return confirmTicketQrApi(giveawayId, ticketId, token);
+): Promise<ActionResult<boolean>> {
+  return runAction(async () => {
+    await requireSession();
+    return confirmTicketQrApi(giveawayId, ticketId, token);
+  });
 }
 
 export async function sendGiveawayMessage(
   giveawayId: number,
   input: { content?: string; image_urls?: string[] },
-): Promise<ChatMessage> {
-  await requireSession();
-  return sendGiveawayMessageApi(giveawayId, input);
+): Promise<ActionResult<ChatMessage>> {
+  return runAction(async () => {
+    await requireSession();
+    return sendGiveawayMessageApi(giveawayId, input);
+  });
 }
 
-export async function fetchGiveawayMessages(giveawayId: number): Promise<ChatMessage[]> {
-  await requireSession();
-  const { messages } = await getGiveawayMessagesApi(giveawayId);
-  return messages;
+export async function fetchGiveawayMessages(giveawayId: number): Promise<ActionResult<ChatMessage[]>> {
+  return runAction(async () => {
+    await requireSession();
+    const { messages } = await getGiveawayMessagesApi(giveawayId);
+    return messages;
+  });
 }

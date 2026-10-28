@@ -298,7 +298,8 @@ export function ChatThread({
                       className={cn(
                         "rounded-card px-3.5 py-2.5 text-body",
                         mine
-                          ? "rounded-br-chip bg-brand text-on-brand"
+                          ? // Body text needs 4.5:1; white on --brand is 4.04.
+                            "rounded-br-chip bg-brand-strong text-on-brand-strong"
                           : // A white bubble on the near-white thread had no
                             // edge at all; the sunken tint gives the other
                             // side's message a shape without a border.

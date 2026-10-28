@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import {
   acceptOffer,
   buyPost,
@@ -56,18 +57,22 @@ async function requireSession(): Promise<string> {
 /** `POST /posts` — put an owned item on the market. */
 export async function publishListing(
   payload: CreatePostPayload,
-): Promise<PostSummary> {
-  const token = await requireSession();
-  return createPost(payload, { token });
+): Promise<ActionResult<PostSummary>> {
+  return runAction(async () => {
+    const token = await requireSession();
+    return createPost(payload, { token });
+  });
 }
 
 /** `PATCH /posts/:post_id` — change the asking price and/or the sale kind. */
 export async function updateListing(
   postId: PostId,
   payload: UpdatePostPayload,
-): Promise<UpdatePostResult> {
-  const token = await requireSession();
-  return updatePost(postId, payload, { token });
+): Promise<ActionResult<UpdatePostResult>> {
+  return runAction(async () => {
+    const token = await requireSession();
+    return updatePost(postId, payload, { token });
+  });
 }
 
 /**
@@ -75,9 +80,13 @@ export async function updateListing(
  * Pending offer or non-Cancelled transaction is attached to it. Never had a
  * UI control wired to it before this.
  */
-export async function unlistListing(postId: PostId): Promise<DeletePostResult> {
-  const token = await requireSession();
-  return deletePost(postId, { token });
+export async function unlistListing(
+  postId: PostId,
+): Promise<ActionResult<DeletePostResult>> {
+  return runAction(async () => {
+    const token = await requireSession();
+    return deletePost(postId, { token });
+  });
 }
 
 /**
@@ -89,41 +98,51 @@ export async function unlistListing(postId: PostId): Promise<DeletePostResult> {
 export async function sendOffer(
   postId: PostId,
   payload: Omit<CreateOfferPayload, "proposer_id">,
-): Promise<OfferSummary> {
-  const { token, userId: proposerId } = await requireUser();
-  return createOffer(postId, { ...payload, proposer_id: proposerId }, { token });
+): Promise<ActionResult<OfferSummary>> {
+  return runAction(async () => {
+    const { token, userId: proposerId } = await requireUser();
+    return createOffer(postId, { ...payload, proposer_id: proposerId }, { token });
+  });
 }
 
 /** `POST /posts/:post_id/offers/:offer_id/accept` — seller accepts. */
 export async function acceptOfferAction(
   postId: PostId,
   offerId: PostId,
-): Promise<AcceptOfferResult> {
-  const token = await requireSession();
-  // Meetup-only: a trade has no shipping branch (see PRODUCT.md).
-  return acceptOffer(postId, offerId, { delivery_method: "Meetup" }, { token });
+): Promise<ActionResult<AcceptOfferResult>> {
+  return runAction(async () => {
+    const token = await requireSession();
+    // Meetup-only: a trade has no shipping branch (see PRODUCT.md).
+    return acceptOffer(postId, offerId, { delivery_method: "Meetup" }, { token });
+  });
 }
 
 /** `POST /posts/:post_id/offers/:offer_id/reject` — seller declines. */
 export async function rejectOfferAction(
   postId: PostId,
   offerId: PostId,
-): Promise<OfferStatusChangeResult> {
-  const token = await requireSession();
-  return rejectOffer(postId, offerId, { token });
+): Promise<ActionResult<OfferStatusChangeResult>> {
+  return runAction(async () => {
+    const token = await requireSession();
+    return rejectOffer(postId, offerId, { token });
+  });
 }
 
 /** `POST /posts/:post_id/offers/:offer_id/withdraw` — proposer takes it back. */
 export async function withdrawOfferAction(
   postId: PostId,
   offerId: PostId,
-): Promise<OfferStatusChangeResult> {
-  const token = await requireSession();
-  return withdrawOffer(postId, offerId, { token });
+): Promise<ActionResult<OfferStatusChangeResult>> {
+  return runAction(async () => {
+    const token = await requireSession();
+    return withdrawOffer(postId, offerId, { token });
+  });
 }
 
 /** Create a purchase using the authenticated buyer and return the real deal ID. */
-export async function buyPostAction(postId: PostId, payload: Omit<BuyPostPayload, "buyer_id">): Promise<BuyPostResult> {
-  const { token, userId } = await requireUser();
-  return buyPost(postId, { ...payload, buyer_id: userId }, { token });
+export async function buyPostAction(postId: PostId, payload: Omit<BuyPostPayload, "buyer_id">): Promise<ActionResult<BuyPostResult>> {
+  return runAction(async () => {
+    const { token, userId } = await requireUser();
+    return buyPost(postId, { ...payload, buyer_id: userId }, { token });
+  });
 }

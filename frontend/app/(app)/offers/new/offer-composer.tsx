@@ -23,6 +23,7 @@ import { Notice } from "@/components/patterns/notice";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import { useToast } from "@/components/kit/toast";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
+import { unwrapAction } from "@/lib/action-result";
 import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { sendOffer } from "@/lib/actions/posts";
 import type { Item, Post } from "@/lib/api/types";
@@ -223,13 +224,13 @@ export function OfferComposer({
           throw new Error("Could not find the item to split");
         }
 
-        await saveItemEdits(pending.sourceItemId, {
+        await unwrapAction(saveItemEdits(pending.sourceItemId, {
           quantity: left - pending.quantity,
-        });
+        }));
         shrunkSourceIds.add(pending.sourceItemId);
         remaining.set(pending.sourceItemId, left - pending.quantity);
 
-        const splitItem = await saveNewItem({
+        const splitItem = await unwrapAction(saveNewItem({
           name: source.name,
           category: source.category,
           condition: source.condition,
@@ -244,26 +245,26 @@ export function OfferComposer({
             is_primary: i === 0,
             display_order: i,
           })),
-        });
+        }));
         createdItemIds.push(splitItem.item_id);
         finalItemIds.push(splitItem.item_id);
       }
 
-      await sendOffer(post.post_id, {
+      await unwrapAction(sendOffer(post.post_id, {
         item_ids: finalItemIds,
         additional_money: money > 0 ? money : undefined,
-      });
+      }));
     } catch (err) {
       // Undo every write this attempt made — delete rows it created, and put
       // shrunk originals back to their pre-submit quantity — so a failed
       // send never leaves the stash fragmented.
       for (const itemId of createdItemIds) {
-        await removeItem(itemId).catch(() => undefined);
+        await unwrapAction(removeItem(itemId)).catch(() => undefined);
       }
       for (const sourceId of shrunkSourceIds) {
         const original = inventory.find((i) => i.item_id === sourceId);
         if (original) {
-          await saveItemEdits(sourceId, { quantity: original.quantity }).catch(
+          await unwrapAction(saveItemEdits(sourceId, { quantity: original.quantity })).catch(
             () => undefined,
           );
         }

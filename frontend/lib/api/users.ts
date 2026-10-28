@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
 import type { User } from "./types";
@@ -36,9 +38,10 @@ async function authedInit(): Promise<RequestInit> {
   return { headers: await authHeader() };
 }
 
-export async function getMe(): Promise<Profile> {
+/** Deduplicated per request: the (app) layout and the page often both need it. */
+export const getMe = cache(async (): Promise<Profile> => {
   return apiFetch<Profile>("/users/me", await authedInit());
-}
+});
 
 export async function updateMe(patch: UpdateProfilePayload): Promise<Profile> {
   const init = await authedInit();

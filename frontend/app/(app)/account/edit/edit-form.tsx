@@ -9,6 +9,7 @@ import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
 import { ProfileCard } from "@/components/features/sellers/profile-card";
@@ -37,11 +38,11 @@ export function EditProfileForm({ profile }: { profile: User }) {
   async function save() {
     setBusy(true);
     try {
-      await updateProfile({
+      await unwrapAction(updateProfile({
         first_name_th: firstNameTh,
         last_name_th: lastNameTh,
         phone_number: phone || undefined,
-      });
+      }));
     } catch (err) {
       setBusy(false);
       toast.error(err instanceof Error ? err.message : "Could not save profile");

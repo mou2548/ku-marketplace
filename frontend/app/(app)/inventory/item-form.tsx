@@ -26,6 +26,7 @@ import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { ItemPayload } from "@/lib/api/items";
@@ -127,7 +128,7 @@ export function ItemForm({
       // to get a real hosted URL before the item itself can reference it.
       const images = await Promise.all(
         photos.map(async (p, i) => ({
-          image_url: p.file ? await uploadFile(p.file) : p.previewUrl,
+          image_url: p.file ? await unwrapAction(uploadFile(p.file)) : p.previewUrl,
           is_primary: i === 0,
           display_order: i,
         })),
@@ -147,9 +148,9 @@ export function ItemForm({
       };
 
       if (mode === "create") {
-        await saveNewItem(payload);
+        await unwrapAction(saveNewItem(payload));
       } else if (item) {
-        await saveItemEdits(item.item_id, payload);
+        await unwrapAction(saveItemEdits(item.item_id, payload));
       }
     } catch (err) {
       setBusy(false);
@@ -409,7 +410,7 @@ export function ItemForm({
             confirmLabel="Delete item"
             doneMessage="Item deleted."
             icon={<Trash2 className="size-4" />}
-            onConfirm={() => removeItem(item.item_id)}
+            onConfirm={() => unwrapAction(removeItem(item.item_id))}
             onDone={() => router.push("/inventory")}
             trigger={
               <>

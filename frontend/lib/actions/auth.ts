@@ -3,13 +3,8 @@
 import { redirect } from "next/navigation";
 
 import * as authApi from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
+import { errorText } from "@/lib/api-errors";
 import { clearSession, getRefreshToken, setSession } from "@/lib/api/session";
-
-function messageFor(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
-  return "Could not reach the server. Try again.";
-}
 
 export interface LoginState {
   error?: string;
@@ -38,7 +33,7 @@ export async function login(
       result.user.status === "Suspended" || result.user.status === "Banned";
     isAdmin = result.user.isAdmin === true;
   } catch (err) {
-    return { error: messageFor(err) };
+    return { error: errorText(err) };
   }
 
   await setSession(accessToken, session);
@@ -64,7 +59,7 @@ export async function requestRegisterOtp(
   try {
     await authApi.requestRegisterOtp(email, password);
   } catch (err) {
-    return { error: messageFor(err) };
+    return { error: errorText(err) };
   }
 
   redirect(`/verify?email=${encodeURIComponent(email)}`);
@@ -89,7 +84,7 @@ export async function verifyRegisterOtp(
     accessToken = result.accessToken;
     session = result;
   } catch (err) {
-    return { error: messageFor(err) };
+    return { error: errorText(err) };
   }
 
   await setSession(accessToken, session);
@@ -111,7 +106,7 @@ export async function resendOtp(
   try {
     await authApi.resendOtp(email);
   } catch (err) {
-    return { error: messageFor(err) };
+    return { error: errorText(err) };
   }
 
   return { resent: true };
@@ -138,7 +133,7 @@ export async function forgotPassword(
   try {
     await authApi.forgotPassword(email);
   } catch (err) {
-    return { error: messageFor(err) };
+    return { error: errorText(err) };
   }
 
   redirect(`/reset?email=${encodeURIComponent(email)}`);
@@ -159,7 +154,7 @@ export async function resetPassword(
   try {
     await authApi.resetPassword(email, otp, newPassword);
   } catch (err) {
-    return { error: messageFor(err) };
+    return { error: errorText(err) };
   }
 
   redirect("/login");

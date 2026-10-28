@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { SlipReviewer } from "@/components/kit/slip";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { decideMembershipPayment } from "@/lib/actions/membership";
 import type { MembershipTier } from "@/lib/api/membership";
 
@@ -30,7 +31,7 @@ export function MembershipReview({
   async function decide(approved: boolean) {
     setBusy(true);
     try {
-      await decideMembershipPayment(requestId, approved);
+      await unwrapAction(decideMembershipPayment(requestId, approved));
     } catch (err) {
       setBusy(false);
       toast.error(err instanceof Error ? err.message : "Could not record the decision");

@@ -23,6 +23,7 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import {
   acceptOfferAction,
   rejectOfferAction,
@@ -97,7 +98,7 @@ export function OfferReview({
     setActionError(null);
     let result;
     try {
-      result = await acceptOfferAction(offer.post_id, offer.offer_id);
+      result = await unwrapAction(acceptOfferAction(offer.post_id, offer.offer_id));
     } catch (err) {
       setBusy(false);
       setActionError(err instanceof Error ? err.message : "Could not accept this offer");
@@ -278,14 +279,14 @@ export function OfferReview({
                 if (decision === "accept") void accept();
                 if (decision === "reject") {
                   void respond(
-                    () => rejectOfferAction(offer.post_id, offer.offer_id),
+                    () => unwrapAction(rejectOfferAction(offer.post_id, offer.offer_id)),
                     "Offer declined",
                     "Could not decline this offer",
                   );
                 }
                 if (decision === "withdraw") {
                   void respond(
-                    () => withdrawOfferAction(offer.post_id, offer.offer_id),
+                    () => unwrapAction(withdrawOfferAction(offer.post_id, offer.offer_id)),
                     "Offer withdrawn",
                     "Could not withdraw this offer",
                   );

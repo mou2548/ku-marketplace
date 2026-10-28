@@ -36,6 +36,7 @@ import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import {
   askToCancel,
   answerCancellation,
@@ -66,7 +67,6 @@ import {
 import { useStatusText } from "@/lib/status-text";
 import { markRoomActive } from "@/lib/chat-activity";
 import { fetchGiveawayMessages, sendGiveawayMessage } from "@/lib/actions/giveaways";
-import { ApiError } from "@/lib/api/client";
 import type {
   AppointmentCardData,
   ChatMessage,
@@ -275,17 +275,17 @@ export function RoomScreen({
   function refreshRoom() {
     if (transaction) {
       const transactionId = transaction.transaction_id;
-      fetchChatHistory(transactionId).then(setMessages).catch(() => {});
-      fetchAppointmentCards(transactionId)
+      unwrapAction(fetchChatHistory(transactionId)).then(setMessages).catch(() => {});
+      unwrapAction(fetchAppointmentCards(transactionId))
         .then((cards) => {
           const { pinned, pending } = deriveAppointmentView(cards);
           setAppointment(pending ?? pinned);
           setAppointmentCards(cards);
         })
         .catch(() => {});
-      fetchTransaction(transactionId).then(setTransaction).catch(() => {});
+      unwrapAction(fetchTransaction(transactionId)).then(setTransaction).catch(() => {});
     } else if (giveaway) {
-      fetchGiveawayMessages(giveaway.giveaway_id).then(setMessages).catch(() => {});
+      unwrapAction(fetchGiveawayMessages(giveaway.giveaway_id)).then(setMessages).catch(() => {});
     }
   }
 
@@ -340,7 +340,7 @@ export function RoomScreen({
     if (txIdForHandover == null) {
       throw new Error("This room has no transaction");
     }
-    return createHandoverToken(txIdForHandover);
+    return unwrapAction(createHandoverToken(txIdForHandover));
   }, [txIdForHandover]);
   const missedMeetup = appointment?.status === "Confirmed" &&
     new Date(`${appointment.date}T${appointment.time}+07:00`).getTime() <= now &&
@@ -465,17 +465,17 @@ export function RoomScreen({
     if (!transaction) return;
     const updated =
       kind === "payment"
-        ? await submitPaymentSlip(transaction.transaction_id, file)
-        : await submitRefundSlip(transaction.transaction_id, file);
+        ? await unwrapAction(submitPaymentSlip(transaction.transaction_id, file))
+        : await unwrapAction(submitRefundSlip(transaction.transaction_id, file));
 
     const url =
       kind === "payment" ? updated.slip_image_url : updated.refund_slip_url;
     if (!url) return updated;
 
     try {
-      const posted = await sendChatMessage(transaction.transaction_id, {
+      const posted = await unwrapAction(sendChatMessage(transaction.transaction_id, {
         image_urls: [url],
-      });
+      }));
       setMessages((prev) => [...prev, posted]);
     } catch {
       // The transaction already holds the slip and the deal panel renders it,
@@ -489,9 +489,9 @@ export function RoomScreen({
   async function handleSend(text: string) {
     try {
       const sent = transaction
-        ? await sendChatMessage(transaction.transaction_id, { content: text })
+        ? await unwrapAction(sendChatMessage(transaction.transaction_id, { content: text }))
         : giveaway
-          ? await sendGiveawayMessage(giveaway.giveaway_id, { content: text })
+          ? await unwrapAction(sendGiveawayMessage(giveaway.giveaway_id, { content: text }))
           : undefined;
       if (sent) {
         setMessages((prev) => [...prev, sent]);
@@ -499,7 +499,7 @@ export function RoomScreen({
         markRoomActive(summary.room_id);
       }
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not send the message.");
+      toast.error(error instanceof Error ? error.message : "Could not send the message.");
     }
   }
 
@@ -516,15 +516,15 @@ export function RoomScreen({
       for (const file of selected) {
         const formData = new FormData();
         formData.append("file", file);
-        image_urls.push(await uploadChatImage(formData));
+        image_urls.push(await unwrapAction(uploadChatImage(formData)));
       }
       const sent = transaction
-        ? await sendChatMessage(transaction.transaction_id, { image_urls })
-        : await sendGiveawayMessage(giveaway!.giveaway_id, { image_urls });
+        ? await unwrapAction(sendChatMessage(transaction.transaction_id, { image_urls }))
+        : await unwrapAction(sendGiveawayMessage(giveaway!.giveaway_id, { image_urls }));
       setMessages((prev) => [...prev, sent]);
       markRoomActive(summary.room_id);
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not send the photos.");
+      toast.error(error instanceof Error ? error.message : "Could not send the photos.");
     } finally {
       setBusy(false);
     }
@@ -534,11 +534,11 @@ export function RoomScreen({
     if (!transaction || !when) return;
     setBusy(true);
     try {
-      const created = await proposeAppointment(transaction.transaction_id, {
+      const created = await unwrapAction(proposeAppointment(transaction.transaction_id, {
         date: when.toString(),
         time,
         location: place,
-      });
+      }));
       setAppointment(created);
       setAppointmentCards((prev) => [...prev, created]);
       setPlace("");
@@ -546,7 +546,7 @@ export function RoomScreen({
       markRoomActive(summary.room_id);
       toast.success(t("deal.meetupProposed"));
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not propose a meetup.");
+      toast.error(error instanceof Error ? error.message : "Could not propose a meetup.");
     } finally {
       setBusy(false);
     }
@@ -573,14 +573,14 @@ export function RoomScreen({
     if (!appointment) return;
     setBusy(true);
     try {
-      const updated = await respondToAppointment(appointment.appointment_id, response);
+      const updated = await unwrapAction(respondToAppointment(appointment.appointment_id, response));
       setAppointment(updated);
       setAppointmentCards((prev) =>
         prev.map((c) => (c.appointment_id === updated.appointment_id ? updated : c)),
       );
       toast.success("Meetup confirmed");
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not respond to the meetup.");
+      toast.error(error instanceof Error ? error.message : "Could not respond to the meetup.");
     } finally {
       setBusy(false);
     }
@@ -593,8 +593,8 @@ export function RoomScreen({
       return <ActionCard title="Cancellation / return request">
         <p>{transaction.cancellation_reason}</p>
         {transaction.cancellation_requested_by !== myId ? <div className="flex gap-3">
-          <Button isLoading={busy} onPress={() => act(() => answerCancellation(transaction.transaction_id, "accept"), "Request accepted", "Could not respond")}>Accept</Button>
-          <Button variant="danger" isLoading={busy} onPress={() => act(() => answerCancellation(transaction.transaction_id, "reject"), "Sent for review", "Could not respond")}>Reject</Button>
+          <Button isLoading={busy} onPress={() => act(() => unwrapAction(answerCancellation(transaction.transaction_id, "accept")), "Request accepted", "Could not respond")}>Accept</Button>
+          <Button variant="danger" isLoading={busy} onPress={() => act(() => unwrapAction(answerCancellation(transaction.transaction_id, "reject")), "Sent for review", "Could not respond")}>Reject</Button>
         </div> : <p>Waiting for the other party to respond.</p>}
       </ActionCard>;
     }
@@ -619,7 +619,7 @@ export function RoomScreen({
         <div className="flex flex-col gap-3">
           {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
             viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => uploadAndRefresh(() => uploadSlip("refund", file), "Refund slip uploaded")} /> :
-            transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => confirmRefundReceived(transaction.transaction_id), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
+            transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
           ) : null}
           {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
             transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
@@ -727,7 +727,7 @@ export function RoomScreen({
               isBusy={busy}
               onConfirm={() =>
                 act(
-                  () => confirmSlip(transaction.transaction_id),
+                  () => unwrapAction(confirmSlip(transaction.transaction_id)),
                   "Payment confirmed",
                   "Could not confirm the payment",
                 )
@@ -765,7 +765,7 @@ export function RoomScreen({
                 isLoading={busy}
                 onPress={() =>
                   act(
-                    () => saveTracking(transaction.transaction_id, tracking.trim(), deliveryDate),
+                    () => unwrapAction(saveTracking(transaction.transaction_id, tracking.trim(), deliveryDate)),
                     "Tracking number saved",
                     "Could not save the tracking number",
                   )
@@ -787,7 +787,7 @@ export function RoomScreen({
                 isLoading={busy}
                 onPress={() =>
                   act(
-                    () => confirmItemArrived(transaction.transaction_id),
+                    () => unwrapAction(confirmItemArrived(transaction.transaction_id)),
                     "Deal closed",
                     "Could not confirm the delivery",
                   )
@@ -1133,7 +1133,7 @@ export function RoomScreen({
               busy={busy}
               onCancel={(reason) =>
                 act(
-                  () => askToCancel(transaction.transaction_id, reason),
+                  () => unwrapAction(askToCancel(transaction.transaction_id, reason)),
                   "Cancellation requested",
                   "Could not send the cancellation request",
                 )

@@ -15,10 +15,10 @@ import { EvidenceNote } from "@/components/kit/report-dialog";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { createReport } from "@/lib/actions/reports";
 import { isReportDetailsValid, REPORT_DETAILS_MIN } from "@/lib/report-rules";
 import { uploadFile } from "@/lib/actions/uploads";
-import type { ApiError } from "@/lib/api/client";
 import type { ChatMessage, Transaction } from "@/lib/api/types";
 import {
   cancelResponseDeadline,
@@ -173,20 +173,20 @@ export function ReportForm({
     setBusy(true);
     try {
       const evidence_urls: string[] = [];
-      for (const file of evidence) evidence_urls.push(await uploadFile(file));
+      for (const file of evidence) evidence_urls.push(await unwrapAction(uploadFile(file)));
       const label = REASONS.find((r) => r.id === reason)?.label ?? reason;
-      await createReport({
+      await unwrapAction(createReport({
         report_type: "Transaction",
         target_id: transactionId,
         reason_category: label,
         details: details.trim(),
         evidence_urls: evidence_urls.length ? evidence_urls : undefined,
         evidence_message_ids: messageIds.length ? messageIds : undefined,
-      });
+      }));
       toast.success("Report submitted. An admin will review it.");
       router.push(`/history/${transactionId}`);
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not submit the report.");
+      toast.error(error instanceof Error ? error.message : "Could not submit the report.");
     } finally {
       setBusy(false);
     }

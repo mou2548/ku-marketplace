@@ -19,8 +19,8 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { ProductGallery } from "@/components/market/product-gallery";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { closeGiveawayRegistration, drawGiveaway, joinGiveaway } from "@/lib/actions/giveaways";
-import type { ApiError } from "@/lib/api/client";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { ALLOCATION_METHOD, GIVEAWAY_STATUS, TICKET_STATUS, type Deadline } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
@@ -119,7 +119,7 @@ export function GiveawayDetail({
   async function join() {
     setBusy(true);
     try {
-      const joined = await joinGiveaway(giveaway.giveaway_id);
+      const joined = await unwrapAction(joinGiveaway(giveaway.giveaway_id));
       setJoinedStatus(joined.status);
       toast.success(
         joined.status === "Waiting"
@@ -128,7 +128,7 @@ export function GiveawayDetail({
       );
       router.refresh();
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not register. Try again.");
+      toast.error(error instanceof Error ? error.message : "Could not register. Try again.");
     } finally {
       setBusy(false);
     }
@@ -137,7 +137,7 @@ export function GiveawayDetail({
   async function runDraw() {
     setDrawing(true);
     try {
-      const recipients = await drawGiveaway(giveaway.giveaway_id);
+      const recipients = await unwrapAction(drawGiveaway(giveaway.giveaway_id));
       toast.success(
         recipients.length > 0
           ? "Draw complete. The winner has been notified."
@@ -145,7 +145,7 @@ export function GiveawayDetail({
       );
       router.refresh();
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not run the draw.");
+      toast.error(error instanceof Error ? error.message : "Could not run the draw.");
     } finally {
       setDrawing(false);
     }
@@ -188,7 +188,7 @@ export function GiveawayDetail({
               confirmLabel="End registration"
               doneMessage="Registration closed. You can run the draw now."
               icon={<Lock className="size-4" />}
-              onConfirm={closeGiveawayRegistration.bind(null, giveaway.giveaway_id)}
+              onConfirm={() => unwrapAction(closeGiveawayRegistration(giveaway.giveaway_id))}
               trigger={
                 <>
                   <Lock className="size-4" />

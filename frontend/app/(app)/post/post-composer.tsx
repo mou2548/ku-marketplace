@@ -31,9 +31,9 @@ import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { createGiveaway } from "@/lib/actions/giveaways";
 import { publishListing } from "@/lib/actions/posts";
-import type { ApiError } from "@/lib/api/client";
 import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item, ItemHistorySummary } from "@/lib/api/types";
 import {
@@ -200,7 +200,7 @@ export function PostComposer({
       const item = pickedItems[0];
       try {
         const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
-        const created = await createGiveaway({
+        const created = await unwrapAction(createGiveaway({
           item_id: item.item_id,
           item_name: item.name,
           quantity: Number(giveawayQuantity),
@@ -220,14 +220,14 @@ export function PostComposer({
             ? pickupTo.toDate(tz).toISOString()
             : undefined,
           images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
-        });
+        }));
         toast.success("Giveaway posted. Registration is open.");
         // /giveaway's "Open" tab lists real giveaways now (getGiveaways in
         // lib/api/giveaways.ts), but jumping to the post itself skips a
         // redundant round trip through the list.
         router.push(`/giveaway/${created.giveaway_id}`);
       } catch (error) {
-        toast.error((error as ApiError).message ?? "Could not post the giveaway.");
+        toast.error(error instanceof Error ? error.message : "Could not post the giveaway.");
       } finally {
         setBusy(false);
       }
@@ -237,14 +237,14 @@ export function PostComposer({
     try {
       const created = await Promise.all(
         pickedItems.map((item) =>
-          publishListing({
+          unwrapAction(publishListing({
             item_id: item.item_id,
             post_type: kind,
             price: wantsPrice ? Number(price) : 0,
             quantity_total: quantityFor(item),
             description: description.trim() || undefined,
             wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
-          }),
+          })),
         ),
       );
 
@@ -259,7 +259,7 @@ export function PostComposer({
           : "/feed",
       );
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not publish the listing.");
+      toast.error(error instanceof Error ? error.message : "Could not publish the listing.");
     } finally {
       setBusy(false);
     }

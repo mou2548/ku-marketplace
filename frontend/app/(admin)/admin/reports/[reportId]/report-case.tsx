@@ -18,6 +18,7 @@ import {
 import { Switch } from "@/components/kit/choice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { adminOpenReport } from "@/lib/actions/reports";
 import {
   ADMIN_ACCOUNT_STATUS,
@@ -25,7 +26,6 @@ import {
   ADMIN_REPORT_STATUS,
   ADMIN_SANCTION,
 } from "@/lib/admin-labels";
-import type { ApiError } from "@/lib/api/client";
 import type { AdminTransactionEvidence } from "@/lib/api/reports";
 import type { EvidenceMessage, Report } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/date-format";
@@ -61,9 +61,9 @@ export function ReportCase({
 
   async function take() {
     try {
-      setReport(await adminOpenReport(report.report_id));
+      setReport(await unwrapAction(adminOpenReport(report.report_id)));
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not take the report.");
+      toast.error(error instanceof Error ? error.message : "Could not take the report.");
     }
   }
 

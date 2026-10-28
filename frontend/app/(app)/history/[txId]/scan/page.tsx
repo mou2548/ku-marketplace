@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { QrScanner } from "@/components/kit/qr-scanner";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { fetchRoomId } from "@/lib/actions/chat";
 import { completeHandover } from "@/lib/actions/transactions";
 import { markRoomActive } from "@/lib/chat-activity";
@@ -34,7 +35,7 @@ export default function DealScanPage({
   const onScan = useCallback(
     async (token: string) => {
       try {
-        await completeHandover(Number(txId), token);
+        await unwrapAction(completeHandover(Number(txId), token));
       } catch (err) {
         toast.error(
           err instanceof Error
@@ -50,7 +51,7 @@ export default function DealScanPage({
       // would float the room regardless — this only removes the wait, and a
       // failed lookup must not turn a recorded handover into an error.
       try {
-        markRoomActive(await fetchRoomId(Number(txId)));
+        markRoomActive(await unwrapAction(fetchRoomId(Number(txId))));
       } catch {
         // The poll still floats it, just later.
       }
