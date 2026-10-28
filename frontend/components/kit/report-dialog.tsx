@@ -6,6 +6,7 @@ import { CircleCheck, Flag } from "lucide-react";
 
 import { createReport } from "@/lib/actions/reports";
 import type { ApiError } from "@/lib/api/client";
+import { isReportDetailsValid, REPORT_DETAILS_MIN } from "@/lib/report-rules";
 
 import { Button } from "./button";
 import { Radio, RadioGroupField } from "./choice";
@@ -53,7 +54,7 @@ export function ReportDialog({
         report_type: reportType,
         target_id: targetId,
         reason_category: label,
-        details: details || undefined,
+        details: details.trim(),
       });
       setSubmitted(true);
     } catch (e) {
@@ -91,7 +92,7 @@ export function ReportDialog({
               </Button>
               <Button
                 variant="danger"
-                isDisabled={!reason}
+                isDisabled={!reason || !isReportDetailsValid(details)}
                 isLoading={busy}
                 onPress={submit}
               >
@@ -127,7 +128,8 @@ export function ReportDialog({
               onChange={setDetails}
               rows={4}
               placeholder={t("placeholder")}
-              hint={t("hint")}
+              hint={t("hint", { min: REPORT_DETAILS_MIN })}
+              isRequired
               errorMessage={error}
             />
           </div>

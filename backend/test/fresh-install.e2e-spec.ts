@@ -398,6 +398,7 @@ describe('Fresh clone database', () => {
         report_type: 'Transaction',
         target_id: deal.transactionId,
         reason_category: 'Other',
+      details: 'Details written for the e2e test',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     const target = await prisma.user.create({
@@ -415,11 +416,13 @@ describe('Fresh clone database', () => {
       report_type: 'User',
       target_id: targetId,
       reason_category: 'Other',
+      details: 'Details written for the e2e test',
     });
     const second = await reports.create(5, {
       report_type: 'User',
       target_id: targetId,
       reason_category: 'Other',
+      details: 'Details written for the e2e test',
     });
     await reports.resolve(first.report_id, 1, {
       status: 'Violation_Confirmed',

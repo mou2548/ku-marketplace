@@ -14,6 +14,7 @@ import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
 import { uploadChatImage } from "@/lib/actions/chat";
 import { createReport } from "@/lib/actions/reports";
+import { isReportDetailsValid, REPORT_DETAILS_MIN } from "@/lib/report-rules";
 import type { ApiError } from "@/lib/api/client";
 import type { Transaction } from "@/lib/api/types";
 import {
@@ -174,7 +175,7 @@ export function ReportForm({
         report_type: "Transaction",
         target_id: transactionId,
         reason_category: label,
-        details,
+        details: details.trim(),
         evidence_urls: evidence_urls.length ? evidence_urls : undefined,
       });
       toast.success("Report submitted. An admin will review it.");
@@ -239,7 +240,8 @@ export function ReportForm({
         onChange={setDetails}
         rows={5}
         placeholder="Walk through what happened in order. The more detail, the faster an admin can decide."
-        hint="Admins can already see the chat and slips on this deal. No need to attach them again."
+        hint={`Required, at least ${REPORT_DETAILS_MIN} characters. Admins can already see the chat and slips on this deal. No need to attach them again.`}
+        isRequired
       />
 
       <Surface shape="card" className="flex flex-col gap-3 p-4">
@@ -287,7 +289,7 @@ export function ReportForm({
         </Button>
         <Button
           variant="danger"
-          isDisabled={details.trim().length < 10 || !(eligibility.get(reason) ?? false)}
+          isDisabled={!isReportDetailsValid(details) || !(eligibility.get(reason) ?? false)}
           isLoading={busy}
           onPress={submit}
         >
