@@ -8,11 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "predev": "node -e \"if(!process.version.startsWith('v20')) { console.error('\u26a0\ufe0f  \u0e15\u0e49\u0e2d\u0e07\u0e43\u0e0a\u0e49 Node 20 (\u0e40\u0e0a\u0e47\u0e04\u0e14\u0e49\u0e27\u0e22 node -v)'); process.exit(1); }\"",
-    "test": "node --test tests/"
+    "test": "node --test tests/",
+    "postinstall": "node scripts/copy-zxing-wasm.mjs",
+    "prebuild": "node scripts/copy-zxing-wasm.mjs"
   },
   "dependencies": {
     "@internationalized/date": "^3.12.3",
     "@types/qrcode": "^1.5.6",
+    "barcode-detector": "3.2.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.27.0",
