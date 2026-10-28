@@ -41,7 +41,7 @@ import { TrustBadge } from "./trust-badge";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
-function formatAmount(amount: number) {
+export function formatAmount(amount: number) {
   return `฿${amount.toLocaleString("en-GB")}`;
 }
 

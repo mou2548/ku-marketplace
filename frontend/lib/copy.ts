@@ -676,6 +676,14 @@ const COPY: { [key: string]: CopyNode } = {
       "accept": "Accept"
     },
     "slip": {
+      "payTitle": "Pay {amount} by PromptPay",
+      "payHow": "Scan this with your banking app. On a phone, save the QR and open it from your banking app's scan-from-photo option.",
+      "payTo": "Pays the PromptPay account {account}",
+      "payDirect": "The money goes straight to the seller; the platform never holds it. Upload the slip below once you have paid.",
+      "paySave": "Save QR image",
+      "payLoading": "Preparing the payment QR",
+      "payQrFailed": "Could not prepare the payment QR. Upload the slip below once you have paid.",
+      "payQrLabel": "PromptPay QR for {amount}",
       "upload": "Upload your transfer slip",
       "viewFull": "View full slip",
       "choose": "Choose a slip image",

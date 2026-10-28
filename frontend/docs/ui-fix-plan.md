@@ -7,9 +7,10 @@ Date: 2026-10-28. Source: [ui-audit-report.md](ui-audit-report.md)
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 0 Foundations | Done 2026-10-28, uncommitted | `lib/action-result.ts`, `lib/api-errors.ts`, all actions return `ActionResult`; `wrap-anywhere` on the app and admin `<main>`; own chat bubble on `brand-strong`. Production-build regression: F02, SYS01, T02, A06, C01 pass; E01 passes at 360/390/768/1280 on `/market/:id` and `/feed` (was 1,891px wide). `tests/api-errors.test.mjs` added; 30/30 tests, tsc and eslint clean. `code-review` (medium) run; its findings were fixed except the two below. |
-| 1 PromptPay | Done 2026-10-28, uncommitted | PromptPay field on `/account/edit` (10 digits, sent only when changed); `PromptPayNotice` and disabled Publish on `/inventory/:id/list`, its edit page and `/post`. Regression: notice shown, invalid number blocks Save, number stored as `0812345678`, sale listing publishes. |
-| 2-4 | Not started | |
+| 0 Foundations | Done 2026-10-28 (`9420c8c`) | `lib/action-result.ts`, `lib/api-errors.ts`, all actions return `ActionResult`; `wrap-anywhere` on the app and admin `<main>`; own chat bubble on `brand-strong`. Production-build regression: F02, SYS01, T02, A06, C01 pass; E01 passes at 360/390/768/1280 on `/market/:id` and `/feed` (was 1,891px wide). `tests/api-errors.test.mjs` added; 30/30 tests, tsc and eslint clean. `code-review` (medium) run; its findings were fixed except the two below. |
+| 1 PromptPay | Done 2026-10-28 (`cc79772`) | PromptPay field on `/account/edit` (10 digits, sent only when changed); `PromptPayNotice` and disabled Publish on `/inventory/:id/list`, its edit page and `/post`. Regression: notice shown, invalid number blocks Save, number stored as `0812345678`, sale listing publishes. |
+| 2 | In progress | B13 done 2026-10-28: `PaymentQr` in the buyer's "Pay and upload the slip" step renders the API's PromptPay payload, the masked account and a "Save QR image" download (phones cannot scan their own screen). Production build: QR drawn for ฿13,500, account `xxx-xxx-5678`, download `promptpay-9.png`, no overflow at 360/390/1280 in light and dark. |
+| 3-4 | Not started | |
 
 ### Found while fixing (added to Phase 2)
 

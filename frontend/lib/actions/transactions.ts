@@ -7,6 +7,7 @@ import {
   confirmPaymentReceived,
   confirmRefund,
   generateHandoverQr,
+  getPaymentQr,
   getTransaction,
   requestCancellation,
   respondToCancellation,
@@ -14,6 +15,7 @@ import {
   shipTransaction,
   uploadPaymentSlip,
   uploadRefundSlip,
+  type PaymentQr,
 } from "@/lib/api/transactions";
 import { uploadImage } from "@/lib/api/uploads";
 import type { Transaction } from "@/lib/api/types";
@@ -47,6 +49,13 @@ export async function fetchTransaction(transactionId: number): Promise<ActionRes
   return runAction(async () => {
     await requireSession();
     return getTransaction(transactionId);
+  });
+}
+
+export async function fetchPaymentQr(transactionId: number): Promise<ActionResult<PaymentQr>> {
+  return runAction(async () => {
+    await requireSession();
+    return getPaymentQr(transactionId);
   });
 }
 

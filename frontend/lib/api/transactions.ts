@@ -31,6 +31,21 @@ export async function getTransaction(transactionId: number): Promise<Transaction
 
 /** §7.1/§7.5.3 — GET /admin/transactions/{id}, for an admin reviewing a
  * Transaction-type report's evidence (no buyer/seller participant check). */
+/** `GET /transactions/{id}/payment-qr` — what the buyer pays, as a PromptPay QR. */
+export interface PaymentQr {
+  /** EMVCo PromptPay payload for this deal's amount; encode it as the QR. */
+  payload: string;
+  amount: number;
+  /** The seller's PromptPay number, masked by the API (enough to recognise). */
+  promptpay_id: string;
+}
+
+/** Buyer only, while the deal is awaiting payment. */
+export async function getPaymentQr(transactionId: number): Promise<PaymentQr> {
+  const init = await authedInit();
+  return apiFetch<PaymentQr>(`/transactions/${transactionId}/payment-qr`, init);
+}
+
 export async function adminGetTransaction(transactionId: number): Promise<Transaction> {
   const init = await authedInit();
   return apiFetch<Transaction>(`/admin/transactions/${transactionId}`, init);

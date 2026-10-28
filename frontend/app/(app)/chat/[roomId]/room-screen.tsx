@@ -31,6 +31,7 @@ import { controlBase, TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportUserDialog } from "@/components/kit/report-user-dialog";
+import { PaymentQr } from "@/components/kit/payment-qr";
 import { SlipReviewer, SlipUploader, SlipViewer } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
@@ -698,6 +699,8 @@ export function RoomScreen({
       case "upload-slip":
         return (
           <ActionCard title={t("deal.stepUploadSlip")}>
+            {/* Where to pay comes before proof of paying. */}
+            <PaymentQr transactionId={transaction.transaction_id} className="mb-3" />
             <SlipUploader
               amount={transaction.final_amount}
               slipUrl={transaction.slip_image_url}
