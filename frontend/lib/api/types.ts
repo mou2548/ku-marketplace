@@ -167,9 +167,12 @@ export interface Transaction {
   status: TransactionStatus;
   delivery_method: DeliveryMethod;
   active_report_id?: number | null;
+  /** When that report was filed — the time of the "sent to admin review" event. */
+  active_report_created_at?: string | null;
   slip_image_url?: string | null;
   tracking_number?: string | null;
   estimated_delivery_date?: string | null;
+  shipped_at?: string | null;
   payment_confirmed_by_buyer_at?: string | null;
   payment_confirmed_by_seller_at?: string | null;
   item_received_confirmed_by_buyer_at?: string | null;
@@ -178,9 +181,11 @@ export interface Transaction {
   cancellation_reason?: string | null;
   cancellation_requested_at?: string | null;
   cancellation_response?: "Pending" | "Approved" | "Rejected" | null;
+  cancellation_responded_at?: string | null;
   refund_slip_url?: string | null;
   refund_submitted_at?: string | null;
   refund_confirmed_by_buyer?: boolean | null;
+  refund_confirmed_at?: string | null;
   item_return_confirmed_at?: string | null;
   created_at: string;
   /** Present on a trade — drives whether the payment sequence runs at all. */
@@ -228,6 +233,11 @@ export interface AppointmentCardData {
    * card. Mirrors the backend's `assertHandoverReady`.
    */
   deleted_at?: string | null;
+  /**
+   * When the other party confirmed or declined. Null while Pending, and on a
+   * card answered before the backend recorded it.
+   */
+  responded_at?: string | null;
   created_at: string;
 }
 

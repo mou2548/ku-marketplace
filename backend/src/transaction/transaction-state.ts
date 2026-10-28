@@ -51,6 +51,12 @@ export type TransactionWithChildren = Prisma.TransactionGetPayload<{
 
 type Db = Pick<Prisma.TransactionClient, 'transaction' | 'report'>;
 
+/** The open system report locking a deal, and when it was filed. */
+export interface LockingReport {
+  reportId: number;
+  createdAt: Date | null;
+}
+
 export interface TransactionState {
   transactionId: number;
   postId: number;
@@ -66,6 +72,7 @@ export interface TransactionState {
   itemReceivedConfirmedBySellerAt: Date | null;
   /** The open system report locking this deal, if any. */
   activeReportId: number | null;
+  activeReportCreatedAt: Date | null;
   /** The slip awaiting review or already confirmed; null once rejected. */
   slipImageUrl: string | null;
   /** Set while the buyer's claim to have paid still stands. */
@@ -75,13 +82,17 @@ export interface TransactionState {
   paymentRejectionReason: string | null;
   trackingNumber: string | null;
   estimatedDeliveryDate: Date | null;
+  shippedAt: Date | null;
   cancellationRequestedBy: number | null;
   cancellationReason: string | null;
   cancellationRequestedAt: Date | null;
   cancellationResponse: string | null;
+  /** When the other party answered (or the deadline ran out); null while open. */
+  cancellationRespondedAt: Date | null;
   refundSlipUrl: string | null;
   refundSubmittedAt: Date | null;
   refundConfirmedByBuyer: boolean;
+  refundConfirmedAt: Date | null;
   itemReturnConfirmedAt: Date | null;
 }
 
@@ -99,7 +110,7 @@ const isOpen = (status: string | null) =>
 
 export function toTransactionSnapshot(
   row: TransactionWithChildren,
-  activeReportId: number | null,
+  lock: LockingReport | null,
 ): TransactionSnapshot {
   const paymentRequired =
     row.offerId === null || Number(row.offer?.additionalMoney ?? 0) > 0;
@@ -149,7 +160,8 @@ export function toTransactionSnapshot(
     createdAt: row.createdAt,
     itemReceivedConfirmedByBuyerAt: row.itemReceivedConfirmedByBuyerAt,
     itemReceivedConfirmedBySellerAt: row.itemReceivedConfirmedBySellerAt,
-    activeReportId,
+    activeReportId: lock?.reportId ?? null,
+    activeReportCreatedAt: lock?.createdAt ?? null,
     slipImageUrl: payment?.slipImageUrl ?? null,
     paymentConfirmedByBuyerAt,
     paymentConfirmedBySellerAt:
@@ -162,17 +174,23 @@ export function toTransactionSnapshot(
         : null,
     trackingNumber: row.shipment?.trackingNumber ?? null,
     estimatedDeliveryDate: row.shipment?.estimatedDeliveryDate ?? null,
+    shippedAt: row.shipment?.shippedAt ?? null,
     cancellationRequestedBy: cancellation?.requestedBy ?? null,
     cancellationReason: cancellation?.reason ?? null,
     cancellationRequestedAt: cancellation
       ? (cancellation.requestedAt ?? fallbackDate)
       : null,
     cancellationResponse: cancellation?.response ?? null,
+    cancellationRespondedAt: cancellation?.respondedAt ?? null,
     refundSlipUrl: refundSlip?.refundSlipUrl ?? null,
     refundSubmittedAt: refundSlip
       ? (refundSlip.createdAt ?? fallbackDate)
       : null,
     refundConfirmedByBuyer: refundSlip?.status === PaymentStatus.Confirmed,
+    refundConfirmedAt:
+      refundSlip?.status === PaymentStatus.Confirmed
+        ? (refundSlip.handledAt ?? refundSlip.createdAt ?? fallbackDate)
+        : null,
     itemReturnConfirmedAt: row.refund?.itemReturnConfirmedAt ?? null,
     paymentRequired,
     paymentId: payment?.paymentId ?? null,
@@ -195,8 +213,8 @@ export function toTransactionState(
 export async function findLockingReports(
   db: Db,
   transactionIds: number[],
-): Promise<Map<number, number>> {
-  const locks = new Map<number, number>();
+): Promise<Map<number, LockingReport>> {
+  const locks = new Map<number, LockingReport>();
   if (transactionIds.length === 0) return locks;
   const reports = await db.report.findMany({
     where: {
@@ -208,12 +226,15 @@ export async function findLockingReports(
         { reasonCategory: { endsWith: TIMED_OUT_SUFFIX } },
       ],
     },
-    select: { reportId: true, targetId: true },
+    select: { reportId: true, targetId: true, createdAt: true },
     orderBy: { reportId: 'asc' },
   });
   for (const report of reports) {
     if (!locks.has(report.targetId))
-      locks.set(report.targetId, report.reportId);
+      locks.set(report.targetId, {
+        reportId: report.reportId,
+        createdAt: report.createdAt,
+      });
   }
   return locks;
 }

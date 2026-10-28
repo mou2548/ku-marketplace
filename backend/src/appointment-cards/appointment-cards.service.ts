@@ -5,6 +5,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  appointmentRespondedKey,
+  loadAppointmentRespondedAt,
+} from './appointment-responded-at';
 import { TransactionService } from '../transaction/transaction.service';
 import { loadTransactionSnapshot } from '../transaction/transaction-state';
 import { RespondAppointmentDto } from './dto/respond-appointment.dto';
@@ -43,6 +47,8 @@ export class AppointmentCardsService {
     location: string;
     status: string | null;
     deletedAt: Date | null;
+    /** When it was answered; see `loadAppointmentRespondedAt`. */
+    respondedAt?: Date | null;
     createdAt: Date | null;
     proposer: {
       userId: number;
@@ -64,6 +70,7 @@ export class AppointmentCardsService {
       // longer the current appointment. The frontend derives "current" as the
       // newest card with deleted_at null, mirroring assertHandoverReady.
       deleted_at: appointment.deletedAt,
+      responded_at: appointment.respondedAt ?? null,
       created_at: appointment.createdAt,
     };
   }
@@ -79,8 +86,15 @@ export class AppointmentCardsService {
       include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
+    const answered = await loadAppointmentRespondedAt(
+      this.prisma,
+      appointments,
+    );
     return appointments.map((appointment) =>
-      this.serializeAppointment(appointment),
+      this.serializeAppointment({
+        ...appointment,
+        respondedAt: answered.get(appointment.appointmentId),
+      }),
     );
   }
 
@@ -182,17 +196,20 @@ export class AppointmentCardsService {
         },
         include: { proposer: true },
       });
-      await tx.notification.create({
+      const notification = await tx.notification.create({
         data: {
           userId: appointment.proposedBy,
-          eventKey: `appointment:${appointmentId}:responded`,
+          eventKey: appointmentRespondedKey(appointmentId),
           title:
             status === 'Confirmed' ? 'Meetup confirmed' : 'Meetup declined',
           body: `${appointment.date.toISOString().slice(0, 10)} at ${appointment.time.toISOString().slice(11, 16)}, ${appointment.location}.`,
           href: `/history/${appointment.transactionId}`,
         },
       });
-      return this.serializeAppointment(updated);
+      return this.serializeAppointment({
+        ...updated,
+        respondedAt: notification.createdAt,
+      });
     });
   }
 

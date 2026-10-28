@@ -205,15 +205,6 @@ export class PostsService {
   }
 
   async createPost(payload: CreatePostPayload, userId: number) {
-    this.assertTextFits(payload);
-    if (!payload.item_id || !payload.post_type || payload.price === undefined) {
-      throw new BadRequestException(
-        'item_id, post_type และ price จำเป็นต้องระบุ',
-      );
-    }
-  }
-
-  async createPost(payload: CreatePostPayload, userId: number) {
     validateText(payload.description, 'description', 2000);
     validateText(payload.wanted_item_offer, 'wanted_item_offer', 500);
     if (!payload.item_id || !payload.post_type) {
@@ -465,7 +456,11 @@ export class PostsService {
         );
       }
       if ((payload.post_type ?? found.postType) !== 'TradeOnly') {
-        await this.requirePromptPay(tx, userId);
+        await this.assertHasPromptPay(
+          tx,
+          userId,
+          'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนเปิดขายสินค้า',
+        );
       }
 
       let quantityTotal = found.quantityTotal;
