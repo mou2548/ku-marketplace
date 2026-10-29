@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarPlus,
+  Check,
   Flag,
   Info,
   MapPin,
@@ -711,20 +712,23 @@ export function RoomScreen({
             className="mb-3"
           />
         ) : null}
-        {/* Where to pay comes before proof of paying. */}
-        <PaymentQr transactionId={transaction.transaction_id} className="mb-3" />
-        <SlipUploader
-          amount={transaction.final_amount}
-          slipUrl={transaction.slip_image_url}
-          isUploaded={!!transaction.slip_image_url}
-          uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
-          onUpload={(file) =>
-            uploadAndRefresh(
-              () => uploadSlip("payment", file),
-              "Slip uploaded. Waiting on the seller.",
-            )
-          }
-        />
+        {/* Where to pay comes before proof of paying. Side by side on a wide
+            panel so both fit without scrolling; stacked on a narrow one. */}
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+          <PaymentQr transactionId={transaction.transaction_id} />
+          <SlipUploader
+            amount={transaction.final_amount}
+            slipUrl={transaction.slip_image_url}
+            isUploaded={!!transaction.slip_image_url}
+            uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
+            onUpload={(file) =>
+              uploadAndRefresh(
+                () => uploadSlip("payment", file),
+                "Slip uploaded. Waiting on the seller.",
+              )
+            }
+          />
+        </div>
       </ActionCard>
     );
   }
@@ -734,10 +738,15 @@ export function RoomScreen({
    * amount, then the slip. The API refuses both until the buyer has PromptPay,
    * and the QR card shows that refusal.
    */
-  function refundSlipStep(): React.ReactNode {
+  function refundSlipStep(stacked = false): React.ReactNode {
     if (!transaction) return null;
     return (
-      <div className="flex flex-col gap-3">
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          !stacked && !transaction.refund_slip_url && "lg:grid lg:grid-cols-2 lg:items-start",
+        )}
+      >
         {!transaction.refund_slip_url ? (
           <PaymentQr kind="refund" transactionId={transaction.transaction_id} />
         ) : null}
@@ -755,6 +764,161 @@ export function RoomScreen({
           }
         />
       </div>
+    );
+  }
+
+  /** A new return meetup starts from the first meetup's place and time. The
+   * date is left empty: the old one is in the past. */
+  function startReturnMeetup() {
+    if (appointment) {
+      setPlace(appointment.location);
+      setTime(appointment.time.slice(0, 5));
+      setWhen(null);
+      setEditingAppointment(true);
+    }
+    setDetailsOpen(true);
+  }
+
+  /**
+   * Return and refund. The two halves do not wait on each other, so each shows
+   * while it is outstanding — side by side on a wide panel — and one that is
+   * finished shrinks to a single line.
+   *
+   * Who does what is the API's rule: the seller refunds and the buyer confirms
+   * it; the party who asked for the return scans the QR and the other party
+   * shows it. A sale also needs a return meetup agreed after the request before
+   * the API will issue a QR, so the QR is offered only once there is one.
+   */
+  function returnAndRefundAction(): React.ReactNode {
+    if (!transaction) return null;
+    const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+    const isRequester = transaction.cancellation_requested_by === myId;
+
+    const moneyApplies = !!transaction.payment_confirmed_by_buyer_at;
+    const moneyDue = moneyApplies && !transaction.refund_confirmed_by_buyer;
+    const itemApplies = !!transaction.item_received_confirmed_by_buyer_at;
+    const itemDue = itemApplies && !transaction.item_return_confirmed_at;
+    if (!moneyDue && !itemDue) return null;
+    const both = moneyDue && itemDue;
+
+    const money =
+      viewer === "seller" ? (
+        refundSlipStep(both)
+      ) : transaction.refund_slip_url ? (
+        <>
+          {/* Check the amount against the bank app before confirming. */}
+          <SlipViewer
+            embedded
+            slipUrl={transaction.refund_slip_url}
+            title={t("slip.refundSlip")}
+            amount={transaction.final_amount}
+            uploadedAt={transaction.refund_submitted_at}
+          />
+          <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button>
+        </>
+      ) : viewerHasPromptPay ? (
+        <p>Waiting for the refund slip.</p>
+      ) : (
+        <PromptPayNotice message={t("deal.refundPromptPayNeeded")} />
+      );
+
+    // Trades carry no money and no meetup requirement; a sale needs a meetup
+    // created after the request (the API compares against the request time).
+    const requestedAt = transaction.cancellation_requested_at;
+    const returnMeetup =
+      appointment && requestedAt && Date.parse(appointment.created_at) >= Date.parse(requestedAt)
+        ? appointment
+        : undefined;
+    const meetupReady = transaction.offer_id != null || returnMeetup?.status === "Confirmed";
+
+    const item = !meetupReady ? (
+      returnMeetup?.status === "Pending" ? (
+        <AppointmentCard
+          status={returnMeetup.status}
+          scheduledAt={`${returnMeetup.date}T${returnMeetup.time}+07:00`}
+          place={returnMeetup.location}
+          awaitingViewer={returnMeetup.proposed_by !== viewerId}
+          onAccept={() => handleAppointmentResponse("confirm")}
+          onEdit={() => {
+            startEditingAppointment();
+            setDetailsOpen(true);
+          }}
+        />
+      ) : (
+        <>
+          <p className="text-body-sm text-ink-secondary">
+            Agree a time and place to hand the item back. The place and time of
+            your first meetup are filled in for you.
+          </p>
+          <Button block onPress={startReturnMeetup}>
+            <CalendarClock className="size-4" />
+            {t("deal.proposeTimeAndPlace")}
+          </Button>
+        </>
+      )
+    ) : isRequester ? (
+      <LinkButton block href={`/history/${transaction.transaction_id}/scan`}>
+        <ScanLine className="size-5" />
+        Scan the return QR when you get the item
+      </LinkButton>
+    ) : (
+      <OverlayTrigger>
+        <Button block size="lg">
+          <QrCode className="size-5" />
+          Show the return QR
+        </Button>
+        <Overlay
+          title="Return QR"
+          description="Show it only when both of you are ready to hand the item over."
+          size="sm"
+        >
+          <div className="flex justify-center py-2">
+            <QrTicket once onGenerate={requestHandoverToken} ariaLabel="Item return QR" />
+          </div>
+        </Overlay>
+      </OverlayTrigger>
+    );
+
+    const partHeading = "text-body-sm font-semibold text-ink-secondary";
+    const done = (text: string) => (
+      <p className="flex items-center gap-2 text-body-sm text-ink-secondary">
+        <Check aria-hidden className="size-4 text-ink-brand" />
+        {text}
+      </p>
+    );
+
+    return (
+      <ActionCard title="Return and refund">
+        <div className="flex flex-col gap-4">
+          {moneyApplies && !moneyDue ? done("Refund confirmed") : null}
+          {itemApplies && !itemDue ? done("Item returned") : null}
+          <div className={cn("flex flex-col gap-4", both && "lg:grid lg:grid-cols-2 lg:items-start")}>
+            {moneyDue ? (
+              <section aria-label="Refund" className="flex flex-col gap-3">
+                {both ? <h5 className={partHeading}>Refund</h5> : null}
+                {money}
+                {/* The clock for the buyer to confirm the money arrived. */}
+                {deadline && transaction.refund_slip_url ? (
+                  <div className="flex flex-col gap-1.5">
+                    <CountdownPill deadline={deadline} className="w-fit" />
+                    <p className="text-caption text-ink-muted">
+                      {viewer === "seller"
+                        ? `Waiting for ${summary.counterparty.name} to confirm the money arrived.`
+                        : "Confirm once the money reaches your account."}
+                    </p>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+            {itemDue ? (
+              <section aria-label="Return the item" className="flex flex-col gap-3">
+                {both ? <h5 className={partHeading}>Return the item</h5> : null}
+                {item}
+              </section>
+            ) : null}
+          </div>
+        </div>
+      </ActionCard>
     );
   }
 
@@ -815,32 +979,7 @@ export function RoomScreen({
       );
     }
     if (transaction.status === "Pending Refund" || (transaction.status === "Cancelled" && transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer)) {
-      const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
-      return <ActionCard title="Return and refund">
-        <div className="flex flex-col gap-3">
-          {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? refundSlipStep() :
-            transaction.refund_slip_url ? (
-              <>
-                {/* Check the amount against the bank app before confirming. */}
-                <SlipViewer
-                  embedded
-                  slipUrl={transaction.refund_slip_url}
-                  title={t("slip.refundSlip")}
-                  amount={transaction.final_amount}
-                  uploadedAt={transaction.refund_submitted_at}
-                />
-                <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button>
-              </>
-            ) :
-            viewerHasPromptPay ? <p>Waiting for the refund slip.</p> : <PromptPayNotice message={t("deal.refundPromptPayNeeded")} />
-          ) : null}
-          {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
-            transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
-            <QrTicket once onGenerate={requestHandoverToken} ariaLabel="Item return QR" caption="One code per 15 minutes. Show it only when both parties are ready to return the goods." />
-          ) : null}
-        </div>
-      </ActionCard>;
+      return returnAndRefundAction();
     }
     // A rejected slip waits on a new one from the buyer.
     if (requiresPayment(transaction) && isSlipRejected(transaction)) {
@@ -957,23 +1096,25 @@ export function RoomScreen({
         return (
           <ActionCard title={t("deal.stepEnterTracking")}>
             <div className="flex flex-col gap-3">
-              <TextInput
-                label={t("deal.trackingNumber")}
-                value={tracking}
-                onChange={setTracking}
-                placeholder={t("deal.trackingPlaceholder")}
-                icon={<Truck className="size-4" />}
-                hint={t("deal.trackingHint")}
-              />
-              {/* Not before today: a past date made the deal "Past due" the
-                  moment it was saved. The API accepts one, so the form refuses. */}
-              <DatePickerField
-                label={t("deal.estimatedDelivery")}
-                value={deliveryDate ? parseDate(deliveryDate) : null}
-                onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
-                minValue={today(BANGKOK)}
-                isRequired
-              />
+              <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+                <TextInput
+                  label={t("deal.trackingNumber")}
+                  value={tracking}
+                  onChange={setTracking}
+                  placeholder={t("deal.trackingPlaceholder")}
+                  icon={<Truck className="size-4" />}
+                  hint={t("deal.trackingHint")}
+                />
+                {/* Not before today: a past date made the deal "Past due" the
+                    moment it was saved. The API accepts one, so the form refuses. */}
+                <DatePickerField
+                  label={t("deal.estimatedDelivery")}
+                  value={deliveryDate ? parseDate(deliveryDate) : null}
+                  onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
+                  minValue={today(BANGKOK)}
+                  isRequired
+                />
+              </div>
               <Button
                 block
                 isDisabled={

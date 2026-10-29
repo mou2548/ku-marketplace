@@ -4,15 +4,18 @@ import { formatDate } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
+import { Button as AriaButton } from "react-aria-components";
 
 import type { UserSummary } from "@/lib/api/types";
 import type { Tone } from "@/lib/status";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
+import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
 import { TONE_RAIL_LEFT } from "./tone";
 import { ProfileLink } from "./profile-link";
@@ -27,6 +30,9 @@ import { TrustBadge } from "./trust-badge";
  * `ActionCard` is the slot: SlipUploader, SlipReviewer, AppointmentCard, the
  * tracking-number form, and the QR launcher all render through it.
  */
+
+/** True while the current step is rendered inside the narrow-screen sheet. */
+const ActionInSheet = createContext(false);
 
 /** `CreateMessageDto.content` is `@MaxLength(2000)` in the API. */
 export const CHAT_MESSAGE_MAX = 2000;
@@ -179,13 +185,21 @@ export function ChatThread({
   const fileRef = useRef<HTMLInputElement>(null);
 
   /**
-   * The flow action folds away. It sits at the end of the thread where it
-   * belongs, but a scanner card is tall and there is no reason to look at it
-   * while reading back through the conversation. Open by default — it is the
-   * thing the deal is waiting on — and the toggle lives in the composer beside
-   * the attach button, so it is reachable without scrolling to the card.
+   * The flow action folds away. A scanner card is tall and there is no reason
+   * to look at it while reading back through the conversation, so the toggle
+   * lives in the composer beside the attach button.
+   *
+   * Wide screens show it as a panel above the composer, open by default — it is
+   * the thing the deal is waiting on, and there is room for all of it. Narrow
+   * screens show it as a bottom sheet instead, closed by default: a sheet that
+   * opened on its own would cover the conversation the moment a room loaded.
+   * The toggle is tinted while a step is folded away, so it is not lost. Once
+   * the person has pressed the toggle, their choice wins over either default.
    */
-  const [actionOpen, setActionOpen] = useState(true);
+  const isWide = useMediaQuery("(min-width: 1024px)");
+  const [actionChoice, setActionChoice] = useState<boolean | null>(null);
+  const actionOpen = actionChoice ?? isWide;
+  const setActionOpen = (next: boolean) => setActionChoice(next);
 
   // Jump, don't animate: a smooth scroll on every incoming message fights the
   // user when they are reading back through the thread.
@@ -376,10 +390,66 @@ export function ChatThread({
       {/* Attached above the composer, outside the scroll region, so the step
           the deal is waiting on cannot scroll out from under its own toggle.
           Read-only rooms have no composer and so no toggle — the action stays
-          open there rather than becoming unreachable. */}
-      {action && (actionOpen || isReadOnly) ? (
-        <div className="min-h-0 max-h-[45%] shrink-0 overflow-y-auto overscroll-contain">
+          open there rather than becoming unreachable.
+
+          Wide screens let the panel take the height its content needs; it only
+          scrolls when the window is too short to leave a strip of thread. On a
+          narrow screen the step is a bottom sheet (below), except in a
+          read-only room, which has no toggle to open one. */}
+      {action && (isReadOnly || (isWide && actionOpen)) ? (
+        <div className="min-h-0 max-h-[calc(100%-9rem)] shrink-0 overflow-y-auto overscroll-contain">
           {action}
+        </div>
+      ) : null}
+
+      {action && !isReadOnly && !isWide ? (
+        <Overlay
+          variant="sheet"
+          isOpen={actionOpen}
+          onOpenChange={setActionOpen}
+          title={t("chat.currentStep")}
+          bodyClassName="px-0"
+        >
+          <ActionInSheet.Provider value>{action}</ActionInSheet.Provider>
+        </Overlay>
+      ) : null}
+
+      {action && !isReadOnly ? (
+        /* The toggle is a tab standing on the top edge of the composer, in
+           a row of its own: floating over the thread it would hide the last
+           message, which sits flush against the composer. The row takes the
+           colour of whatever is above it (the thread, or the open panel) so
+           the tab reads as growing out of the bar. */
+        <div
+          className={cn(
+            "flex h-7 shrink-0 items-end justify-center",
+            isWide && actionOpen ? "bg-brand-subtle/30" : "bg-page/60",
+          )}
+        >
+          <AriaButton
+            aria-expanded={actionOpen}
+            aria-label={
+              actionOpen ? "Hide the current step" : "Show the current step"
+            }
+            onPress={() => setActionOpen(!actionOpen)}
+            className={cn(
+              // -mb-px sits the tab over the bar's top rule, so the two join.
+              // The pseudo-element lifts the touch target to 44px.
+              "relative -mb-px grid h-7 w-14 place-items-center rounded-t-control border border-b-0 border-line text-ink-secondary",
+              "before:absolute before:-inset-x-2 before:-top-4 before:bottom-0 before:content-['']",
+              "transition-colors duration-[--dur-fast] hover:text-ink",
+              // Green while the step is open, plain while it is folded away.
+              actionOpen ? "bg-brand-subtle text-ink-brand" : "bg-surface",
+            )}
+          >
+            <ChevronUp
+              aria-hidden
+              className={cn(
+                "size-5 transition-transform duration-[--dur-fast]",
+                actionOpen && "rotate-180",
+              )}
+            />
+          </AriaButton>
         </div>
       ) : null}
 
@@ -395,30 +465,6 @@ export function ChatThread({
             void submit();
           }}
         >
-          {action ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              pill
-              aria-expanded={actionOpen}
-              aria-label={
-                actionOpen ? "Hide the current step" : "Show the current step"
-              }
-              onPress={() => setActionOpen((v) => !v)}
-              // Tinted while folded away, so a pending step cannot be lost
-              // behind its own toggle.
-              className={cn(!actionOpen && "bg-brand-subtle text-ink-brand")}
-            >
-              <ChevronUp
-                className={cn(
-                  "size-5 transition-transform duration-[--dur-fast]",
-                  actionOpen && "rotate-180",
-                )}
-              />
-            </Button>
-          ) : null}
-
           <Button
             type="button"
             variant="ghost"
@@ -511,9 +557,12 @@ export function ActionCard({
   children: React.ReactNode;
   className?: string;
 }) {
+  // Inside the bottom sheet the sheet is the surface; the bar's rule and tint
+  // would draw a second panel within it.
+  const inSheet = useContext(ActionInSheet);
   return (
     <section
-      className={cn("border-t border-line bg-brand-subtle/30", className)}
+      className={cn(!inSheet && "border-t border-line bg-brand-subtle/30", className)}
       aria-label={title}
     >
       {/* This is the single most important sentence on the deal screen — the
