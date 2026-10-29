@@ -7,6 +7,7 @@ import { getCopy } from "@/lib/copy";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
+import { Button as AriaButton } from "react-aria-components";
 
 import type { UserSummary } from "@/lib/api/types";
 import type { Tone } from "@/lib/status";
@@ -413,6 +414,45 @@ export function ChatThread({
         </Overlay>
       ) : null}
 
+      {action && !isReadOnly ? (
+        /* The toggle is a tab standing on the top edge of the composer, in
+           a row of its own: floating over the thread it would hide the last
+           message, which sits flush against the composer. The row takes the
+           colour of whatever is above it (the thread, or the open panel) so
+           the tab reads as growing out of the bar. */
+        <div
+          className={cn(
+            "flex h-7 shrink-0 items-end justify-center",
+            isWide && actionOpen ? "bg-brand-subtle/30" : "bg-page/60",
+          )}
+        >
+          <AriaButton
+            aria-expanded={actionOpen}
+            aria-label={
+              actionOpen ? "Hide the current step" : "Show the current step"
+            }
+            onPress={() => setActionOpen(!actionOpen)}
+            className={cn(
+              // -mb-px sits the tab over the bar's top rule, so the two join.
+              // The pseudo-element lifts the touch target to 44px.
+              "relative -mb-px grid h-7 w-14 place-items-center rounded-t-control border border-b-0 border-line text-ink-secondary",
+              "before:absolute before:-inset-x-2 before:-top-4 before:bottom-0 before:content-['']",
+              "transition-colors duration-[--dur-fast] hover:text-ink",
+              // Green while the step is open, plain while it is folded away.
+              actionOpen ? "bg-brand-subtle text-ink-brand" : "bg-surface",
+            )}
+          >
+            <ChevronUp
+              aria-hidden
+              className={cn(
+                "size-5 transition-transform duration-[--dur-fast]",
+                actionOpen && "rotate-180",
+              )}
+            />
+          </AriaButton>
+        </div>
+      ) : null}
+
       {isReadOnly ? (
         <p className="shrink-0 border-t border-line px-4 py-3 text-center text-caption text-ink-muted">
           {readOnlyNotice}
@@ -425,30 +465,6 @@ export function ChatThread({
             void submit();
           }}
         >
-          {action ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              pill
-              aria-expanded={actionOpen}
-              aria-label={
-                actionOpen ? "Hide the current step" : "Show the current step"
-              }
-              onPress={() => setActionOpen(!actionOpen)}
-              // Tinted while folded away, so a pending step cannot be lost
-              // behind its own toggle.
-              className={cn(!actionOpen && "bg-brand-subtle text-ink-brand")}
-            >
-              <ChevronUp
-                className={cn(
-                  "size-5 transition-transform duration-[--dur-fast]",
-                  actionOpen && "rotate-180",
-                )}
-              />
-            </Button>
-          ) : null}
-
           <Button
             type="button"
             variant="ghost"
