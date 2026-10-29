@@ -711,20 +711,23 @@ export function RoomScreen({
             className="mb-3"
           />
         ) : null}
-        {/* Where to pay comes before proof of paying. */}
-        <PaymentQr transactionId={transaction.transaction_id} className="mb-3" />
-        <SlipUploader
-          amount={transaction.final_amount}
-          slipUrl={transaction.slip_image_url}
-          isUploaded={!!transaction.slip_image_url}
-          uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
-          onUpload={(file) =>
-            uploadAndRefresh(
-              () => uploadSlip("payment", file),
-              "Slip uploaded. Waiting on the seller.",
-            )
-          }
-        />
+        {/* Where to pay comes before proof of paying. Side by side on a wide
+            panel so both fit without scrolling; stacked on a narrow one. */}
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+          <PaymentQr transactionId={transaction.transaction_id} />
+          <SlipUploader
+            amount={transaction.final_amount}
+            slipUrl={transaction.slip_image_url}
+            isUploaded={!!transaction.slip_image_url}
+            uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
+            onUpload={(file) =>
+              uploadAndRefresh(
+                () => uploadSlip("payment", file),
+                "Slip uploaded. Waiting on the seller.",
+              )
+            }
+          />
+        </div>
       </ActionCard>
     );
   }
@@ -737,7 +740,12 @@ export function RoomScreen({
   function refundSlipStep(): React.ReactNode {
     if (!transaction) return null;
     return (
-      <div className="flex flex-col gap-3">
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          !transaction.refund_slip_url && "lg:grid lg:grid-cols-2 lg:items-start",
+        )}
+      >
         {!transaction.refund_slip_url ? (
           <PaymentQr kind="refund" transactionId={transaction.transaction_id} />
         ) : null}
@@ -957,23 +965,25 @@ export function RoomScreen({
         return (
           <ActionCard title={t("deal.stepEnterTracking")}>
             <div className="flex flex-col gap-3">
-              <TextInput
-                label={t("deal.trackingNumber")}
-                value={tracking}
-                onChange={setTracking}
-                placeholder={t("deal.trackingPlaceholder")}
-                icon={<Truck className="size-4" />}
-                hint={t("deal.trackingHint")}
-              />
-              {/* Not before today: a past date made the deal "Past due" the
-                  moment it was saved. The API accepts one, so the form refuses. */}
-              <DatePickerField
-                label={t("deal.estimatedDelivery")}
-                value={deliveryDate ? parseDate(deliveryDate) : null}
-                onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
-                minValue={today(BANGKOK)}
-                isRequired
-              />
+              <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+                <TextInput
+                  label={t("deal.trackingNumber")}
+                  value={tracking}
+                  onChange={setTracking}
+                  placeholder={t("deal.trackingPlaceholder")}
+                  icon={<Truck className="size-4" />}
+                  hint={t("deal.trackingHint")}
+                />
+                {/* Not before today: a past date made the deal "Past due" the
+                    moment it was saved. The API accepts one, so the form refuses. */}
+                <DatePickerField
+                  label={t("deal.estimatedDelivery")}
+                  value={deliveryDate ? parseDate(deliveryDate) : null}
+                  onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
+                  minValue={today(BANGKOK)}
+                  isRequired
+                />
+              </div>
               <Button
                 block
                 isDisabled={

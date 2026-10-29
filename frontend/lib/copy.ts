@@ -661,6 +661,7 @@ const COPY: { [key: string]: CopyNode } = {
       "attachImages": "Attach images, up to 5",
       "message": "Message",
       "writeMessage": "Write a message",
+      "currentStep": "Current step",
       "charCount": "{count} of {max} characters",
       "notAnImage": "{count, plural, one {# file was} other {# files were}} not an image and left out.",
       "send": "Send",
