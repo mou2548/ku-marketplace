@@ -211,6 +211,7 @@ export class GiveawaysService {
         include: {
           images: { orderBy: { displayOrder: 'asc' } },
           giver: true,
+          item: true,
         },
       });
     });
@@ -221,7 +222,7 @@ export class GiveawaysService {
     giveaway: {
       giveawayId: number;
       itemId: number;
-      item: { name: string };
+      item?: { name?: string | null } | null;
       description: string | null;
       pickupLocation: string;
       giverId: number;
@@ -246,7 +247,7 @@ export class GiveawaysService {
     return {
       giveaway_id: this.label('giveaway', giveaway.giveawayId),
       item_id: giveaway.itemId,
-      item_name: giveaway.item.name,
+      item_name: giveaway.item?.name ?? null,
       description: giveaway.description,
       pickup_location: giveaway.pickupLocation,
       giver_id: giveaway.giverId,
@@ -289,7 +290,18 @@ export class GiveawaysService {
       include: {
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
-        _count: { select: { tickets: true } },
+        item: true,
+        _count: {
+          select: {
+            tickets: {
+              where: {
+                status: {
+                  in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
+                },
+              },
+            },
+          },
+        },
       },
     });
     if (!giveaway) throw new NotFoundException('ไม่พบโพสต์แจกของ');
@@ -305,7 +317,18 @@ export class GiveawaysService {
       include: {
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
-        _count: { select: { tickets: true } },
+        item: true,
+        _count: {
+          select: {
+            tickets: {
+              where: {
+                status: {
+                  in: ['Registered', 'Waiting', 'Received', 'NotSelected'],
+                },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -346,7 +369,11 @@ export class GiveawaysService {
       // is), but joining twice is still refused here whatever became of the
       // first ticket.
       const existing = await tx.giveawayTicket.findFirst({
-        where: { giveawayId, receiverId },
+        where: {
+          giveawayId,
+          receiverId,
+          status: { in: ['Registered', 'Waiting', 'Received'] },
+        },
       });
       if (existing) throw new ConflictException('ผู้ใช้นี้เข้าร่วมแล้ว');
 
