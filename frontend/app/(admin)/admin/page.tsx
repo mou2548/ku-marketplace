@@ -19,6 +19,9 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { formatDateTime } from "@/lib/date-format";
 import { getModerationActivity } from "@/lib/api/notifications";
 import { getMe } from "@/lib/api/users";
+import { RANGE_PRESETS, type RangePreset } from "@/lib/admin-labels";
+
+import { OverviewSection } from "./overview-section";
 
 export const metadata = { title: "Dashboard - Admin" };
 
@@ -44,11 +47,18 @@ function greeting(now: Date) {
 }
 
 /**
- * The admin's first screen: what is waiting and for how long. One summary
- * strip instead of big-number tiles, one combined queue, then the moderation
- * activity the bell also shows. Built only on the existing admin endpoints.
+ * The admin's first screen: what is waiting and for how long (one summary
+ * strip, one combined queue), then the marketplace overview for a chosen date
+ * range, then the moderation activity the bell also shows.
  */
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { range } = await searchParams;
+  const preset: RangePreset =
+    RANGE_PRESETS.find((p) => p.id === range)?.id ?? "30";
   const [queues, me, activity] = await Promise.all([
     loadAdminQueues(),
     getMe(),
@@ -91,6 +101,8 @@ export default async function AdminDashboardPage() {
         </div>
       </AdminBox>
 
+      <OverviewSection preset={preset} now={now} />
+
       <AdminBox aria-labelledby="restricted-title">
         <AdminBoxHeader
           icon={<Ban />}
@@ -98,7 +110,7 @@ export default async function AdminDashboardPage() {
           titleId="restricted-title"
         >
           <span className="text-meta text-ink-muted">
-            Suspensions end on their own; a ban lasts until an appeal is upheld
+            Suspensions end on their own; a ban lasts until an appeal is upheld or you reinstate the account
           </span>
         </AdminBoxHeader>
         {restricted.length ? (
@@ -121,7 +133,7 @@ export default async function AdminDashboardPage() {
                   />
                   <span className="text-meta text-ink-muted">
                     {account.status === "Banned"
-                      ? "Until an appeal is upheld"
+                      ? "Until an appeal is upheld or reinstated"
                       : `Until ${formatDateTime(new Date(account.until!))}`}
                   </span>
                   <AdminPill
@@ -201,13 +213,17 @@ function Stat({
   label: string;
 }) {
   return (
+    // A <dl> group may hold only <dt> and <dd>, so the icon lives inside the
+    // <dd> (audit P04). The label still reads after the figure on screen.
     <div className="flex items-center gap-2 whitespace-nowrap px-3 py-0.5 text-body-sm text-ink-muted [&+div]:border-l [&+div]:border-line">
-      <span aria-hidden className="[&_svg]:size-4">
-        {icon}
-      </span>
       <dt className="order-last">{label}</dt>
-      <dd data-numeric className="text-body font-semibold text-ink">
-        {value}
+      <dd className="flex items-center gap-2">
+        <span aria-hidden className="[&_svg]:size-4">
+          {icon}
+        </span>
+        <span data-numeric className="text-body font-semibold text-ink">
+          {value}
+        </span>
       </dd>
     </div>
   );

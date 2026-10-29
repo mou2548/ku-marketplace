@@ -29,13 +29,20 @@ import { TextAreaField, TextInput } from "@/components/kit/field";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
+import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { createGiveaway } from "@/lib/actions/giveaways";
 import { publishListing } from "@/lib/actions/posts";
-import type { ApiError } from "@/lib/api/client";
+import type { ItemWithStatus } from "@/lib/api/items";
 import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item, ItemHistorySummary } from "@/lib/api/types";
+import {
+  UNAVAILABLE_REASON_LABEL,
+  freeUnits,
+  unavailableReason,
+} from "@/lib/item-availability";
 import {
   ALLOCATION_METHOD,
   ITEM_CONDITION,
@@ -84,8 +91,9 @@ export function PostComposer({
   summaries,
   initialKind = "SellOnly",
   initialPicked = [],
+  hasPromptPay = true,
 }: {
-  items: Item[];
+  items: ItemWithStatus[];
   /** Per-item availability — how much of each item can still be committed
    * to a new channel right now. An item with some already listed for sale
    * can still have stock free to trade or give away. */
@@ -94,6 +102,8 @@ export function PostComposer({
   /** Preselected item ids — from the inventory screen's "Select" bulk
    * action, or handed off from the listing form's "Give away" option. */
   initialPicked?: number[];
+  /** The API refuses a sale channel until the seller has a PromptPay number. */
+  hasPromptPay?: boolean;
 }) {
   const st = useStatusText();
   const router = useRouter();
@@ -101,8 +111,10 @@ export function PostComposer({
   const tz = getLocalTimeZone();
   const nowDT = toCalendarDateTime(now(tz));
 
-  const available = (item: Item) =>
-    summaries[item.item_id]?.available_quantity ?? item.quantity;
+  // Shared with the inventory card's Unlisted number and the offer stash,
+  // so a handed-over item reads 0 here too (lib/item-availability.ts).
+  const available = (item: ItemWithStatus) =>
+    freeUnits(item, summaries[item.item_id]);
 
   const [picked, setPicked] = useState<Set<number>>(
     () =>
@@ -145,7 +157,7 @@ export function PostComposer({
 
   const pickedItems = items.filter((i) => picked.has(i.item_id));
 
-  function quantityFor(item: Item): number {
+  function quantityFor(item: ItemWithStatus): number {
     const raw = quantities[item.item_id];
     return raw !== undefined ? Number(raw) : available(item);
   }
@@ -167,7 +179,7 @@ export function PostComposer({
         !!closeAt &&
         !!pickupStart &&
         !!pickupTo
-      : quantitiesValid && (!wantsPrice || Number(price) > 0));
+      : quantitiesValid && (!wantsPrice || (Number(price) > 0 && hasPromptPay)));
 
   function toggle(id: number) {
     setPicked((prev) => {
@@ -200,7 +212,7 @@ export function PostComposer({
       const item = pickedItems[0];
       try {
         const primary = item.images.find((i) => i.is_primary) ?? item.images[0];
-        const created = await createGiveaway({
+        const created = await unwrapAction(createGiveaway({
           item_id: item.item_id,
           item_name: item.name,
           quantity: Number(giveawayQuantity),
@@ -220,14 +232,14 @@ export function PostComposer({
             ? pickupTo.toDate(tz).toISOString()
             : undefined,
           images: primary ? [{ image_url: primary.image_url, display_order: 0 }] : [],
-        });
+        }));
         toast.success("Giveaway posted. Registration is open.");
         // /giveaway's "Open" tab lists real giveaways now (getGiveaways in
         // lib/api/giveaways.ts), but jumping to the post itself skips a
         // redundant round trip through the list.
         router.push(`/giveaway/${created.giveaway_id}`);
       } catch (error) {
-        toast.error((error as ApiError).message ?? "Could not post the giveaway.");
+        toast.error(error instanceof Error ? error.message : "Could not post the giveaway.");
       } finally {
         setBusy(false);
       }
@@ -237,14 +249,14 @@ export function PostComposer({
     try {
       const created = await Promise.all(
         pickedItems.map((item) =>
-          publishListing({
+          unwrapAction(publishListing({
             item_id: item.item_id,
             post_type: kind,
             price: wantsPrice ? Number(price) : 0,
             quantity_total: quantityFor(item),
             description: description.trim() || undefined,
             wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
-          }),
+          })),
         ),
       );
 
@@ -259,7 +271,7 @@ export function PostComposer({
           : "/feed",
       );
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not publish the listing.");
+      toast.error(error instanceof Error ? error.message : "Could not publish the listing.");
     } finally {
       setBusy(false);
     }
@@ -340,11 +352,19 @@ export function PostComposer({
             {unavailable.length} with nothing left to list
           </summary>
           <ul className="mt-2 flex flex-col gap-1.5">
-            {unavailable.map((item) => (
-              <li key={item.item_id} className="flex items-center gap-2">
-                <span className="truncate">{item.name}</span>
-              </li>
-            ))}
+            {unavailable.map((item) => {
+              const reason = unavailableReason(item, summaries[item.item_id], "some");
+              return (
+                <li key={item.item_id} className="flex items-center gap-2">
+                  <span className="truncate">{item.name}</span>
+                  {reason ? (
+                    <span className="shrink-0 font-medium text-ink-secondary">
+                      {UNAVAILABLE_REASON_LABEL[reason]}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </details>
       ) : null}
@@ -599,6 +619,8 @@ export function PostComposer({
               </ul>
             </div>
           ) : null}
+
+          {wantsPrice && !hasPromptPay ? <PromptPayNotice /> : null}
 
           {wantsPrice ? (
             <TextInput

@@ -18,8 +18,8 @@ import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { forfeitTicket, generateTicketQr } from "@/lib/actions/giveaways";
-import type { ApiError } from "@/lib/api/client";
 import type { GiveawayTicket } from "@/lib/api/types";
 import { TICKET_STATUS } from "@/lib/status";
 
@@ -31,18 +31,18 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
   const [forfeiting, setForfeiting] = useState(false);
 
   const generate = useCallback(
-    () => generateTicketQr(giveaway.giveaway_id, ticket.ticket_id),
+    () => unwrapAction(generateTicketQr(giveaway.giveaway_id, ticket.ticket_id)),
     [giveaway.giveaway_id, ticket.ticket_id],
   );
 
   async function forfeit() {
     setForfeiting(true);
     try {
-      await forfeitTicket(ticket.ticket_id);
+      await unwrapAction(forfeitTicket(ticket.ticket_id));
       toast.success("Ticket forfeited.");
       router.push(`/giveaway/${giveaway.giveaway_id}`);
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not forfeit. Try again.");
+      toast.error(error instanceof Error ? error.message : "Could not forfeit. Try again.");
     } finally {
       setForfeiting(false);
     }

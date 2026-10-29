@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { LinkButton } from "@/components/kit/button";
 import { QrTicket } from "@/components/kit/qr-ticket";
+import { unwrapAction } from "@/lib/action-result";
 import { createHandoverToken } from "@/lib/actions/transactions";
 
 export function DealQr({
@@ -18,7 +19,7 @@ export function DealQr({
   // buyer's scanner had nothing to verify it against and the handover, which
   // PRODUCT.md calls the moment the product exists for, closed no deal.
   const generate = useCallback(
-    () => createHandoverToken(transactionId),
+    () => unwrapAction(createHandoverToken(transactionId)),
     [transactionId],
   );
 

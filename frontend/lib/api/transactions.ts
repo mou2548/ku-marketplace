@@ -31,6 +31,30 @@ export async function getTransaction(transactionId: number): Promise<Transaction
 
 /** §7.1/§7.5.3 — GET /admin/transactions/{id}, for an admin reviewing a
  * Transaction-type report's evidence (no buyer/seller participant check). */
+/**
+ * `GET /transactions/{id}/payment-qr` — what the buyer pays, as a PromptPay QR.
+ * `GET /transactions/{id}/refund-qr` has the same shape, pointed at the buyer.
+ */
+export interface PaymentQr {
+  /** EMVCo PromptPay payload for this deal's amount; encode it as the QR. */
+  payload: string;
+  amount: number;
+  /** The payee's PromptPay number, masked by the API (enough to recognise). */
+  promptpay_id: string;
+}
+
+/** Buyer only, while the deal is awaiting payment. */
+export async function getPaymentQr(transactionId: number): Promise<PaymentQr> {
+  const init = await authedInit();
+  return apiFetch<PaymentQr>(`/transactions/${transactionId}/payment-qr`, init);
+}
+
+/** Seller only, while a refund is owed and the buyer has PromptPay. */
+export async function getRefundQr(transactionId: number): Promise<PaymentQr> {
+  const init = await authedInit();
+  return apiFetch<PaymentQr>(`/transactions/${transactionId}/refund-qr`, init);
+}
+
 export async function adminGetTransaction(transactionId: number): Promise<Transaction> {
   const init = await authedInit();
   return apiFetch<Transaction>(`/admin/transactions/${transactionId}`, init);
@@ -66,6 +90,18 @@ export async function confirmPaymentReceived(
   transactionId: number,
 ): Promise<Transaction> {
   return post<Transaction>(`/transactions/${transactionId}/confirm-payment-received`, {});
+}
+
+/**
+ * POST /transactions/{id}/reject-payment-slip — the seller turns the slip down.
+ * `reason` is required (max 500) and shown to the buyer; the deal stays
+ * Processing until a new slip arrives.
+ */
+export async function rejectPaymentSlip(
+  transactionId: number,
+  reason: string,
+): Promise<Transaction> {
+  return post<Transaction>(`/transactions/${transactionId}/reject-payment-slip`, { reason });
 }
 
 /** POST /transactions/{id}/ship — tracking details. Shipping deliveries only. */

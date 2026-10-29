@@ -12,6 +12,7 @@ import {
   type AdminQueueCounts,
   type QueueRow,
 } from "@/lib/admin-labels";
+import { formatPrice } from "@/lib/format-price";
 
 /**
  * The admin workspace's server-side reads. Vocabulary shared with Client
@@ -77,7 +78,7 @@ export function buildQueueRows(queues: AdminQueues): QueueRow[] {
     // `tier` is the account's current tier, not the one being paid for, so
     // the row names the slip rather than a tier it cannot know.
     title: "Membership slip",
-    detail: `${request.user.name} · ฿${request.amount.toLocaleString("en-GB")} slip`,
+    detail: `${request.user.name} · ${formatPrice(request.amount)} slip`,
     status: { label: "Slip to check", tone: "warning" },
     createdAt: request.created_at,
   }));

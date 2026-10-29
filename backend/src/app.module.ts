@@ -21,6 +21,7 @@ import { AdminTransactionEvidenceController } from './transactions/admin-transac
 import { AppointmentCardsModule } from './appointment-cards/appointment-cards.module';
 import { SellersModule } from './sellers/sellers.module';
 import { UsersModule } from './users/users.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { UsersModule } from './users/users.module';
     CloudinaryModule,
     UsersModule,
     SellersModule,
+    AdminModule,
   ],
   controllers: [
     AppController,

@@ -2,7 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadTs } from './load-ts.mjs';
 
-const labels = loadTs('lib/admin-labels.ts');
+const formatPrice = loadTs('lib/format-price.ts');
+const labels = loadTs('lib/admin-labels.ts', {
+  '@/lib/format-price': formatPrice,
+});
 const unused = () => {
   throw new Error('not called in this test');
 };
@@ -12,6 +15,7 @@ const { buildQueueRows, restrictedAccounts } = loadTs('lib/admin.ts', {
   '@/lib/api/membership': { listPendingPayments: unused },
   '@/lib/api/reports': { adminListReports: unused },
   '@/lib/admin-labels': labels,
+  '@/lib/format-price': formatPrice,
 });
 
 const report = (id, status, created_at) => ({

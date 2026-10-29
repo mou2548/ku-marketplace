@@ -5,9 +5,13 @@ import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { TwoColumn } from "@/components/kit/two-column";
 import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getMe } from "@/lib/api/users";
+import { freeUnits } from "@/lib/item-availability";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { ListItemForm } from "./list-form";
+
+export const metadata = { title: "List an item - KU Marketplace" };
 
 /**
  * E5 — put an owned item on the market. Always a new listing: an item can
@@ -29,13 +33,17 @@ export default async function ListItemPage({
   const tStatus = await getCopy("status");
   const t = await getCopy();
   const { itemId } = await params;
-  const [items, summary] = await Promise.all([
+  const [items, summary, me] = await Promise.all([
     getMyItems(),
     getItemHistorySummary(Number(itemId)).catch(() => undefined),
+    // Only decides whether to show the PromptPay notice; the API has the
+    // final say, so a failed lookup leaves the form as it was.
+    getMe().catch(() => undefined),
   ]);
   const item = items.find((i) => i.item_id === Number(itemId));
   if (!item) notFound();
-  const available = summary?.available_quantity ?? item.quantity;
+  // Same count as the inventory card and /post: 0 for a handed-over item.
+  const available = freeUnits(item, summary);
 
   const rarity = ITEM_CONDITION[item.condition];
 
@@ -99,7 +107,7 @@ export default async function ListItemPage({
       columns="22rem minmax(0,1fr)"
       className="gap-8"
     >
-      <ListItemForm item={item} available={available} />
+      <ListItemForm item={item} available={available} hasPromptPay={me ? !!me.promptpayId : true} />
     </TwoColumn>
   );
 }

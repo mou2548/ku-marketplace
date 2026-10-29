@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import {
+  AppealStatus,
   ReportStatus,
   ReportType,
   Sanction,
@@ -17,10 +18,26 @@ import { TransactionService } from '../transaction/transaction.service';
 import { isLockingReason } from '../transaction/transaction-state';
 import {
   notifyAdminsOfReport,
+  notifyReinstated,
   notifySanctioned,
 } from './moderation-notifications';
-import { reportedUserId, standingFromVerdicts } from './account-standing';
+import {
+  reportedUserId,
+  standingFromVerdicts,
+  suspensionEndsAt,
+  verdictsAgainst,
+} from './account-standing';
+import {
+  assertMessagesBelong,
+  joinEvidence,
+  loadEvidenceMessages,
+  pickMessages,
+  splitEvidence,
+} from './report-evidence';
 import { displayName } from '../common/utils/display-name';
+
+/** The reason an admin-filed sanction carries (see `sanctionUser`). */
+export const ADMIN_ACTION_REASON = 'Admin action';
 
 /** §7.3 — block further reports once a user has filed more than 5 within
  * this window, so a bot or a stuck button can't flood the admin queue. */
@@ -101,7 +118,7 @@ export class ReportService {
       target_id: report.targetId,
       reason_category: report.reasonCategory,
       details: report.details,
-      evidence_urls: report.evidenceUrls,
+      ...this.serializeEvidence(report.evidenceUrls),
       status: report.status,
       sanction: report.sanction,
       handled_by: report.handledBy,
@@ -111,6 +128,15 @@ export class ReportService {
       resolution_note: report.resolutionNote,
       handled_at: report.handledAt,
       created_at: report.createdAt,
+    };
+  }
+
+  /** Photos and picked chat messages, split apart (see `report-evidence.ts`). */
+  private serializeEvidence(stored: unknown) {
+    const { urls, messageIds } = splitEvidence(stored);
+    return {
+      evidence_urls: urls.length ? urls : null,
+      evidence_message_ids: messageIds,
     };
   }
 
@@ -132,6 +158,10 @@ export class ReportService {
       ? await this.prisma.user.findMany({ where: { userId: { in: ids } } })
       : [];
     const byId = new Map(users.map((user) => [user.userId, user]));
+    const picked = reports.map(
+      (report) => splitEvidence(report.evidenceUrls).messageIds,
+    );
+    const messages = await loadEvidenceMessages(this.prisma, picked.flat());
     return reports.map((report, index) => {
       const target = byId.get(targetIds[index] ?? -1);
       return {
@@ -139,6 +169,7 @@ export class ReportService {
         reported_user: target
           ? { ...this.serializeUserSummary(target), status: target.status }
           : null,
+        evidence_messages: pickMessages(messages, picked[index]),
       };
     });
   }
@@ -158,7 +189,7 @@ export class ReportService {
       target_id: report.targetId,
       reason_category: report.reasonCategory,
       details: report.details,
-      evidence_urls: report.evidenceUrls,
+      ...this.serializeEvidence(report.evidenceUrls),
       created_at: report.createdAt,
     };
   }
@@ -166,6 +197,8 @@ export class ReportService {
   private readonly reportInclude = { reporter: true, handler: true } as const;
 
   async create(reporterId: number, dto: CreateReportDto) {
+    if (dto.reason_category === ADMIN_ACTION_REASON)
+      throw new BadRequestException('This reason is reserved for admins');
     if (dto.report_type === ReportType.Transaction) {
       // The reasons the system files with lock a deal until an admin rules
       // (see transaction-state.ts), so a participant may not claim one.
@@ -193,6 +226,11 @@ export class ReportService {
     ) {
       throw new NotFoundException('User not found');
     }
+    await assertMessagesBelong(
+      this.prisma,
+      { reporterId, reportType: dto.report_type, targetId: dto.target_id },
+      dto.evidence_message_ids ?? [],
+    );
     await this.assertUnderRateLimit(reporterId);
     const report = await this.prisma.report.create({
       data: {
@@ -201,7 +239,10 @@ export class ReportService {
         targetId: dto.target_id,
         reasonCategory: dto.reason_category,
         details: dto.details,
-        evidenceUrls: dto.evidence_urls,
+        evidenceUrls: joinEvidence(
+          dto.evidence_urls,
+          dto.evidence_message_ids && [...new Set(dto.evidence_message_ids)],
+        ),
       },
       include: this.reportInclude,
     });
@@ -451,5 +492,135 @@ export class ReportService {
     await this.transactionService.settleReportedTransaction(reportId, false);
 
     return (await this.adminView([restored]))[0];
+  }
+
+  /**
+   * An admin suspends or bans an account from the Users screen (team ruling
+   * 2026-10-27, replacing the 2026-10-05 one that only let an upheld appeal
+   * touch an account). Recorded as a User report the admin files and confirms
+   * in one step, so the account standing, the sanction notification and the
+   * user's right to appeal all work exactly as for any other verdict.
+   */
+  async sanctionUser(
+    userId: number,
+    adminId: number,
+    sanction:
+      typeof Sanction.Suspend_Temporary | typeof Sanction.Suspend_Permanent,
+    reason: string,
+  ) {
+    if (userId === adminId)
+      throw new BadRequestException('You cannot suspend your own account');
+    const user = await this.prisma.user.findUnique({ where: { userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    if (user.isAdmin)
+      throw new BadRequestException('An admin account cannot be suspended');
+    if (user.status === 'Deleted')
+      throw new BadRequestException('This account has been deleted');
+    if (user.status === 'Banned')
+      throw new BadRequestException('This account is already banned');
+
+    const now = new Date();
+    // The verdict and its effect land together, so a failure never leaves a
+    // confirmed report on an account that was not actually suspended.
+    const report = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.report.create({
+        data: {
+          reporterId: adminId,
+          reportType: ReportType.User,
+          targetId: userId,
+          reasonCategory: ADMIN_ACTION_REASON,
+          details: reason,
+          status: ReportStatus.Violation_Confirmed,
+          sanction,
+          resolutionNote: reason,
+          handledBy: adminId,
+          handledAt: now,
+          createdAt: now,
+        },
+      });
+      await tx.user.update({
+        where: { userId },
+        data: {
+          status:
+            sanction === Sanction.Suspend_Permanent ? 'Banned' : 'Suspended',
+        },
+      });
+      return created;
+    });
+    await notifySanctioned(this.prisma, userId, {
+      reportId: report.reportId,
+      reasonCategory: report.reasonCategory,
+      resolutionNote: report.resolutionNote,
+      sanction,
+      handledAt: now,
+    });
+    return {
+      report_id: report.reportId,
+      user_id: userId,
+      sanction,
+      status: sanction === Sanction.Suspend_Permanent ? 'Banned' : 'Suspended',
+      ends_at:
+        sanction === Sanction.Suspend_Temporary ? suspensionEndsAt(now) : null,
+    };
+  }
+
+  /**
+   * Lifts a suspension or ban by hand. Every verdict still holding the account
+   * down is reversed the way an upheld appeal reverses one (the report becomes
+   * `Report_Dismissed`), so nothing later recomputes the penalty back on, and
+   * any appeal still open against those verdicts is closed as upheld: the
+   * outcome it asked for has happened. A post hidden by one of those verdicts
+   * stays hidden: lifting the account penalty is not a ruling on the post.
+   */
+  async reinstateUser(userId: number, adminId: number, note: string | null) {
+    const user = await this.prisma.user.findUnique({ where: { userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    if (user.status !== 'Suspended' && user.status !== 'Banned')
+      throw new BadRequestException('This account is not suspended');
+
+    const now = new Date();
+    const holding = (await verdictsAgainst(this.prisma, userId)).filter(
+      (v) =>
+        v.sanction === null ||
+        v.sanction === Sanction.Suspend_Permanent ||
+        (v.sanction === Sanction.Suspend_Temporary &&
+          (!v.handledAt || suspensionEndsAt(v.handledAt) > now)),
+    );
+    const reportIds = holding.map((v) => v.reportId);
+    const reversal = note
+      ? `Reversed — account reinstated by admin. ${note}`
+      : 'Reversed — account reinstated by admin.';
+    await this.prisma.$transaction([
+      this.prisma.report.updateMany({
+        where: { reportId: { in: reportIds } },
+        data: {
+          status: ReportStatus.Report_Dismissed,
+          resolutionNote: reversal,
+          handledBy: adminId,
+        },
+      }),
+      this.prisma.appeal.updateMany({
+        where: {
+          reportId: { in: reportIds },
+          status: { in: [AppealStatus.Pending, AppealStatus.Under_Review] },
+        },
+        data: {
+          status: AppealStatus.Approved,
+          resolutionNote: reversal,
+          handledBy: adminId,
+          handledAt: now,
+        },
+      }),
+      this.prisma.user.update({
+        where: { userId },
+        data: { status: 'Active' },
+      }),
+    ]);
+    await notifyReinstated(this.prisma, userId, { note, at: now });
+    return {
+      user_id: userId,
+      status: 'Active',
+      reversed_report_ids: holding.map((v) => v.reportId),
+    };
   }
 }

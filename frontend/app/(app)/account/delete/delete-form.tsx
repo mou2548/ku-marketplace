@@ -9,6 +9,7 @@ import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { deleteAccount } from "@/lib/actions/account";
 
 const CONFIRM_WORD = "DELETE";
@@ -31,7 +32,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
   async function remove() {
     setBusy(true);
     try {
-      await deleteAccount();
+      await unwrapAction(deleteAccount());
     } catch (err) {
       setBusy(false);
       toast.error(err instanceof Error ? err.message : "Could not close account");
@@ -46,7 +47,7 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
     <>
       <Link
         href="/account"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to account

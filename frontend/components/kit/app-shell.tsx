@@ -10,6 +10,7 @@ import {
   Gift,
   Handshake,
   History,
+  LogOut,
   MessagesSquare,
   Menu,
   Package,
@@ -18,6 +19,7 @@ import {
   Store,
 } from "lucide-react";
 
+import { logout } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 import { Button, LinkButton } from "./button";
@@ -168,7 +170,7 @@ export function AppShell({
           <Link
             href="/feed"
             aria-label={t("nav.brand")}
-            className="group flex shrink-0 items-center gap-2.5 rounded-control outline-none"
+            className="group flex shrink-0 items-center gap-2.5 rounded-control"
           >
             <span className="grid size-10 place-items-center overflow-hidden rounded-control bg-white shadow-flat">
               <Image
@@ -273,7 +275,9 @@ export function AppShell({
            page now runs edge to edge and only the reading measure of prose and
            form fields is capped — line length is legibility, not centring. */
         className={cn(
-          "w-full flex-1",
+          // Inherited by every screen: user text (names, notes, messages) can
+          // hold an unbroken URL that would otherwise widen the page.
+          "w-full flex-1 wrap-anywhere",
           isChat
             ? "min-h-0 overflow-hidden"
             : "px-3 py-4 pb-12 sm:px-4 lg:px-8 lg:py-6",
@@ -401,6 +405,17 @@ function MobileMenu({
           />
           {user?.name ?? "Account"}
         </Link>
+        {/* Signing out used to be reachable only from the foot of /account
+            (audit F09). Same server action as that page. */}
+        <form action={logout}>
+          <button
+            type="submit"
+            className="flex min-h-12 w-full items-center gap-3 rounded-control px-3 text-left text-body text-tone-danger-fg transition-colors hover:bg-tone-danger-bg"
+          >
+            <LogOut aria-hidden className="size-5 shrink-0" />
+            {t("account.signOut")}
+          </button>
+        </form>
       </div>
     </div>
   );

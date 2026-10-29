@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import {
   adminOpenReport as adminOpenReportApi,
   adminResolveReport as adminResolveReportApi,
@@ -16,20 +17,26 @@ async function requireSession() {
 
 /** §7.1/§7.5 — one report, one of three types. §7.3's rate limit and the
  * fixed reason-category list are enforced by the caller/server, not here. */
-export async function createReport(input: CreateReportInput): Promise<SubmittedReport> {
-  await requireSession();
-  return createReportApi(input);
+export async function createReport(input: CreateReportInput): Promise<ActionResult<SubmittedReport>> {
+  return runAction(async () => {
+    await requireSession();
+    return createReportApi(input);
+  });
 }
 
-export async function adminOpenReport(reportId: number): Promise<Report> {
-  await requireSession();
-  return adminOpenReportApi(reportId);
+export async function adminOpenReport(reportId: number): Promise<ActionResult<Report>> {
+  return runAction(async () => {
+    await requireSession();
+    return adminOpenReportApi(reportId);
+  });
 }
 
 export async function adminResolveReport(
   reportId: number,
   input: ResolveReportInput,
-): Promise<Report> {
-  await requireSession();
-  return adminResolveReportApi(reportId, input);
+): Promise<ActionResult<Report>> {
+  return runAction(async () => {
+    await requireSession();
+    return adminResolveReportApi(reportId, input);
+  });
 }

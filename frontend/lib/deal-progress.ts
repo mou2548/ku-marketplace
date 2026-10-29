@@ -29,7 +29,10 @@
 import type { AppointmentCardData, Transaction } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
 import { formatDate, formatDateTime } from "@/lib/date-format";
+import { isSlipRejected } from "@/lib/slip-state";
 import { requiresPayment, type Party, type Tone } from "@/lib/status";
+
+export { isSlipRejected };
 
 export type DealFactKind =
   | "payment"
@@ -58,6 +61,7 @@ export interface DealProgress {
   facts: DealFact[];
 }
 
+
 /** Day-first Bangkok time — same rendering as the pinned card in the room. */
 function appointmentWhen(card: AppointmentCardData): string {
   return formatDateTime(new Date(`${card.date}T${card.time}+07:00`));
@@ -78,6 +82,8 @@ export function describeDeal(
     if (!pays) return undefined;
     if (tx.payment_confirmed_by_seller_at)
       return { kind: "payment", label: "Payment confirmed by seller", tone: "success", done: true };
+    if (isSlipRejected(tx))
+      return { kind: "payment", label: "Slip rejected · new slip needed", tone: "danger", done: false };
     if (tx.payment_confirmed_by_buyer_at)
       return {
         kind: "payment",
@@ -323,6 +329,9 @@ export function describeDeal(
 
   if (pays && !tx.payment_confirmed_by_buyer_at)
     return step("buyer", "Transfer the money and upload the slip", `Waiting for ${other} to pay`);
+
+  if (pays && isSlipRejected(tx))
+    return step("buyer", "The seller rejected your slip · upload a new one", `Waiting for ${other} to send a new slip`);
 
   if (pays && !tx.payment_confirmed_by_seller_at)
     return step("seller", "Check the slip and confirm the payment", `Waiting for ${other} to confirm the payment`);

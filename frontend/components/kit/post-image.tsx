@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
  * So there are three states here and none is a hole:
  *   - loading: a quiet image-shaped ghost, without status copy that flashes
  *   - no photo at all: a short branded plate, so the card just gets shorter
- *   - photo that failed: the same plate plus an icon saying so
+ *   - photo that failed: the same plate plus an icon saying so, in the box
+ *     the photo had reserved so nothing around it moves
  *
  * Client-side because `onError` needs to run in the browser.
  */
@@ -51,9 +52,11 @@ export function PostImage({
         "bg-surface-sunken",
         className,
       )}
-      // A plate is short on purpose: an empty tall box is the thing we are
-      // fixing. A card with no usable photo should shrink, not leave a gap.
-      style={{ aspectRatio: showPlate ? "16 / 7" : String(aspectRatio) }}
+      // A card with no photo at all gets a short plate: an empty tall box is
+      // the thing we are fixing. A photo that fails keeps the box it reserved,
+      // though: shrinking it after load moved every card below it (audit P02,
+      // CLS budget 0.05), and the plate is not empty, it says what happened.
+      style={{ aspectRatio: !src ? "16 / 7" : String(aspectRatio) }}
     >
       {showPlate ? (
         <span className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted">
@@ -62,7 +65,9 @@ export function PostImage({
           ) : (
             <Package aria-hidden className="size-5 text-ink-brand opacity-75" />
           )}
-          <span className="text-meta font-medium opacity-80">
+          {/* Full ink-muted, no opacity: 5.67:1 on surface-sunken. At 80%
+              it fell to 3.7:1. */}
+          <span className="text-meta font-medium">
             {t(failed ? "photoUnavailable" : "noPhoto")}
           </span>
         </span>

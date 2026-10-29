@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 
 import { QrScanner } from "@/components/kit/qr-scanner";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { confirmTicketQr } from "@/lib/actions/giveaways";
-import type { ApiError } from "@/lib/api/client";
 import { decodeTicketQr } from "@/lib/giveaway-qr";
 
 /**
@@ -29,7 +29,7 @@ export default function GiveawayScanPage() {
       return;
     }
     try {
-      const valid = await confirmTicketQr(decoded.giveawayId, decoded.ticketId, decoded.token);
+      const valid = await unwrapAction(confirmTicketQr(decoded.giveawayId, decoded.ticketId, decoded.token));
       if (!valid) {
         toast.error("This QR is not valid.");
         return;
@@ -37,7 +37,7 @@ export default function GiveawayScanPage() {
       toast.success("Ticket accepted. Handover recorded.");
       router.push(`/giveaway/${decoded.giveawayId}`);
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not check that QR.");
+      toast.error(error instanceof Error ? error.message : "Could not check that QR.");
     }
   }
 

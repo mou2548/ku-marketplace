@@ -1,6 +1,7 @@
 export default function GiveawayLoading() {
   return (
     <div
+      role="status"
       aria-busy="true"
       aria-label="Loading giveaways"
       className="flex flex-col gap-6"

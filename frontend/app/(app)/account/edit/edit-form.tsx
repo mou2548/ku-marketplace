@@ -9,6 +9,7 @@ import { Button } from "@/components/kit/button";
 import { TextInput } from "@/components/kit/field";
 import { Notice } from "@/components/patterns/notice";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { updateProfile } from "@/lib/actions/account";
 import type { User } from "@/lib/api/types";
 import { ProfileCard } from "@/components/features/sellers/profile-card";
@@ -28,6 +29,10 @@ export function EditProfileForm({ profile }: { profile: User }) {
   const [firstNameTh, setFirstNameTh] = useState(profile.first_name_th);
   const [lastNameTh, setLastNameTh] = useState(profile.last_name_th);
   const [phone, setPhone] = useState(profile.phone_number ?? "");
+  const savedPromptPay = profile.promptpay_id ?? "";
+  const [promptPay, setPromptPay] = useState(savedPromptPay);
+  const promptPayDigits = promptPay.replace(/\D/g, "");
+  const promptPayInvalid = promptPayDigits.length > 0 && promptPayDigits.length !== 10;
   const [busy, setBusy] = useState(false);
   // Keeps the spinner going after the save, until /account has rendered with
   // the new name, so there is no dead moment between "saved" and the page.
@@ -35,13 +40,18 @@ export function EditProfileForm({ profile }: { profile: User }) {
   const saving = busy || navigating;
 
   async function save() {
+    if (promptPayInvalid) return;
     setBusy(true);
     try {
-      await updateProfile({
+      await unwrapAction(updateProfile({
         first_name_th: firstNameTh,
         last_name_th: lastNameTh,
         phone_number: phone || undefined,
-      });
+        // Sent only when changed: clearing it is refused while the seller
+        // still has open sale posts, and an untouched field should not trip that.
+        promptpay_id:
+          promptPay === savedPromptPay ? undefined : promptPayDigits || null,
+      }));
     } catch (err) {
       setBusy(false);
       toast.error(err instanceof Error ? err.message : "Could not save profile");
@@ -83,7 +93,7 @@ export function EditProfileForm({ profile }: { profile: User }) {
     <TwoColumn rail={preview}>
       <Link
         href="/account"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to account
@@ -128,6 +138,18 @@ export function EditProfileForm({ profile }: { profile: User }) {
         hint="A backup way to reach you. There is no SMS verification, and it is never shown publicly."
       />
 
+      <TextInput
+        className="max-w-xl"
+        label="PromptPay number"
+        value={promptPay}
+        onChange={(v) => setPromptPay(v.replace(/[^\d -]/g, ""))}
+        inputMode="tel"
+        placeholder="08x-xxx-xxxx"
+        isInvalid={promptPayInvalid}
+        errorMessage="Enter the 10-digit mobile number your PromptPay is registered to."
+        hint="Needed before you can sell: buyers transfer the payment to this number. It is not shown on your public profile."
+      />
+
       <div className="flex max-w-xl flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button
           variant="ghost"
@@ -136,7 +158,12 @@ export function EditProfileForm({ profile }: { profile: User }) {
         >
           Cancel
         </Button>
-        <Button isLoading={saving} loadingLabel="Saving" onPress={save}>
+        <Button
+          isLoading={saving}
+          isDisabled={promptPayInvalid}
+          loadingLabel="Saving"
+          onPress={save}
+        >
           {saving ? null : <Save className="size-4" />}
           {saving ? "Saving..." : "Save"}
         </Button>

@@ -1,4 +1,5 @@
-import { getItemHistorySummary, getMyItems } from "@/lib/api/items";
+import { getItemHistorySummaries, getMyItems } from "@/lib/api/items";
+import { getMe } from "@/lib/api/users";
 
 import { PostComposer } from "./post-composer";
 
@@ -31,33 +32,30 @@ export default async function PostPage({
 }: {
   searchParams: Promise<{ type?: string; item?: string }>;
 }) {
-  const [{ type, item: itemParam }, items] = await Promise.all([
+  const [{ type, item: itemParam }, items, me] = await Promise.all([
     searchParams,
     getMyItems(),
+    // Only decides whether to show the PromptPay notice; the API has the
+    // final say, so a failed lookup leaves the form as it was.
+    getMe().catch(() => undefined),
   ]);
   const initialPicked = (itemParam ?? "")
     .split(",")
     .map((id) => Number(id.trim()))
     .filter((id) => Number.isInteger(id) && id > 0);
 
-  const summaries = Object.fromEntries(
-    await Promise.all(
-      items.map(async (item) => [
-        item.item_id,
-        await getItemHistorySummary(item.item_id).catch(() => undefined),
-      ] as const),
-    ),
-  );
+  const summaries = await getItemHistorySummaries(items);
 
-  // A fully transferred item has nothing left to commit to a new channel
-  // (available_quantity is 0 with no open channels), so it naturally drops
-  // out of the composer's pickable list without a separate status filter.
+  // The composer reads free units through lib/item-availability.ts, which
+  // also honours `item_status` Transferred: a traded-away item still reports
+  // every unit available in its summary, and must not show as listable.
   return (
     <PostComposer
       items={items}
       summaries={summaries}
       initialKind={type === "giveaway" ? "Giveaway" : "SellOnly"}
       initialPicked={initialPicked}
+      hasPromptPay={me ? !!me.promptpayId : true}
     />
   );
 }

@@ -4,9 +4,9 @@ import { Suspense, useActionState, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Lock, RotateCcw } from "lucide-react";
+import { Lock, MailQuestionMark, RotateCcw } from "lucide-react";
 
-import { Button } from "@/components/kit/button";
+import { Button, LinkButton } from "@/components/kit/button";
 import { OtpInput } from "@/components/kit/otp-input";
 import { Surface } from "@/components/kit/surface";
 import { resendOtp, verifyRegisterOtp } from "@/lib/actions/auth";
@@ -25,10 +25,7 @@ import { OTP_TTL_MINUTES, derivedFirstName } from "@/lib/auth-rules";
  * asserting an identity nobody had proved yet. Here it reads as what it is:
  * this is who the university says you are, confirm and continue.
  */
-function VerifyForm() {
-  const searchParams = useSearchParams();
-  const email = searchParams.get("email") ?? "student.name@ku.th";
-
+function VerifyForm({ email }: { email: string }) {
   const [otp, setOtp] = useState("");
   const [state, formAction, isPending] = useActionState(
     verifyRegisterOtp,
@@ -137,11 +134,50 @@ function VerifyForm() {
   );
 }
 
+/**
+ * Reached without an email (a bookmark, a shared link, a reload after the
+ * query was lost): there is no code to check and no name to derive, so this
+ * says so and points back to the start instead of inventing an address
+ * (audit F06).
+ */
+function MissingEmail() {
+  return (
+    <Surface
+      shape="panel"
+      elevation="floating"
+      className="flex w-full max-w-md flex-col items-center gap-6 p-10 text-center"
+    >
+      <span className="grid size-14 place-items-center rounded-pill bg-surface-sunken text-ink-secondary shadow-sunken">
+        <MailQuestionMark aria-hidden className="size-6" />
+      </span>
+
+      <div className="flex flex-col gap-2">
+        <h1 className="text-[1.25rem] leading-[1.3] font-bold">
+          Start again to get a code
+        </h1>
+        <p className="text-body-sm text-ink-muted">
+          This page does not know which email to verify. Register from the
+          sign-in page and we will email you a new 6-digit code.
+        </p>
+      </div>
+
+      <LinkButton href="/login" block pill>
+        Back to sign in
+      </LinkButton>
+    </Surface>
+  );
+}
+
+function VerifyStep() {
+  const email = useSearchParams().get("email")?.trim() ?? "";
+  return email ? <VerifyForm email={email} /> : <MissingEmail />;
+}
+
 export default function VerifyPage() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-page p-6">
       <Suspense fallback={null}>
-        <VerifyForm />
+        <VerifyStep />
       </Suspense>
     </div>
   );

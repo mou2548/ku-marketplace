@@ -1,18 +1,23 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import { getAccessToken } from "@/lib/api/session";
 import {
   confirmDelivery,
   confirmPaymentReceived,
   confirmRefund,
   generateHandoverQr,
+  getPaymentQr,
+  getRefundQr,
   getTransaction,
+  rejectPaymentSlip,
   requestCancellation,
   respondToCancellation,
   scanHandoverQr,
   shipTransaction,
   uploadPaymentSlip,
   uploadRefundSlip,
+  type PaymentQr,
 } from "@/lib/api/transactions";
 import { uploadImage } from "@/lib/api/uploads";
 import type { Transaction } from "@/lib/api/types";
@@ -42,94 +47,147 @@ async function requireSession(): Promise<void> {
  * card in `deal-timeline.ts` all read from this object, and it only ever
  * changed via a `router.refresh()` triggered by the viewer's own action.
  */
-export async function fetchTransaction(transactionId: number): Promise<Transaction> {
-  await requireSession();
-  return getTransaction(transactionId);
+export async function fetchTransaction(transactionId: number): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return getTransaction(transactionId);
+  });
+}
+
+export async function fetchPaymentQr(transactionId: number): Promise<ActionResult<PaymentQr>> {
+  return runAction(async () => {
+    await requireSession();
+    return getPaymentQr(transactionId);
+  });
+}
+
+export async function fetchRefundQr(transactionId: number): Promise<ActionResult<PaymentQr>> {
+  return runAction(async () => {
+    await requireSession();
+    return getRefundQr(transactionId);
+  });
 }
 
 /**
  * The slip is two calls — host the image, then attach the URL — and they are
  * one action so a client component never has to hold the intermediate URL.
+ *
+ * The deal is read back with `GET /transactions/{id}` because the upload
+ * endpoints answer in the backend's internal camelCase shape, not the
+ * snake_case `Transaction`: `refund_slip_url` came back undefined, so the
+ * room never posted the slip into the chat.
  */
 export async function submitPaymentSlip(
   transactionId: number,
   file: File,
-): Promise<Transaction> {
-  await requireSession();
-  const url = await uploadImage(file);
-  return uploadPaymentSlip(transactionId, url);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    const url = await uploadImage(file);
+    await uploadPaymentSlip(transactionId, url);
+    return getTransaction(transactionId);
+  });
 }
 
 export async function submitRefundSlip(
   transactionId: number,
   file: File,
-): Promise<Transaction> {
-  await requireSession();
-  const url = await uploadImage(file);
-  return uploadRefundSlip(transactionId, url);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    const url = await uploadImage(file);
+    await uploadRefundSlip(transactionId, url);
+    return getTransaction(transactionId);
+  });
 }
 
-export async function confirmSlip(transactionId: number): Promise<Transaction> {
-  await requireSession();
-  return confirmPaymentReceived(transactionId);
+export async function confirmSlip(transactionId: number): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return confirmPaymentReceived(transactionId);
+  });
+}
+
+export async function rejectSlip(
+  transactionId: number,
+  reason: string,
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return rejectPaymentSlip(transactionId, reason);
+  });
 }
 
 export async function saveTracking(
   transactionId: number,
   trackingNumber: string,
   estimatedDeliveryDate?: string,
-): Promise<Transaction> {
-  await requireSession();
-  return shipTransaction(transactionId, {
-    tracking_number: trackingNumber,
-    ...(estimatedDeliveryDate
-      ? { estimated_delivery_date: estimatedDeliveryDate }
-      : {}),
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return shipTransaction(transactionId, {
+      tracking_number: trackingNumber,
+      ...(estimatedDeliveryDate
+        ? { estimated_delivery_date: estimatedDeliveryDate }
+        : {}),
+    });
   });
 }
 
 export async function confirmItemArrived(
   transactionId: number,
-): Promise<Transaction> {
-  await requireSession();
-  return confirmDelivery(transactionId);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return confirmDelivery(transactionId);
+  });
 }
 
 export async function confirmRefundReceived(
   transactionId: number,
-): Promise<Transaction> {
-  await requireSession();
-  return confirmRefund(transactionId);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return confirmRefund(transactionId);
+  });
 }
 
 export async function askToCancel(
   transactionId: number,
   reason: string,
-): Promise<Transaction> {
-  await requireSession();
-  return requestCancellation(transactionId, reason);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return requestCancellation(transactionId, reason);
+  });
 }
 
 export async function answerCancellation(
   transactionId: number,
   response: "accept" | "reject",
   reason?: string,
-): Promise<Transaction> {
-  await requireSession();
-  return respondToCancellation(transactionId, response, reason);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return respondToCancellation(transactionId, response, reason);
+  });
 }
 
 export async function createHandoverToken(
   transactionId: number,
-): Promise<{ token: string; expiresInSeconds: number }> {
-  await requireSession();
-  return generateHandoverQr(transactionId);
+): Promise<ActionResult<{ token: string; expiresInSeconds: number }>> {
+  return runAction(async () => {
+    await requireSession();
+    return generateHandoverQr(transactionId);
+  });
 }
 
 export async function completeHandover(
   transactionId: number,
   token: string,
-): Promise<Transaction> {
-  await requireSession();
-  return scanHandoverQr(transactionId, token);
+): Promise<ActionResult<Transaction>> {
+  return runAction(async () => {
+    await requireSession();
+    return scanHandoverQr(transactionId, token);
+  });
 }

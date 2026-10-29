@@ -71,6 +71,7 @@ interface RawAppointmentCard {
   location: string;
   status: "Pending" | "Confirmed" | "Rejected";
   deleted_at: string | null;
+  responded_at?: string | null;
   created_at: string;
 }
 
@@ -85,6 +86,7 @@ function toAppointmentCard(raw: RawAppointmentCard): AppointmentCardData {
     location: raw.location,
     status: raw.status,
     deleted_at: raw.deleted_at ?? null,
+    responded_at: raw.responded_at ?? null,
     created_at: raw.created_at,
   };
 }

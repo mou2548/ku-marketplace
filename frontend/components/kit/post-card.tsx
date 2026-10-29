@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeftRight, BookOpen } from "lucide-react";
 
 import { type ItemCondition, type PostType } from "@/lib/status";
+import { formatPrice } from "@/lib/format-price";
 import { cn } from "@/lib/utils";
 
 import { PostImage } from "./post-image";
@@ -81,14 +82,17 @@ export function PostCard({
         </div>
 
         <div className="flex flex-col gap-1.5 px-1 pt-2.5 pb-1">
-          <div className="flex items-center justify-between gap-2">
-            <ListingTypeBadge type={postType} className="min-w-0 truncate" />
+          {/* Wraps rather than truncates: at 390px a long price used to cut
+              "For sale" down to "For" (audit E02). The badge never shrinks;
+              when the two do not fit on one line the price drops below. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+            <ListingTypeBadge type={postType} className="shrink-0 whitespace-nowrap" />
             {showsPrice ? (
               <span
                 data-numeric
-                className="shrink-0 text-[1rem] leading-[1.4] font-bold text-ink-brand"
+                className="min-w-0 text-[1rem] leading-[1.4] font-bold text-ink-brand"
               >
-                ฿{price.toLocaleString("en-GB")}
+                {formatPrice(price)}
               </span>
             ) : null}
           </div>

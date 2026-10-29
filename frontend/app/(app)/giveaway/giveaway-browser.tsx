@@ -17,27 +17,10 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { TONE_CHIP } from "@/components/kit/tone";
 import { useStatusText } from "@/lib/status-text";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
+import { giveawayPhase, isBrowsable } from "@/lib/giveaway-phase";
 import { ALLOCATION_METHOD, TICKET_STATUS, type Deadline } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
-
-/**
- * Whether a giveaway belongs on the public shelf at all — open for
- * registration right now, or still to come. Mirrors the backend's
- * `registration_open` conditions (`giveaways.service.ts`'s `serializeGiveaway`)
- * except it drops the `registerStart <= now` check: a future registration
- * window is exactly what a browsing receiver needs to see, the same way a
- * concert listing shows "on sale Friday 10:00" rather than hiding the show
- * until sales open. `GiveawayCard` already renders the "opens in" countdown
- * for that case; only the parent's filter was hiding the card from it.
- */
-function isBrowsable(g: GiveawayPost, now: number): boolean {
-  if (g.status !== "Active") return false;
-  const deadline = g.register_deadline ? Date.parse(g.register_deadline) : null;
-  if (deadline !== null && deadline <= now) return false;
-  if (g.allocation_method === "FirstCome" && g.remaining_slots <= 0) return false;
-  return true;
-}
 
 export function GiveawayBrowser({
   giveaways,
@@ -55,7 +38,13 @@ export function GiveawayBrowser({
   // reachable from a ticket or a chat room; they are not something to browse
   // and enter. Before the clock is known (server render), fall back to the
   // backend's own flag so the first paint and the hydrated one agree.
-  const open = giveaways.filter((g) => (known ? isBrowsable(g, now) : g.registration_open));
+  // `giveawayPhase` is the same reading the detail screen's badge uses, so a
+  // giveaway listed here is never "closed" once opened, and the reverse.
+  // An upcoming one is listed on purpose, like a concert listing that shows
+  // "on sale Friday": the card counts down to opening.
+  const open = giveaways.filter((g) =>
+    isBrowsable(giveawayPhase(g, known ? now : null)),
+  );
   // Everything the viewer gave away, whatever its state: a giveaway leaves
   // the open shelf when registration closes, and the giver still has work to
   // do (choose recipients, scan tickets) or wants the record.
@@ -232,14 +221,16 @@ export function GiveawayBrowser({
                               </p>
                             ) : null}
                           </div>
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-pill border px-2.5 py-0.5 text-meta font-medium",
-                              TONE_CHIP[stage.tone],
-                            )}
-                          >
-                            {stage.label}
-                          </span>
+                          {stage.label ? (
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-pill border px-2.5 py-0.5 text-meta font-medium",
+                                TONE_CHIP[stage.tone],
+                              )}
+                            >
+                              {stage.label}
+                            </span>
+                          ) : null}
                         </Surface>
                       </Link>
                     </li>
@@ -270,11 +261,11 @@ function giverStage(
       tone: "info",
       todo: "Scan each recipient's ticket when they collect",
     };
-  const closed =
-    now !== null && g.register_deadline
-      ? Date.parse(g.register_deadline) <= now
-      : !g.registration_open;
-  if (!closed) return { label: "Open", tone: "success" };
+  const phase = giveawayPhase(g, now);
+  // Registration is shut but only the clock can say whether it is still to
+  // open or already past: commit to no label until the clock is known.
+  if (phase === null) return { label: "", tone: "neutral" };
+  if (phase !== "closed") return { label: "Open", tone: "success" };
   if (g.allocation_method === "Manual")
     return {
       label: "Choose recipients",

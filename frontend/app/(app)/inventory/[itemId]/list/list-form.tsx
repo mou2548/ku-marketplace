@@ -12,7 +12,9 @@ import { Radio, RadioGroupField } from "@/components/kit/choice";
 import { TextAreaField, TextInput } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import { useStatusText } from "@/lib/status-text";
+import { unwrapAction } from "@/lib/action-result";
 import { publishListing, updateListing } from "@/lib/actions/posts";
 import { wireIdToNumber, type PostSummary } from "@/lib/api/posts";
 import type { Item, Post } from "@/lib/api/types";
@@ -35,6 +37,7 @@ export function ListItemForm({
   post,
   available,
   priceKnown = true,
+  hasPromptPay = true,
 }: {
   item: Item;
   post?: Post;
@@ -46,6 +49,8 @@ export function ListItemForm({
    * (a sold-out post drops out of the public endpoint this reads from) —
    * the price field starts empty instead of seeding a wrong "0". */
   priceKnown?: boolean;
+  /** The API refuses a sale channel until the seller has a PromptPay number. */
+  hasPromptPay?: boolean;
 }) {
   const t = getCopy();
   const st = useStatusText();
@@ -77,25 +82,26 @@ export function ListItemForm({
     Number.isInteger(quantityValue) &&
     quantityValue >= minQuantity &&
     quantityValue <= maxQuantity;
-  const canPost = (!wantsPrice || Number(price) > 0) && quantityValid;
+  const needsPromptPay = wantsPrice && !hasPromptPay;
+  const canPost = (!wantsPrice || Number(price) > 0) && quantityValid && !needsPromptPay;
 
   async function publish() {
     setBusy(true);
     try {
       if (isEditing) {
-        await updateListing(post.post_id, {
+        await unwrapAction(updateListing(post.post_id, {
           post_type: postType,
           price: wantsPrice ? Number(price) : 0,
           quantity_total: quantityValue,
           description: description.trim() || undefined,
           wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
-        });
+        }));
         setBusy(false);
         toast.success("Listing updated.");
         router.push(`/market/${post.post_id}`);
         return;
       }
-      const created: PostSummary = await publishListing({
+      const created: PostSummary = await unwrapAction(publishListing({
         item_id: item.item_id,
         post_type: postType,
         // A trade-only post still needs a number the API will accept; the
@@ -104,7 +110,7 @@ export function ListItemForm({
         quantity_total: quantityValue,
         description: description.trim() || undefined,
         wanted_item_offer: wantsTradeTerms ? wanted.trim() || undefined : undefined,
-      });
+      }));
       setBusy(false);
       toast.success("Listed. It is live in the market now.");
       router.push(`/market/${wireIdToNumber(created.post_id)}`);
@@ -242,6 +248,8 @@ export function ListItemForm({
           placeholder={t("listing.descPlaceholder")}
         />
       </Surface>
+
+      {needsPromptPay ? <PromptPayNotice /> : null}
 
       <ActionBar>
         <Button variant="secondary" block onPress={() => router.back()}>{t("inventory.cancel")}</Button>

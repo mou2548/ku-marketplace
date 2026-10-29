@@ -1,6 +1,5 @@
 "use client";
 
-import { getCopy } from "@/lib/copy";
 import { useEffect, useRef, useState } from "react";
 import { CameraOff, ScanLine } from "lucide-react";
 
@@ -12,11 +11,12 @@ import { Button } from "./button";
  * The scanning half of the handover (design principle 7). Full screen, no
  * chrome — this is the moment the whole transaction exists for.
  *
- * Detection uses the platform `BarcodeDetector` where available and falls back
- * to manual code entry everywhere else. A ~250 KB JS decoder would eat the
- * entire route budget (CLAUDE.md §7) for a screen that is used once per deal,
- * and a handover that cannot proceed because a polyfill failed is worse than
- * typing six characters.
+ * Detection uses the platform `BarcodeDetector` where it reads QR codes
+ * (Chrome on Android and macOS). iOS, Firefox and desktop Chrome on
+ * Windows/Linux have none, so they load the `barcode-detector` ponyfill
+ * (zxing-wasm) on demand: it costs nothing on the routes that never scan, and
+ * the .wasm is served from this app rather than a CDN. There is no typing
+ * fallback: the token is 64 hex characters and is never shown as text.
  */
 
 interface BarcodeDetectorLike {
@@ -40,18 +40,37 @@ export interface QrScannerProps {
   className?: string;
 }
 
+async function createDetector(): Promise<BarcodeDetectorLike> {
+  const Native = window.BarcodeDetector;
+  if (Native && (await Native.getSupportedFormats?.())?.includes("qr_code")) {
+    return new Native({ formats: ["qr_code"] });
+  }
+  const { BarcodeDetector, prepareZXingModule, ZXING_WASM_VERSION } = await import(
+    "barcode-detector/ponyfill"
+  );
+  // Served from this app (scripts/copy-zxing-wasm.mjs) rather than jsDelivr.
+  // Loaded now rather than on the first frame: a missing .wasm would otherwise
+  // reject every detect() call, which the frame loop treats as "no QR yet".
+  await prepareZXingModule({
+    overrides: {
+      locateFile: (path: string, prefix: string) =>
+        path.endsWith(".wasm") ? `/zxing/zxing_reader-${ZXING_WASM_VERSION}.wasm` : prefix + path,
+    },
+    fireImmediately: true,
+  });
+  return new BarcodeDetector({ formats: ["qr_code"] });
+}
+
 export function QrScanner({
   onScan,
   title = "Scan the QR to confirm handover",
   hint = "Point the camera at the other person's QR code",
   className,
 }: QrScannerProps) {
-  const t = getCopy();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"idle" | "running" | "denied" | "unsupported">(
     "idle",
   );
-  const [manual, setManual] = useState("");
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -59,22 +78,35 @@ export function QrScanner({
     let stopped = false;
 
     async function start() {
-      if (typeof window === "undefined" || !window.BarcodeDetector) {
+      // No mediaDevices at all means an insecure (http) origin or a browser
+      // without camera access; neither can be fixed from this page.
+      if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
         setStatus("unsupported");
+        return;
+      }
+      let detector: BarcodeDetectorLike;
+      try {
+        detector = await createDetector();
+      } catch {
+        if (!stopped) setStatus("unsupported");
         return;
       }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
         });
-        if (stopped) return;
+        // Left while the permission prompt or decoder load was pending: the
+        // cleanup ran with no stream to stop, so stop it here.
+        if (stopped) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
         setStatus("running");
 
-        const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
         const tick = async () => {
           if (stopped || !videoRef.current) return;
           try {
@@ -147,29 +179,16 @@ export function QrScanner({
 
       <p className="max-w-xs text-center text-body-sm text-white">
         {status === "denied"
-          ? "The camera is unavailable. Type the code from the QR instead."
+          ? "Camera access is blocked. Allow it for this site in your browser settings, then reload this page."
           : status === "unsupported"
-            ? "This device cannot scan automatically. Type the code from the QR instead."
+            ? "The camera cannot open here. Use Chrome or Safari, and check that the address starts with https."
             : hint}
       </p>
 
       {status === "denied" || status === "unsupported" ? (
-        <form
-          className="flex w-full max-w-sm gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (manual.trim()) void onScan(manual.trim());
-          }}
-        >
-          <input
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            placeholder={t("qr.typeCode")}
-            aria-label={t("qr.typeCode")}
-            className="h-12 flex-1 rounded-control bg-white/10 px-3.5 text-body text-white placeholder:text-white/70"
-          />
-          <Button type="submit" isDisabled={!manual.trim()}>{t("qr.confirm")}</Button>
-        </form>
+        <Button variant="secondary" onPress={() => window.location.reload()}>
+          Try again
+        </Button>
       ) : null}
     </div>
   );

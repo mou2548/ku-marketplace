@@ -45,6 +45,10 @@ export function InventoryGrid<T extends object>({
 }: GridListProps<T>) {
   return (
     <GridList
+      // The slots sit in rows and columns, so the arrows move in both
+      // directions: ArrowLeft/Right along a row, ArrowUp/Down between rows.
+      // The default "stack" layout only answered Up/Down (audit T04).
+      layout="grid"
       {...props}
       // Two image-led cards on a phone, opening up into a compact catalogue.
       className={cn(
@@ -73,6 +77,12 @@ export interface InventorySlotProps
    * existed only in the accessible name.
    */
   showName?: boolean;
+  /**
+   * Why this item cannot be used here ("Handed over", "In a deal"). Disables
+   * the slot like `isPlaced` does, prints the reason on it in place of
+   * `badge`, and adds it to the accessible name.
+   */
+  unavailableReason?: string;
 }
 
 export function InventorySlot({
@@ -80,6 +90,7 @@ export function InventorySlot({
   isPlaced = false,
   badge,
   showName = false,
+  unavailableReason,
   className,
   ...props
 }: InventorySlotProps) {
@@ -89,8 +100,10 @@ export function InventorySlot({
   return (
     <GridListItem
       {...props}
-      isDisabled={isPlaced || props.isDisabled}
-      textValue={`${item.name}, condition ${rarityLabel}, quantity ${item.quantity}`}
+      isDisabled={isPlaced || !!unavailableReason || props.isDisabled}
+      textValue={`${item.name}, condition ${rarityLabel}, quantity ${item.quantity}${
+        unavailableReason ? `, ${unavailableReason}` : ""
+      }`}
       style={
         {
           "--slot-edge": rarity.edge,
@@ -109,6 +122,7 @@ export function InventorySlot({
         // The GridListItem is disabled instead (see isDisabled below).
         // 35% also put the item name well under 4.5:1.
         isPlaced && "opacity-55 grayscale",
+        unavailableReason && "cursor-not-allowed hover:translate-y-0",
         className,
       )}
     >
@@ -150,7 +164,18 @@ export function InventorySlot({
           </span>
         ) : null}
 
-        {badge ? (
+        {unavailableReason ? (
+          <>
+            {/* Dims the picture only, so the reason stays at full contrast. */}
+            <span aria-hidden className="absolute inset-0 rounded-slot bg-surface/55" />
+            <span
+              aria-hidden
+              className="absolute inset-x-1.5 top-1.5 z-[1] truncate rounded-chip bg-surface-inverse/85 px-1.5 py-0.5 text-center text-meta font-semibold text-white"
+            >
+              {unavailableReason}
+            </span>
+          </>
+        ) : badge ? (
           <span className="pointer-events-none absolute top-1.5 right-1.5 z-[1] max-w-[calc(100%-0.75rem)] truncate">
             {badge}
           </span>

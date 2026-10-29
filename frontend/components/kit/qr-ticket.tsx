@@ -8,6 +8,12 @@ import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
 /**
+ * A QR has to stay dark-on-light in either theme or scanners lose it, so these
+ * are fixed rather than theme tokens.
+ */
+export const QR_COLOR = { dark: "#122b1d", light: "#ffffff" };
+
+/**
  * Research risk R8. A giveaway ticket's QR rotates every 15 minutes. That is a
  * security control the receiver never asked for, and if it silently expires
  * mid-handover it reads as a bug — the single most likely moment for a student
@@ -104,7 +110,7 @@ export function QrTicket({
           await QRCode.toCanvas(canvasRef.current, token, {
             width: SIZE,
             margin: 1,
-            color: { dark: "#122b1d", light: "#ffffff" },
+            color: QR_COLOR,
           });
         }
         if (cancelled) return;
@@ -116,8 +122,16 @@ export function QrTicket({
         if (!once && lifeMs > 5_000) {
           timer = setTimeout(() => void cycle(), lifeMs - 5_000);
         }
-      } catch {
-        if (!cancelled) setError("Could not generate a code. Try again.");
+      } catch (err) {
+        // The API's reason ("confirm the latest meetup first", say) says what
+        // to do next; a fixed sentence hid it.
+        if (!cancelled) {
+          setError(
+            err instanceof Error && err.message
+              ? err.message
+              : "Could not generate a code. Try again.",
+          );
+        }
       }
     }
 
@@ -165,7 +179,9 @@ export function QrTicket({
         >
           Code expired
         </p>
-      ) : (
+      ) : issuedAt === null ? null : (
+        // No countdown until a code exists: a timer over an empty box read
+        // as a code that was already running out.
         <p
           data-numeric
           aria-live="polite"

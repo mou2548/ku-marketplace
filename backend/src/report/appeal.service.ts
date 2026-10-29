@@ -21,6 +21,11 @@ import {
   notifyAppealDecided,
 } from './moderation-notifications';
 import { suspensionEndsAt } from './account-standing';
+import {
+  loadEvidenceMessages,
+  pickMessages,
+  splitEvidence,
+} from './report-evidence';
 import { displayName } from '../common/utils/display-name';
 
 @Injectable()
@@ -150,8 +155,10 @@ export class AppealService {
         handler: Parameters<AppealService['serializeUserSummary']>[0] | null;
       };
     },
+    messages: Awaited<ReturnType<typeof loadEvidenceMessages>>,
   ) {
     const { report } = appeal;
+    const evidence = splitEvidence(report.evidenceUrls);
     return {
       ...this.serializeAppeal(appeal),
       report: {
@@ -160,7 +167,9 @@ export class AppealService {
         target_id: report.targetId,
         reason_category: report.reasonCategory,
         details: report.details,
-        evidence_urls: report.evidenceUrls,
+        evidence_urls: evidence.urls.length ? evidence.urls : null,
+        evidence_message_ids: evidence.messageIds,
+        evidence_messages: pickMessages(messages, evidence.messageIds),
         status: report.status,
         sanction: report.sanction,
         resolution_note: report.resolutionNote,
@@ -233,7 +242,13 @@ export class AppealService {
       include: this.adminAppealInclude,
       orderBy: { createdAt: 'desc' },
     });
-    return appeals.map((appeal) => this.serializeAdminAppeal(appeal));
+    const messages = await loadEvidenceMessages(
+      this.prisma,
+      appeals.flatMap(
+        (appeal) => splitEvidence(appeal.report.evidenceUrls).messageIds,
+      ),
+    );
+    return appeals.map((appeal) => this.serializeAdminAppeal(appeal, messages));
   }
 
   /**
@@ -258,7 +273,11 @@ export class AppealService {
       where: { appealId },
       include: this.adminAppealInclude,
     });
-    return this.serializeAdminAppeal(opened);
+    const messages = await loadEvidenceMessages(
+      this.prisma,
+      splitEvidence(opened.report.evidenceUrls).messageIds,
+    );
+    return this.serializeAdminAppeal(opened, messages);
   }
 
   async create(appellantId: number, dto: CreateAppealDto) {

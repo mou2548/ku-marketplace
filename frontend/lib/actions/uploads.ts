@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import { getAccessToken } from "@/lib/api/session";
 import { uploadImage } from "@/lib/api/uploads";
 
@@ -12,9 +13,11 @@ import { uploadImage } from "@/lib/api/uploads";
  * (`next/headers` bundled into a Client Component) rather than just erroring
  * at runtime.
  */
-export async function uploadFile(file: File): Promise<string> {
-  if (!(await getAccessToken())) {
-    throw new Error("Not signed in");
-  }
-  return uploadImage(file);
+export async function uploadFile(file: File): Promise<ActionResult<string>> {
+  return runAction(async () => {
+    if (!(await getAccessToken())) {
+      throw new Error("Not signed in");
+    }
+    return uploadImage(file);
+  });
 }

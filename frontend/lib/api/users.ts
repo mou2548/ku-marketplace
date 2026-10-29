@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
 import type { User } from "./types";
@@ -16,6 +18,8 @@ export interface Profile {
   lastNameTh: string;
   phoneNumber: string | null;
   avatarUrl: string | null;
+  /** Normalised to 10 digits. Returned to its owner only. */
+  promptpayId: string | null;
   status: "Active" | "Suspended" | "Banned" | "Deleted";
   emailVerifiedAt: string | null;
   isAdmin: boolean;
@@ -30,15 +34,18 @@ export interface UpdateProfilePayload {
   last_name_th?: string;
   phone_number?: string;
   avatar_url?: string;
+  /** A mobile number; spaces and dashes are accepted. `null` or "" clears it. */
+  promptpay_id?: string | null;
 }
 
 async function authedInit(): Promise<RequestInit> {
   return { headers: await authHeader() };
 }
 
-export async function getMe(): Promise<Profile> {
+/** Deduplicated per request: the (app) layout and the page often both need it. */
+export const getMe = cache(async (): Promise<Profile> => {
   return apiFetch<Profile>("/users/me", await authedInit());
-}
+});
 
 export async function updateMe(patch: UpdateProfilePayload): Promise<Profile> {
   const init = await authedInit();
@@ -68,6 +75,7 @@ export function toUser(profile: Profile): User {
     first_name_th: profile.firstNameTh,
     last_name_th: profile.lastNameTh,
     phone_number: profile.phoneNumber,
+    promptpay_id: profile.promptpayId,
     avatar_url: profile.avatarUrl,
     status: profile.status,
     email_verified_at: profile.emailVerifiedAt,

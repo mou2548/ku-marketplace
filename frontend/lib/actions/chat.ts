@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import { apiFetch } from "@/lib/api/client";
 import {
   createAppointment as createAppointmentApi,
@@ -23,15 +24,19 @@ async function requireSession() {
  * (see `lib/use-polling.ts`), so `RoomList` polls this the same way an open
  * room polls its own thread.
  */
-export async function fetchRoomSummaries(viewerId: number): Promise<RoomSummary[]> {
-  await requireSession();
-  return getRoomSummaries(viewerId);
+export async function fetchRoomSummaries(viewerId: number): Promise<ActionResult<RoomSummary[]>> {
+  return runAction(async () => {
+    await requireSession();
+    return getRoomSummaries(viewerId);
+  });
 }
 
-export async function fetchChatHistory(transactionId: number): Promise<ChatMessage[]> {
-  await requireSession();
-  const { messages } = await getChatHistoryApi(transactionId);
-  return messages;
+export async function fetchChatHistory(transactionId: number): Promise<ActionResult<ChatMessage[]>> {
+  return runAction(async () => {
+    await requireSession();
+    const { messages } = await getChatHistoryApi(transactionId);
+    return messages;
+  });
 }
 
 /**
@@ -42,51 +47,63 @@ export async function fetchChatHistory(transactionId: number): Promise<ChatMessa
  * history call — it is what creates the room in the first place. Only worth
  * paying on a one-off action, never in a poll.
  */
-export async function fetchRoomId(transactionId: number): Promise<number> {
-  await requireSession();
-  const { roomId } = await getChatHistoryApi(transactionId);
-  return roomId;
+export async function fetchRoomId(transactionId: number): Promise<ActionResult<number>> {
+  return runAction(async () => {
+    await requireSession();
+    const { roomId } = await getChatHistoryApi(transactionId);
+    return roomId;
+  });
 }
 
 export async function sendChatMessage(
   transactionId: number,
   input: { content?: string; image_urls?: string[] },
-): Promise<ChatMessage> {
-  await requireSession();
-  return sendMessageApi(transactionId, input);
+): Promise<ActionResult<ChatMessage>> {
+  return runAction(async () => {
+    await requireSession();
+    return sendMessageApi(transactionId, input);
+  });
 }
 
 export async function fetchAppointmentCards(
   transactionId: number,
-): Promise<AppointmentCardData[]> {
-  await requireSession();
-  return getAppointmentCardsApi(transactionId);
+): Promise<ActionResult<AppointmentCardData[]>> {
+  return runAction(async () => {
+    await requireSession();
+    return getAppointmentCardsApi(transactionId);
+  });
 }
 
 export async function proposeAppointment(
   transactionId: number,
   input: { date: string; time: string; location: string },
-): Promise<AppointmentCardData> {
-  await requireSession();
-  return createAppointmentApi(transactionId, input);
+): Promise<ActionResult<AppointmentCardData>> {
+  return runAction(async () => {
+    await requireSession();
+    return createAppointmentApi(transactionId, input);
+  });
 }
 
 export async function respondToAppointment(
   appointmentId: number,
   response: "confirm" | "reject",
-): Promise<AppointmentCardData> {
-  await requireSession();
-  return respondAppointmentApi(appointmentId, response);
+): Promise<ActionResult<AppointmentCardData>> {
+  return runAction(async () => {
+    await requireSession();
+    return respondAppointmentApi(appointmentId, response);
+  });
 }
 
 /** Upload through the shared API client so URL and response handling agree. */
-export async function uploadChatImage(formData: FormData): Promise<string> {
-  await requireSession();
-  const { url } = await apiFetch<{ url: string }>("/uploads/image", {
-    method: "POST",
-    headers: await authHeader(),
-    body: formData,
-    cache: "no-store",
+export async function uploadChatImage(formData: FormData): Promise<ActionResult<string>> {
+  return runAction(async () => {
+    await requireSession();
+    const { url } = await apiFetch<{ url: string }>("/uploads/image", {
+      method: "POST",
+      headers: await authHeader(),
+      body: formData,
+      cache: "no-store",
+    });
+    return url;
   });
-  return url;
 }

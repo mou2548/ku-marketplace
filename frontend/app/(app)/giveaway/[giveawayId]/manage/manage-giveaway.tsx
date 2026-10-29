@@ -19,8 +19,8 @@ import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import { closeGiveawayRegistration, selectRecipients } from "@/lib/actions/giveaways";
-import type { ApiError } from "@/lib/api/client";
 import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
 import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
@@ -93,13 +93,13 @@ export function ManageGiveaway({
   async function confirmSelection() {
     setBusy(true);
     try {
-      const chosen = await selectRecipients(giveaway.giveaway_id, [...picked]);
+      const chosen = await unwrapAction(selectRecipients(giveaway.giveaway_id, [...picked]));
       toast.success(
         `Selected ${chosen.length} recipient${chosen.length === 1 ? "" : "s"}. Chat rooms are open.`,
       );
       router.push(`/giveaway/${giveaway.giveaway_id}`);
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not confirm selection.");
+      toast.error(error instanceof Error ? error.message : "Could not confirm selection.");
     } finally {
       setBusy(false);
     }
@@ -232,7 +232,7 @@ export function ManageGiveaway({
             confirmLabel="End registration"
             doneMessage="Registration closed. You can confirm recipients now."
             icon={<Lock className="size-4" />}
-            onConfirm={closeGiveawayRegistration.bind(null, giveaway.giveaway_id)}
+            onConfirm={() => unwrapAction(closeGiveawayRegistration(giveaway.giveaway_id))}
             trigger={
               <>
                 <Lock className="size-4" />

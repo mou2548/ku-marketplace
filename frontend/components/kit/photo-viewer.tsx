@@ -333,10 +333,13 @@ function PhotoStage({
         // The browser must not claim the touch for its own scroll or zoom, or
         // none of the pointer events below ever arrive.
         style={{ touchAction: "none" }}
-        className="relative flex-1 overflow-hidden outline-none"
+        // The stage fills the screen and clips, so its focus ring is drawn
+        // inside the edge rather than outside where it would be cut off.
+        className="relative flex-1 overflow-hidden focus-visible:-outline-offset-4"
         tabIndex={0}
         role="group"
-        aria-label={alt}
+        // Chat photos have no alt text; the group still needs a name.
+        aria-label={alt || title}
         onKeyDown={onKeyDown}
         onPointerDown={trackDown}
         onPointerMove={trackMove}

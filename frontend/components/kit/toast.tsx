@@ -78,7 +78,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
+      {/* A named region, so the label is valid ARIA (an aria-label on a
+          role-less div is ignored and flagged by axe, audit P04). Each toast
+          is its own status or alert, which is what gets announced. */}
       <div
+        role="region"
         aria-label="Notifications"
         className={cn(
           "pointer-events-none fixed inset-x-0 z-[120] flex flex-col items-center gap-2 px-4",

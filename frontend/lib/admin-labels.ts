@@ -1,9 +1,11 @@
 import type { AdminAppeal, Report, Sanction } from "@/lib/api/types";
+import type { AdminTransactionStatus } from "@/lib/api/admin";
 import type {
   AppealStatus,
   AppointmentStatus,
   ReportStatus,
 } from "@/lib/status";
+import { formatPrice } from "@/lib/format-price";
 
 /**
  * The admin workspace's vocabulary: labels, predicates and time formatting.
@@ -114,3 +116,91 @@ export function waitingForLong(
 
 /** A case past this age is drawn in the danger tone in the queue. */
 export const OVERDUE_AFTER_MS = 48 * HOUR;
+
+export const ADMIN_TRANSACTION_STATUS: Record<
+  AdminTransactionStatus,
+  AdminLabel
+> = {
+  Pending: { label: "Pending", tone: "neutral" },
+  Processing: { label: "Processing", tone: "info" },
+  Completed: { label: "Completed", tone: "success" },
+  Cancelled: { label: "Cancelled", tone: "neutral" },
+  "Pending Refund": { label: "Refunding", tone: "warning" },
+  Refunded: { label: "Refunded", tone: "neutral" },
+};
+
+/** Shown when a nullable status column holds no value (very old rows). */
+const NOT_SET: AdminLabel = { label: "Not set", tone: "neutral" };
+/** Shown for a value this build does not know, instead of guessing a tone. */
+const unknownLabel = (value: string): AdminLabel => ({
+  label: `Unknown (${value})`,
+  tone: "warning",
+});
+
+/** `User.user_status`, which the schema allows to be null. */
+export function accountStatusLabel(status: string | null): AdminLabel {
+  switch (status) {
+    case null:
+      return NOT_SET;
+    case "Active":
+    case "Suspended":
+    case "Banned":
+    case "Deleted":
+      return ADMIN_ACCOUNT_STATUS[status];
+    default:
+      return unknownLabel(status);
+  }
+}
+
+/** `Transaction.transaction_status`, which the schema allows to be null. */
+export function transactionStatusLabel(status: string | null): AdminLabel {
+  switch (status) {
+    case null:
+      return NOT_SET;
+    case "Pending":
+    case "Processing":
+    case "Completed":
+    case "Cancelled":
+    case "Pending Refund":
+    case "Refunded":
+      return ADMIN_TRANSACTION_STATUS[status];
+    default:
+      return unknownLabel(status);
+  }
+}
+
+/** "฿12,500", "฿99.50" — the app-wide price format (`lib/format-price`). */
+export const formatBaht = formatPrice;
+
+/**
+ * A name as link text. The API accepts whitespace-only names, and a link whose
+ * only text is blank has no accessible name, so it falls back to the record's
+ * number ("Item #12").
+ */
+export const nameOr = (name: string | null | undefined, fallback: string) =>
+  name?.trim() || fallback;
+
+const COUNT = new Intl.NumberFormat("en-US");
+export const formatCount = (n: number) => COUNT.format(n);
+
+/** The dashboard's date-range choices, in Bangkok days ending today. */
+export const RANGE_PRESETS = [
+  { id: "7", label: "7 days", days: 7 },
+  { id: "30", label: "30 days", days: 30 },
+  { id: "90", label: "90 days", days: 90 },
+  { id: "365", label: "1 year", days: 365 },
+] as const;
+export type RangePreset = (typeof RANGE_PRESETS)[number]["id"];
+
+const BANGKOK_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Bangkok",
+});
+
+/** `{ from, to }` as inclusive Bangkok days for a preset, ending on `now`. */
+export function presetRange(preset: RangePreset, now: number) {
+  const days = RANGE_PRESETS.find((p) => p.id === preset)?.days ?? 30;
+  return {
+    from: BANGKOK_DAY.format(new Date(now - (days - 1) * 24 * HOUR)),
+    to: BANGKOK_DAY.format(new Date(now)),
+  };
+}

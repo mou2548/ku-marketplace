@@ -98,10 +98,29 @@ function subscribe(onChange: () => void) {
  * in order and each column still packs tightly. `MasonryGrid` above fills
  * column by column instead, which puts the 2nd item under the 1st.
  *
- * The column count needs the viewport, which the server does not know: the
- * server render (and the first client render) is a plain row-major grid, and
- * the masonry takes over once the width is known.
+ * The column count needs the viewport, which the server does not know. The
+ * first render used to be a plain row-major grid that the masonry replaced
+ * after hydration, and every card below the first row jumped up: CLS
+ * 0.054-0.096 on /feed at 1024 and 1280 (audit P02, budget 0.05).
+ *
+ * Now the first render already is the masonry, once per breakpoint, with CSS
+ * showing only the one that matches the width. Dealing is stable — item i is
+ * always in column i % columns — so the first rows of the full layout are
+ * exactly that pre-render, and after hydration the matching layout keeps its
+ * elements (same keys) and only grows downward. To keep the HTML small, the
+ * pre-render holds the first FIRST_PAINT_ROWS rows; the rest arrive below the
+ * fold, which moves nothing already on screen.
  */
+const LAYOUTS: Array<[columns: number, visibility: string]> = [
+  [2, "flex md:hidden"],
+  [3, "hidden md:flex lg:hidden"],
+  [4, "hidden lg:flex xl:hidden"],
+  [5, "hidden xl:flex"],
+];
+
+/** Rows the pre-hydration layouts carry; enough to fill a tall first screen. */
+const FIRST_PAINT_ROWS = 4;
+
 export function MasonryRows<T>({
   items,
   getKey,
@@ -115,32 +134,34 @@ export function MasonryRows<T>({
 }) {
   const columns = useSyncExternalStore(subscribe, columnCount, () => 0);
 
-  if (columns === 0) {
-    return (
-      <div
-        className={cn(
-          "grid grid-cols-2 items-start gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5",
-          className,
-        )}
-      >
-        {items.map((item) => (
-          <div key={getKey(item)}>{renderItem(item)}</div>
-        ))}
-      </div>
-    );
-  }
-
-  const stacks: T[][] = Array.from({ length: columns }, () => []);
-  items.forEach((item, index) => stacks[index % columns].push(item));
   return (
-    <div className={cn("flex items-start gap-3 md:gap-4", className)}>
-      {stacks.map((stack, column) => (
-        <div key={column} className="flex min-w-0 flex-1 flex-col gap-3 md:gap-4">
-          {stack.map((item) => (
-            <div key={getKey(item)}>{renderItem(item)}</div>
-          ))}
-        </div>
-      ))}
+    <div className={className}>
+      {LAYOUTS.map(([count, visibility]) => {
+        const active = columns === count;
+        // Before the width is known every layout renders its first rows and
+        // CSS picks one; after, only the matching layout renders at all.
+        if (columns !== 0 && !active) return null;
+        const shown = active ? items : items.slice(0, count * FIRST_PAINT_ROWS);
+        const stacks: T[][] = Array.from({ length: count }, () => []);
+        shown.forEach((item, index) => stacks[index % count].push(item));
+        return (
+          <div
+            key={count}
+            className={cn(
+              "items-start gap-3 md:gap-4",
+              active ? "flex" : visibility,
+            )}
+          >
+            {stacks.map((stack, column) => (
+              <div key={column} className="flex min-w-0 flex-1 flex-col gap-3 md:gap-4">
+                {stack.map((item) => (
+                  <div key={getKey(item)}>{renderItem(item)}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

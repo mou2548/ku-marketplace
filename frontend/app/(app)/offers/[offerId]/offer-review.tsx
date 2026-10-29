@@ -23,6 +23,7 @@ import { TrustBadge } from "@/components/kit/trust-badge";
 import { PostImage } from "@/components/kit/post-image";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
+import { unwrapAction } from "@/lib/action-result";
 import {
   acceptOfferAction,
   rejectOfferAction,
@@ -32,6 +33,7 @@ import { wireIdToNumber } from "@/lib/api/posts";
 import type { Item, Offer } from "@/lib/api/types";
 import { describeOffer, offerSides } from "@/lib/offers";
 import { OFFER_STATUS } from "@/lib/status";
+import { formatPrice } from "@/lib/format-price";
 
 /** The bench takes inventory slots; an offer carries full items. */
 const toSlot = (item: Item) => ({
@@ -97,7 +99,7 @@ export function OfferReview({
     setActionError(null);
     let result;
     try {
-      result = await acceptOfferAction(offer.post_id, offer.offer_id);
+      result = await unwrapAction(acceptOfferAction(offer.post_id, offer.offer_id));
     } catch (err) {
       setBusy(false);
       setActionError(err instanceof Error ? err.message : "Could not accept this offer");
@@ -278,14 +280,14 @@ export function OfferReview({
                 if (decision === "accept") void accept();
                 if (decision === "reject") {
                   void respond(
-                    () => rejectOfferAction(offer.post_id, offer.offer_id),
+                    () => unwrapAction(rejectOfferAction(offer.post_id, offer.offer_id)),
                     "Offer declined",
                     "Could not decline this offer",
                   );
                 }
                 if (decision === "withdraw") {
                   void respond(
-                    () => withdrawOfferAction(offer.post_id, offer.offer_id),
+                    () => unwrapAction(withdrawOfferAction(offer.post_id, offer.offer_id)),
                     "Offer withdrawn",
                     "Could not withdraw this offer",
                   );
@@ -308,8 +310,8 @@ export function OfferReview({
           {decision === "accept" ? (
             offer.additional_money > 0 ? (
               <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-                This offer adds cash: ฿
-                {offer.additional_money.toLocaleString("en-GB")} — a slip
+                This offer adds cash:{" "}
+                {formatPrice(offer.additional_money)} — a slip
                 upload and slip check are added before the QR.
               </p>
             ) : (

@@ -6,6 +6,8 @@ import { getAccessToken } from "@/lib/api/session";
 
 import { GiveawayDetail } from "./giveaway-detail";
 
+export const metadata = { title: "Giveaway - KU Marketplace" };
+
 export default async function GiveawayDetailPage({
   params,
 }: {

@@ -10,8 +10,17 @@
 /** §1.1 — the only two domains that may register. */
 export const ALLOWED_EMAIL_DOMAINS = ["ku.th", "ku.ac.th"] as const;
 
+/**
+ * How an email is sent to the API. Autofill adds spaces around it (audit F03).
+ * Case is left alone: the API stores and compares addresses as typed, so
+ * lowercasing here would lock out any account registered with capitals.
+ */
+export function normalizeEmail(email: string): string {
+  return email.trim();
+}
+
 export function isKuEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase();
+  const normalized = normalizeEmail(email).toLowerCase();
   return ALLOWED_EMAIL_DOMAINS.some((domain) => normalized.endsWith(`@${domain}`));
 }
 
@@ -56,3 +65,52 @@ export function isPasswordValid(password: string): boolean {
 /** §1.2 — the registration code's lifetime. */
 export const OTP_TTL_MINUTES = 10;
 
+
+/**
+ * Where a signed-out visitor may be sent back to after signing in (audit F04).
+ *
+ * Only a same-origin path is accepted: one leading slash followed by anything
+ * but a second slash or a backslash, so `//host`, `/\host`, `https://host` and
+ * `javascript:` never qualify. Whitespace and control characters are refused
+ * too, because a URL parser strips tabs and newlines and `/\t/host` would
+ * collapse into `//host`. Non-ASCII is refused rather than encoded here: every
+ * caller builds the value from an already-encoded URL. The auth screens and API
+ * routes are excluded so a sign-in can never loop back onto itself.
+ */
+const SAFE_RETURN_TO = /^\/(?![/\\])[\x21-\x5b\x5d-\x7e]*$/;
+const RETURN_TO_EXCLUDED = ["/login", "/register", "/verify", "/forgot", "/reset", "/api"];
+const RETURN_TO_MAX_LENGTH = 2048;
+
+function underPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+export function safeReturnTo(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (value.length > RETURN_TO_MAX_LENGTH || !SAFE_RETURN_TO.test(value)) return undefined;
+  const pathname = value.split(/[?#]/)[0] ?? "";
+  if (RETURN_TO_EXCLUDED.some((prefix) => underPrefix(pathname.toLowerCase(), prefix))) {
+    return undefined;
+  }
+  return value;
+}
+
+/**
+ * The areas whose pages send a signed-out visitor to sign in. Proxy redirects
+ * there first, carrying the requested path, so the page's own guard never has
+ * to know where it was reached from.
+ */
+export const SIGNED_IN_PREFIXES = ["/account", "/admin", "/chat", "/history", "/inventory", "/offers"] as const;
+
+export function requiresSignIn(pathname: string): boolean {
+  return SIGNED_IN_PREFIXES.some((prefix) => underPrefix(pathname, prefix));
+}
+
+/** `/login`, carrying `returnTo` when it is a path sign-in may return to. */
+export function loginHref(returnTo?: string | null): string {
+  const target = safeReturnTo(returnTo);
+  return target ? `/login?returnTo=${encodeURIComponent(target)}` : "/login";
+}
+
+/** Set by Proxy on every request: the path and query being rendered. */
+export const REQUEST_PATH_HEADER = "x-ku-request-path";

@@ -12,9 +12,9 @@ import { TextAreaField } from "@/components/kit/field";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { TwoColumn } from "@/components/kit/two-column";
+import { unwrapAction } from "@/lib/action-result";
 import { createAppeal } from "@/lib/actions/appeals";
 import { uploadFile } from "@/lib/actions/uploads";
-import type { ApiError } from "@/lib/api/client";
 import type { EligibleAppeal } from "@/lib/api/appeals";
 import { formatDateTime } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
@@ -60,16 +60,16 @@ export function AppealForm({
     setBusy(true);
     try {
       const evidence_urls: string[] = [];
-      for (const photo of photos) evidence_urls.push(await uploadFile(photo));
-      await createAppeal({
+      for (const photo of photos) evidence_urls.push(await unwrapAction(uploadFile(photo)));
+      await unwrapAction(createAppeal({
         report_id: Number(reportId),
         reason,
         evidence_urls: evidence_urls.length ? evidence_urls : undefined,
-      });
+      }));
       toast.success("Appeal submitted. An admin will review it.");
       router.push("/account/appeals");
     } catch (error) {
-      toast.error((error as ApiError).message ?? "Could not submit the appeal.");
+      toast.error(error instanceof Error ? error.message : "Could not submit the appeal.");
       setBusy(false);
     }
   }
@@ -108,7 +108,7 @@ export function AppealForm({
     <TwoColumn rail={guidance}>
       <Link
         href="/account/appeals"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to my appeals

@@ -133,9 +133,11 @@ export class TransactionService {
       status: state.status,
       delivery_method: state.deliveryMethod,
       active_report_id: state.activeReportId,
+      active_report_created_at: state.activeReportCreatedAt,
       slip_image_url: state.slipImageUrl,
       tracking_number: state.trackingNumber,
       estimated_delivery_date: state.estimatedDeliveryDate,
+      shipped_at: state.shippedAt,
       payment_confirmed_by_buyer_at: state.paymentConfirmedByBuyerAt,
       payment_confirmed_by_seller_at: state.paymentConfirmedBySellerAt,
       payment_rejection_reason: state.paymentRejectionReason,
@@ -146,9 +148,11 @@ export class TransactionService {
       cancellation_reason: state.cancellationReason,
       cancellation_requested_at: state.cancellationRequestedAt,
       cancellation_response: state.cancellationResponse,
+      cancellation_responded_at: state.cancellationRespondedAt,
       refund_slip_url: state.refundSlipUrl,
       refund_submitted_at: state.refundSubmittedAt,
       refund_confirmed_by_buyer: state.refundConfirmedByBuyer,
+      refund_confirmed_at: state.refundConfirmedAt,
       item_return_confirmed_at: state.itemReturnConfirmedAt,
       created_at: state.createdAt,
       additional_money: transaction.offer?.additionalMoney?.toNumber() ?? null,
@@ -355,11 +359,6 @@ export class TransactionService {
     this.assertNoPendingCancellation(transaction);
     if (!transaction.paymentRequired)
       throw new BadRequestException('This trade does not require payment');
-    if (resubmitting && transaction.refundSlipUrl) {
-      throw new BadRequestException(
-        'The seller has sent a refund slip — confirm the refund first',
-      );
-    }
     if (transaction.paymentId !== null) {
       throw new BadRequestException('A payment slip is already on file');
     }
@@ -399,13 +398,57 @@ export class TransactionService {
   }
 
   /**
+   * The refund the other way round: a PromptPay QR for the buyer's number and
+   * exactly `total_amount`, which the seller scans to send the money back.
+   * Available while the seller still owes a refund slip.
+   */
+  async refundQr(transactionId: number, userId: number) {
+    const transaction = await this.loadOrThrow(this.prisma, transactionId);
+    this.assertIsSeller(transaction, userId);
+    this.assertRefundable(transaction);
+    if (transaction.refundConfirmedByBuyer) {
+      throw new BadRequestException('This refund has already been confirmed');
+    }
+    if (transaction.totalAmount <= 0) {
+      throw new BadRequestException('This transaction has nothing to refund');
+    }
+    const promptpayId = await this.buyerPromptPayOrThrow(
+      this.prisma,
+      transaction,
+    );
+    return {
+      payload: promptPayPayload(promptpayId, transaction.totalAmount),
+      amount: transaction.totalAmount,
+      promptpay_id: maskPromptPayId(promptpayId),
+    };
+  }
+
+  /**
+   * A refund goes to the buyer's PromptPay, so it cannot be sent (or recorded
+   * as sent) until the buyer has one. The deal can still be cancelled
+   * without it; only the refund waits.
+   */
+  private async buyerPromptPayOrThrow(
+    db: Pick<Db, 'user'>,
+    transaction: TransactionRow,
+  ): Promise<string> {
+    const buyer = await db.user.findUnique({
+      where: { userId: transaction.buyerId },
+      select: { promptpayId: true },
+    });
+    if (!buyer?.promptpayId) {
+      throw new ConflictException('The buyer has not set up PromptPay yet');
+    }
+    return buyer.promptpayId;
+  }
+
+  /**
    * §8.6 step 1 — the buyer transfers money off-platform, uploads the slip and
    * confirms. That moves the transaction Pending → Processing. The platform
    * only records that the buyer says they paid; it never moves money itself.
    *
-   * Also the buyer's way out of a rejected slip: a new one puts the deal back
-   * in front of the seller. Closed once the seller has uploaded a refund slip
-   * — from then on the buyer answers that instead.
+   * Also the buyer's only way out of a rejected slip: a new one puts the deal
+   * back in front of the seller.
    *
    * Each upload is its own Transaction_Payment row, so a rejected slip stays
    * on record beside the one that replaced it.
@@ -422,7 +465,13 @@ export class TransactionService {
       await tx.transactionPayment.create({
         data: { transactionId, slipImageUrl: dto.slip_image_url },
       });
-      if (!resubmitting) {
+      if (resubmitting) {
+        // A refund slip from before refunds after a rejected slip were
+        // removed would otherwise surface as this deal's refund if it is
+        // later cancelled. Nothing else writes one while Processing.
+        await tx.transactionRefundSlip.deleteMany({ where: { transactionId } });
+        await tx.transactionRefund.deleteMany({ where: { transactionId } });
+      } else {
         await tx.transaction.update({
           where: { transactionId },
           data: { status: TransactionStatus.Processing },
@@ -475,13 +524,11 @@ export class TransactionService {
    * straight back to Pending would let the seller cancel unilaterally
    * (`requestCancellation`) and walk away with it.
    *
-   * From here (`slipRejected`) there are three ways on:
+   * From here (`slipRejected`) there are two ways on:
    *
-   *   uploadPaymentSlip               the buyer sends a correct slip
-   *   uploadRefundSlip + confirmRefund the seller returns what arrived and the
-   *                                   buyer confirms it → back to Pending
-   *   requestCancellation             still needs consent, and an approved one
-   *                                   still goes through Pending Refund
+   *   uploadPaymentSlip    the buyer sends a correct slip
+   *   requestCancellation  still needs consent, and an approved one still goes
+   *                        through Pending Refund
    *
    * Not allowed once the seller has confirmed the money, once the goods have
    * been handed over, or while an admin is reviewing the transaction.
@@ -524,7 +571,7 @@ export class TransactionService {
           userId: transaction.buyerId,
           eventKey: `transaction:${transactionId}:payment-slip-rejected:${transaction.paymentId}`,
           title: 'Payment slip rejected',
-          body: `The seller could not match your slip for transaction #${transactionId}: ${dto.reason}. Upload a new one, or wait for the seller to return what you sent.`,
+          body: `The seller could not match your slip for transaction #${transactionId}: ${dto.reason}. Upload a new one.`,
           href: `/history/${transactionId}`,
         },
       });
@@ -804,14 +851,13 @@ export class TransactionService {
   ) {
     return this.mutate(transactionId, async (tx, transaction) => {
       this.assertIsSeller(transaction, userId);
-      // Returning the money behind a rejected slip is not a cancellation, so
-      // the deal stays Processing until the buyer confirms it arrived.
-      const afterRejectedSlip = this.slipRejected(transaction);
-      if (afterRejectedSlip) this.assertNoPendingCancellation(transaction);
-      else this.assertRefundable(transaction);
+      // Only a cancelled deal is refunded. A rejected slip is settled by the
+      // buyer sending a new one, not by a refund.
+      this.assertRefundable(transaction);
       if (transaction.refundConfirmedByBuyer) {
         throw new BadRequestException('This refund has already been confirmed');
       }
+      await this.buyerPromptPayOrThrow(tx, transaction);
 
       await this.ensureRefund(tx, transactionId);
       // A slip the buyer has not answered yet is replaced in place, which
@@ -826,28 +872,10 @@ export class TransactionService {
           data: { transactionId, refundSlipUrl: dto.refund_slip_url },
         });
       }
-      if (!afterRejectedSlip) {
-        await tx.transaction.update({
-          where: { transactionId },
-          data: { status: TransactionStatus.PendingRefund },
-        });
-      }
-    });
-  }
-
-  /**
-   * The money behind a rejected slip is back with the buyer, so nothing is
-   * owed either way: the deal returns to Pending, where the buyer can pay
-   * again or either side can cancel. The rejected slip stays on record; the
-   * refund evidence is removed, because the table allows one confirmed refund
-   * slip per transaction and this deal may yet be paid and refunded for real.
-   */
-  private async voidRejectedPayment(tx: Db, transactionId: number) {
-    await tx.transactionRefundSlip.deleteMany({ where: { transactionId } });
-    await tx.transactionRefund.deleteMany({ where: { transactionId } });
-    await tx.transaction.update({
-      where: { transactionId },
-      data: { status: TransactionStatus.Pending },
+      await tx.transaction.update({
+        where: { transactionId },
+        data: { status: TransactionStatus.PendingRefund },
+      });
     });
   }
 
@@ -855,16 +883,6 @@ export class TransactionService {
   async confirmRefund(transactionId: number, userId: number) {
     return this.mutate(transactionId, async (tx, transaction) => {
       this.assertIsBuyer(transaction, userId);
-      if (this.slipRejected(transaction)) {
-        this.assertNoPendingCancellation(transaction);
-        if (!transaction.refundSlipUrl) {
-          throw new BadRequestException(
-            'The seller has not uploaded a refund slip yet',
-          );
-        }
-        await this.voidRejectedPayment(tx, transactionId);
-        return;
-      }
       this.assertRefundable(transaction);
 
       if (!transaction.refundSlipUrl) {
@@ -1224,18 +1242,19 @@ export class TransactionService {
         return;
       }
 
+      // Only a cancelled deal carries a refund now. A report filed over a
+      // refund slip sent after a rejected payment slip settles nothing: the
+      // buyer just uploads a new slip.
       const refundUnconfirmed =
+        (transaction.status === TransactionStatus.PendingRefund ||
+          transaction.status === TransactionStatus.Cancelled) &&
         transaction.refundSubmittedAt !== null &&
         transaction.refundSlipUrl !== null &&
         !transaction.refundConfirmedByBuyer;
       if (!refundUnconfirmed) return;
-      if (this.slipRejected(transaction)) {
-        await this.voidRejectedPayment(tx, transaction.transactionId);
-      } else {
-        await this.recordReturnProgress(tx, transaction, {
-          refundConfirmedByBuyer: true,
-        });
-      }
+      await this.recordReturnProgress(tx, transaction, {
+        refundConfirmedByBuyer: true,
+      });
     });
   }
 }

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 
+import { isDecodableImage } from "@/lib/image-check";
+
 const ACCEPT = "image/jpeg,image/png,image/webp";
 /** The upload endpoint's own limit. */
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -51,19 +53,32 @@ export function EvidencePicker({
     };
   }, [files]);
 
-  function add(list: FileList | null) {
-    const picked = Array.from(list ?? []);
+  async function add(picked: File[]) {
     const tooBig = picked.filter((file) => file.size > MAX_BYTES);
-    const ok = picked.filter((file) => file.size <= MAX_BYTES);
-    const room = max - files.length;
+    const sized = picked.filter((file) => file.size <= MAX_BYTES);
+    const room = Math.max(0, max - files.length);
+    // Cut to the free slots before decoding: decoding is the expensive step,
+    // so it only runs on files that could actually be kept, one at a time.
+    const candidates = sized.slice(0, room);
+    // The type is read from the file name; decoding is what proves a photo
+    // (audit B04), so a renamed text file is turned away here, not by the API.
+    const ok: File[] = [];
+    for (const file of candidates) {
+      if (await isDecodableImage(file)) ok.push(file);
+    }
+    const notImages = candidates.length - ok.length;
     setError(
-      tooBig.length
-        ? "Each photo must be 5MB or smaller."
-        : ok.length > room
-          ? `Up to ${max} photos.`
-          : null,
+      notImages
+        ? notImages === 1
+          ? "1 file was not a photo and was left out."
+          : `${notImages} files were not photos and were left out.`
+        : tooBig.length
+          ? "Each photo must be 5MB or smaller."
+          : sized.length > room
+            ? `Up to ${max} photos.`
+            : null,
     );
-    if (ok.length) onChange([...files, ...ok.slice(0, room)]);
+    if (ok.length) onChange([...files, ...ok]);
   }
 
   return (
@@ -123,9 +138,12 @@ export function EvidencePicker({
         accept={ACCEPT}
         multiple
         hidden
+        aria-label="Add photo"
         onChange={(event) => {
-          add(event.target.files);
+          // Copied first: clearing the input empties its live FileList.
+          const list = event.target.files ? Array.from(event.target.files) : [];
           event.target.value = "";
+          void add(list);
         }}
       />
     </div>

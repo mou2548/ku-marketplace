@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { loadAppointmentRespondedAt } from '../appointment-cards/appointment-responded-at';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { displayName } from '../common/utils/display-name';
@@ -87,6 +88,8 @@ export class TransactionsService {
     location: string;
     status: string | null;
     deletedAt: Date | null;
+    /** When it was answered; see `loadAppointmentRespondedAt`. */
+    respondedAt?: Date | null;
     createdAt: Date | null;
     proposer: {
       userId: number;
@@ -108,6 +111,7 @@ export class TransactionsService {
       // this is still a live card; a value means a newer proposal replaced it
       // or it was rejected.
       deleted_at: appointment.deletedAt,
+      responded_at: appointment.respondedAt ?? null,
       created_at: appointment.createdAt,
     };
   }
@@ -294,8 +298,15 @@ export class TransactionsService {
       include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
+    const answered = await loadAppointmentRespondedAt(
+      this.prisma,
+      appointments,
+    );
     return appointments.map((appointment) =>
-      this.serializeAppointment(appointment),
+      this.serializeAppointment({
+        ...appointment,
+        respondedAt: answered.get(appointment.appointmentId),
+      }),
     );
   }
 
@@ -331,8 +342,15 @@ export class TransactionsService {
       include: { proposer: true },
       orderBy: { createdAt: 'desc' },
     });
+    const answered = await loadAppointmentRespondedAt(
+      this.prisma,
+      appointments,
+    );
     return appointments.map((appointment) =>
-      this.serializeAppointment(appointment),
+      this.serializeAppointment({
+        ...appointment,
+        respondedAt: answered.get(appointment.appointmentId),
+      }),
     );
   }
 }

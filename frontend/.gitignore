@@ -20,6 +20,9 @@
 # production
 /build
 
+# QR decoder binary, copied from node_modules by scripts/copy-zxing-wasm.mjs
+/public/zxing/
+
 # misc
 .DS_Store
 *.pem

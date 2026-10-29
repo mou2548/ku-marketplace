@@ -3,6 +3,8 @@ import { parseFeedParams, type RawSearchParams } from "@/lib/feed-filters";
 
 import { MarketFeed } from "../market-feed";
 
+export const metadata = { title: "Market - KU Marketplace" };
+
 /**
  * Reads real listings now (`GET /posts`), so it cannot be prerendered once at
  * build time — a post made after the build would never appear, and a `next

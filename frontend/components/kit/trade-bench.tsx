@@ -1,6 +1,7 @@
 "use client";
 
 import { getCopy } from "@/lib/copy";
+import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Coins, PackageOpen, X } from "lucide-react";
 
 import type { InventoryItem } from "./inventory-slot";
@@ -8,6 +9,8 @@ import { EmptySlot, InventoryGrid, InventorySlot } from "./inventory-slot";
 import { Surface } from "./surface";
 import { TextInput } from "./field";
 import type { MoneyDirection } from "@/lib/offers";
+import { formatPrice, formatPriceAmount } from "@/lib/format-price";
+import { parseMoneyInput } from "@/lib/money-input";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,6 +47,12 @@ export interface TradeBenchProps {
   youGet: InventoryItem[];
   additionalMoney: number;
   onAdditionalMoneyChange: (value: number) => void;
+  /**
+   * Whether the typed cash is a valid amount. While it is not, the field
+   * shows why and `onAdditionalMoneyChange` keeps the last valid value, so
+   * the page must hold its submit until this reports true again.
+   */
+  onCashValidityChange?: (valid: boolean) => void;
   /** Which way the cash travels, so the field can say whose it is. */
   moneyDirection: MoneyDirection;
   /**
@@ -66,6 +75,7 @@ export function TradeBench({
   youGet,
   additionalMoney,
   onAdditionalMoneyChange,
+  onCashValidityChange,
   moneyDirection,
   counterpartyName,
   minSlots = 3,
@@ -77,6 +87,25 @@ export function TradeBench({
     onYouGiveChange(youGive.filter((i) => i.item_id !== id));
 
   const emptyWells = Math.max(0, minSlots - youGive.length);
+
+  // The field keeps exactly what was typed. It used to strip every non-digit,
+  // so "12.345" became 12345 and "-50" became 50 without a word (audit T03).
+  const [cashText, setCashText] = useState(
+    additionalMoney ? String(additionalMoney) : "",
+  );
+  const [cashError, setCashError] = useState<string | null>(null);
+
+  function changeCash(text: string) {
+    setCashText(text);
+    const parsed = parseMoneyInput(text);
+    if (parsed.ok) {
+      setCashError(null);
+      onAdditionalMoneyChange(parsed.value);
+    } else {
+      setCashError(parsed.error);
+    }
+    onCashValidityChange?.(parsed.ok);
+  }
   const youPay = moneyDirection === "you-pay";
 
   return (
@@ -172,7 +201,7 @@ export function TradeBench({
                   ? t("offer.personAdds", { name: counterpartyName })
                   : t("offer.theyAdd")}
             </span>{" "}
-            <span data-numeric>฿{additionalMoney.toLocaleString()}</span>
+            <span data-numeric>{formatPrice(additionalMoney)}</span>
           </p>
         ) : null}
 
@@ -192,12 +221,18 @@ export function TradeBench({
               youPay ? t("offer.yourExtraCash") : t("offer.theirExtraCash")
             }
             label={youPay ? t("offer.youAdd") : t("offer.theyAdd")}
-            value={additionalMoney ? String(additionalMoney) : ""}
-            onChange={(v) =>
-              onAdditionalMoneyChange(Number(v.replace(/\D/g, "")) || 0)
+            value={
+              isReadOnly
+                ? additionalMoney
+                  ? formatPriceAmount(additionalMoney)
+                  : ""
+                : cashText
             }
+            onChange={changeCash}
             isReadOnly={isReadOnly}
-            inputMode="numeric"
+            isInvalid={!isReadOnly && cashError !== null}
+            errorMessage={cashError ?? undefined}
+            inputMode="decimal"
             placeholder="0"
             icon={<Coins className="size-4" />}
             suffix={<span className="text-caption">{t("listing.thb")}</span>}
@@ -297,15 +332,20 @@ export function TradeBench({
  * The proposer's inventory panel. Kept separate from TradeBench so a page can
  * place it wherever the layout needs — a sheet on mobile, a rail on desktop.
  * Tapping an item hands it to `onAdd`, which places it on the bench.
+ * Items in `unavailable` stay visible but disabled, with their reason on the
+ * slot, so the stash still matches the inventory screen.
  */
 export function TradeSourcePanel({
   inventory,
   offeredIds,
+  unavailable,
   onAdd,
   className,
 }: {
   inventory: InventoryItem[];
   offeredIds: Set<number>;
+  /** item_id to the short reason it cannot be offered. */
+  unavailable?: ReadonlyMap<number, string>;
   onAdd: (item: InventoryItem) => void;
   className?: string;
 }) {
@@ -337,12 +377,16 @@ export function TradeSourcePanel({
           aria-label={t("offer.myInventory")}
           items={inventory}
           selectionMode="none"
+          // Also set per slot; on the grid it keeps arrow keys from stopping
+          // on them.
+          disabledKeys={unavailable ? [...unavailable.keys()] : undefined}
         >
           {(item: InventoryItem) => (
             <InventorySlot
               id={item.item_id}
               item={item}
               isPlaced={offeredIds.has(item.item_id)}
+              unavailableReason={unavailable?.get(item.item_id)}
               showName
               onAction={() => onAdd(item)}
             />

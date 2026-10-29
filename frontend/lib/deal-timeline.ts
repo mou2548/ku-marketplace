@@ -3,29 +3,33 @@
  * at the point in the conversation where each step happened.
  *
  * Derived only from what the API already returns (the frontend adapts to the
- * backend). Most steps stamp a column; some do not:
+ * backend). Every step carries the time it happened, so the chat can sort the
+ * cards and the messages into one timeline:
  *
- *   dated     created_at, payment_confirmed_by_buyer_at,
- *             payment_confirmed_by_seller_at, appointment created_at,
- *             item_received_confirmed_by_buyer_at, cancellation_requested_at,
- *             refund_submitted_at, item_return_confirmed_at
- *   undated   tracking number entered, appointment confirmed, cancellation
- *             answered, refund acknowledged, return finished, report opened
+ *   created_at, payment_confirmed_by_buyer_at, payment_confirmed_by_seller_at,
+ *   appointment created_at and responded_at, shipped_at,
+ *   item_received_confirmed_by_buyer_at, cancellation_requested_at and
+ *   cancellation_responded_at, active_report_created_at, refund_submitted_at,
+ *   refund_confirmed_at, item_return_confirmed_at; "closed" takes the latest
+ *   of the closing steps above.
  *
- * An undated event is placed right after the event before it in flow order,
- * and at the end of the chat when it is the latest step. Its card shows no
- * time, because there is none to show.
+ * Rows written before the backend recorded a time (an old appointment answer,
+ * say) still arrive without one. Such an event is placed right after the event
+ * before it in flow order, and at the end of the chat when it is the latest
+ * step. Its card shows no time, because there is none to show.
  *
  * Pure, no I/O.
  */
 
 import type { AppointmentCardData, Transaction } from "@/lib/api/types";
 import { formatDate, formatDateTime } from "@/lib/date-format";
+import { formatPrice } from "@/lib/format-price";
 import { requiresPayment, type Tone } from "@/lib/status";
 
 export type DealEventKind =
   | "started"
   | "slip"
+  | "slip-rejected"
   | "paid"
   | "meetup-proposed"
   | "meetup-confirmed"
@@ -56,7 +60,7 @@ export interface DealEvent {
   placeAt: number;
 }
 
-const baht = (amount: number) => `฿${amount.toLocaleString("en-US")}`;
+const baht = formatPrice;
 
 /** Prefixed, because the card also shows when the proposal was made. */
 function meetupWhen(card: AppointmentCardData): string {
@@ -102,6 +106,17 @@ export function buildDealTimeline(
       at: tx.payment_confirmed_by_buyer_at,
     });
 
+  // Shown only while the rejection stands: the API drops the reason once a
+  // new slip is on file, and records no time for the rejection itself.
+  if (tx.payment_rejection_reason)
+    push({
+      id: "slip-rejected",
+      kind: "slip-rejected",
+      title: `${name(tx.seller_id)} rejected the payment slip`,
+      detail: tx.payment_rejection_reason,
+      tone: "danger",
+    });
+
   if (tx.payment_confirmed_by_seller_at)
     push({
       id: "paid",
@@ -137,6 +152,7 @@ export function buildDealTimeline(
           title: `${noun[0].toUpperCase()}${noun.slice(1)} confirmed`,
           detail: meetupWhen(card),
           tone: "success",
+          at: card.responded_at ?? undefined,
         });
       // Rejected covers both a declined card and a Pending one replaced by a
       // newer proposal (createAppointment); the backend records the same
@@ -163,6 +179,7 @@ export function buildDealTimeline(
         ? `${tx.tracking_number} · due ${formatDate(tx.estimated_delivery_date)}`
         : tx.tracking_number,
       tone: "info",
+      at: tx.shipped_at ?? undefined,
     });
 
   // Where the item changed hands: the handover card that was live at the
@@ -226,6 +243,7 @@ export function buildDealTimeline(
             : "Refund next"
           : undefined,
         tone: "warning",
+        at: tx.cancellation_responded_at ?? undefined,
       });
     if (tx.cancellation_response === "Rejected")
       push({
@@ -236,6 +254,7 @@ export function buildDealTimeline(
         title: `${noun[0].toUpperCase()}${noun.slice(1)} not accepted · sent to an admin`,
         detail: "Actions are locked until an admin decides",
         tone: "danger",
+        at: tx.cancellation_responded_at ?? undefined,
       });
   }
 
@@ -248,6 +267,7 @@ export function buildDealTimeline(
       kind: "review",
       title: "Sent to admin review · actions locked",
       tone: "danger",
+      at: tx.active_report_created_at ?? undefined,
     });
 
   meetupEvents(byCreation.filter((c) => Date.parse(c.created_at) >= since), "return meetup");
@@ -268,6 +288,7 @@ export function buildDealTimeline(
       kind: "refund-received",
       title: `${name(tx.buyer_id)} confirmed the refund`,
       tone: "success",
+      at: tx.refund_confirmed_at ?? undefined,
     });
 
   if (tx.item_return_confirmed_at)
@@ -279,10 +300,19 @@ export function buildDealTimeline(
       at: tx.item_return_confirmed_at,
     });
 
+  // A deal closes with its last step: the return, the refund, or the answer
+  // that cancelled it. Nothing else stamps the closing itself.
+  const closedAt = [
+    tx.item_return_confirmed_at,
+    tx.refund_confirmed_at,
+    tx.cancellation_responded_at,
+  ]
+    .filter((t): t is string => !!t)
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
   if (tx.status === "Refunded")
-    push({ id: "closed", kind: "closed", title: "Return complete · deal closed", tone: "neutral" });
+    push({ id: "closed", kind: "closed", title: "Return complete · deal closed", tone: "neutral", at: closedAt });
   else if (tx.status === "Cancelled" && !cancelledOnTheSpot)
-    push({ id: "closed", kind: "closed", title: "Deal cancelled", tone: "danger" });
+    push({ id: "closed", kind: "closed", title: "Deal cancelled", tone: "danger", at: closedAt });
 
   // Placement: dated events at their own time; an undated one inherits the
   // time of the event before it in flow order, except the latest step, which

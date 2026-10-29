@@ -134,7 +134,7 @@ export function Checkbox({
     <AriaCheckbox
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-center gap-2.5 text-body",
+        "group flex min-h-11 min-w-11 cursor-pointer items-center gap-2.5 text-body",
         className,
       )}
     >
@@ -207,7 +207,7 @@ export function Radio({
     <AriaRadio
       {...props}
       className={cn(
-        "group flex min-h-11 cursor-pointer items-start gap-2.5 text-body",
+        "group flex min-h-11 min-w-11 cursor-pointer items-start gap-2.5 text-body",
         // With a description the whole row becomes a pressable card — the shape
         // the giveaway allocation picker needs, where each option must explain
         // itself (research R7).

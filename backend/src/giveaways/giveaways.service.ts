@@ -209,7 +209,6 @@ export class GiveawaysService {
           },
         },
         include: {
-          item: { select: { name: true } },
           images: { orderBy: { displayOrder: 'asc' } },
           giver: true,
         },
@@ -288,7 +287,6 @@ export class GiveawaysService {
     const giveaway = await this.prisma.giveawayPost.findUnique({
       where: { giveawayId: this.id(id, 'giveaway') },
       include: {
-        item: { select: { name: true } },
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
         _count: { select: { tickets: true } },
@@ -305,7 +303,6 @@ export class GiveawaysService {
   async findAll() {
     const giveaways = await this.prisma.giveawayPost.findMany({
       include: {
-        item: { select: { name: true } },
         images: { orderBy: { displayOrder: 'asc' } },
         giver: true,
         _count: { select: { tickets: true } },

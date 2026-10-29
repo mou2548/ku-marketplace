@@ -6,6 +6,8 @@ import { getAccessToken } from "@/lib/api/session";
 
 import { TicketScreen } from "./ticket-screen";
 
+export const metadata = { title: "Giveaway ticket - KU Marketplace" };
+
 /**
  * E7 receiver side. Research risk R8 lives here: the QR rotates every 15
  * minutes, which is a security control the receiver never asked for.

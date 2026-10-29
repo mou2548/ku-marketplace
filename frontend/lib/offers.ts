@@ -18,6 +18,7 @@
  */
 
 import type { Item, Offer, UserSummary } from "@/lib/api/types";
+import { formatPrice } from "@/lib/format-price";
 
 export type MoneyDirection = "you-pay" | "you-receive";
 
@@ -67,8 +68,6 @@ export function offerSides(offer: Offer, viewerId: number): OfferSides {
       };
 }
 
-const baht = (amount: number) => `฿${amount.toLocaleString("en-GB")}`;
-
 /**
  * One item is named; more than one is counted. A card that spells out four
  * item names is no faster to read than the photos it sits under.
@@ -88,12 +87,12 @@ export function describeOffer(sides: OfferSides): string {
 
   const getPart =
     money > 0 && moneyDirection === "you-receive"
-      ? `${pile(youGet)} plus ${baht(money)}`
+      ? `${pile(youGet)} plus ${formatPrice(money)}`
       : pile(youGet);
 
   const givePart =
     money > 0 && moneyDirection === "you-pay"
-      ? `${pile(youGive)} plus ${baht(money)}`
+      ? `${pile(youGive)} plus ${formatPrice(money)}`
       : pile(youGive);
 
   return `You get ${getPart}, and give ${givePart}.`;

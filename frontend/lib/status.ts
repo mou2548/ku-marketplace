@@ -1,3 +1,5 @@
+import { isSlipRejected } from "@/lib/slip-state";
+
 /**
  * The single place where a backend enum becomes something a user can read.
  *
@@ -174,21 +176,6 @@ export const ITEM_TRANSFERRED_STATUS: StatusPresentation = {
   labelKey: "item.Transferred.label",
   icon: "PackageCheck",
 };
-
-/**
- * True once every unit this item ever had is gone: sold, traded, or given
- * away, with nothing left in an open channel. Derived from
- * `ItemHistorySummary` rather than a stored field — see
- * docs/design/api-gaps.md for the one edge case this doesn't catch (a
- * closed-but-not-fully-claimed giveaway won't appear in `channels`, so it
- * won't register as fully transferred; the safe direction to be wrong in).
- */
-export function isItemTransferred(summary: {
-  available_quantity: number;
-  channels: unknown[];
-}): boolean {
-  return summary.available_quantity === 0 && summary.channels.length === 0;
-}
 
 export type PostType = "SellOnly" | "TradeOnly" | "Both";
 
@@ -558,6 +545,11 @@ export interface TransactionLike {
   payment_confirmed_by_seller_at?: string | null;
   item_received_confirmed_by_buyer_at?: string | null;
   tracking_number?: string | null;
+  /** Null after the seller rejects the latest slip — see `isSlipRejected`. */
+  slip_image_url?: string | null;
+  /** The seller's refund evidence, open until the buyer confirms it. */
+  refund_slip_url?: string | null;
+  refund_confirmed_by_buyer?: boolean | null;
 }
 
 export interface ActorPrompt {
@@ -598,7 +590,8 @@ export type PromptAction =
   | "enter-tracking"
   | "confirm-delivery"
   | "scan-qr"
-  | "refund-slip";
+  | "refund-slip"
+  | "confirm-refund";
 
 export function requiresPayment(tx: TransactionLike): boolean {
   if (tx.offer_id == null) return true; // a straight purchase always pays
@@ -673,6 +666,10 @@ export function resolveTransactionActor(
       );
 
     case "Processing":
+      // A rejected slip hands the turn back to the buyer to send a new one.
+      if (requiresPayment(tx) && isSlipRejected(tx)) {
+        return you("buyer", "prompt.upload-slip.you", "prompt.upload-slip.them", "warning", "upload-slip");
+      }
       if (requiresPayment(tx) && !tx.payment_confirmed_by_seller_at) {
         return you("seller", "prompt.review-slip.you", "prompt.review-slip.them", "warning", "review-slip");
       }
@@ -704,6 +701,16 @@ export function resolveTransactionActor(
       );
 
     case "Pending Refund":
+      // The refund slip is in: answering it is the buyer's move.
+      if (tx.refund_slip_url && !tx.refund_confirmed_by_buyer) {
+        return you(
+          "buyer",
+          "prompt.confirm-refund.you",
+          "prompt.confirm-refund.them",
+          "warning",
+          "confirm-refund",
+        );
+      }
       return you(
         "seller",
         "prompt.refund-slip.you",
@@ -776,6 +783,32 @@ export function cancelResponseDeadline(requestedAt: string): Deadline {
     kind: "cancel-response",
     expiresAt: new Date(requestedAt).getTime() + 72 * HOUR,
     labelKey: "deadline.cancel-response.label",
+    onExpiry: "escalate",
+  };
+}
+
+/** A return request on a completed deal escalates if unanswered for 24h. */
+export function returnResponseDeadline(requestedAt: string): Deadline {
+  return {
+    kind: "return-response",
+    expiresAt: new Date(requestedAt).getTime() + 24 * HOUR,
+    labelKey: "deadline.return-response.label",
+    onExpiry: "escalate",
+  };
+}
+
+/**
+ * The buyer answers a refund slip within 72h when goods also come back,
+ * else 24h (`transactionDeadline` in transaction-deadline.service.ts).
+ */
+export function refundConfirmationDeadline(
+  submittedAt: string,
+  itemWasReceived: boolean,
+): Deadline {
+  return {
+    kind: "refund-confirmation",
+    expiresAt: new Date(submittedAt).getTime() + (itemWasReceived ? 72 : 24) * HOUR,
+    labelKey: "deadline.refund-confirmation.label",
     onExpiry: "escalate",
   };
 }

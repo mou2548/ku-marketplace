@@ -56,6 +56,7 @@ function makePrisma() {
     },
     post: { findUnique: jest.fn(), update: jest.fn() },
     transaction: { findUnique: jest.fn() },
+    chatMessage: { findMany: jest.fn().mockResolvedValue([]) },
     notification: { createMany: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -143,6 +144,7 @@ describe('Who hears about moderation', () => {
       report_type: 'User',
       target_id: 9,
       reason_category: 'Scam',
+      details: 'The seller never showed up at the agreed place.',
     });
 
     expect(notificationsSent(prisma)).toEqual([
@@ -266,5 +268,260 @@ describe('Who hears about moderation', () => {
         title: 'Your appeal was rejected',
       }),
     ]);
+  });
+});
+
+describe('Chat messages picked as report evidence', () => {
+  /** A message in the chat of deal 7, between buyer 5 and seller 9. */
+  const dealMessage = (transactionId = 7, buyerId = 5, sellerId = 9) => ({
+    room: { transactionId, transaction: { buyerId, sellerId } },
+  });
+
+  function reportingUser9(prisma: ReturnType<typeof makePrisma>) {
+    prisma.user.findUnique.mockResolvedValue(person(9, 'Target'));
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.report.create.mockImplementation(
+      ({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve(reportRow({ evidenceUrls: data.evidenceUrls })),
+    );
+  }
+
+  it('stores messages from a chat with the reported user beside the photos', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([
+      dealMessage(),
+      dealMessage(),
+    ]);
+
+    const report = await reports.create(5, {
+      report_type: 'User',
+      target_id: 9,
+      reason_category: 'Rude',
+      details: 'Insulted me twice in the chat',
+      evidence_urls: ['https://img.example/a.png'],
+      evidence_message_ids: [11, 12, 11],
+    });
+
+    const [[stored]] = prisma.report.create.mock.calls as [
+      [{ data: { evidenceUrls: unknown } }],
+    ];
+    expect(stored.data.evidenceUrls).toEqual([
+      'https://img.example/a.png',
+      'chat-message:11',
+      'chat-message:12',
+    ]);
+    expect(report).toMatchObject({
+      evidence_urls: ['https://img.example/a.png'],
+      evidence_message_ids: [11, 12],
+    });
+  });
+
+  it('refuses a message from a chat the reporter is not in', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([dealMessage(7, 9, 20)]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'User',
+        target_id: 9,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [11],
+      }),
+    ).rejects.toThrow('Chat messages must come from your own chat');
+    expect(prisma.report.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a message from a chat without the reported user', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([dealMessage(7, 5, 20)]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'User',
+        target_id: 9,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [11],
+      }),
+    ).rejects.toThrow('Chat messages must come from your own chat');
+  });
+
+  it("refuses a message from another deal's chat on a transaction report", async () => {
+    const { prisma, reports } = makeServices();
+    prisma.transaction.findUnique.mockResolvedValue({
+      transactionId: 7,
+      buyerId: 5,
+      sellerId: 9,
+    });
+    prisma.chatMessage.findMany.mockResolvedValue([dealMessage(8)]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'Transaction',
+        target_id: 7,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [11],
+      }),
+    ).rejects.toThrow('Chat messages must come from your own chat');
+  });
+
+  it('refuses a message id that does not exist', async () => {
+    const { prisma, reports } = makeServices();
+    reportingUser9(prisma);
+    prisma.chatMessage.findMany.mockResolvedValue([]);
+
+    await expect(
+      reports.create(5, {
+        report_type: 'User',
+        target_id: 9,
+        reason_category: 'Rude',
+        details: 'Insulted me twice in the chat',
+        evidence_message_ids: [99],
+      }),
+    ).rejects.toThrow('Some chat messages were not found');
+  });
+});
+
+describe('An admin suspends or reinstates an account by hand', () => {
+  it('files a confirmed User report and suspends the account, appealable', async () => {
+    const { prisma, reports } = makeServices();
+    prisma.user.findUnique.mockResolvedValue({
+      userId: 9,
+      status: 'Active',
+      isAdmin: false,
+    });
+    prisma.report.create.mockImplementation(
+      ({ data }: { data: Record<string, unknown> }) => ({
+        reportId: 12,
+        ...data,
+      }),
+    );
+
+    const result = await reports.sanctionUser(
+      9,
+      1,
+      'suspend_temporary',
+      'Repeated no-shows at meetups',
+    );
+
+    const [[created]] = prisma.report.create.mock.calls as [
+      [{ data: Record<string, unknown> }],
+    ];
+    expect(created.data).toEqual(
+      expect.objectContaining({
+        reporterId: 1,
+        reportType: 'User',
+        targetId: 9,
+        reasonCategory: 'Admin action',
+        status: 'Violation_Confirmed',
+        sanction: 'suspend_temporary',
+        handledBy: 1,
+      }),
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { userId: 9 },
+      data: { status: 'Suspended' },
+    });
+    expect(notificationsSent(prisma)).toEqual([
+      expect.objectContaining({ userId: 9, href: '/account/appeals' }),
+    ]);
+    expect(result).toMatchObject({ report_id: 12, status: 'Suspended' });
+    expect(result.ends_at).toBeInstanceOf(Date);
+  });
+
+  it('refuses to suspend an admin or the acting admin', async () => {
+    const { prisma, reports } = makeServices();
+    await expect(
+      reports.sanctionUser(1, 1, 'suspend_permanent', 'Testing a self ban'),
+    ).rejects.toThrow('your own account');
+    prisma.user.findUnique.mockResolvedValue({
+      userId: 2,
+      status: 'Active',
+      isAdmin: true,
+    });
+    await expect(
+      reports.sanctionUser(2, 1, 'suspend_permanent', 'Testing an admin ban'),
+    ).rejects.toThrow('admin account');
+    expect(prisma.report.create).not.toHaveBeenCalled();
+  });
+
+  it('reinstating dismisses every verdict still holding the account and reactivates it', async () => {
+    const { prisma, reports } = makeServices();
+    prisma.$transaction.mockImplementation((ops: unknown) =>
+      Promise.all(ops as Promise<unknown>[]),
+    );
+    prisma.user.findUnique.mockResolvedValue({ userId: 9, status: 'Banned' });
+    const now = new Date();
+    prisma.report.findMany.mockResolvedValue([
+      reportRow({
+        reportId: 3,
+        status: 'Violation_Confirmed',
+        sanction: 'suspend_permanent',
+        handledAt: now,
+      }),
+      reportRow({
+        reportId: 4,
+        status: 'Violation_Confirmed',
+        sanction: 'warn',
+        handledAt: now,
+      }),
+      reportRow({
+        reportId: 5,
+        status: 'Violation_Confirmed',
+        sanction: 'suspend_temporary',
+        handledAt: new Date(now.getTime() - 30 * 86_400_000),
+      }),
+    ]);
+    // Read by verdictsAgainst before it looks up the reports.
+    (prisma as unknown as { post: { findMany: jest.Mock } }).post.findMany =
+      jest.fn().mockResolvedValue([]);
+    (
+      prisma as unknown as { transaction: { findMany: jest.Mock } }
+    ).transaction.findMany = jest.fn().mockResolvedValue([]);
+
+    const result = await reports.reinstateUser(9, 1, 'Mistaken identity');
+
+    const [[dismissed]] = prisma.report.updateMany.mock.calls as [
+      [{ where: unknown; data: Record<string, unknown> }],
+    ];
+    expect(dismissed.where).toEqual({ reportId: { in: [3] } });
+    expect(dismissed.data).toEqual(
+      expect.objectContaining({
+        status: 'Report_Dismissed',
+        handledBy: 1,
+      }),
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { userId: 9 },
+      data: { status: 'Active' },
+    });
+    expect(notificationsSent(prisma)).toEqual([
+      expect.objectContaining({ userId: 9, title: 'Your account is restored' }),
+    ]);
+    expect(result.reversed_report_ids).toEqual([3]);
+    // An appeal still open on the reversed verdict is closed as upheld, and
+    // a post hidden by a verdict is not put back on the market.
+    const [[closed]] = prisma.appeal.updateMany.mock.calls as [
+      [{ where: unknown; data: Record<string, unknown> }],
+    ];
+    expect(closed.where).toEqual({
+      reportId: { in: [3] },
+      status: { in: ['Pending', 'Under_Review'] },
+    });
+    expect(closed.data.status).toBe('Approved');
+    expect(prisma.post.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses to reinstate an account that is not suspended', async () => {
+    const { prisma, reports } = makeServices();
+    prisma.user.findUnique.mockResolvedValue({ userId: 9, status: 'Active' });
+    await expect(reports.reinstateUser(9, 1, null)).rejects.toThrow(
+      'not suspended',
+    );
   });
 });

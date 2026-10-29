@@ -53,6 +53,18 @@ export class TransactionController {
     return this.transactionService.paymentQr(id, user.userId);
   }
 
+  /**
+   * The refund QR the seller scans: the buyer's account and the amount to
+   * return, both fixed server-side.
+   */
+  @Get(':id/refund-qr')
+  refundQr(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.transactionService.refundQr(id, user.userId);
+  }
+
   /** §8.6 — buyer uploads the transfer slip and confirms: Pending → Processing.
    * Also replaces a slip the seller rejected. */
   @Post(':id/payment-slip')
@@ -77,7 +89,7 @@ export class TransactionController {
 
   /**
    * §8.6 — seller rejects a slip that does not match. Stays Processing until
-   * the buyer sends a new slip or confirms the seller's refund.
+   * the buyer sends a new slip.
    */
   @Post(':id/reject-payment-slip')
   @HttpCode(200)

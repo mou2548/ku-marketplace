@@ -4,6 +4,8 @@ import { adminGetTransactionEvidence, adminListReports } from "@/lib/api/reports
 
 import { ReportCase } from "./report-case";
 
+export const metadata = { title: "Report - Admin" };
+
 export default async function AdminReportPage({
   params,
 }: {

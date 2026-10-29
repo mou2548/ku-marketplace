@@ -11,9 +11,12 @@
  */
 
 import type { Offer, Transaction } from "@/lib/api/types";
+import { isSlipRejected } from "@/lib/slip-state";
 import {
   cancelResponseDeadline,
+  refundConfirmationDeadline,
   resolveTransactionActor,
+  returnResponseDeadline,
   sellerConfirmDeadline,
   shippingDeadline,
   type ActorPrompt,
@@ -53,17 +56,21 @@ function partyOf(tx: Transaction, viewerId: number): Party {
 export function deadlineFor(tx: Transaction): Deadline | undefined {
   if (tx.active_report_id) return undefined;
   if (tx.cancellation_response === "Pending" && tx.cancellation_requested_at) {
-    if (tx.status === "Completed") return {
-      kind: "return-response", expiresAt: new Date(tx.cancellation_requested_at).getTime() + 24 * 3600000,
-      labelKey: "deadline.return-response.label", onExpiry: "escalate",
-    };
-    return cancelResponseDeadline(tx.cancellation_requested_at);
+    return tx.status === "Completed"
+      ? returnResponseDeadline(tx.cancellation_requested_at)
+      : cancelResponseDeadline(tx.cancellation_requested_at);
   }
-  if ((tx.status === "Pending Refund" || tx.status === "Cancelled") && tx.refund_submitted_at && !tx.refund_confirmed_by_buyer) return {
-    kind: "refund-confirmation",
-    expiresAt: new Date(tx.refund_submitted_at).getTime() + (tx.item_received_confirmed_by_buyer_at ? 72 : 24) * 3600000,
-    labelKey: "deadline.refund-confirmation.label", onExpiry: "escalate",
-  };
+  if (
+    (tx.status === "Pending Refund" || tx.status === "Cancelled") &&
+    tx.refund_submitted_at &&
+    tx.refund_slip_url &&
+    !tx.refund_confirmed_by_buyer
+  ) {
+    return refundConfirmationDeadline(
+      tx.refund_submitted_at,
+      !!tx.item_received_confirmed_by_buyer_at,
+    );
+  }
   // Seller has 24h to confirm the slip. `uploadPaymentSlip`
   // (transaction.service.ts) sets `payment_confirmed_by_buyer_at` and moves
   // `status` to `Processing` in the same write, so "Pending with a buyer
@@ -72,7 +79,9 @@ export function deadlineFor(tx: Transaction): Deadline | undefined {
   if (
     tx.status === "Processing" &&
     tx.payment_confirmed_by_buyer_at &&
-    !tx.payment_confirmed_by_seller_at
+    !tx.payment_confirmed_by_seller_at &&
+    // Once the seller rejects the slip there is nothing left for them to check.
+    !isSlipRejected(tx)
   ) {
     return sellerConfirmDeadline(tx.payment_confirmed_by_buyer_at);
   }

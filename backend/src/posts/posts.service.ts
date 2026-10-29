@@ -204,14 +204,6 @@ export class PostsService {
     }
   }
 
-  private async requirePromptPay(
-    db: Pick<Prisma.TransactionClient, 'user'>,
-    userId: number,
-    message = 'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนเปิดขายสินค้า',
-  ) {
-    await this.assertHasPromptPay(db, userId, message);
-  }
-
   async createPost(payload: CreatePostPayload, userId: number) {
     validateText(payload.description, 'description', 2000);
     validateText(payload.wanted_item_offer, 'wanted_item_offer', 500);
@@ -464,7 +456,11 @@ export class PostsService {
         );
       }
       if ((payload.post_type ?? found.postType) !== 'TradeOnly') {
-        await this.requirePromptPay(tx, userId);
+        await this.assertHasPromptPay(
+          tx,
+          userId,
+          'กรุณาตั้งค่า PromptPay ในโปรไฟล์ก่อนเปิดขายสินค้า',
+        );
       }
 
       let quantityTotal = found.quantityTotal;

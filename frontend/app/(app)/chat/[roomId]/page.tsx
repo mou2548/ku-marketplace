@@ -1,11 +1,12 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { RoomList } from "@/components/kit/room-list";
 import { getRoomDetail, getRoomSummaries } from "@/lib/api/rooms-query";
-import { getAccessToken } from "@/lib/api/session";
-import { getMe } from "@/lib/api/users";
+import { requireViewer } from "@/lib/viewer";
 
 import { RoomScreen } from "./room-screen";
+
+export const metadata = { title: "Chat - KU Marketplace" };
 
 /**
  * One room, whatever it is attached to.
@@ -24,9 +25,8 @@ export default async function RoomPage({
 }: {
   params: Promise<{ roomId: string }>;
 }) {
-  if (!(await getAccessToken())) redirect("/login");
-  const viewer = await getMe().catch(() => undefined);
-  if (!viewer) redirect("/login");
+  // Only a 401 means signed out (audit N01); see `requireViewer`.
+  const viewer = await requireViewer();
 
   const { roomId } = await params;
   const rooms = await getRoomSummaries(viewer.userId);
@@ -51,6 +51,7 @@ export default async function RoomPage({
           key={detail.summary.room_id}
           summary={detail.summary}
           viewerId={viewer.userId}
+          viewerHasPromptPay={!!viewer.promptpayId}
           transaction={detail.transaction}
           giveaway={detail.giveaway}
           appointment={detail.appointment}

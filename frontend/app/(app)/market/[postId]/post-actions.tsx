@@ -14,6 +14,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ReportDialog } from "@/components/kit/report-dialog";
 import { useToast } from "@/components/kit/toast";
 import type { DeliveryMethod } from "@/lib/status";
+import { unwrapAction } from "@/lib/action-result";
 import { buyPostAction, unlistListing } from "@/lib/actions/posts";
 import type { Post } from "@/lib/api/types";
 
@@ -80,7 +81,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
           confirmLabel="Unlist"
           doneMessage="Listing removed from the market."
           icon={<XCircle className="size-4" />}
-          onConfirm={unlistListing.bind(null, post.post_id)}
+          onConfirm={() => unwrapAction(unlistListing(post.post_id))}
           onDone={() => router.push(`/inventory/${post.item_id}`)}
           trigger={
             <>
@@ -98,7 +99,7 @@ export function PostActions({ post, isMine }: { post: Post; isMine: boolean }) {
     if (busy || !canConfirm) return;
     setBusy(true);
     try {
-      const deal = await buyPostAction(post.post_id, { delivery_method: method, quantity: quantityValue });
+      const deal = await unwrapAction(buyPostAction(post.post_id, { delivery_method: method, quantity: quantityValue }));
       const transactionId = Number(deal.transaction_id.replace(/^transaction_/, ""));
       if (!Number.isSafeInteger(transactionId) || transactionId < 1) throw new Error("The purchase returned an invalid transaction ID");
       toast.success("Deal created. A chat room has been opened for you.");

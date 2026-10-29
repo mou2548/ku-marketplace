@@ -47,7 +47,7 @@ export function ProductGallery({
       </div>
 
       {ordered.length > 1 ? (
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Product photos">
+        <div role="group" className="flex gap-2 overflow-x-auto pb-1" aria-label="Product photos">
           {ordered.map((image, index) => {
             const isSelected = image.image_id === selectedId;
             return (

@@ -17,6 +17,9 @@ import type { Post } from "@/lib/api/types";
 import { ITEM_CONDITION } from "@/lib/status";
 
 import { PostActions } from "./post-actions";
+import { formatPrice } from "@/lib/format-price";
+
+export const metadata = { title: "Listing - KU Marketplace" };
 
 /**
  * Product-led detail page. The composition follows the approved commerce
@@ -41,7 +44,8 @@ export default async function PostDetailPage({
   const specs: Array<[string, string]> = [
     [t("inventory.category"), post.item.category],
     [t("inventory.condition"), tStatus(rarity.labelKey)],
-    [t("market.available"), String(post.quantity_remaining)],
+    // "Available" lives only in the side card, next to the quantity picker
+    // that it limits; it used to be printed here as well (audit E04).
   ];
   if (post.item.course_name) {
     specs.push([t("market.courseCode"), post.item.course_name]);
@@ -245,7 +249,7 @@ function ProductPrice({
 }) {
   return post.post_type !== "TradeOnly" ? (
     <p data-numeric className="text-[2rem] leading-tight font-bold text-ink-brand">
-      ฿{post.price.toLocaleString("en-GB")}
+      {formatPrice(post.price)}
     </p>
   ) : (
     <p className="text-h2 text-tone-trade-fg">{tradeOnlyLabel}</p>

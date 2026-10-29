@@ -23,9 +23,16 @@ import { Notice } from "@/components/patterns/notice";
 import { TradeBench, TradeSourcePanel } from "@/components/kit/trade-bench";
 import { useToast } from "@/components/kit/toast";
 import type { InventoryItem } from "@/components/kit/inventory-slot";
+import { unwrapAction } from "@/lib/action-result";
 import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { sendOffer } from "@/lib/actions/posts";
-import type { Item, Post } from "@/lib/api/types";
+import type { ItemWithStatus } from "@/lib/api/items";
+import type { Item, ItemHistorySummary, Post } from "@/lib/api/types";
+import { formatPrice } from "@/lib/format-price";
+import {
+  UNAVAILABLE_REASON_LABEL,
+  unavailableReason,
+} from "@/lib/item-availability";
 
 /**
  * Persona P3, design principle 6.
@@ -42,14 +49,19 @@ import type { Item, Post } from "@/lib/api/types";
 export function OfferComposer({
   post,
   inventory,
+  summaries,
 }: {
   post: Post;
-  inventory: Item[];
+  inventory: ItemWithStatus[];
+  summaries: Record<number, ItemHistorySummary | undefined>;
 }) {
   const t = getCopy();
   const toast = useToast();
   const [offered, setOffered] = useState<InventoryItem[]>([]);
   const [money, setMoney] = useState(0);
+  // False while the cash field holds text that is not a valid amount; `money`
+  // then still has the last valid value, so it must not be sent.
+  const [cashValid, setCashValid] = useState(true);
   const [busy, setBusy] = useState(false);
   // Confirming in place rather than navigating: the offer now really is in
   // the inbox, but the sender's next question is "what did I just send?", and
@@ -92,6 +104,23 @@ export function OfferComposer({
     [items],
   );
 
+  // Read off the inventory as loaded, not the local copy: a staged split
+  // lowers a stack's local quantity, which must not make it look partly
+  // listed. An offer takes items whole, so anything short of fully free is
+  // shown but cannot be placed.
+  const unavailable = useMemo(
+    () =>
+      new Map(
+        inventory.flatMap((item) => {
+          const reason = unavailableReason(item, summaries[item.item_id], "whole");
+          return reason
+            ? [[item.item_id, UNAVAILABLE_REASON_LABEL[reason]] as const]
+            : [];
+        }),
+      ),
+    [inventory, summaries],
+  );
+
   const wanted: InventoryItem[] = [
     {
       item_id: post.item.item_id,
@@ -108,7 +137,7 @@ export function OfferComposer({
     [offered],
   );
 
-  const canSubmit = offered.length > 0 || money > 0;
+  const canSubmit = cashValid && (offered.length > 0 || money > 0);
 
   function addToOffer(item: InventoryItem) {
     setOffered((list) =>
@@ -223,13 +252,13 @@ export function OfferComposer({
           throw new Error("Could not find the item to split");
         }
 
-        await saveItemEdits(pending.sourceItemId, {
+        await unwrapAction(saveItemEdits(pending.sourceItemId, {
           quantity: left - pending.quantity,
-        });
+        }));
         shrunkSourceIds.add(pending.sourceItemId);
         remaining.set(pending.sourceItemId, left - pending.quantity);
 
-        const splitItem = await saveNewItem({
+        const splitItem = await unwrapAction(saveNewItem({
           name: source.name,
           category: source.category,
           condition: source.condition,
@@ -244,26 +273,26 @@ export function OfferComposer({
             is_primary: i === 0,
             display_order: i,
           })),
-        });
+        }));
         createdItemIds.push(splitItem.item_id);
         finalItemIds.push(splitItem.item_id);
       }
 
-      await sendOffer(post.post_id, {
+      await unwrapAction(sendOffer(post.post_id, {
         item_ids: finalItemIds,
         additional_money: money > 0 ? money : undefined,
-      });
+      }));
     } catch (err) {
       // Undo every write this attempt made — delete rows it created, and put
       // shrunk originals back to their pre-submit quantity — so a failed
       // send never leaves the stash fragmented.
       for (const itemId of createdItemIds) {
-        await removeItem(itemId).catch(() => undefined);
+        await unwrapAction(removeItem(itemId)).catch(() => undefined);
       }
       for (const sourceId of shrunkSourceIds) {
         const original = inventory.find((i) => i.item_id === sourceId);
         if (original) {
-          await saveItemEdits(sourceId, { quantity: original.quantity }).catch(
+          await unwrapAction(saveItemEdits(sourceId, { quantity: original.quantity })).catch(
             () => undefined,
           );
         }
@@ -287,7 +316,7 @@ export function OfferComposer({
           {offered.length > 0
             ? `${offered.length} ${offered.length === 1 ? "item" : "items"}`
             : "no items"}
-          {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""} for{" "}
+          {money > 0 ? ` plus ${formatPrice(money)}` : ""} for{" "}
           {post.item.name}. They will see it and can accept or decline.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -383,6 +412,7 @@ export function OfferComposer({
           className="order-1 lg:order-2"
           inventory={stash}
           offeredIds={offeredIds}
+          unavailable={unavailable}
           onAdd={tapStash}
         />
 
@@ -393,6 +423,7 @@ export function OfferComposer({
           onYouGiveChange={handleOfferedChange}
           additionalMoney={money}
           onAdditionalMoneyChange={setMoney}
+          onCashValidityChange={setCashValid}
           // Composing an offer, you are always the one putting the cash up.
           moneyDirection="you-pay"
           counterpartyName={post.seller.name}
@@ -438,7 +469,7 @@ export function OfferComposer({
           {offered.length > 0
             ? `You give ${offered.length} ${offered.length === 1 ? "item" : "items"}`
             : "Nothing on the table yet"}
-          {money > 0 ? ` plus ฿${money.toLocaleString("en-GB")}` : ""}
+          {money > 0 ? ` plus ${formatPrice(money)}` : ""}
         </p>
         <Button size="lg" isDisabled={!canSubmit} isLoading={busy} onPress={submit}>
           <ArrowLeftRight className="size-5" />{t("offer.send")}</Button>

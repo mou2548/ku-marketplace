@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction, type ActionResult } from "@/lib/action-result";
 import { clearSession, getAccessToken } from "@/lib/api/session";
 import { deleteMe, updateMe, type Profile, type UpdateProfilePayload } from "@/lib/api/users";
 
@@ -13,17 +14,21 @@ import { deleteMe, updateMe, type Profile, type UpdateProfilePayload } from "@/l
  * `/account`, so a server-side redirect here would fight the caller in the one
  * case that does.
  */
-export async function updateProfile(patch: UpdateProfilePayload): Promise<Profile> {
-  if (!(await getAccessToken())) {
-    throw new Error("Not signed in");
-  }
-  return updateMe(patch);
+export async function updateProfile(patch: UpdateProfilePayload): Promise<ActionResult<Profile>> {
+  return runAction(async () => {
+    if (!(await getAccessToken())) {
+      throw new Error("Not signed in");
+    }
+    return updateMe(patch);
+  });
 }
 
-export async function deleteAccount(): Promise<void> {
-  if (!(await getAccessToken())) {
-    throw new Error("Not signed in");
-  }
-  await deleteMe();
-  await clearSession();
+export async function deleteAccount(): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    if (!(await getAccessToken())) {
+      throw new Error("Not signed in");
+    }
+    await deleteMe();
+    await clearSession();
+  });
 }

@@ -6,6 +6,8 @@ import { getAccessToken } from "@/lib/api/session";
 
 import { ManageGiveaway } from "./manage-giveaway";
 
+export const metadata = { title: "Manage giveaway - KU Marketplace" };
+
 /**
  * E7, giver side. Flow 3 splits three ways at the draw: FirstCome and Random
  * are decided by the system, Manual is decided by a person — but every
