@@ -35,6 +35,7 @@ import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
 import { ModeSwitch } from "./mode-switch";
+import { NotificationPopups, useNotificationAlerts } from "./notification-alerts";
 import { RestrictedShell, type Restriction } from "./restricted-shell";
 import { UserAvatar } from "./user-avatar";
 
@@ -126,6 +127,9 @@ export interface AppShellProps {
   dealKeys?: string[] | null;
   /** The seen-deals cookie as the server read it, for the first paint. */
   seenDeals?: string;
+  /** The seen-notifications cookie's name; per account. The bell's dot and the
+   * giveaway pop-up are off without it (signed out). */
+  notificationsCookie?: string;
   /** That cookie's name; per account. */
   seenCookie?: string;
   user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
@@ -139,11 +143,14 @@ export function AppShell({
   dealKeys = null,
   seenDeals = "",
   seenCookie,
+  notificationsCookie,
   user,
   restriction,
 }: AppShellProps) {
   const t = getCopy();
   const pathname = usePathname() ?? "";
+  // A restricted account sees the plain shell, which has no bell to light.
+  const alerts = useNotificationAlerts(user && !restriction ? notificationsCookie : undefined);
 
   /**
    * The History dot goes out once the History list has been opened and comes
@@ -220,6 +227,7 @@ export function AppShell({
               <MobileMenu
                 pathname={pathname}
                 badges={badges}
+                hasNewNotifications={alerts.hasUnread}
                 user={user}
                 onNavigate={() => setMenuOpen(false)}
               />
@@ -296,9 +304,18 @@ export function AppShell({
             <Link
               href="/notifications"
               aria-label={t("nav.notifications")}
-              className="touch-target grid size-10 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
+              className="touch-target relative grid size-10 place-items-center rounded-pill text-ink-secondary transition-colors hover:bg-brand-subtle hover:text-ink-brand"
             >
               <Bell className="size-5" />
+              {alerts.hasUnread ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="absolute top-2 right-2 size-2.5 rounded-pill bg-tone-danger-solid ring-2 ring-surface"
+                  />
+                  <span className="sr-only">{t("notifications.newDot")}</span>
+                </>
+              ) : null}
             </Link>
 
             <Link
@@ -318,6 +335,8 @@ export function AppShell({
           </div>
         </div>
       </header>
+
+      <NotificationPopups popups={alerts.popups} onDismiss={alerts.dismiss} onOpen={alerts.open} />
 
       <main
         id="main"
@@ -401,11 +420,13 @@ export function AppShell({
 function MobileMenu({
   pathname,
   badges,
+  hasNewNotifications,
   user,
   onNavigate,
 }: {
   pathname: string;
   badges: NavBadges;
+  hasNewNotifications: boolean;
   user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
   onNavigate: () => void;
 }) {
@@ -451,7 +472,14 @@ function MobileMenu({
           onClick={onNavigate}
           className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body text-ink-secondary hover:bg-gray-100"
         >
-          <Bell aria-hidden className="size-5" />{t("nav.notifications")}</Link>
+          <Bell aria-hidden className="size-5" />{t("nav.notifications")}
+          {hasNewNotifications ? (
+            <span className="ml-auto flex items-center">
+              <span aria-hidden className="size-2 shrink-0 rounded-pill bg-tone-danger-solid" />
+              <span className="sr-only">{t("notifications.newDot")}</span>
+            </span>
+          ) : null}
+        </Link>
         <Link
           href="/account"
           onClick={onNavigate}

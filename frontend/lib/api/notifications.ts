@@ -1,11 +1,17 @@
 import { apiFetch } from "./client";
 import { authHeader } from "./session";
 import { getCopy } from "@/lib/copy";
-import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
+import {
+  getGiveaways,
+  getRecipients,
+  ticketFromRoster,
+  type RecipientRow,
+} from "@/lib/api/giveaways";
 import { getMyOffers } from "@/lib/api/offers";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
 import { formatPrice } from "@/lib/format-price";
+import { grantTitle, registrationBody, registrationTitle } from "@/lib/registration-notice";
 import { TICKET_STATUS, transactionStatusPresentation } from "@/lib/status";
 
 /**
@@ -26,6 +32,14 @@ export interface Notification {
   href: string;
   created_at: string;
   read: boolean;
+  /**
+   * A giveaway outcome worth a pop-up when it first arrives: the viewer was
+   * selected, was not, or let the pickup window pass. Everything else is only
+   * a dot on the bell.
+   */
+  event?: "giveaway-selected" | "giveaway-not-selected" | "giveaway-expired";
+  /** What the event is about (the giveaway's item), for the pop-up. */
+  subject?: string;
 }
 
 /** Stable-ish unique id per (kind, source row) so the list keys don't collide. */
@@ -33,6 +47,10 @@ const OFFSET: Record<string, number> = {
   deal: 1_000_000,
   offer: 2_000_000,
   giveaway: 5_000_000,
+  // The owner's "people registered" row, one per giveaway.
+  giveawayOwner: 6_000_000,
+  // The owner's "people got a place" row, one per giveaway.
+  giveawayGranted: 7_000_000,
 };
 const nid = (bucket: keyof typeof OFFSET | string, id: number) =>
   (OFFSET[bucket] ?? 9_000_000) + id;
@@ -100,13 +118,57 @@ export async function getNotifications(): Promise<Notification[]> {
     });
   }
 
-  const tickets = (
-    await Promise.all(
-      giveaways.map((g) =>
-        getMyTicket(g.giveaway_id, g, viewerId).catch(() => undefined),
-      ),
-    )
-  ).filter((t): t is NonNullable<typeof t> => t != null);
+  // One roster per giveaway, read once: it holds the viewer's own ticket and,
+  // for a giveaway they own, who has registered.
+  const rosters = await Promise.all(
+    giveaways.map(async (giveaway) => ({
+      giveaway,
+      rows: await getRecipients(giveaway.giveaway_id).catch((): RecipientRow[] => []),
+    })),
+  );
+  const tickets = rosters
+    .map(({ giveaway, rows }) => ticketFromRoster(rows, giveaway, viewerId))
+    .filter((t): t is NonNullable<typeof t> => t != null);
+
+  // The owner hears about registrations, which no ticket of theirs carries.
+  // The roster has no registration time, so the row takes the giveaway's own
+  // date: it stays put between reads, which the "new" key depends on. It goes
+  // when the allocation has run and no one is left merely registered.
+  for (const { giveaway, rows } of rosters) {
+    if (giveaway.giver_id !== viewerId) continue;
+    const registered = rows.filter((row) => row.ticket_status === "Registered");
+    if (!registered.length) continue;
+    out.push({
+      notification_id: nid("giveawayOwner", giveaway.giveaway_id),
+      kind: "giveaway",
+      title: registrationTitle(registered.length, giveaway.item_name ?? "your giveaway"),
+      body: registrationBody(registered.map((row) => row.user.name)),
+      href: `/giveaway/${giveaway.giveaway_id}/manage`,
+      created_at: giveaway.created_at,
+      read: false,
+    });
+  }
+
+  // And about places given: in a first-come giveaway the system gives them out
+  // by itself, so the owner would otherwise never know they were taken. Counted
+  // over everyone who was ever given one (waiting, collected, forfeited or
+  // expired) so the title only changes when a new place is given; the row is
+  // shown while someone is still waiting to collect.
+  const GRANTED = new Set(["Waiting", "Received", "Forfeited", "Expired"]);
+  for (const { giveaway, rows } of rosters) {
+    if (giveaway.giver_id !== viewerId) continue;
+    const granted = rows.filter((row) => GRANTED.has(row.ticket_status));
+    if (!rows.some((row) => row.ticket_status === "Waiting")) continue;
+    out.push({
+      notification_id: nid("giveawayGranted", giveaway.giveaway_id),
+      kind: "giveaway",
+      title: grantTitle(granted.length, giveaway.item_name ?? "your giveaway"),
+      body: registrationBody(granted.map((row) => row.user.name)),
+      href: `/giveaway/${giveaway.giveaway_id}/manage`,
+      created_at: giveaway.created_at,
+      read: false,
+    });
+  }
 
   for (const tk of tickets) {
     const waiting = tk.status === "Waiting";
@@ -127,6 +189,15 @@ export async function getNotifications(): Promise<Notification[]> {
       href: `/giveaway/${tk.giveaway_id}/ticket/${tk.ticket_id}`,
       created_at: tk.updated_at,
       read: !waiting,
+      event:
+        tk.status === "Waiting"
+          ? "giveaway-selected"
+          : tk.status === "Not_Selected"
+            ? "giveaway-not-selected"
+            : tk.status === "Expired"
+              ? "giveaway-expired"
+              : undefined,
+      subject: tk.giveaway.item_name ?? undefined,
     });
   }
 

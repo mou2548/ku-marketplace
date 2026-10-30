@@ -645,7 +645,14 @@ const COPY: { [key: string]: CopyNode } = {
       "emptyTitle": "Nothing of that kind yet",
       "emptyBody": "Updates appear here as activity happens.",
       "today": "Today",
-      "yesterday": "Yesterday"
+      "yesterday": "Yesterday",
+      "newDot": "You have new notifications",
+      "popupRegion": "New giveaway results",
+      "popupSelected": "You were selected",
+      "popupNotSelected": "Not selected this time",
+      "popupExpired": "Your ticket expired",
+      "popupView": "View ticket",
+      "popupClose": "Dismiss"
     },
     "account": {
       "settings": "Account settings",
