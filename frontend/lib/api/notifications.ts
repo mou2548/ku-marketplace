@@ -26,6 +26,14 @@ export interface Notification {
   href: string;
   created_at: string;
   read: boolean;
+  /**
+   * A giveaway outcome worth a pop-up when it first arrives: the viewer was
+   * selected, was not, or let the pickup window pass. Everything else is only
+   * a dot on the bell.
+   */
+  event?: "giveaway-selected" | "giveaway-not-selected" | "giveaway-expired";
+  /** What the event is about (the giveaway's item), for the pop-up. */
+  subject?: string;
 }
 
 /** Stable-ish unique id per (kind, source row) so the list keys don't collide. */
@@ -127,6 +135,15 @@ export async function getNotifications(): Promise<Notification[]> {
       href: `/giveaway/${tk.giveaway_id}/ticket/${tk.ticket_id}`,
       created_at: tk.updated_at,
       read: !waiting,
+      event:
+        tk.status === "Waiting"
+          ? "giveaway-selected"
+          : tk.status === "Not_Selected"
+            ? "giveaway-not-selected"
+            : tk.status === "Expired"
+              ? "giveaway-expired"
+              : undefined,
+      subject: tk.giveaway.item_name ?? undefined,
     });
   }
 

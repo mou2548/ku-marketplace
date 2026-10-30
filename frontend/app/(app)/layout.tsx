@@ -8,6 +8,7 @@ import type { Restriction } from "@/components/kit/restricted-shell";
 import { actionCount, buildInbox } from "@/lib/inbox";
 import { cookies } from "next/headers";
 import { dealBadgeKeys, dealsSeenCookie } from "@/lib/deal-badge";
+import { notificationsSeenCookie } from "@/lib/notification-seen";
 
 /**
  * The app shell (docs/design/ia.md §4). A Server Component: the badge counts
@@ -92,6 +93,7 @@ export default async function AppLayout({
         dealKeys={dealKeys}
         seenDeals={seenDeals}
         seenCookie={viewerId ? dealsSeenCookie(viewerId) : undefined}
+        notificationsCookie={viewerId ? notificationsSeenCookie(viewerId) : undefined}
         restriction={restriction}
       >
         {children}

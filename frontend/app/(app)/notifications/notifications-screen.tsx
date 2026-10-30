@@ -4,7 +4,7 @@ import { formatDate } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, Gift, Handshake, ShieldAlert, Wallet } from "lucide-react";
@@ -13,6 +13,13 @@ import { EmptyState } from "@/components/kit/empty-state";
 import type { Notification } from "@/lib/api/notifications";
 import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 import { cn } from "@/lib/utils";
+import {
+  NOTIFICATIONS_SEEN_EVENT,
+  feedKey,
+  parseSeen,
+  readSeen,
+  writeSeen,
+} from "@/lib/notification-seen";
 import { usePolling } from "@/lib/use-polling";
 
 const ICON: Record<Notification["kind"], typeof Bell> = {
@@ -72,13 +79,42 @@ function groupByDay(
   return [...buckets].map(([key, group]) => [label(key), group]);
 }
 
+function subscribeRead(onChange: () => void) {
+  window.addEventListener(NOTIFICATIONS_SEEN_EVENT, onChange);
+  return () => window.removeEventListener(NOTIFICATIONS_SEEN_EVENT, onChange);
+}
+
 export function NotificationsScreen({
   notifications,
+  readCookie,
+  initialRead = "",
 }: {
   notifications: Notification[];
+  /** The cookie that remembers which rows were opened; per account. */
+  readCookie?: string;
+  /** Its value as the server read it, for the first paint. */
+  initialRead?: string;
 }) {
   const t = getCopy();
   const router = useRouter();
+
+  /**
+   * A row is read once it has been opened. The API has no read state, so the
+   * ones it marks read (a finished deal, a decided offer) stay read, and any
+   * other becomes read when its link is clicked. The key carries the title and
+   * date, so the same deal at a new step is unread again.
+   */
+  const readRaw = useSyncExternalStore(
+    subscribeRead,
+    () => (readCookie ? readSeen(readCookie) : ""),
+    () => initialRead,
+  );
+  const opened = useMemo(() => new Set(parseSeen(readRaw)), [readRaw]);
+  const isRead = (n: Notification) => n.read || opened.has(feedKey(n));
+  function markOpened(n: Notification) {
+    if (!readCookie || isRead(n)) return;
+    writeSeen(readCookie, [...parseSeen(readSeen(readCookie)), feedKey(n)]);
+  }
   usePolling(() => {
     if (document.visibilityState === "visible") router.refresh();
   }, 10_000);
@@ -86,17 +122,16 @@ export function NotificationsScreen({
 
   const counts = useMemo(() => {
     const total = { all: notifications.length } as Record<Filter, number>;
-    const unread = { all: notifications.filter((n) => !n.read).length } as Record<
-      Filter,
-      number
-    >;
+    const unread = {
+      all: notifications.filter((n) => !(n.read || opened.has(feedKey(n)))).length,
+    } as Record<Filter, number>;
     for (const kind of KINDS) {
       const rows = notifications.filter((n) => n.kind === kind);
       total[kind] = rows.length;
-      unread[kind] = rows.filter((n) => !n.read).length;
+      unread[kind] = rows.filter((n) => !(n.read || opened.has(feedKey(n)))).length;
     }
     return { total, unread };
-  }, [notifications]);
+  }, [notifications, opened]);
 
   const shown =
     filter === "all"
@@ -159,10 +194,12 @@ export function NotificationsScreen({
               <ul className="flex flex-col divide-y divide-line border-t border-line">
               {items.map((n) => {
                 const Icon = ICON[n.kind];
+                const read = isRead(n);
                 return (
                   <li key={n.notification_id}>
                     <Link
                       href={n.href}
+                      onClick={() => markOpened(n)}
                       className={cn(
                         "-mx-2 flex items-start gap-3 rounded-control px-2 py-3",
                         "transition-colors duration-[--dur-fast] hover:bg-surface-sunken",
@@ -172,7 +209,7 @@ export function NotificationsScreen({
                         aria-hidden
                         className={cn(
                           "mt-0.5 size-4 shrink-0",
-                          n.read ? "text-ink-muted" : "text-ink-secondary",
+                          read ? "text-ink-muted" : "text-ink-secondary",
                         )}
                       />
 
@@ -180,7 +217,7 @@ export function NotificationsScreen({
                         <p
                           className={cn(
                             "text-body",
-                            n.read ? "text-ink-secondary" : "font-semibold text-ink",
+                            read ? "text-ink-secondary" : "font-semibold text-ink",
                           )}
                         >
                           {n.title}
@@ -195,7 +232,7 @@ export function NotificationsScreen({
                         >
                           {formatDate(new Date(n.created_at))}
                         </time>
-                        {!n.read ? (
+                        {!read ? (
                           <>
                             <span
                               aria-hidden
