@@ -569,6 +569,7 @@ const COPY: { [key: string]: CopyNode } = {
       "side": "Side",
       "status": "Status",
       "all": "All",
+      "endedBadly": "Cancelled & refunds",
       "emptyTitle": "Nothing matches those filters",
       "emptyBody": "Clear a filter, or start something in the market — a room opens by itself when you buy or when an offer is accepted.",
       "purchaseRecord": "Your activity",

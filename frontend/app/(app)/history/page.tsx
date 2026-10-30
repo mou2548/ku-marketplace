@@ -25,10 +25,14 @@ import { HistoryList } from "./history-list";
  */
 export const metadata = { title: "History - KU Marketplace" };
 
-export default async function DealsPage() {
+export default async function DealsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const viewerId = await getCurrentUserId();
   if (!viewerId) redirect("/login");
-
+  const { status } = await searchParams;
 
   const [transactions, giveaways] = await Promise.all([
     getTransactions(),
@@ -57,6 +61,10 @@ export default async function DealsPage() {
       }))}
       tickets={tickets}
       viewerId={viewerId}
+      initialStatus={typeof status === "string" ? status : undefined}
+      // A new ?status= on the same route (the tab bar, another shortcut)
+      // remounts the list so its filter follows the URL.
+      key={typeof status === "string" ? status : "all"}
     />
   );
 }

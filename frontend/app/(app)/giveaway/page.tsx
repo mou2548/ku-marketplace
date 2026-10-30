@@ -23,7 +23,12 @@ export const metadata = { title: "Giveaways - KU Marketplace" };
  */
 export const dynamic = "force-dynamic";
 
-export default async function GiveawayPage() {
+export default async function GiveawayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { tab } = await searchParams;
   const viewerId = await getCurrentUserId();
   const giveaways = await getGiveaways();
 
@@ -47,6 +52,9 @@ export default async function GiveawayPage() {
       giveaways={giveaways}
       tickets={tickets}
       viewerId={viewerId ?? null}
+      initialTab={typeof tab === "string" ? tab : undefined}
+      // A new ?tab= on the same route remounts the tabs on that tab.
+      key={typeof tab === "string" ? tab : "open"}
     />
   );
 }

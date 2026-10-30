@@ -27,10 +27,14 @@ export function GiveawayBrowser({
   giveaways,
   tickets,
   viewerId,
+  initialTab,
 }: {
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
   viewerId: number | null;
+  /** `?tab=` from the URL, so the manage screen can send a giver back to
+   * "My giveaways" instead of the open shelf. */
+  initialTab?: string;
 }) {
   const t = getCopy();
   const now = useNow(30_000);
@@ -52,6 +56,12 @@ export function GiveawayBrowser({
   const given = viewerId
     ? giveaways.filter((g) => g.giver_id === viewerId)
     : [];
+
+  // "given" only exists for a signed-in viewer; anything unknown opens the shelf.
+  const startTab =
+    initialTab === "mine" || (initialTab === "given" && viewerId)
+      ? initialTab
+      : "open";
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
@@ -79,7 +89,7 @@ export function GiveawayBrowser({
         </div>
       </header>
 
-      <Tabs defaultSelectedKey="open">
+      <Tabs defaultSelectedKey={startTab}>
         <TabList aria-label={t("giveaway.title")} variant="underline">
           <UnderlineTab id="open">
             {t("giveaway.open")}

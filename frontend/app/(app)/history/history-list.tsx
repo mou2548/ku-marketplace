@@ -45,7 +45,12 @@ import { cn } from "@/lib/utils";
  */
 
 type Lens = "all" | "buying" | "selling";
-type StatusFilter = "all" | TransactionStatus;
+/**
+ * "ended-badly" is a group, not a backend status: the account page's
+ * "Cancelled & refunds" shortcut counts all three outcomes together, so the
+ * filter it opens has to show the same three.
+ */
+type StatusFilter = "all" | "ended-badly" | TransactionStatus;
 type HistoryTransaction = Transaction & { created_date_label: string };
 
 const LENSES: Lens[] = ["all", "buying", "selling"];
@@ -55,29 +60,45 @@ const STATUSES: StatusFilter[] = [
   "Pending",
   "Processing",
   "Completed",
+  "ended-badly",
   "Cancelled",
   "Pending Refund",
   "Refunded",
 ];
 
+const ENDED_BADLY: TransactionStatus[] = ["Cancelled", "Pending Refund", "Refunded"];
+
+function parseStatus(value: string | undefined): StatusFilter {
+  return STATUSES.find((item) => item === value) ?? "all";
+}
+
 export function HistoryList({
   transactions,
   tickets,
   viewerId,
+  initialStatus,
 }: {
   transactions: HistoryTransaction[];
   tickets: GiveawayTicket[];
   viewerId: number;
+  /** `?status=` from the URL, so a shortcut can open the list pre-filtered. */
+  initialStatus?: string;
 }) {
   const t = getCopy();
   const st = useStatusText();
   const [lens, setLens] = useState<Lens>("all");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>(() =>
+    parseStatus(initialStatus),
+  );
 
   const statusOptions = STATUSES.map((item) => ({
     id: item,
     label:
-      item === "all" ? t("history.all") : st.of(TRANSACTION_STATUS[item]).label,
+      item === "all"
+        ? t("history.all")
+        : item === "ended-badly"
+          ? t("history.endedBadly")
+          : st.of(TRANSACTION_STATUS[item]).label,
   }));
 
   const rows = useMemo(() => {
@@ -87,7 +108,9 @@ export function HistoryList({
         if (tx.buyer_id !== viewerId && tx.seller_id !== viewerId) return false;
         if (lens === "buying" && !isBuyer) return false;
         if (lens === "selling" && isBuyer) return false;
-        if (status !== "all" && tx.status !== status) return false;
+        if (status === "ended-badly") {
+          if (!ENDED_BADLY.includes(tx.status)) return false;
+        } else if (status !== "all" && tx.status !== status) return false;
         return true;
       })
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));

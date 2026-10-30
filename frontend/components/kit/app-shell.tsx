@@ -48,10 +48,10 @@ interface NavEntry {
   icon: typeof Store;
   badge?: keyof NavBadges;
   /**
-   * On the phone tab bar. Five at most — past that the targets get too narrow
-   * to hit and the bar stops reading as a set of places. Giveaway is the one
-   * that stays in the drawer: it is the secondary job in PRODUCT.md, and the
-   * drawer still lists everything.
+   * On the phone tab bar. Giveaway joined as a sixth tab (owner decision
+   * 2026-10-30): tucked in the drawer, students did not find it on a phone
+   * at all and only met it in landscape, where the top bar appears. Six is
+   * the ceiling — at 360px each tab is 60px, still past the 44px target.
    */
   onTabBar?: true;
 }
@@ -65,7 +65,7 @@ const NAV: NavEntry[] = [
   { href: "/history", labelKey: "nav.history", icon: History, badge: "deals", onTabBar: true },
   { href: "/chat", labelKey: "nav.chat", icon: MessagesSquare, onTabBar: true },
   { href: "/inventory", labelKey: "nav.inventory", icon: Package, onTabBar: true },
-  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift },
+  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift, onTabBar: true },
 ];
 
 function isActive(pathname: string, href: string) {

@@ -77,10 +77,12 @@ export default async function AccountPage() {
     mine.filter((tx) => statuses.includes(tx.status)).length;
 
   const deals = [
-    { label: "Waiting to pay", icon: Hourglass, count: count("Pending") },
-    { label: "In progress", icon: Truck, count: count("Processing") },
-    { label: "Completed", icon: CheckCircle2, count: count("Completed") },
+    { status: "Pending", label: "Waiting to pay", icon: Hourglass, count: count("Pending") },
+    { status: "Processing", label: "In progress", icon: Truck, count: count("Processing") },
+    { status: "Completed", label: "Completed", icon: CheckCircle2, count: count("Completed") },
     {
+      // A group the History filter knows by this name, not a backend status.
+      status: "ended-badly",
       label: "Cancelled & refunds",
       icon: RotateCcw,
       count: count("Cancelled", "Pending Refund", "Refunded"),
@@ -182,7 +184,10 @@ export default async function AccountPage() {
         <ShortcutCard
           title="My deals"
           action={{ href: "/history", label: "View all" }}
-          items={deals.map((deal) => ({ ...deal, href: "/history" }))}
+          items={deals.map(({ status, ...deal }) => ({
+            ...deal,
+            href: `/history?status=${encodeURIComponent(status)}`,
+          }))}
         />
         <ShortcutCard title="My selling" items={selling} />
 
