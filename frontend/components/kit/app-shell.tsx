@@ -295,7 +295,7 @@ export function AppShell({
               ({ href, labelKey, icon: Icon, badge }) => {
                 const active = isActive(pathname, href);
                 return (
-                  <li key={href} className="flex-1">
+                  <li key={href} className="min-w-0 flex-1">
                     <Link
                       href={href}
                       aria-current={active ? "page" : undefined}
@@ -320,7 +320,9 @@ export function AppShell({
                           className="absolute -top-0.5 right-1.5 ring-2 ring-surface"
                         />
                       </span>
-                      <span className="text-meta leading-none">{t(labelKey)}</span>
+                      <span className="max-w-full truncate text-meta leading-none">
+                        {t(labelKey)}
+                      </span>
                     </Link>
                   </li>
                 );

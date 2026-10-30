@@ -174,7 +174,9 @@ export function GiveawayDetail({
         href={`/giveaway/${giveaway.giveaway_id}/manage`}
       >
         <Users className="size-5" />
-        Choose recipients
+        {/* `select()` closes the post in the same transaction, so a Manual
+            giveaway that is no longer Active has had its recipients chosen. */}
+        {giveaway.status === "Active" ? "Choose recipients" : "View recipients"}
       </LinkButton>
     ) : giveaway.allocation_method === "Random" ? (
       giveaway.status === "Active" ? (
