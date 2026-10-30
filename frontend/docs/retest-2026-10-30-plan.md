@@ -10,7 +10,7 @@ Date: 2026-10-30, on `develop` at `95df630`.
 | B (R02, R03, R06, R07) | Done 2026-10-30. R03 keeps the sideways scroll (team choice 2026-10-27) and adds the `scroll-fade-x` edge shade plus scrolling the current section into view; no "More" tab. R06 keeps the words and drops to 11px under 380px. `verify-bc.mjs` passes at 360/390/768/1280. |
 | C (R04, R08) | Done 2026-10-30. Failed slips show the shared `ImagePlate` and nothing to open; closed registration reads "Registration closed". |
 | D (R09) | Open, needs a decision. |
-| Pinterest feed (R05) | Not started. |
+| Pinterest feed (R05) | Done 2026-10-30, under owner testing. `/feed` reads each photo's size on the server (`lib/image-size.ts`, `lib/image-ratio.ts`, hosts from `lib/image-hosts.ts`), clamps it to 2:3..4:3 and packs cards into the shortest column (`lib/masonry.ts`). `verify-r05.mjs` with 28 listings passes at 360/390/768/1024/1280/1920: 2/2/3/4/5/5 columns, 19-22 distinct card heights, first row newest left to right, CLS 0, no overflow, column ends within the tallest card. `/feed` server time 0.31s cold, 0.02s warm. Giveaway feed and seller profile grid unchanged. |
 
 `code-review` (medium) findings on B and C were fixed: the chat name keeps
 truncating with `touch-link`, the failed slip hides "View full slip", the tab
