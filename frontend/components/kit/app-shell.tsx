@@ -15,7 +15,6 @@ import {
   Menu,
   Package,
   Plus,
-  ShieldCheck,
   Store,
 } from "lucide-react";
 
@@ -26,6 +25,7 @@ import { Button, LinkButton } from "./button";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
+import { ModeSwitch } from "./mode-switch";
 import { RestrictedShell, type Restriction } from "./restricted-shell";
 import { UserAvatar } from "./user-avatar";
 
@@ -228,16 +228,9 @@ export function AppShell({
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
+            {/* Below 640px the header has no room for it; the drawer carries it. */}
             {user?.isAdmin && (
-              <Link
-                href="/admin"
-                aria-label="Switch to admin mode"
-                title="Switch to admin mode"
-                className="flex min-h-11 items-center gap-1.5 rounded-control px-2 text-body-sm font-semibold text-ink-brand hover:bg-brand-subtle"
-              >
-                <ShieldCheck aria-hidden className="size-5" />
-                <span>Admin</span>
-              </Link>
+              <ModeSwitch current="market" className="mr-1 hidden sm:inline-flex" />
             )}
             <ThemeSwitch />
 
@@ -348,12 +341,13 @@ function MobileMenu({
 }: {
   pathname: string;
   badges: NavBadges;
-  user?: { name: string; avatarUrl?: string | null };
+  user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
   onNavigate: () => void;
 }) {
   const t = getCopy();
   return (
     <div className="flex h-full flex-col gap-3">
+      {user?.isAdmin && <ModeSwitch current="market" className="self-start sm:hidden" />}
       <LinkButton href="/post" block size="lg" onClick={onNavigate}>
         <Plus className="size-5" />{t("nav.postAnItem")}</LinkButton>
 
