@@ -326,7 +326,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
         labelKey: "deadline.registration-closes.label",
         onExpiry: "forfeit",
       },
-      expiredLabel: "Registration closed",
+      expiredLabel: t("giveaway.registrationClosed"),
     };
   }
 

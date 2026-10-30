@@ -125,7 +125,7 @@ export function ManageGiveaway({
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/giveaway?tab=given"
-          className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+          className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
         >
           <ArrowLeft aria-hidden className="size-4" />
           Back to my giveaways
@@ -157,7 +157,17 @@ export function ManageGiveaway({
           <h1 className="text-h1 text-balance">{giveaway.item_name}</h1>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={method} size="sm" />
-            {deadline ? <CountdownPill deadline={deadline} showLabel /> : null}
+            {/* Once registration has closed, the label and the expired text
+                together read "Registration closes Past due" (retest R08).
+                Same wording as the giveaway browser instead. */}
+            {deadline ? (
+              <CountdownPill
+                deadline={deadline}
+                showLabel
+                labelOnExpiry={false}
+                expiredLabel={t("giveaway.registrationClosed")}
+              />
+            ) : null}
           </div>
         </div>
       </header>

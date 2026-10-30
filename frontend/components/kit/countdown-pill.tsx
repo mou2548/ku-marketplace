@@ -48,6 +48,11 @@ export interface CountdownPillProps {
   expiredLabel?: string;
   /** Render the deadline's own label alongside the timer. */
   showLabel?: boolean;
+  /**
+   * Keep that label once the deadline has passed. Off when `expiredLabel`
+   * already says it all: "Registration closes Registration closed".
+   */
+  labelOnExpiry?: boolean;
   className?: string;
   onExpire?: () => void;
   /**
@@ -62,6 +67,7 @@ export function CountdownPill({
   deadline,
   expiredLabel = "Past due",
   showLabel = false,
+  labelOnExpiry = true,
   className,
   onExpire,
   viewerActs = false,
@@ -97,7 +103,7 @@ export function CountdownPill({
       ) : (
         <AlarmClock aria-hidden className="size-3.5 shrink-0" />
       )}
-      {showLabel ? (
+      {showLabel && (labelOnExpiry || !expired) ? (
         // Was text-white/70, which measured 3.25:1 to 4.24:1 depending on the
         // tone underneath — every one of them under 4.5:1 at 13px. The label
         // steps back by weight now, not by opacity.
