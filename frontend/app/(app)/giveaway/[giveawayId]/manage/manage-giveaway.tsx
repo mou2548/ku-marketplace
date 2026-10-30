@@ -5,7 +5,7 @@ import { getCopy } from "@/lib/copy";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Lock, ScanLine, Users } from "lucide-react";
+import { ArrowLeft, Info, Lock, ScanLine, Users } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
@@ -23,9 +23,19 @@ import { unwrapAction } from "@/lib/action-result";
 import { closeGiveawayRegistration, selectRecipients } from "@/lib/actions/giveaways";
 import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
-import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
+import {
+  ALLOCATION_METHOD,
+  ENTRANT_STATUS,
+  TICKET_STATUS,
+  type TicketStatus,
+} from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
+
+/** A place already went to this entrant: chosen and waiting, or collected. */
+function isChosen(status: TicketStatus) {
+  return status === "Waiting" || status === "Received";
+}
 
 /**
  * Every allocation method lands here now: FirstCome allocates on
@@ -71,6 +81,20 @@ export function ManageGiveaway({
   const registeredCount = entrants.filter(
     (entry) => entry.ticket_status === "Registered",
   ).length;
+  const chosenCount = entrants.filter((entry) => isChosen(entry.ticket_status)).length;
+  // Picking is one-shot: the API marks every other entrant Not selected and
+  // closes the giveaway on the first confirm, so once anyone is chosen there
+  // is nothing left to pick, even when fewer people than places were chosen.
+  const placesLeft = chosenCount > 0 ? 0 : giveaway.quantity;
+  // Chosen people first, so what is settled reads before what is still open;
+  // the join-order rank stays attached to each person.
+  const roster = entrants
+    .map((entry, index) => ({ entry, rank: index + 1 }))
+    .sort(
+      (a, b) =>
+        Number(isChosen(b.entry.ticket_status)) -
+        Number(isChosen(a.entry.ticket_status)),
+    );
 
   const deadline = giveaway.register_deadline
     ? {
@@ -85,7 +109,7 @@ export function ManageGiveaway({
     setPicked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
-      else if (next.size < giveaway.quantity) next.add(id);
+      else if (next.size < placesLeft) next.add(id);
       return next;
     });
   }
@@ -97,7 +121,10 @@ export function ManageGiveaway({
       toast.success(
         `Selected ${chosen.length} recipient${chosen.length === 1 ? "" : "s"}. Chat rooms are open.`,
       );
-      router.push(`/giveaway/${giveaway.giveaway_id}`);
+      // Stay here: the roster re-reads with the new people ticked and
+      // marked Chosen, which is the confirmation the giver is looking for.
+      setPicked(new Set());
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not confirm selection.");
     } finally {
@@ -107,13 +134,26 @@ export function ManageGiveaway({
 
   return (
     <div className="flex w-full flex-col gap-5">
-      <Link
-        href={`/giveaway/${giveaway.giveaway_id}`}
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Back to giveaway
-      </Link>
+      {/* Back returns to where a giver comes from (My giveaways), not to
+          the detail page: the detail page sits one step further in, behind
+          Details, so one Back is enough to leave. */}
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/giveaway?tab=given"
+          className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          Back to my giveaways
+        </Link>
+        <LinkButton
+          size="sm"
+          variant="secondary"
+          href={`/giveaway/${giveaway.giveaway_id}`}
+        >
+          <Info className="size-4" />
+          Details
+        </LinkButton>
+      </div>
 
       <header className="grid grid-cols-[5rem_minmax(0,1fr)] gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
         <span className="block overflow-hidden rounded-card shadow-flat">
@@ -140,7 +180,9 @@ export function ManageGiveaway({
       <Notice tone="warning">
         <p className="text-body text-ink-secondary">
           {isManual
-            ? "You chose to pick recipients yourself. Select them below once registration closes, and a chat room opens for each one."
+            ? chosenCount > 0
+              ? `${chosenCount} of ${giveaway.quantity} places chosen. A chat room is open with each recipient; scan their ticket when they collect.`
+              : `You chose to pick recipients yourself. Once registration closes, select up to ${giveaway.quantity} below and confirm once: everyone else is told they were not selected, and a chat room opens for each recipient.`
             : "Recipients are chosen automatically. Scan a recipient's ticket below to confirm the handover."}
         </p>
       </Notice>
@@ -152,8 +194,8 @@ export function ManageGiveaway({
               Entrants
             </h2>
             <span data-numeric className="text-caption text-ink-muted">
-              {entrants.filter((entry) => entry.ticket_status === "Registered").length}{" "}
-              waiting · {giveaway.quantity} places
+              {chosenCount}/{giveaway.quantity} chosen · {registeredCount}{" "}
+              waiting
             </span>
           </div>
 
@@ -165,51 +207,65 @@ export function ManageGiveaway({
             />
           ) : (
             <ul className="flex flex-col gap-2">
-              {entrants.map((e, index) => (
-                <li key={e.receiver_id}>
-                  <Surface
-                    as="div"
-                    shape="card"
-                    elevation="raised"
-                    className={cn(
-                      "flex items-center gap-3 p-4",
-                      picked.has(e.receiver_id) && "bg-surface-sunken",
-                    )}
-                  >
-                    <Checkbox
-                      isSelected={picked.has(e.receiver_id)}
-                      onChange={() => toggle(e.receiver_id)}
-                      isDisabled={e.ticket_status !== "Registered"}
-                      aria-label={`Select ${e.user.name}`}
-                    />
-
-                    <div className="min-w-0 flex-1">
-                      <TrustBadge
-                        name={e.user.name}
-                        avatarUrl={e.user.avatar_url}
-                        isVerified={e.user.isVerified}
-                        faculty={e.user.faculty}
-                        year={e.user.year}
-                      />
-                    </div>
-
-                    <StatusBadge
-                      status={TICKET_STATUS[e.ticket_status]}
-                      size="sm"
-                    />
-
-                    {/* No registration timestamp in the API response — the
-                        list itself is already in join order (ticket id
-                        ascending), so a rank stands in for a clock time. */}
-                    <span
-                      data-numeric
-                      className="shrink-0 text-meta text-ink-muted"
+              {roster.map(({ entry: e, rank }) => {
+                const chosen = isChosen(e.ticket_status);
+                return (
+                  <li key={e.receiver_id}>
+                    <Surface
+                      as="div"
+                      shape="card"
+                      elevation="raised"
+                      className={cn(
+                        "flex items-center gap-3 p-4",
+                        picked.has(e.receiver_id) && "bg-surface-sunken",
+                        chosen && "bg-brand-subtle",
+                      )}
                     >
-                      #{index + 1}
-                    </span>
-                  </Surface>
-                </li>
-              ))}
+                      {/* A chosen entrant stays ticked and locked: the place is
+                          theirs, and an empty box read as "not picked yet". */}
+                      <Checkbox
+                        isSelected={chosen || picked.has(e.receiver_id)}
+                        onChange={() => toggle(e.receiver_id)}
+                        isDisabled={e.ticket_status !== "Registered" || placesLeft === 0}
+                        aria-label={
+                          chosen ? `${e.user.name} is chosen` : `Select ${e.user.name}`
+                        }
+                      />
+
+                      <div className="min-w-0 flex-1">
+                        <TrustBadge
+                          name={e.user.name}
+                          avatarUrl={e.user.avatar_url}
+                          isVerified={e.user.isVerified}
+                          faculty={e.user.faculty}
+                          year={e.user.year}
+                        />
+                      </div>
+
+                      {/* Waiting means chosen, not yet collected — say Chosen,
+                          the giver's word for it. Received keeps its own label. */}
+                      <StatusBadge
+                        status={
+                          e.ticket_status === "Waiting"
+                            ? ENTRANT_STATUS.Selected
+                            : TICKET_STATUS[e.ticket_status]
+                        }
+                        size="sm"
+                      />
+
+                      {/* No registration timestamp in the API response — the
+                          list itself is already in join order (ticket id
+                          ascending), so a rank stands in for a clock time. */}
+                      <span
+                        data-numeric
+                        className="shrink-0 text-meta text-ink-muted"
+                      >
+                        #{rank}
+                      </span>
+                    </Surface>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -251,14 +307,14 @@ export function ManageGiveaway({
           Scan a ticket
         </LinkButton>
 
-        {isManual ? (
+        {isManual && placesLeft > 0 ? (
           <Button
             isDisabled={picked.size === 0 || !canSelect}
             isLoading={busy}
             onPress={confirmSelection}
           >
             <Users className="size-4" />
-            Confirm {picked.size}/{giveaway.quantity} recipient
+            Confirm {picked.size}/{placesLeft} recipient
             {picked.size === 1 ? "" : "s"}
           </Button>
         ) : null}
