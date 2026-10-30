@@ -1338,8 +1338,10 @@ export function RoomScreen({
     /* A messenger, not a card. The room is the surface: it fills the column the
        shell gives it, and the only thing that scrolls is the thread. */
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface">
-      {/* Header: who, what kind, what about. */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+      {/* Header: who, what kind, what about. Under `sm` it wraps into two
+          rows: who and Details on top, the kind and item underneath. One row
+          at 360-390px squeezed the item title to a few pixels. */}
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2 sm:flex-nowrap sm:py-3">
         {/* The header shows who and what visually; this names the page for
             screen readers and heading navigation (audit P07). */}
         <h1 className="sr-only">
@@ -1359,10 +1361,11 @@ export function RoomScreen({
             link on the right gives way first (audit B06): that side shrinks
             at six times the rate, and the name only truncates once the item
             is down to its chip and the details button. */}
-        <span className="flex min-w-0 shrink items-center gap-2">
+        <span className="flex min-w-0 flex-1 items-center gap-2 sm:flex-initial sm:shrink">
           <ProfileLink
             userId={summary.counterparty.user_id}
             name={summary.counterparty.name}
+            className="touch-link"
           >
             <TrustBadge
               name={summary.counterparty.name}
@@ -1370,6 +1373,9 @@ export function RoomScreen({
               faculty={summary.counterparty.faculty}
               avatarUrl={summary.counterparty.avatar_url}
               size="sm"
+              // touch-link makes the link a flex box on a phone; without
+              // min-w-0 the badge would refuse to shrink below the full name.
+              className="min-w-0"
             />
           </ProfileLink>
           {isGroupRoom ? (
@@ -1389,7 +1395,7 @@ export function RoomScreen({
           />
         </span>
 
-        <span className="ml-auto flex min-w-0 shrink-[6] items-center justify-end gap-2">
+        <span className="order-last flex min-w-0 basis-full items-center gap-2 sm:order-none sm:ml-auto sm:basis-auto sm:shrink-[6] sm:justify-end">
           {/* The room kind is a category: a neutral badge, told apart by
               its word (trade has no colour). */}
           <span className={cn(BADGE_SHAPE, BADGE_PAINT.neutral, "shrink-0")}>
@@ -1401,29 +1407,29 @@ export function RoomScreen({
           {subjectHref ? (
             <Link
               href={subjectHref}
-              className="min-w-0 truncate text-caption text-ink-brand hover:underline"
+              className="touch-link min-w-0 truncate text-caption text-ink-brand hover:underline"
             >
-              {summary.subject}
+              <span className="truncate">{summary.subject}</span>
             </Link>
           ) : (
             <span className="min-w-0 truncate text-caption text-ink-muted">
               {summary.subject}
             </span>
           )}
-          {transaction || giveaway ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              pill
-              aria-label={giveaway ? "Giveaway details" : "Deal details"}
-              className="shrink-0 max-sm:w-9 max-sm:px-0"
-              onPress={() => setDetailsOpen(true)}
-            >
-              <Info aria-hidden className="size-4" />
-              <span className="max-sm:hidden">Details</span>
-            </Button>
-          ) : null}
         </span>
+        {transaction || giveaway ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            pill
+            aria-label={giveaway ? "Giveaway details" : "Deal details"}
+            className="shrink-0 max-sm:size-11 max-sm:px-0"
+            onPress={() => setDetailsOpen(true)}
+          >
+            <Info aria-hidden className="size-4" />
+            <span className="max-sm:hidden">Details</span>
+          </Button>
+        ) : null}
       </header>
 
       <ChatThread
@@ -1646,7 +1652,7 @@ function StatusCard({
       <button
         type="button"
         onClick={onOpenDetails}
-        className="self-start text-[1.125rem] font-medium text-ink-brand hover:underline"
+        className="touch-link self-start text-[1.125rem] font-medium text-ink-brand hover:underline"
       >
         View details
       </button>
