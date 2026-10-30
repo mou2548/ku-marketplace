@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, Store } from "lucide-react";
 
 import { AdminSidebar, AdminTabBar } from "@/components/admin/admin-navigation";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
@@ -43,18 +43,25 @@ export default async function AdminLayout({
           {/* Same height as the marketplace navbar (app-shell.tsx), so switching
               between User mode and admin does not shift the page. */}
           <header className="sticky top-0 z-[50] flex h-[4.25rem] items-center gap-2 border-b border-line bg-page px-4 lg:px-8">
-            <p className="flex items-baseline gap-2 font-semibold tracking-[-0.01em] lg:hidden">
-              KU Marketplace{" "}
-              <span className="text-caption font-normal text-ink-muted">
+            {/* At 360px the four controls on the right leave too little room,
+                so the product name gives way and "Admin" always survives. */}
+            <p className="flex min-w-0 items-baseline gap-2 font-semibold tracking-[-0.01em] lg:hidden">
+              <span className="truncate">KU Marketplace</span>{" "}
+              <span className="shrink-0 text-caption font-normal text-ink-muted">
                 Admin
               </span>
             </p>
             <div className="ml-auto flex items-center gap-1">
+              {/* The sidebar's "Back to marketplace" is desktop only, so on a
+                  phone this is the only way out. Icon below 640px: the full
+                  label does not fit beside the title at 360px. */}
               <Link
                 href="/feed"
-                className="hidden min-h-9 items-center rounded-[10px] border border-line-default px-3 text-body-sm text-ink-secondary hover:bg-surface-sunken sm:flex"
+                title="Switch to user mode"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-[10px] border border-line-default px-2.5 text-body-sm text-ink-secondary hover:bg-surface-sunken sm:min-h-9 sm:px-3"
               >
-                User mode
+                <Store aria-hidden className="size-5 sm:hidden" />
+                <span className="sr-only sm:not-sr-only">User mode</span>
               </Link>
               <ThemeSwitch />
               <Link

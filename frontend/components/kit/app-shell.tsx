@@ -48,10 +48,10 @@ interface NavEntry {
   icon: typeof Store;
   badge?: keyof NavBadges;
   /**
-   * On the phone tab bar. Five at most — past that the targets get too narrow
-   * to hit and the bar stops reading as a set of places. Giveaway is the one
-   * that stays in the drawer: it is the secondary job in PRODUCT.md, and the
-   * drawer still lists everything.
+   * On the phone tab bar. Six is the ceiling: at 360px each target is ~60px,
+   * still clear of the 44px minimum. Giveaway used to stay in the drawer, but
+   * phone users never found it — the only visible way in was rotating the
+   * phone past 768px so the top nav appeared.
    */
   onTabBar?: true;
 }
@@ -65,7 +65,7 @@ const NAV: NavEntry[] = [
   { href: "/history", labelKey: "nav.history", icon: History, badge: "deals", onTabBar: true },
   { href: "/chat", labelKey: "nav.chat", icon: MessagesSquare, onTabBar: true },
   { href: "/inventory", labelKey: "nav.inventory", icon: Package, onTabBar: true },
-  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift },
+  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift, onTabBar: true },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -302,7 +302,7 @@ export function AppShell({
               ({ href, labelKey, icon: Icon, badge }) => {
                 const active = isActive(pathname, href);
                 return (
-                  <li key={href} className="flex-1">
+                  <li key={href} className="min-w-0 flex-1">
                     <Link
                       href={href}
                       aria-current={active ? "page" : undefined}
@@ -327,7 +327,9 @@ export function AppShell({
                           className="absolute -top-0.5 right-1.5 ring-2 ring-surface"
                         />
                       </span>
-                      <span className="text-meta leading-none">{t(labelKey)}</span>
+                      <span className="max-w-full truncate text-meta leading-none">
+                        {t(labelKey)}
+                      </span>
                     </Link>
                   </li>
                 );
