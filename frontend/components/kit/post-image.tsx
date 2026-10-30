@@ -59,18 +59,10 @@ export function PostImage({
       style={{ aspectRatio: !src ? "16 / 7" : String(aspectRatio) }}
     >
       {showPlate ? (
-        <span className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted">
-          {failed ? (
-            <ImageOff aria-hidden className="size-5 text-ink-brand opacity-75" />
-          ) : (
-            <Package aria-hidden className="size-5 text-ink-brand opacity-75" />
-          )}
-          {/* Full ink-muted, no opacity: 5.67:1 on surface-sunken. At 80%
-              it fell to 3.7:1. */}
-          <span className="text-meta font-medium">
-            {t(failed ? "photoUnavailable" : "noPhoto")}
-          </span>
-        </span>
+        <ImagePlate
+          failed={failed}
+          label={t(failed ? "photoUnavailable" : "noPhoto")}
+        />
       ) : (
         <>
           {!loaded ? (
@@ -100,5 +92,25 @@ export function PostImage({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * What fills an image box that has no picture: a package for "no photo at
+ * all", a crossed-out image for one that failed. Shared with the slip frame,
+ * so a broken slip reads the same as a broken card photo.
+ */
+export function ImagePlate({ failed, label }: { failed: boolean; label: string }) {
+  return (
+    <span className="absolute inset-0 flex items-center justify-center gap-2 text-ink-muted">
+      {failed ? (
+        <ImageOff aria-hidden className="size-5 text-ink-brand opacity-75" />
+      ) : (
+        <Package aria-hidden className="size-5 text-ink-brand opacity-75" />
+      )}
+      {/* Full ink-muted, no opacity: 5.67:1 on surface-sunken. At 80%
+          it fell to 3.7:1. */}
+      <span className="text-meta font-medium">{label}</span>
+    </span>
   );
 }

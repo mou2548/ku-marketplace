@@ -19,6 +19,7 @@ import { Button } from "./button";
 import { TextAreaField } from "./field";
 import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
+import { ImagePlate } from "./post-image";
 import { Surface } from "./surface";
 import { useToast } from "./toast";
 import { TrustBadge } from "./trust-badge";
@@ -56,7 +57,15 @@ const MAX_BYTES = 5 * 1024 * 1024;
  * whole point of looking at a slip before sending it — renders as a plain
  * <img>, and only persisted slips go through next/image.
  */
-function SlipImage({ src, alt }: { src: string; alt: string }) {
+function SlipImage({
+  src,
+  alt,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  onError: () => void;
+}) {
   if (src.startsWith("blob:") || src.startsWith("data:")) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -64,6 +73,7 @@ function SlipImage({ src, alt }: { src: string; alt: string }) {
         src={src}
         alt={alt}
         className="absolute inset-0 size-full object-contain"
+        onError={onError}
       />
     );
   }
@@ -74,6 +84,7 @@ function SlipImage({ src, alt }: { src: string; alt: string }) {
       fill
       sizes="(min-width: 640px) 32rem, 100vw"
       className="object-contain"
+      onError={onError}
     />
   );
 }
@@ -104,17 +115,29 @@ function SlipFrame({
   className?: string;
 }) {
   const t = getCopy();
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const frame = cn(
+    "relative block w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
+    size === "tall" ? "h-[min(28rem,50dvh)]" : "h-[min(16rem,35dvh)]",
+    className,
+  );
+
+  // A slip that fails to load showed the browser's broken-image icon and the
+  // alt text in an empty box, and the viewer behind it showed the same
+  // (retest R04). It gets the card photo's plate in the box it reserved,
+  // and nothing to open.
+  if (failedSrc === src) {
+    return (
+      <div className={frame}>
+        <ImagePlate failed label={t("slip.unavailable")} />
+      </div>
+    );
+  }
+
   return (
     <PhotoViewerTrigger>
-      <AriaButton
-        aria-label={t("slip.viewFullscreen")}
-        className={cn(
-          "relative block w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
-          size === "tall" ? "h-[min(28rem,50dvh)]" : "h-[min(16rem,35dvh)]",
-          className,
-        )}
-      >
-        <SlipImage src={src} alt={alt} />
+      <AriaButton aria-label={t("slip.viewFullscreen")} className={frame}>
+        <SlipImage src={src} alt={alt} onError={() => setFailedSrc(src)} />
         <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-pill bg-surface-inverse/80 px-2 py-1.5 text-meta font-medium text-white">
           <ZoomIn aria-hidden className="size-3.5" />
           {t("slip.viewFull")}
