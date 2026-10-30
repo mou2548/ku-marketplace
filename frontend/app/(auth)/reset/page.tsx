@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LinkButton } from "@/components/kit/button";
 import { ResetPasswordForm } from "@/components/kit/auth/password-forms";
 import { Surface } from "@/components/kit/surface";
+import { Notice } from "@/components/patterns/notice";
 
 export const metadata = { title: "Reset password - KU Marketplace" };
 
@@ -45,10 +46,12 @@ export default async function ResetPasswordPage({
                 verified, and that sender only reaches the Resend account owner.
                 In development the API logs every code instead. */}
             {process.env.NODE_ENV !== "production" ? (
-              <p className="rounded-control border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-caption text-tone-warning-fg">
-                Development: the email may not arrive. The code is printed in the
-                API log as &quot;[DEV] Password reset OTP for ...&quot;.
-              </p>
+              <Notice tone="warning">
+                <p className="text-caption">
+                  Development: the email may not arrive. The code is printed in the
+                  API log as &quot;[DEV] Password reset OTP for ...&quot;.
+                </p>
+              </Notice>
             ) : null}
 
             <Suspense fallback={null}>

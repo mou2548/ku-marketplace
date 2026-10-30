@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getCopy } from "@/lib/copy";
-import { CircleCheck, Flag, Info } from "lucide-react";
+import { CircleCheck, Flag } from "lucide-react";
 
 import { unwrapAction } from "@/lib/action-result";
 import { createReport } from "@/lib/actions/reports";
@@ -16,6 +16,7 @@ import { Radio, RadioGroupField } from "./choice";
 import { EvidencePicker } from "./evidence-picker";
 import { TextAreaField } from "./field";
 import { Overlay, OverlayTrigger } from "./overlay";
+import { Notice } from "@/components/patterns/notice";
 
 /**
  * §7.5.1/§7.5.2 — the two report types that, unlike a transaction, have no
@@ -31,13 +32,12 @@ import { Overlay, OverlayTrigger } from "./overlay";
  */
 export function EvidenceNote({ canPickMessages }: { canPickMessages: boolean }) {
   return (
-    <div className="flex gap-2.5 rounded-control bg-tone-info-bg p-3 text-caption leading-[1.6] text-tone-info-fg">
-      <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+    <Notice tone="info" contentClassName="text-caption leading-[1.6]">
       <div className="flex flex-col gap-1">
         <p className="font-medium">Evidence helps an admin decide faster</p>
         <p>
           Photos: screenshots or pictures of what happened, up to 5, each 5MB
-          or smaller (JPEG, PNG or WEBP).
+          or smaller (JPG, PNG, GIF, SVG or WebP).
           {canPickMessages
             ? " Chat messages: tick the exact messages the report is about."
             : " To point at chat messages, report from the chat with this person instead."}
@@ -46,7 +46,7 @@ export function EvidenceNote({ canPickMessages }: { canPickMessages: boolean }) 
           Add everything now. Evidence cannot be added after the report is sent.
         </p>
       </div>
-    </div>
+    </Notice>
   );
 }
 

@@ -461,3 +461,24 @@ a giveaway recipient still hasn't collected — would actively block the owner.
 Closing this properly needs the backend to return `is_transferred` directly,
 computed from all of an item's channels (open and recently closed), not just
 the open ones.
+
+## Membership fees have no payee or payment QR
+
+Deals have `GET /transactions/:id/payment-qr`, which builds the PromptPay
+payload for the seller's number. Memberships have nothing like it: `POST
+/subscriptions` only takes the tier and a slip URL, and no endpoint says which
+account the fee goes to.
+
+The subscribe dialog (`app/(app)/account/membership/membership-screen.tsx`)
+now shows a PromptPay QR built on the frontend (`lib/promptpay.ts`) for a
+fixed account, `MEMBERSHIP_PROMPTPAY` (0909389199, owner choice 2026-10-30),
+and the tier's price. The payload format matches the API's byte for byte
+(`tests/promptpay.test.mjs`). Moving the account to the backend would mean an
+endpoint such as `GET /subscriptions/payment-qr?tier=Gold`; until then,
+changing the account is a one-line frontend change.
+
+The amount has no backend source either: it comes from the frontend `TIERS`
+table in the same screen, a hand-kept copy of the backend's tier prices. The
+QR locks the amount in the banking app, so if the backend prices change and
+`TIERS` does not, every member pays the old price and admins reject the slip.
+Change both together.

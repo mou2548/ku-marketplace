@@ -7,6 +7,7 @@ import { ArrowLeftRight, ChevronRight, Inbox } from "lucide-react";
 import { LinkButton } from "@/components/kit/button";
 import { EmptyState } from "@/components/kit/empty-state";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnOffer } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import {
   TabCount,
@@ -40,7 +41,7 @@ export function OffersInbox({
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+        <p className="text-overline font-semibold text-ink-muted uppercase">
           {t("offer.tradeDesk")}
         </p>
         <h1 className="mt-1 text-h1">{t("offer.title")}</h1>
@@ -164,6 +165,7 @@ function OfferList({
                   </div>
                   <StatusBadge
                     status={OFFER_STATUS[offer.status]}
+                    viewerActs={viewerActsOnOffer(offer.status, direction)}
                     size="sm"
                     className="hidden shrink-0 sm:inline-flex"
                   />
@@ -171,6 +173,7 @@ function OfferList({
 
                 <StatusBadge
                   status={OFFER_STATUS[offer.status]}
+                  viewerActs={viewerActsOnOffer(offer.status, direction)}
                   size="sm"
                   className="w-fit max-w-full sm:hidden"
                 />

@@ -29,10 +29,12 @@ import { useStatusText } from "@/lib/status-text";
 import { unwrapAction } from "@/lib/action-result";
 import { removeItem, saveItemEdits, saveNewItem } from "@/lib/actions/items";
 import { uploadFile } from "@/lib/actions/uploads";
+import { ACCEPTED_IMAGE_TYPES, prepareImageForUpload } from "@/lib/image-prepare";
 import type { ItemPayload } from "@/lib/api/items";
 import type { Item, ItemCategory } from "@/lib/api/types";
 import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 
 interface Photo {
   key: string;
@@ -194,13 +196,7 @@ export function ItemForm({
         </p>
         <p className="text-h3">{name.trim() || "Untitled item"}</p>
         <span
-          style={
-            {
-              "--slot-edge": ITEM_CONDITION[condition].fg,
-              "--slot-glow": ITEM_CONDITION[condition].glow,
-            } as React.CSSProperties
-          }
-          className="w-fit rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+          className={`${BADGE_SHAPE} w-fit ${BADGE_PAINT.neutral}`}
         >
           {st.of(ITEM_CONDITION[condition]).label}
         </span>
@@ -303,15 +299,27 @@ export function ItemForm({
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept={ACCEPTED_IMAGE_TYPES}
             multiple
             hidden
             aria-label={t("inventory.addPhotos")}
-            onChange={(e) => {
+            onChange={async (e) => {
               const files = Array.from(e.target.files ?? []);
+              // A GIF or SVG becomes a PNG here, because the upload endpoint
+              // takes JPEG, PNG and WEBP only.
+              const ready: File[] = [];
+              let unreadable = 0;
+              for (const f of files) {
+                try {
+                  ready.push(await prepareImageForUpload(f));
+                } catch {
+                  unreadable += 1;
+                }
+              }
+              if (unreadable) toast.error(t("chat.notAnImage", { count: unreadable }));
               setPhotos((list) => [
                 ...list,
-                ...files.map((f) => ({
+                ...ready.map((f) => ({
                   key: `new-${f.name}-${f.lastModified}-${Math.random()}`,
                   file: f,
                   previewUrl: URL.createObjectURL(f),

@@ -316,7 +316,7 @@ export function PostComposer({
         </h2>
         <Link
           href="/inventory/new"
-          className="flex items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
+          className="touch-link flex items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
         >
           <Plus aria-hidden className="size-4" />
           Add
@@ -324,7 +324,7 @@ export function PostComposer({
       </div>
 
       {pickable.length === 0 ? (
-        <Notice tone="brand" className="text-body-sm text-ink-secondary">
+        <Notice tone="brand" contentClassName="text-body-sm text-ink-secondary">
           Nothing left to list. Add a new item, or free up stock by unlisting
           something.
         </Notice>
@@ -586,10 +586,12 @@ export function PostComposer({
                 hint="Selected recipients must collect by this date"
               />
 
-              <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-                Recipients who do not collect within this window lose their
-                ticket automatically.
-              </p>
+              <Notice tone="warning">
+                <p className="text-caption leading-[1.6]">
+                  Recipients who do not collect within this window lose their
+                  ticket automatically.
+                </p>
+              </Notice>
             </>
           ) : null}
 

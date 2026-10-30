@@ -18,10 +18,9 @@ import { Surface } from "./surface";
 const SIZE = 224;
 const t = getCopy("slip");
 
-/** Which way the money goes; the copy keys differ, the QR does not. */
-const KINDS = {
+/** Who is paid and why; the copy keys differ, the QR does not. */
+const COPY = {
   payment: {
-    fetch: fetchPaymentQr,
     title: "payTitle",
     to: "payTo",
     direct: "payDirect",
@@ -30,7 +29,6 @@ const KINDS = {
     file: "promptpay",
   },
   refund: {
-    fetch: fetchRefundQr,
     title: "refundQrTitle",
     to: "refundQrTo",
     direct: "refundQrDirect",
@@ -38,7 +36,17 @@ const KINDS = {
     failed: "refundQrFailed",
     file: "promptpay-refund",
   },
+  membership: {
+    title: "payTitle",
+    to: "payTo",
+    direct: "membershipDirect",
+    loading: "payLoading",
+    failed: "payQrFailed",
+    file: "promptpay-membership",
+  },
 } as const;
+
+const FETCH = { payment: fetchPaymentQr, refund: fetchRefundQr } as const;
 
 /**
  * Where the buyer's money goes. The API builds a PromptPay payload for the
@@ -57,51 +65,87 @@ export function PaymentQr({
   className,
 }: {
   transactionId: number;
-  kind?: keyof typeof KINDS;
+  kind?: keyof typeof FETCH;
   className?: string;
 }) {
-  const k = KINDS[kind];
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qr, setQr] = useState<PaymentQrData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    unwrapAction(k.fetch(transactionId))
+    unwrapAction(FETCH[kind](transactionId))
       .then((data) => {
         if (!cancelled) setQr(data);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : t(k.failed));
+        if (!cancelled) setError(err instanceof Error ? err.message : t(COPY[kind].failed));
       });
     return () => {
       cancelled = true;
     };
-  }, [transactionId, k]);
+  }, [transactionId, kind]);
+
+  return (
+    <PromptPayQr
+      qr={qr}
+      kind={kind}
+      error={error}
+      fileSuffix={String(transactionId)}
+      className={className}
+    />
+  );
+}
+
+/**
+ * The QR card itself: the code, who it pays, and a button to save it. Given a
+ * payload from the API (`PaymentQr`) or one built on this side
+ * (`lib/promptpay.ts`, for membership fees). `qr` null shows the loading state.
+ */
+export function PromptPayQr({
+  qr,
+  kind,
+  error = null,
+  fileSuffix,
+  className,
+}: {
+  qr: PaymentQrData | null;
+  kind: keyof typeof COPY;
+  error?: string | null;
+  /** Saved as `<kind's file prefix>-<suffix>.png`. */
+  fileSuffix: string;
+  className?: string;
+}) {
+  const k = COPY[kind];
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Keyed to the payload, so a new payload gets a fresh attempt and one
+  // failed draw never sticks.
+  const [failedPayload, setFailedPayload] = useState<string | null>(null);
+  const drawError = qr && failedPayload === qr.payload ? t(k.failed) : null;
 
   useEffect(() => {
     if (!qr || !canvasRef.current) return;
     QRCode.toCanvas(canvasRef.current, qr.payload, { width: SIZE, margin: 2, color: QR_COLOR }).catch(
-      () => setError(t(k.failed)),
+      () => setFailedPayload(qr.payload),
     );
-  }, [qr, k]);
+  }, [qr]);
 
   function save() {
     const canvas = canvasRef.current;
     if (!canvas || !qr) return;
     const link = document.createElement("a");
     link.href = canvas.toDataURL("image/png");
-    link.download = `${k.file}-${transactionId}.png`;
+    link.download = `${k.file}-${fileSuffix}.png`;
     link.click();
   }
 
   // The API's refusal (no PromptPay on the payee's side, deal no longer
   // awaiting the money) is the useful thing to show; the slip uploader below
   // is still there either way.
-  if (error !== null) {
+  const shown = error ?? drawError;
+  if (shown !== null) {
     return (
       <Surface shape="card" elevation="flat" fill="sunken" className={cn("p-4 text-body-sm", className)}>
-        {error}
+        {shown}
       </Surface>
     );
   }

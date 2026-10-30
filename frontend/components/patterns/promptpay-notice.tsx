@@ -14,11 +14,12 @@ import { Notice } from "./notice";
 export function PromptPayNotice({ message }: { message?: string } = {}) {
   const t = getCopy("listing");
   return (
-    <Notice tone="warning" className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <p className="flex flex-1 gap-2 text-body-sm">
-        <Wallet aria-hidden className="mt-0.5 size-4 shrink-0" />
-        {message ?? t("promptPayNeeded")}
-      </p>
+    <Notice
+      tone="warning"
+      icon={Wallet}
+      contentClassName="flex flex-col gap-3 sm:flex-row sm:items-center"
+    >
+      <p className="flex-1 text-body-sm">{message ?? t("promptPayNeeded")}</p>
       <LinkButton href="/account/edit" variant="secondary">
         {t("promptPayAction")}
       </LinkButton>

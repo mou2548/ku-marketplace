@@ -452,12 +452,9 @@ export class GiveawaysService {
   }
 
   /**
-   * Lets a Random/Manual giver decide "enough people have registered" and
-   * close the window themselves instead of waiting for `registerDeadline`.
-   * `draw()`/`select()` already refuse to run before that deadline — this
-   * just moves it to now, so the very next call to either succeeds. FirstCome
-   * has no equivalent: it resolves continuously as people register, so there
-   * is nothing to "close" ahead of a draw.
+   * Lets the giver close registration without waiting for the deadline.
+   * Random/Manual can then allocate recipients. FirstCome recipients already
+   * have their places, so it moves directly to collection without changing tickets.
    */
   async closeRegistrationEarly(id: string, giverId: number) {
     const giveawayId = this.id(id, 'giveaway');
@@ -478,11 +475,6 @@ export class GiveawaysService {
           'เฉพาะผู้ให้เท่านั้นที่ปิดรับลงทะเบียนได้',
         );
       }
-      if (!['Random', 'Manual'].includes(giveaway.allocationMethod)) {
-        throw new BadRequestException(
-          'ปิดรับลงทะเบียนก่อนกำหนดได้เฉพาะวิธี Random หรือ Manual',
-        );
-      }
       if (giveaway.status !== 'Active') {
         throw new ConflictException('กิจกรรมนี้ไม่ได้เปิดรับลงทะเบียนอยู่');
       }
@@ -491,7 +483,12 @@ export class GiveawaysService {
       }
       await tx.giveawayPost.update({
         where: { giveawayId },
-        data: { registerDeadline: now },
+        data: {
+          registerDeadline: now,
+          ...(giveaway.allocationMethod === 'FirstCome'
+            ? { status: 'Closed' as const }
+            : {}),
+        },
       });
     });
     return {

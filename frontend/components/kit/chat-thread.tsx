@@ -10,14 +10,12 @@ import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import type { UserSummary } from "@/lib/api/types";
-import type { Tone } from "@/lib/status";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
 import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
-import { TONE_RAIL_LEFT } from "./tone";
 import { ProfileLink } from "./profile-link";
 import { TrustBadge } from "./trust-badge";
 
@@ -103,17 +101,6 @@ export interface ChatThreadProps {
   className?: string;
 }
 
-/**
- * A stable colour per person so a run of messages is separable while scrolling
- * past it. Decorative and always paired with the name — `danger` and `success`
- * are excluded so an accent can never be read as a status.
- */
-const SENDER_TONES: Tone[] = ["info", "trade", "warning", "neutral"];
-
-function senderTone(senderId: number): Tone {
-  return SENDER_TONES[Math.abs(senderId) % SENDER_TONES.length];
-}
-
 /** Calendar day in the campus timezone, so a message near midnight groups the
  * same way for everyone regardless of the reader's own device timezone. */
 function dayKey(iso: string): string {
@@ -141,10 +128,12 @@ function ReceiptBubble({ url, label }: { url: string; label: string }) {
   const t = getCopy();
   return (
     <PhotoViewerTrigger>
-      <button
-        type="button"
+      {/* AriaButton, not <button>: the trigger opens the viewer through a
+          press event only react-aria's Button receives. A plain button
+          rendered and did nothing when tapped. */}
+      <AriaButton
         aria-label={t("chat.viewFullSize")}
-        className="block w-[min(15rem,60vw)] overflow-hidden rounded-card bg-surface shadow-raised"
+        className="block w-[min(15rem,60vw)] overflow-hidden rounded-card bg-surface shadow-raised outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <span className="flex items-center gap-1.5 px-3 py-2 text-meta font-semibold text-ink-brand">
           <ReceiptText aria-hidden className="size-3.5" />
@@ -157,9 +146,61 @@ function ReceiptBubble({ url, label }: { url: string; label: string }) {
           height={640}
           className="max-h-64 w-full bg-surface-sunken object-contain"
         />
-      </button>
+      </AriaButton>
       <PhotoViewer src={url} alt={label} title={label} />
     </PhotoViewerTrigger>
+  );
+}
+
+/**
+ * The photos of one message. A photo that fails to load is dropped and the
+ * grid is laid out again from the ones that did: an empty 220px cell left
+ * where a broken photo was pushed the visible one away from the sender's side.
+ */
+function PhotoGrid({ urls, mine }: { urls: string[]; mine: boolean }) {
+  const t = getCopy();
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+  const shown = urls.filter((url) => !failed.has(url));
+
+  if (shown.length === 0) {
+    return (
+      <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">
+        {t("chat.photoUnavailable")}
+      </p>
+    );
+  }
+
+  return (
+    <div className={cn("grid gap-1.5", shown.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
+      {shown.map((url, idx) => {
+        // An odd photo out takes the last row alone and sits on the sender's
+        // side, so no empty cell sits beside it.
+        const alone = shown.length > 1 && shown.length % 2 === 1 && idx === shown.length - 1;
+        return (
+          <PhotoViewerTrigger key={url}>
+            <AriaButton
+              aria-label={t("chat.viewFullSize")}
+              className={cn(
+                "block overflow-hidden rounded-control outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                shown.length === 1 && (mine ? "justify-self-end" : "justify-self-start"),
+                alone &&
+                  (mine ? "col-span-2 justify-self-end" : "col-span-2 justify-self-start"),
+              )}
+            >
+              <Image
+                src={url}
+                alt=""
+                width={220}
+                height={220}
+                className="aspect-square object-cover shadow-raised"
+                onError={() => setFailed((prev) => new Set(prev).add(url))}
+              />
+            </AriaButton>
+            <PhotoViewer src={url} alt="" title={t("chat.photo")} />
+          </PhotoViewerTrigger>
+        );
+      })}
+    </div>
   );
 }
 
@@ -254,7 +295,6 @@ export function ChatThread({
             const startsRun = messages[i - 1]?.sender_id !== m.sender_id;
             const named = showSenders && !mine;
             const sender = named ? senders?.get(m.sender_id) : undefined;
-            const tone = senderTone(m.sender_id);
             const startsNewDay =
               i === 0 ||
               dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
@@ -316,45 +356,7 @@ export function ChatThread({
                   ) : receipt ? (
                     <ReceiptBubble url={receipt.url} label={receipt.label} />
                   ) : m.image_urls?.length ? (
-                    <div
-                      className={cn(
-                        "grid gap-1.5",
-                        m.image_urls.length === 1 ? "grid-cols-1" : "grid-cols-2",
-                      )}
-                    >
-                      {m.image_urls.slice(0, 5).map((url, idx, shown) => {
-                        // An odd photo out takes the last row alone and sits on
-                        // the sender's side, so no empty cell sits beside it.
-                        const alone =
-                          shown.length > 1 &&
-                          shown.length % 2 === 1 &&
-                          idx === shown.length - 1;
-                        return (
-                          <PhotoViewerTrigger key={url}>
-                            <button
-                              type="button"
-                              aria-label={t("chat.viewFullSize")}
-                              className={cn(
-                                "block overflow-hidden rounded-control",
-                                alone &&
-                                  (mine
-                                    ? "col-span-2 justify-self-end"
-                                    : "col-span-2 justify-self-start"),
-                              )}
-                            >
-                              <Image
-                                src={url}
-                                alt=""
-                                width={220}
-                                height={220}
-                                className="aspect-square object-cover shadow-raised"
-                              />
-                            </button>
-                            <PhotoViewer src={url} alt="" title={t("chat.photo")} />
-                          </PhotoViewerTrigger>
-                        );
-                      })}
-                    </div>
+                    <PhotoGrid urls={m.image_urls.slice(0, 5)} mine={mine} />
                   ) : null}
 
                   {m.content ? (
@@ -369,7 +371,6 @@ export function ChatThread({
                             // edge at all; the sunken tint gives the other
                             // side's message a shape without a border.
                             "rounded-bl-chip bg-surface-sunken text-ink",
-                        named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                       )}
                     >
                       {m.content}

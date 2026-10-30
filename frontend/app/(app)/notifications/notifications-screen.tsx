@@ -11,6 +11,7 @@ import { Bell, Gift, Handshake, ShieldAlert, Wallet } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
 import type { Notification } from "@/lib/api/notifications";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 import { cn } from "@/lib/utils";
 import { usePolling } from "@/lib/use-polling";
 
@@ -111,7 +112,7 @@ export function NotificationsScreen({
         {counts.unread.all > 0 ? (
           <span
             data-numeric
-            className="rounded-pill bg-brand-subtle px-2.5 py-1 text-caption font-medium text-ink-brand"
+            className={cn(BADGE_SHAPE, BADGE_PAINT.neutral)}
           >
             {t("notifications.unread", { count: counts.unread.all })}
           </span>

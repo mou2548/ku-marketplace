@@ -8,7 +8,11 @@ import {
   AdminPill,
 } from "@/components/admin/admin-ui";
 import { QueueTable } from "@/components/admin/queue-table";
-import { waitingFor, waitingForLong } from "@/lib/admin-labels";
+import {
+  ADMIN_ACCOUNT_STATUS,
+  waitingFor,
+  waitingForLong,
+} from "@/lib/admin-labels";
 import {
   buildQueueRows,
   loadAdminQueues,
@@ -139,8 +143,8 @@ export default async function AdminDashboardPage({
                   <AdminPill
                     status={
                       account.status === "Banned"
-                        ? { label: "Banned", tone: "danger" }
-                        : { label: "Suspended", tone: "warning" }
+                        ? ADMIN_ACCOUNT_STATUS.Banned
+                        : ADMIN_ACCOUNT_STATUS.Suspended
                     }
                   />
                 </Link>

@@ -13,6 +13,7 @@ import type { InventoryItem } from "@/components/kit/inventory-slot";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 import { useStatusText } from "@/lib/status-text";
 import type { ItemWithStatus } from "@/lib/api/items";
 import type { ItemHistorySummary } from "@/lib/api/types";
@@ -117,10 +118,10 @@ export function InventoryScreen({
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-meta">
-            <span className="rounded-pill bg-brand-subtle px-2.5 py-1 font-medium text-ink-brand">
+            <span className={`${BADGE_SHAPE} ${BADGE_PAINT.neutral}`}>
               {openCount} {t("inventory.onTheMarket")}
             </span>
-            <span className="rounded-pill bg-surface-sunken px-2.5 py-1 font-medium text-ink-secondary">
+            <span className={`${BADGE_SHAPE} ${BADGE_PAINT.neutral}`}>
               {activeCount - openCount} {t("inventory.notListed")}
             </span>
             {transferredIds.size > 0 ? (

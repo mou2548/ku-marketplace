@@ -6,6 +6,8 @@ import { getEligibleAppeals } from "@/lib/api/appeals";
 import { getMe } from "@/lib/api/users";
 import type { Restriction } from "@/components/kit/restricted-shell";
 import { actionCount, buildInbox } from "@/lib/inbox";
+import { cookies } from "next/headers";
+import { dealBadgeKeys, dealsSeenCookie } from "@/lib/deal-badge";
 
 /**
  * The app shell (docs/design/ia.md §4). A Server Component: the badge counts
@@ -34,12 +36,17 @@ export default async function AppLayout({
   let restricted = false;
   let restriction: Restriction | null = null;
   let badges = { actions: 0, offers: 0, deals: 0 };
+  // Null when the deals could not be read: the nav then leaves the seen
+  // cookie alone instead of pruning it against an empty list.
+  let dealKeys: string[] | null = null;
+  let seenDeals = "";
 
   if (viewerId) {
     const [transactions, me] = await Promise.all([
-      getTransactions().catch(() => []),
+      getTransactions().catch(() => null),
       getMe().catch(() => undefined),
     ]);
+    seenDeals = (await cookies()).get(dealsSeenCookie(viewerId))?.value ?? "";
 
     if (me) {
       restricted = me.status === "Suspended" || me.status === "Banned";
@@ -69,8 +76,9 @@ export default async function AppLayout({
       // No endpoint lists a user's offers across posts (docs/design/api-gaps.md),
       // so the inbox and its badges are built from transactions alone. The
       // offers badge stays at zero until such an endpoint exists.
-      const inbox = buildInbox(transactions, [], viewerId);
+      const inbox = buildInbox(transactions ?? [], [], viewerId);
       badges = { actions: actionCount(inbox), offers: 0, deals: inbox.yours.length };
+      dealKeys = transactions ? dealBadgeKeys(inbox.yours) : null;
     } catch {
       badges = { actions: 0, offers: 0, deals: 0 };
     }
@@ -78,7 +86,14 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
-      <AppShell user={user} badges={badges} restriction={restriction}>
+      <AppShell
+        user={user}
+        badges={badges}
+        dealKeys={dealKeys}
+        seenDeals={seenDeals}
+        seenCookie={viewerId ? dealsSeenCookie(viewerId) : undefined}
+        restriction={restriction}
+      >
         {children}
       </AppShell>
     </ToastProvider>

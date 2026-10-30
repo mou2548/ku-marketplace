@@ -130,7 +130,7 @@ export function ListItemForm({
     <div className="flex w-full flex-col gap-5">
       <Link
         href={`/inventory/${item.item_id}`}
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />{t("inventory.backToItem")}</Link>
 

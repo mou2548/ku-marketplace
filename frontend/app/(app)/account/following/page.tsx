@@ -29,7 +29,7 @@ export default async function FollowingPage({
       <RefreshOnFocus />
       <Link
         href="/account"
-        className="flex min-h-11 w-fit items-center gap-2 text-ink-brand"
+        className="touch-link flex min-h-11 w-fit items-center gap-2 text-ink-brand"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("account")}

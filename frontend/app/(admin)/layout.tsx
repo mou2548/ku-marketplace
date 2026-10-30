@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Bell } from "lucide-react";
 
 import { AdminSidebar, AdminTabBar } from "@/components/admin/admin-navigation";
+import { ModeSwitch } from "@/components/kit/mode-switch";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 import { ToastProvider } from "@/components/kit/toast";
 import { UserAvatar } from "@/components/kit/user-avatar";
@@ -43,19 +44,16 @@ export default async function AdminLayout({
           {/* Same height as the marketplace navbar (app-shell.tsx), so switching
               between User mode and admin does not shift the page. */}
           <header className="sticky top-0 z-[50] flex h-[4.25rem] items-center gap-2 border-b border-line bg-page px-4 lg:px-8">
-            <p className="flex items-baseline gap-2 font-semibold tracking-[-0.01em] lg:hidden">
+            {/* Hidden on phones, where the mode switch already says "Admin" and
+                the bar has no room for both. */}
+            <p className="hidden items-baseline gap-2 font-semibold tracking-[-0.01em] sm:flex lg:hidden">
               KU Marketplace{" "}
               <span className="text-caption font-normal text-ink-muted">
                 Admin
               </span>
             </p>
             <div className="ml-auto flex items-center gap-1">
-              <Link
-                href="/feed"
-                className="hidden min-h-9 items-center rounded-[10px] border border-line-default px-3 text-body-sm text-ink-secondary hover:bg-surface-sunken sm:flex"
-              >
-                User mode
-              </Link>
+              <ModeSwitch current="admin" className="mr-1" />
               <ThemeSwitch />
               <Link
                 href="/notifications"

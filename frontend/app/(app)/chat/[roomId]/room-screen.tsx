@@ -18,6 +18,7 @@ import {
   MapPin,
   QrCode,
   ScanLine,
+  ShieldAlert,
   Truck,
   Undo2,
   XCircle,
@@ -34,6 +35,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { PaymentQr } from "@/components/kit/payment-qr";
+import { Notice } from "@/components/patterns/notice";
 import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import {
   SlipRejectDialog,
@@ -44,6 +46,7 @@ import {
 } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnDeadline, viewerActsOnTransaction } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { unwrapAction } from "@/lib/action-result";
@@ -60,7 +63,7 @@ import {
   submitPaymentSlip,
   submitRefundSlip,
 } from "@/lib/actions/transactions";
-import { TONE_CHIP, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
+import { BADGE_PAINT, BADGE_SHAPE, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
 import {
   buildSteps,
   TransactionStepper,
@@ -92,8 +95,13 @@ import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { isDecodableImage } from "@/lib/image-check";
+import {
+  MAX_BEFORE_CONVERT_BYTES,
+  needsConversion,
+  prepareImageForUpload,
+} from "@/lib/image-prepare";
 import { openReturnWindow } from "@/lib/return-window";
-import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
+import type { RoomSummary } from "@/lib/rooms";
 import {
   ALLOCATION_METHOD,
   canReport,
@@ -443,8 +451,16 @@ export function RoomScreen({
     transaction && !["Completed", "Cancelled", "Refunded"].includes(transaction.status);
   const reportable = canReport(deadline ? [deadline] : [], now) || Boolean(missedMeetup);
 
-  // Flow 3: only the giver may type in a giveaway room.
-  const giveawayReadOnly = !!giveaway && giveaway.giver_id !== viewerId;
+  // A giveaway room is a group chat: the giver and everyone holding a ticket
+  // that was selected (Waiting) or collected (Received) may type. The API
+  // admits exactly those people, so this only mirrors it; someone who merely
+  // registered is not in the room at all.
+  const canPostInGiveaway =
+    !giveaway ||
+    giveaway.giver_id === viewerId ||
+    summary.giveawayTicketStatus === "Waiting" ||
+    summary.giveawayTicketStatus === "Received";
+  const giveawayReadOnly = !canPostInGiveaway;
 
   // A giveaway room holds the giver plus every recipient, and a bubble that is
   // not yours could be any of them. Naming senders needs a roster; a deal room
@@ -608,7 +624,12 @@ export function RoomScreen({
     const picked = Array.from(files);
     // Size and the cap are free to check; decoding is not, so both run first
     // and only the survivors are decoded, one at a time.
-    const sized = picked.filter((file) => file.size <= MAX_ATTACH_BYTES);
+    // A GIF or SVG is sent as a PNG, so its size is judged after that; the
+    // ceiling here only stops a huge file being decoded at all.
+    const sized = picked.filter(
+      (file) =>
+        file.size <= (needsConversion(file) ? MAX_BEFORE_CONVERT_BYTES : MAX_ATTACH_BYTES),
+    );
     if (sized.length < picked.length) toast.error(t("errors.api.fileTooLarge"));
     const candidates = sized.slice(0, MAX_ATTACH_PHOTOS);
     if (sized.length > MAX_ATTACH_PHOTOS) toast.warning(t("deal.photoLimit"));
@@ -616,11 +637,20 @@ export function RoomScreen({
     setBusy(true);
     // Read the bytes, not the file name (audit B04).
     const selected: File[] = [];
+    let oversized = 0;
     for (const file of candidates) {
-      if (await isDecodableImage(file)) selected.push(file);
+      if (!(await isDecodableImage(file))) continue;
+      try {
+        const ready = await prepareImageForUpload(file);
+        if (ready.size > MAX_ATTACH_BYTES) oversized += 1;
+        else selected.push(ready);
+      } catch {
+        // Unreadable once drawn: counted below as not an image.
+      }
     }
-    const notImages = candidates.length - selected.length;
+    const notImages = candidates.length - selected.length - oversized;
     if (notImages) toast.error(t("chat.notAnImage", { count: notImages }));
+    if (oversized) toast.error(t("errors.api.fileTooLarge"));
     if (!selected.length) {
       setBusy(false);
       return;
@@ -900,7 +930,11 @@ export function RoomScreen({
                 {/* The clock for the buyer to confirm the money arrived. */}
                 {deadline && transaction.refund_slip_url ? (
                   <div className="flex flex-col gap-1.5">
-                    <CountdownPill deadline={deadline} className="w-fit" />
+                    <CountdownPill
+                      deadline={deadline}
+                      viewerActs={viewer === "buyer"}
+                      className="w-fit"
+                    />
                     <p className="text-caption text-ink-muted">
                       {viewer === "seller"
                         ? `Waiting for ${summary.counterparty.name} to confirm the money arrived.`
@@ -949,7 +983,7 @@ export function RoomScreen({
             return); both sides see it run down (audit A08). */}
         {deadline ? (
           <div className="my-3 flex flex-col gap-1.5">
-            <CountdownPill deadline={deadline} className="w-fit" />
+            <CountdownPill deadline={deadline} viewerActs={!asked} className="w-fit" />
             <p className="text-caption text-ink-muted">
               {asked
                 ? t("deal.cancelWaitingBy", { name: summary.counterparty.name })
@@ -1336,8 +1370,10 @@ export function RoomScreen({
     /* A messenger, not a card. The room is the surface: it fills the column the
        shell gives it, and the only thing that scrolls is the thread. */
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface">
-      {/* Header: who, what kind, what about. */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+      {/* Header: who, what kind, what about. Under `sm` it wraps into two
+          rows: who and Details on top, the kind and item underneath. One row
+          at 360-390px squeezed the item title to a few pixels. */}
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2 sm:flex-nowrap sm:py-3">
         {/* The header shows who and what visually; this names the page for
             screen readers and heading navigation (audit P07). */}
         <h1 className="sr-only">
@@ -1357,10 +1393,11 @@ export function RoomScreen({
             link on the right gives way first (audit B06): that side shrinks
             at six times the rate, and the name only truncates once the item
             is down to its chip and the details button. */}
-        <span className="flex min-w-0 shrink items-center gap-2">
+        <span className="flex min-w-0 flex-1 items-center gap-2 sm:flex-initial sm:shrink">
           <ProfileLink
             userId={summary.counterparty.user_id}
             name={summary.counterparty.name}
+            className="touch-link"
           >
             <TrustBadge
               name={summary.counterparty.name}
@@ -1368,6 +1405,9 @@ export function RoomScreen({
               faculty={summary.counterparty.faculty}
               avatarUrl={summary.counterparty.avatar_url}
               size="sm"
+              // touch-link makes the link a flex box on a phone; without
+              // min-w-0 the badge would refuse to shrink below the full name.
+              className="min-w-0"
             />
           </ProfileLink>
           {isGroupRoom ? (
@@ -1387,13 +1427,10 @@ export function RoomScreen({
           />
         </span>
 
-        <span className="ml-auto flex min-w-0 shrink-[6] items-center justify-end gap-2">
-          <span
-            className={cn(
-              "shrink-0 rounded-chip border px-1.5 py-0.5 text-meta font-semibold",
-              TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
-            )}
-          >
+        <span className="order-last flex min-w-0 basis-full items-center gap-2 sm:order-none sm:ml-auto sm:basis-auto sm:shrink-[6] sm:justify-end">
+          {/* The room kind is a category: a neutral badge, told apart by
+              its word (trade has no colour). */}
+          <span className={cn(BADGE_SHAPE, BADGE_PAINT.neutral, "shrink-0")}>
             {summary.kind}
           </span>
           {/* The subject was dead text, and on anything under 640px it was
@@ -1402,29 +1439,29 @@ export function RoomScreen({
           {subjectHref ? (
             <Link
               href={subjectHref}
-              className="min-w-0 truncate text-caption text-ink-brand hover:underline"
+              className="touch-link min-w-0 truncate text-caption text-ink-brand hover:underline"
             >
-              {summary.subject}
+              <span className="truncate">{summary.subject}</span>
             </Link>
           ) : (
             <span className="min-w-0 truncate text-caption text-ink-muted">
               {summary.subject}
             </span>
           )}
-          {transaction || giveaway ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              pill
-              aria-label={giveaway ? "Giveaway details" : "Deal details"}
-              className="shrink-0 max-sm:w-9 max-sm:px-0"
-              onPress={() => setDetailsOpen(true)}
-            >
-              <Info aria-hidden className="size-4" />
-              <span className="max-sm:hidden">Details</span>
-            </Button>
-          ) : null}
         </span>
+        {transaction || giveaway ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            pill
+            aria-label={giveaway ? "Giveaway details" : "Deal details"}
+            className="shrink-0 max-sm:size-11 max-sm:px-0"
+            onPress={() => setDetailsOpen(true)}
+          >
+            <Info aria-hidden className="size-4" />
+            <span className="max-sm:hidden">Details</span>
+          </Button>
+        ) : null}
       </header>
 
       <ChatThread
@@ -1436,7 +1473,7 @@ export function RoomScreen({
         action={stepAction ?? returnEntry}
         events={progressEvents}
         isReadOnly={giveawayReadOnly}
-        readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
+        readOnlyNotice="Only the giver and people selected for this giveaway can post here."
         onSend={handleSend}
         onAttach={handleAttach}
       />
@@ -1461,10 +1498,12 @@ export function RoomScreen({
             transaction.status === "Pending Refund") ? (
             <section aria-label="Handover" className="flex flex-col gap-3">
               {transaction.active_report_id ? (
-                <p className="rounded-control border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-body-sm text-tone-danger-fg">
-                  An admin is reviewing this deal. Meetups, payments and
-                  handover are paused until they decide.
-                </p>
+                <Notice tone="danger" icon={ShieldAlert}>
+                  <p className="text-body-sm">
+                    An admin is reviewing this deal. Meetups, payments and
+                    handover are paused until they decide.
+                  </p>
+                </Notice>
               ) : appointment && editingAppointment ? (
                 // Pre-filled from the card it replaces — "Resend" updates that
                 // same card in place, "Discard" brings it back untouched.
@@ -1648,7 +1687,7 @@ function StatusCard({
       <button
         type="button"
         onClick={onOpenDetails}
-        className="self-start text-[1.125rem] font-medium text-ink-brand hover:underline"
+        className="touch-link self-start text-[1.125rem] font-medium text-ink-brand hover:underline"
       >
         View details
       </button>
@@ -1665,10 +1704,7 @@ function DealEventCard({ event }: { event: DealEvent }) {
   return (
     <div className="flex justify-center">
       <div
-        className={cn(
-          "flex max-w-[90%] items-start gap-3 rounded-control border px-3 py-2 text-caption",
-          TONE_CHIP[event.tone],
-        )}
+        className="flex max-w-[90%] items-start gap-3 rounded-control border border-line bg-surface px-3 py-2 text-caption text-ink"
       >
         <div className="min-w-0 flex-1">
           <p className="font-medium">{event.title}</p>
@@ -1739,20 +1775,29 @@ function DealDetails({
           </Link>
           <StatusBadge
             status={transactionStatusPresentation(transaction)}
+            viewerActs={viewerActsOnTransaction(transaction, viewer)}
             size="sm"
             className="w-fit"
           />
         </div>
 
         {headline ? (
-          <p
-            className={cn(
-              "rounded-control border px-3 py-2 text-body-sm font-medium",
-              TONE_CHIP[headlineTone ?? "info"],
-            )}
+          // A cancelled deal is ended: information, not the blocking strip
+          // a danger notice draws (quiet badges).
+          // The Handover section already draws the one blocking strip for
+          // an admin review, so this headline is never a second one.
+          <Notice
+            tone={
+              transaction.status === "Cancelled" &&
+              !transaction.active_report_id &&
+              headlineTone === "danger"
+                ? "neutral"
+                : (headlineTone ?? "info")
+            }
+            blocking={false}
           >
-            {headline}
-          </p>
+            <p className="text-body-sm font-medium">{headline}</p>
+          </Notice>
         ) : null}
 
         {transaction.delivery_method === "Shipping" ? (
@@ -1760,7 +1805,15 @@ function DealDetails({
         ) : deadline ? (
           <div className="flex flex-col gap-1.5">
             <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
-            <CountdownPill deadline={deadline} />
+            <CountdownPill
+              deadline={deadline}
+              viewerActs={viewerActsOnDeadline(
+                deadline.kind,
+                transaction,
+                viewer,
+                viewer === "buyer" ? transaction.buyer_id : transaction.seller_id,
+              )}
+            />
           </div>
         ) : null}
 

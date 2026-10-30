@@ -48,7 +48,7 @@ export default async function AdminItemPage({
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <Link
         href="/admin/items"
-        className="inline-flex min-h-10 items-center gap-1.5 self-start text-body-sm text-ink-secondary hover:text-ink"
+        className="touch-link inline-flex min-h-10 items-center gap-1.5 self-start text-body-sm text-ink-secondary hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
         All items
@@ -60,7 +60,7 @@ export default async function AdminItemPage({
         description={`${item.category} · ${item.condition}`}
       >
         {item.deleted_at ? (
-          <AdminPill status={{ label: "Deleted", tone: "neutral" }} />
+          <AdminPill status={{ label: "Deleted", tone: "neutral", lifecycle: "ended", adminActs: false }} />
         ) : null}
       </AdminPageHeader>
 

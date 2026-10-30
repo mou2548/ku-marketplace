@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { IMAGE_HOSTS } from "./lib/image-hosts";
+
 /**
  * Redirect map from docs/design/ia.md §6.
  *
@@ -25,19 +27,11 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    remotePatterns: [
-      // Legacy local volumes can still contain the original object-storage
-      // URLs. Older init.sql revisions used deterministic Picsum seeds; the
-      // current one uses curated Unsplash photos that actually match each item.
-      { protocol: "https", hostname: "r2.ku-market.com" },
-      { protocol: "https", hostname: "picsum.photos" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-      // Seeded payment slips and chat attachments use this host.
-      { protocol: "https", hostname: "placehold.co" },
-      // Real uploads land here: POST /uploads/image -> Cloudinary
-      // (item photos, giveaway photos, chat images).
-      { protocol: "https", hostname: "res.cloudinary.com" },
-    ],
+    // One list for the optimizer and for the feed's image-size reader.
+    remotePatterns: IMAGE_HOSTS.map((hostname) => ({
+      protocol: "https" as const,
+      hostname,
+    })),
   },
   async redirects() {
     return [

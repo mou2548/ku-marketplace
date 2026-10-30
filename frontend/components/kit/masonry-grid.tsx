@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { packColumns } from "@/lib/masonry";
 import { cn } from "@/lib/utils";
 
 /**
@@ -93,10 +94,11 @@ function subscribe(onChange: () => void) {
 }
 
 /**
- * Masonry that reads left to right. Items are dealt into the columns in turn
- * (1st to column 1, 2nd to column 2, ...), so the top row is the first items
- * in order and each column still packs tightly. `MasonryGrid` above fills
- * column by column instead, which puts the 2nd item under the 1st.
+ * Masonry that reads left to right. The first row is the first items in
+ * order, then each item goes to the shortest column (or, without
+ * `estimateHeight`, the next column in turn), so the columns pack tightly.
+ * `MasonryGrid` above fills column by column instead, which puts the 2nd item
+ * under the 1st.
  *
  * The column count needs the viewport, which the server does not know. The
  * first render used to be a plain row-major grid that the masonry replaced
@@ -104,18 +106,21 @@ function subscribe(onChange: () => void) {
  * 0.054-0.096 on /feed at 1024 and 1280 (audit P02, budget 0.05).
  *
  * Now the first render already is the masonry, once per breakpoint, with CSS
- * showing only the one that matches the width. Dealing is stable — item i is
- * always in column i % columns — so the first rows of the full layout are
- * exactly that pre-render, and after hydration the matching layout keeps its
+ * showing only the one that matches the width. Packing is prefix-stable
+ * (`packColumns`): the first k items land in the same places whatever comes
+ * after them, so the first rows of the full layout are exactly that
+ * pre-render, and after hydration the matching layout keeps its
  * elements (same keys) and only grows downward. To keep the HTML small, the
  * pre-render holds the first FIRST_PAINT_ROWS rows; the rest arrive below the
  * fold, which moves nothing already on screen.
  */
-const LAYOUTS: Array<[columns: number, visibility: string]> = [
-  [2, "flex md:hidden"],
-  [3, "hidden md:flex lg:hidden"],
-  [4, "hidden lg:flex xl:hidden"],
-  [5, "hidden xl:flex"],
+const LAYOUTS: Array<[columns: number, visibility: string, columnWidth: number]> = [
+  // The column width is a typical one for the breakpoint, used only to
+  // estimate card heights for packing; the real width is whatever flex gives.
+  [2, "flex md:hidden", 165],
+  [3, "hidden md:flex lg:hidden", 235],
+  [4, "hidden lg:flex xl:hidden", 230],
+  [5, "hidden xl:flex", 235],
 ];
 
 /** Rows the pre-hydration layouts carry; enough to fill a tall first screen. */
@@ -125,25 +130,37 @@ export function MasonryRows<T>({
   items,
   getKey,
   renderItem,
+  estimateHeight,
   className,
 }: {
   items: T[];
   getKey: (item: T) => React.Key;
   renderItem: (item: T) => React.ReactNode;
+  /**
+   * The item's rendered height in px at this column width. Given, each item
+   * goes to the shortest column (`packColumns`); left out, items are dealt
+   * in turn. It must depend only on the item, so the server and the client
+   * pack the same way.
+   */
+  estimateHeight?: (item: T, columnWidth: number) => number;
   className?: string;
 }) {
   const columns = useSyncExternalStore(subscribe, columnCount, () => 0);
 
   return (
     <div className={className}>
-      {LAYOUTS.map(([count, visibility]) => {
+      {LAYOUTS.map(([count, visibility, columnWidth]) => {
         const active = columns === count;
         // Before the width is known every layout renders its first rows and
         // CSS picks one; after, only the matching layout renders at all.
         if (columns !== 0 && !active) return null;
         const shown = active ? items : items.slice(0, count * FIRST_PAINT_ROWS);
-        const stacks: T[][] = Array.from({ length: count }, () => []);
-        shown.forEach((item, index) => stacks[index % count].push(item));
+        const heights = shown.map((item) =>
+          estimateHeight ? estimateHeight(item, columnWidth) : 1,
+        );
+        const stacks = packColumns(heights, count).map((indexes) =>
+          indexes.map((index) => shown[index]),
+        );
         return (
           <div
             key={count}

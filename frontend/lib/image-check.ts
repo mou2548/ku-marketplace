@@ -12,7 +12,9 @@ export type ImageDecoder = (file: Blob) => Promise<void>;
 
 /** Decodes with `createImageBitmap` where it exists, else an `<img>` load. */
 export const browserDecode: ImageDecoder = async (file) => {
-  if (typeof createImageBitmap === "function") {
+  // `createImageBitmap` refuses an SVG blob, so an SVG is checked by loading it
+  // into an `<img>` instead.
+  if (file.type !== "image/svg+xml" && typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(file);
     bitmap.close();
     return;

@@ -14,7 +14,8 @@ import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
 import { TabCount, TabList, TabPanel, Tabs, UnderlineTab } from "@/components/kit/tabs";
 import { TrustBadge } from "@/components/kit/trust-badge";
-import { TONE_CHIP } from "@/components/kit/tone";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
+import { type BadgePaint, badgePaint, viewerActsOnTicket } from "@/lib/badge-tier";
 import { useStatusText } from "@/lib/status-text";
 import type { GiveawayPost, GiveawayTicket } from "@/lib/api/types";
 import { giveawayPhase, isBrowsable } from "@/lib/giveaway-phase";
@@ -26,10 +27,14 @@ export function GiveawayBrowser({
   giveaways,
   tickets,
   viewerId,
+  initialTab,
 }: {
   giveaways: GiveawayPost[];
   tickets: GiveawayTicket[];
   viewerId: number | null;
+  /** `?tab=` from the URL, so the manage screen can send a giver back to
+   * "My giveaways" instead of the open shelf. */
+  initialTab?: string;
 }) {
   const t = getCopy();
   const now = useNow(30_000);
@@ -51,6 +56,12 @@ export function GiveawayBrowser({
   const given = viewerId
     ? giveaways.filter((g) => g.giver_id === viewerId)
     : [];
+
+  // "given" only exists for a signed-in viewer; anything unknown opens the shelf.
+  const startTab =
+    initialTab === "mine" || (initialTab === "given" && viewerId)
+      ? initialTab
+      : "open";
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
@@ -78,7 +89,7 @@ export function GiveawayBrowser({
         </div>
       </header>
 
-      <Tabs defaultSelectedKey="open">
+      <Tabs defaultSelectedKey={startTab}>
         <TabList aria-label={t("giveaway.title")} variant="underline">
           <UnderlineTab id="open">
             {t("giveaway.open")}
@@ -161,12 +172,14 @@ export function GiveawayBrowser({
                         </p>
                         <StatusBadge
                           status={TICKET_STATUS[ticket.status]}
+                          viewerActs={viewerActsOnTicket(ticket.status, true)}
                           size="sm"
                           className="mt-2 w-fit max-w-full sm:hidden"
                         />
                       </div>
                       <StatusBadge
                         status={TICKET_STATUS[ticket.status]}
+                        viewerActs={viewerActsOnTicket(ticket.status, true)}
                         size="sm"
                         className="hidden shrink-0 sm:inline-flex"
                       />
@@ -224,8 +237,9 @@ export function GiveawayBrowser({
                           {stage.label ? (
                             <span
                               className={cn(
-                                "shrink-0 rounded-pill border px-2.5 py-0.5 text-meta font-medium",
-                                TONE_CHIP[stage.tone],
+                                BADGE_SHAPE,
+                                "shrink-0",
+                                BADGE_PAINT[stage.paint],
                               )}
                             >
                               {stage.label}
@@ -253,26 +267,27 @@ export function GiveawayBrowser({
 function giverStage(
   g: GiveawayPost,
   now: number | null,
-): { label: string; tone: "neutral" | "info" | "success" | "warning"; todo?: string } {
-  if (g.status === "Completed") return { label: "Finished", tone: "neutral" };
+): { label: string; paint: BadgePaint; todo?: string } {
+  // Two tiers: only "Choose recipients" asks the giver to act now.
+  if (g.status === "Completed") return { label: "Finished", paint: "neutral" };
   if (g.status === "Closed")
     return {
       label: "Pickup",
-      tone: "info",
+      paint: "neutral",
       todo: "Scan each recipient's ticket when they collect",
     };
   const phase = giveawayPhase(g, now);
   // Registration is shut but only the clock can say whether it is still to
   // open or already past: commit to no label until the clock is known.
-  if (phase === null) return { label: "", tone: "neutral" };
-  if (phase !== "closed") return { label: "Open", tone: "success" };
+  if (phase === null) return { label: "", paint: "neutral" };
+  if (phase !== "closed") return { label: "Open", paint: "success" };
   if (g.allocation_method === "Manual")
     return {
       label: "Choose recipients",
-      tone: "warning",
+      paint: "act-warning",
       todo: "Registration has closed: pick who receives it",
     };
-  return { label: "Allocating", tone: "info" };
+  return { label: "Allocating", paint: "neutral" };
 }
 
 function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
@@ -311,7 +326,7 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
         labelKey: "deadline.registration-closes.label",
         onExpiry: "forfeit",
       },
-      expiredLabel: "Registration closed",
+      expiredLabel: t("giveaway.registrationClosed"),
     };
   }
 
@@ -332,8 +347,9 @@ function GiveawayCard({ giveaway }: { giveaway: GiveawayPost }) {
           <span
             title={st.of(method).hint}
             className={cn(
-              "absolute top-2 left-2 inline-flex items-center gap-1 rounded-pill border px-2 py-1 text-meta font-semibold whitespace-nowrap",
-              TONE_CHIP[method.tone],
+              BADGE_SHAPE,
+              "absolute top-2 left-2",
+              BADGE_PAINT[badgePaint(method.tone, method.lifecycle)],
             )}
           >
             <StatusIcon name={method.icon} className="size-3.5" />

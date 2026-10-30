@@ -5,12 +5,13 @@ import { formatPrice } from "@/lib/format-price";
 
 
 import { getCopy } from "@/lib/copy";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { PromptPayQr } from "@/components/kit/payment-qr";
 import { SlipUploader } from "@/components/kit/slip";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
@@ -20,6 +21,8 @@ import { unwrapAction } from "@/lib/action-result";
 import { subscribeToMembership } from "@/lib/actions/membership";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { Membership, MembershipTier } from "@/lib/api/membership";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
+import { maskMobile, MEMBERSHIP_PROMPTPAY, promptPayPayload } from "@/lib/promptpay";
 import { cn } from "@/lib/utils";
 
 /**
@@ -82,6 +85,23 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
   const [selected, setSelected] = useState<MembershipTier>("Gold");
 
   const current = TIERS.find((t) => t.tier === selected);
+  const price = current?.price ?? 0;
+  // A malformed account constant shows the QR's error card instead of taking
+  // the page down.
+  const membershipQr = useMemo(() => {
+    try {
+      return {
+        qr: {
+          payload: promptPayPayload(MEMBERSHIP_PROMPTPAY, price),
+          amount: price,
+          promptpay_id: maskMobile(MEMBERSHIP_PROMPTPAY),
+        },
+        failed: false,
+      };
+    } catch {
+      return { qr: null, failed: true };
+    }
+  }, [price]);
 
   /**
    * Where you stand, on the left. The three tiers are a comparison and want the
@@ -91,7 +111,6 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
   const rail = (
     <>
       <Surface shape="panel" className="overflow-hidden p-0">
-        <div aria-hidden className="h-1 bg-tone-warning-solid" />
         <div className="flex flex-col gap-3 p-5">
         <p className="text-overline text-ink-muted uppercase">
           Your membership
@@ -121,7 +140,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
       {membership.pending_review ? (
         <Notice tone="warning">
-          <p className="text-body text-tone-warning-fg">
+          <p className="text-body">
             Your slip is with an admin. Your tier changes as soon as it is
             approved, and you do not need to send it again.
           </p>
@@ -162,7 +181,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                   className={cn(
                     "flex h-full flex-col gap-3 overflow-hidden p-4",
                     isSelected &&
-                      "bg-[var(--membership-bg)] ring-2 ring-[var(--membership-fg)]",
+                      "ring-2 ring-brand",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -171,7 +190,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                       {t.tier}
                     </span>
                     {isCurrent ? (
-                      <span className="rounded-pill bg-tone-success-bg px-2 py-0.5 text-meta font-semibold text-tone-success-fg">
+                      <span className={cn(BADGE_SHAPE, BADGE_PAINT.success)}>
                         Current
                       </span>
                     ) : null}
@@ -287,11 +306,21 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
         <Overlay
           title={`Subscribe to ${selected}`}
-          description="Transfer the amount, then upload the slip. An admin checks it and switches your tier."
+          description="Scan the QR to pay, then upload the slip. An admin checks it and switches your tier."
         >
+          {/* The dialog used to ask for a slip without saying where to send
+              the money. The QR fixes the account and the tier's price, so
+              the banking app fills both in. */}
+          <PromptPayQr
+            qr={membershipQr.qr}
+            error={membershipQr.failed ? t("slip.payQrFailed") : null}
+            kind="membership"
+            fileSuffix={selected.toLowerCase()}
+            className="mb-4"
+          />
           <SlipUploader
             embedded
-            amount={current?.price ?? 0}
+            amount={price}
             onUpload={async (file) => {
               const url = await unwrapAction(uploadFile(file));
               await unwrapAction(subscribeToMembership(selected, url));

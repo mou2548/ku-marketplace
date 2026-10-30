@@ -11,6 +11,7 @@ import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnDeadline, viewerActsOnTicket } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { useStatusText } from "@/lib/status-text";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
@@ -44,7 +45,12 @@ import { cn } from "@/lib/utils";
  */
 
 type Lens = "all" | "buying" | "selling";
-type StatusFilter = "all" | TransactionStatus;
+/**
+ * "ended-badly" is a group, not a backend status: the account page's
+ * "Cancelled & refunds" shortcut counts all three outcomes together, so the
+ * filter it opens has to show the same three.
+ */
+type StatusFilter = "all" | "ended-badly" | TransactionStatus;
 type HistoryTransaction = Transaction & { created_date_label: string };
 
 const LENSES: Lens[] = ["all", "buying", "selling"];
@@ -54,29 +60,45 @@ const STATUSES: StatusFilter[] = [
   "Pending",
   "Processing",
   "Completed",
+  "ended-badly",
   "Cancelled",
   "Pending Refund",
   "Refunded",
 ];
 
+const ENDED_BADLY: TransactionStatus[] = ["Cancelled", "Pending Refund", "Refunded"];
+
+function parseStatus(value: string | undefined): StatusFilter {
+  return STATUSES.find((item) => item === value) ?? "all";
+}
+
 export function HistoryList({
   transactions,
   tickets,
   viewerId,
+  initialStatus,
 }: {
   transactions: HistoryTransaction[];
   tickets: GiveawayTicket[];
   viewerId: number;
+  /** `?status=` from the URL, so a shortcut can open the list pre-filtered. */
+  initialStatus?: string;
 }) {
   const t = getCopy();
   const st = useStatusText();
   const [lens, setLens] = useState<Lens>("all");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>(() =>
+    parseStatus(initialStatus),
+  );
 
   const statusOptions = STATUSES.map((item) => ({
     id: item,
     label:
-      item === "all" ? t("history.all") : st.of(TRANSACTION_STATUS[item]).label,
+      item === "all"
+        ? t("history.all")
+        : item === "ended-badly"
+          ? t("history.endedBadly")
+          : st.of(TRANSACTION_STATUS[item]).label,
   }));
 
   const rows = useMemo(() => {
@@ -86,7 +108,9 @@ export function HistoryList({
         if (tx.buyer_id !== viewerId && tx.seller_id !== viewerId) return false;
         if (lens === "buying" && !isBuyer) return false;
         if (lens === "selling" && isBuyer) return false;
-        if (status !== "all" && tx.status !== status) return false;
+        if (status === "ended-badly") {
+          if (!ENDED_BADLY.includes(tx.status)) return false;
+        } else if (status !== "all" && tx.status !== status) return false;
         return true;
       })
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
@@ -115,7 +139,7 @@ export function HistoryList({
                 aria-pressed={lens === item}
                 onClick={() => setLens(item)}
                 className={cn(
-                  "min-h-11 shrink-0 border-b-2 px-0.5 text-body transition-colors duration-[--dur-fast]",
+                  "min-h-11 min-w-11 shrink-0 border-b-2 px-0.5 text-body transition-colors duration-[--dur-fast]",
                   lens === item
                     ? "border-brand font-semibold text-ink"
                     : "border-transparent text-ink-muted hover:text-ink",
@@ -168,7 +192,7 @@ export function HistoryList({
             <h2 className="text-[1.125rem] font-semibold">{t("history.giveaways")}</h2>
             <Link
               href="/giveaway"
-              className="text-body-sm font-medium text-ink-brand hover:underline"
+              className="touch-link text-body-sm font-medium text-ink-brand hover:underline"
             >{t("history.seeAll")}</Link>
           </div>
           <ul className="flex flex-col gap-2">
@@ -203,7 +227,11 @@ export function HistoryList({
                         })}
                       </p>
                     </div>
-                    <StatusBadge status={TICKET_STATUS[ticket.status]} size="sm" />
+                    <StatusBadge
+                      status={TICKET_STATUS[ticket.status]}
+                      viewerActs={viewerActsOnTicket(ticket.status, true)}
+                      size="sm"
+                    />
                   </Surface>
                 </Link>
               </li>
@@ -254,18 +282,23 @@ function DealRow({ tx, viewerId }: { tx: HistoryTransaction; viewerId: number })
 
   return (
     <Surface shape="card" className="overflow-hidden p-0">
-      <div
-        aria-hidden
-        className={cn("h-1", isTrade ? "bg-tone-trade-solid" : "bg-brand")}
-      />
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-overline font-semibold text-ink-muted uppercase">
             {isTrade ? t("history.trade") : t("history.sale")} · {tx.created_date_label}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            {deadline ? <CountdownPill deadline={deadline} /> : null}
-            <StatusBadge status={transactionStatusPresentation(tx)} size="sm" />
+            {deadline ? (
+              <CountdownPill
+                deadline={deadline}
+                viewerActs={viewerActsOnDeadline(deadline.kind, tx, viewer, viewerId)}
+              />
+            ) : null}
+            <StatusBadge
+              status={transactionStatusPresentation(tx)}
+              viewerActs={isViewersTurn}
+              size="sm"
+            />
           </div>
         </div>
 

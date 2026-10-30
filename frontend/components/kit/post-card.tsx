@@ -154,3 +154,43 @@ export function PostCard({
     </article>
   );
 }
+
+/** The photo a listing's card shows. The feed reads this one's size. */
+export function postCardImageUrl(post: {
+  item: { images: Array<{ image_url: string }> };
+}): string | undefined {
+  return post.item.images[0]?.image_url;
+}
+
+/**
+ * This card's height in px at a column width, for masonry packing only. It
+ * follows the markup above row by row (photo, type and price, title,
+ * condition, course, description, "wants", seller), so change it with them.
+ * Being a few pixels off only ends a column a little early or late.
+ */
+export function estimatePostCardHeight(
+  card: Pick<
+    PostCardProps,
+    "name" | "postType" | "imageUrl" | "aspectRatio" | "description" | "courseName" | "wantedItemOffer"
+  >,
+  columnWidth: number,
+): number {
+  const textWidth = columnWidth - 8; // px-1
+  const lines = (text: string | null | undefined, charWidth: number) =>
+    text ? Math.min(2, Math.ceil((text.length * charWidth) / textWidth)) : 0;
+
+  // PostImage: the photo's ratio, or a 16:7 plate when there is no photo.
+  const photo = card.imageUrl
+    ? columnWidth / (card.aspectRatio ?? 0.8)
+    : (columnWidth * 7) / 16;
+  const rows = [
+    24, // type badge and price
+    lines(card.name, 7.5) * 22, // line-clamp-2
+    22, // condition
+    card.courseName ? 20 : 0,
+    lines(card.description, 6.5) * 20, // line-clamp-2
+    card.postType !== "SellOnly" ? lines(card.wantedItemOffer, 6) * 18 : 0,
+  ].filter((height) => height > 0);
+  // pt-2.5 + pb-1, gap-1.5 between rows, then the 44px seller row + pb-1.
+  return photo + 14 + rows.reduce((sum, h) => sum + h, 0) + (rows.length - 1) * 6 + 48;
+}

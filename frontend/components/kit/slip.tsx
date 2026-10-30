@@ -11,6 +11,12 @@ import { Button as AriaButton } from "react-aria-components";
 import { AlertTriangle, Check, ImagePlus, RotateCcw, Send, X, ZoomIn } from "lucide-react";
 
 import { isDecodableImage } from "@/lib/image-check";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_BEFORE_CONVERT_BYTES,
+  needsConversion,
+  prepareImageForUpload,
+} from "@/lib/image-prepare";
 import { cn } from "@/lib/utils";
 
 import { Notice } from "@/components/patterns/notice";
@@ -19,6 +25,7 @@ import { Button } from "./button";
 import { TextAreaField } from "./field";
 import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
+import { ImagePlate } from "./post-image";
 import { Surface } from "./surface";
 import { useToast } from "./toast";
 import { TrustBadge } from "./trust-badge";
@@ -56,7 +63,15 @@ const MAX_BYTES = 5 * 1024 * 1024;
  * whole point of looking at a slip before sending it — renders as a plain
  * <img>, and only persisted slips go through next/image.
  */
-function SlipImage({ src, alt }: { src: string; alt: string }) {
+function SlipImage({
+  src,
+  alt,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  onError: () => void;
+}) {
   if (src.startsWith("blob:") || src.startsWith("data:")) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -64,6 +79,7 @@ function SlipImage({ src, alt }: { src: string; alt: string }) {
         src={src}
         alt={alt}
         className="absolute inset-0 size-full object-contain"
+        onError={onError}
       />
     );
   }
@@ -74,6 +90,7 @@ function SlipImage({ src, alt }: { src: string; alt: string }) {
       fill
       sizes="(min-width: 640px) 32rem, 100vw"
       className="object-contain"
+      onError={onError}
     />
   );
 }
@@ -104,17 +121,29 @@ function SlipFrame({
   className?: string;
 }) {
   const t = getCopy();
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const frame = cn(
+    "relative block w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
+    size === "tall" ? "h-[min(28rem,50dvh)]" : "h-[min(16rem,35dvh)]",
+    className,
+  );
+
+  // A slip that fails to load showed the browser's broken-image icon and the
+  // alt text in an empty box, and the viewer behind it showed the same
+  // (retest R04). It gets the card photo's plate in the box it reserved,
+  // and nothing to open.
+  if (failedSrc === src) {
+    return (
+      <div className={frame}>
+        <ImagePlate failed label={t("slip.unavailable")} />
+      </div>
+    );
+  }
+
   return (
     <PhotoViewerTrigger>
-      <AriaButton
-        aria-label={t("slip.viewFullscreen")}
-        className={cn(
-          "relative block w-full overflow-hidden rounded-control bg-surface-sunken shadow-sunken",
-          size === "tall" ? "h-[min(28rem,50dvh)]" : "h-[min(16rem,35dvh)]",
-          className,
-        )}
-      >
-        <SlipImage src={src} alt={alt} />
+      <AriaButton aria-label={t("slip.viewFullscreen")} className={frame}>
+        <SlipImage src={src} alt={alt} onError={() => setFailedSrc(src)} />
         <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-pill bg-surface-inverse/80 px-2 py-1.5 text-meta font-medium text-white">
           <ZoomIn aria-hidden className="size-3.5" />
           {t("slip.viewFull")}
@@ -283,7 +312,10 @@ export function SlipUploader({
 
   async function handleFile(file: File) {
     const pick = ++pickRef.current;
-    if (file.size > MAX_BYTES) {
+    // A GIF or SVG becomes a PNG before it is sent, so its size is judged after
+    // that; the ceiling here only stops a huge file being decoded at all.
+    const limit = needsConversion(file) ? MAX_BEFORE_CONVERT_BYTES : MAX_BYTES;
+    if (file.size > limit) {
       setChecking(false);
       setError(t("slip.errorTooLarge"));
       return;
@@ -293,15 +325,28 @@ export function SlipUploader({
     setChecking(true);
     const isImage = await isDecodableImage(file);
     if (pick !== pickRef.current) return;
+    let ready: File | null = null;
+    if (isImage) {
+      try {
+        ready = await prepareImageForUpload(file);
+      } catch {
+        ready = null;
+      }
+      if (pick !== pickRef.current) return;
+    }
     setChecking(false);
-    if (!isImage) {
+    if (!ready) {
       setError(t("slip.errorNotImage"));
+      return;
+    }
+    if (ready.size > MAX_BYTES) {
+      setError(t("slip.errorTooLarge"));
       return;
     }
     setError(null);
     setReason(null);
     setSent(false);
-    setPending({ file, url: URL.createObjectURL(file) });
+    setPending({ file: ready, url: URL.createObjectURL(ready) });
   }
 
   async function send() {
@@ -394,7 +439,7 @@ export function SlipUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_IMAGE_TYPES}
         hidden
         aria-label={t("slip.choose")}
         onChange={(e) => {
@@ -529,7 +574,10 @@ export function SlipReviewer({
             labelKey={uploader === "buyer" ? "slip.uploadedByBuyerAt" : "slip.uploadedAt"}
           />
 
-          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
+          {/* Side by side only when the card itself has room: button labels
+              no longer wrap (quiet badges), and in the admin queue the card
+              is narrow even on a wide screen. */}
+          <div className="mt-4 flex flex-col-reverse gap-2 @md:flex-row">
             <Button variant="secondary" block onPress={onReject} isDisabled={isBusy}>
               <X className="size-4" />{t("slip.amountWrong")}</Button>
             <Button variant="primary" block onPress={onConfirm} isLoading={isBusy}>
@@ -649,14 +697,13 @@ export function SlipRejectedNotice({
 }) {
   const t = getCopy("slip");
   return (
-    <Notice tone="danger" className={cn("flex items-start gap-3", className)}>
-      <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+    <Notice tone="danger" icon={AlertTriangle} className={className}>
       <div className="flex min-w-0 flex-col gap-1">
         <p className="text-body-sm font-semibold">{t("rejectedTitle")}</p>
         <p className="text-body-sm break-words">
           {reason ? reason : t("rejectedNoReason")}
         </p>
-        <p className="text-caption text-ink-secondary">{t("rejectedNext")}</p>
+        <p className="text-caption">{t("rejectedNext")}</p>
       </div>
     </Notice>
   );

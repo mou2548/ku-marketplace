@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -131,13 +132,29 @@ export function AdminSidebar({ counts }: { counts: AdminQueueCounts }) {
 
 /** Phone and tablet: the bottom tab bar. Seven sections do not fit at 360px,
  * so the bar scrolls sideways (team choice 2026-10-27) with every tab kept
- * at full touch size. */
+ * at full touch size.
+ *
+ * Nothing said it scrolled: at 390px Appeals was cut at the edge and
+ * Memberships was off screen (retest R03). The bar now shades the side that
+ * still has tabs (`scroll-fade-x`, as on the admin tables), and the current
+ * section is scrolled into view on arrival. */
 export function AdminTabBar({ counts }: { counts: AdminQueueCounts }) {
   const pathname = usePathname();
+  const barRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    barRef.current
+      ?.querySelector<HTMLElement>("[aria-current=page]")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [pathname]);
+
   return (
     <nav
+      ref={barRef}
       aria-label="Admin sections"
-      className="fixed inset-x-0 bottom-0 z-[40] flex snap-x gap-1 overflow-x-auto overscroll-x-contain border-t border-line bg-page px-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 [scrollbar-width:none] sm:justify-around lg:hidden"
+      // scroll-px-1 makes the snap respect the bar's own padding; without it
+      // the first tab snapped 4px past the edge.
+      className="scroll-fade-x fixed inset-x-0 bottom-0 z-[40] flex snap-x scroll-px-1 gap-1 overflow-x-auto overscroll-x-contain border-t border-line bg-page px-1 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 [--scroll-fade-bg:var(--bg-page)] [scrollbar-width:none] sm:justify-around lg:hidden"
     >
       {SECTIONS.map(({ href, short, icon: Icon, count }) => {
         const active = isActive(pathname, href);

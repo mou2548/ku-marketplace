@@ -142,16 +142,7 @@
      validator against each theme's surface: lightness band and >=3:1. */
   --chart-series: #2e8f5a;
 
-  /* Listing type is not a severity. These tokens exist so the feed can use
-     colour for quick scanning without borrowing warning or error colours. */
-  --listing-sale-bg: #e8f7ee;
-  --listing-sale-fg: #1b6b3f;
-  --listing-trade-bg: var(--blue-100);
-  --listing-trade-fg: var(--blue-600);
-  --listing-both-bg: var(--violet-100);
-  --listing-both-fg: var(--violet-700);
-  --listing-giveaway-bg: #fff5d6;
-  --listing-giveaway-fg: #806000;
+  /* Membership tier tint: the tier crown and its icon tile. */
   --membership-bg: #fff5d6;
   --membership-fg: #806000;
 
@@ -164,23 +155,11 @@
 
   /* --------------------------------------------------------------------
      Tones. Backend enums map to a tone in lib/status.ts — never in CSS.
-     Each tone is a trio: a wash background, a border, and AA-safe text.
-
-     The border is not decoration. A wash is a 100-step tint and the page is
-     #f4f7f5, so a chip's fill measures about 1.06:1 against the page it sits
-     on — the pill disappears and leaves floating coloured text. The border is
-     the only thing giving the chip a shape, so each tone uses the lowest step
-     that stays visible on both the page and a white card:
-
-       neutral gray-400   2.51:1    warning amber-600 3.25:1
-       info    slate-400  3.42:1    danger  rose-400  3.37:1
-       success green-600  4.04:1    trade   teal-400  2.87:1
-
-     They were all 300 before, which measured 1.38-2.10:1 and was chosen for
-     white only. Pair them with `TONE_CHIP`, never `TONE_WASH` alone.
+     What is left here is text, dots and small icon washes. Badges, message
+     boxes and buttons use the --signal-* tokens below (quiet badges,
+     docs/redesign/quiet-badges/plan.md); the tinted-chip trio and the trade
+     hue were removed with them.
      -------------------------------------------------------------------- */
-  --tone-neutral-bg: var(--gray-100);
-  --tone-neutral-border: var(--gray-400);
   --tone-neutral-fg: var(--gray-700);
   --tone-neutral-solid: var(--gray-600);
 
@@ -192,17 +171,13 @@
      survive being printed. Info is slate now: it no longer competes with
      success for the one hue that means "this went well." */
   --tone-info-bg: var(--slate-100);
-  --tone-info-border: var(--slate-400);
   --tone-info-fg: var(--slate-700);
   --tone-info-solid: var(--slate-600);
 
   --tone-success-bg: var(--green-200);
-  --tone-success-border: var(--green-600);
   --tone-success-fg: var(--green-800);
   --tone-success-solid: var(--green-700);
 
-  --tone-warning-bg: var(--amber-100);
-  --tone-warning-border: var(--amber-600);
   --tone-warning-fg: var(--amber-800);
   /* amber-500 (2.23:1) was fill-only and needed near-black text, which read as
      a different, brighter family next to every other tone's deep-saturated,
@@ -210,14 +185,41 @@
   --tone-warning-solid: var(--amber-700);
 
   --tone-danger-bg: var(--rose-100);
-  --tone-danger-border: var(--rose-400);
   --tone-danger-fg: var(--rose-600);
   --tone-danger-solid: var(--rose-500);
 
-  --tone-trade-bg: var(--blue-100);
-  --tone-trade-border: var(--blue-400);
-  --tone-trade-fg: var(--blue-600);
-  --tone-trade-solid: var(--blue-700);
+
+  /* --------------------------------------------------------------------
+     Signals: quiet badges, message boxes and buttons (Style 3, owner
+     decision 2026-10-30; docs/redesign/quiet-badges/). Research palette B,
+     brand-harmonised. Each hue is a trio: AA text (-fg), a soft fill (-bg)
+     and a calm solid (-solid) that only "act now" badges, the blocking
+     error strip and the danger button use.
+     -------------------------------------------------------------------- */
+  --signal-success-fg: #1d643d;
+  --signal-success-bg: #e5f1ea;
+  --signal-success-solid: #308455;
+  --signal-warning-fg: #6e5403;
+  --signal-warning-bg: #f8f0d9;
+  --signal-warning-solid: #dbba66;
+  --signal-danger-fg: #874437;
+  --signal-danger-bg: #f8ebe7;
+  --signal-danger-solid: #b05e4f;
+  --signal-info-fg: #065f7f;
+  --signal-info-bg: #e2eff4;
+  --signal-info-solid: #057ea7;
+  --signal-neutral-fg: #4c5b53;
+  --signal-neutral-bg: #eef1ef;
+  --signal-neutral-solid: #6b7a72;
+  /* Text on a solid signal. Warning's solid is light, so it takes dark ink. */
+  --on-signal: #ffffff;
+  --on-signal-warning: #2b2203;
+  /* Buttons. Primary is primary-700 so a 15px/600 white label passes AA. */
+  --action-primary: #257248;
+  --on-action-primary: #ffffff;
+  --action-secondary-border: #b9c3be;
+  /* Sold / Reserved mark on a listing photo: ink label, page-coloured text. */
+  --photo-mark: #1f2421;
 
   /* --------------------------------------------------------------------
      Condition rarity. Drives the inventory slot border — the game read.
@@ -488,41 +490,45 @@
   --ring: #2ed573;
   --ring-offset: var(--bg-page);
 
-  --listing-sale-bg: #17452b;
-  --listing-sale-fg: #88e3ac;
-  --listing-trade-bg: #173a5e;
-  --listing-trade-fg: #86c5ff;
-  --listing-both-bg: #2d2a67;
-  --listing-both-fg: #b9b7ff;
-  --listing-giveaway-bg: #4c3b08;
-  --listing-giveaway-fg: #f4d66c;
   --membership-bg: #4c3b08;
   --membership-fg: #f4d66c;
 
-  --tone-neutral-bg: #28322c;
-  --tone-neutral-border: #637269;
   --tone-neutral-fg: #d8e1db;
   --tone-neutral-solid: #637269;
   --tone-info-bg: #1b3442;
-  --tone-info-border: #6f8fa3;
   --tone-info-fg: #c9e7f5;
   --tone-info-solid: #3d6076;
   --tone-success-bg: #193c28;
-  --tone-success-border: #52c684;
   --tone-success-fg: #b9edcf;
   --tone-success-solid: #257248;
-  --tone-warning-bg: #3d2d10;
-  --tone-warning-border: #bd7b00;
   --tone-warning-fg: #f9d898;
   --tone-warning-solid: #966200;
   --tone-danger-bg: #3c1d24;
-  --tone-danger-border: #b3455a;
   --tone-danger-fg: #f3c1ca;
   --tone-danger-solid: #96273b;
-  --tone-trade-bg: #173a5e;
-  --tone-trade-border: #70a1ff;
-  --tone-trade-fg: #86c5ff;
-  --tone-trade-solid: #1767ad;
+
+  --signal-success-fg: #8fd3ab;
+  --signal-success-bg: #1d3328;
+  --signal-success-solid: #4fae78;
+  --signal-warning-fg: #e9cf86;
+  --signal-warning-bg: #352d16;
+  --signal-warning-solid: #dbba66;
+  --signal-danger-fg: #f0b2a4;
+  --signal-danger-bg: #3a2420;
+  --signal-danger-solid: #d27a69;
+  --signal-info-fg: #8fd0ea;
+  --signal-info-bg: #17303a;
+  --signal-info-solid: #3fa6cf;
+  --signal-neutral-fg: #c3cec8;
+  --signal-neutral-bg: #2a312d;
+  --signal-neutral-solid: #8a9890;
+  --on-signal: #14171b;
+  --on-signal-warning: #14171b;
+  --action-primary: #3ab572;
+  --on-action-primary: #14171b;
+  /* Muted for dark surfaces: 3.43:1 on surface, 3.06:1 on sunken. */
+  --action-secondary-border: #687770;
+  --photo-mark: #e8ece9;
 
   /* The light rarity text steps (amber-700, amber-800, rose-600) are not
      remapped in dark, so a condition chip measured 1.56-1.88:1 on its glow
@@ -632,30 +638,41 @@
   --color-on-brand: var(--on-brand);
   --color-chart-series: var(--chart-series);
 
-  --color-tone-neutral-bg: var(--tone-neutral-bg);
-  --color-tone-neutral-border: var(--tone-neutral-border);
   --color-tone-neutral-fg: var(--tone-neutral-fg);
   --color-tone-neutral-solid: var(--tone-neutral-solid);
   --color-tone-info-bg: var(--tone-info-bg);
-  --color-tone-info-border: var(--tone-info-border);
   --color-tone-info-fg: var(--tone-info-fg);
   --color-tone-info-solid: var(--tone-info-solid);
   --color-tone-success-bg: var(--tone-success-bg);
-  --color-tone-success-border: var(--tone-success-border);
   --color-tone-success-fg: var(--tone-success-fg);
   --color-tone-success-solid: var(--tone-success-solid);
-  --color-tone-warning-bg: var(--tone-warning-bg);
-  --color-tone-warning-border: var(--tone-warning-border);
   --color-tone-warning-fg: var(--tone-warning-fg);
   --color-tone-warning-solid: var(--tone-warning-solid);
   --color-tone-danger-bg: var(--tone-danger-bg);
-  --color-tone-danger-border: var(--tone-danger-border);
   --color-tone-danger-fg: var(--tone-danger-fg);
   --color-tone-danger-solid: var(--tone-danger-solid);
-  --color-tone-trade-bg: var(--tone-trade-bg);
-  --color-tone-trade-border: var(--tone-trade-border);
-  --color-tone-trade-fg: var(--tone-trade-fg);
-  --color-tone-trade-solid: var(--tone-trade-solid);
+
+  --color-signal-success-fg: var(--signal-success-fg);
+  --color-signal-success-bg: var(--signal-success-bg);
+  --color-signal-success-solid: var(--signal-success-solid);
+  --color-signal-warning-fg: var(--signal-warning-fg);
+  --color-signal-warning-bg: var(--signal-warning-bg);
+  --color-signal-warning-solid: var(--signal-warning-solid);
+  --color-signal-danger-fg: var(--signal-danger-fg);
+  --color-signal-danger-bg: var(--signal-danger-bg);
+  --color-signal-danger-solid: var(--signal-danger-solid);
+  --color-signal-info-fg: var(--signal-info-fg);
+  --color-signal-info-bg: var(--signal-info-bg);
+  --color-signal-info-solid: var(--signal-info-solid);
+  --color-signal-neutral-fg: var(--signal-neutral-fg);
+  --color-signal-neutral-bg: var(--signal-neutral-bg);
+  --color-signal-neutral-solid: var(--signal-neutral-solid);
+  --color-on-signal: var(--on-signal);
+  --color-on-signal-warning: var(--on-signal-warning);
+  --color-action-primary: var(--action-primary);
+  --color-on-action-primary: var(--on-action-primary);
+  --color-action-secondary-border: var(--action-secondary-border);
+  --color-photo-mark: var(--photo-mark);
 
   /* The type scale, as utilities. It was defined in :root but never exposed
      here, so `text-display` was not a class anybody could write — which is why

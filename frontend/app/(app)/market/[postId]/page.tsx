@@ -18,6 +18,7 @@ import { ITEM_CONDITION } from "@/lib/status";
 
 import { PostActions } from "./post-actions";
 import { formatPrice } from "@/lib/format-price";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 
 export const metadata = { title: "Listing - KU Marketplace" };
 
@@ -78,7 +79,7 @@ export default async function PostDetailPage({
     <div className="flex flex-col gap-8 pb-6 lg:gap-12">
       <Link
         href="/feed"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("market.backToMarket")}
@@ -95,13 +96,7 @@ export default async function PostDetailPage({
             <div className="flex flex-wrap items-center gap-2">
               <ListingTypeBadge type={post.post_type} />
               <span
-                style={
-                  {
-                    "--slot-edge": rarity.fg,
-                    "--slot-glow": rarity.glow,
-                  } as React.CSSProperties
-                }
-                className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+                className={`${BADGE_SHAPE} ${BADGE_PAINT.neutral}`}
               >
                 {tStatus(rarity.labelKey)}
               </span>
@@ -136,13 +131,9 @@ export default async function PostDetailPage({
           ) : null}
 
           {post.post_type !== "SellOnly" && post.wanted_item_offer ? (
-            <Notice tone="trade" className="flex gap-3">
-              <Package
-                aria-hidden
-                className="mt-0.5 size-5 shrink-0 text-tone-trade-fg"
-              />
+            <Notice tone="trade" icon={Package}>
               <div>
-                <p className="text-caption font-semibold text-tone-trade-fg">
+                <p className="text-caption font-semibold">
                   {t("market.ownerLooking")}
                 </p>
                 <p className="text-body text-ink-secondary">
@@ -213,7 +204,7 @@ export default async function PostDetailPage({
               </div>
             </div>
 
-            <div className="flex items-start gap-2 bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
+            <div className="flex items-start gap-2 border-t border-line px-5 py-3 text-meta text-ink-secondary">
               <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
               <span>{t("market.safeDealHint")}</span>
             </div>
@@ -252,7 +243,7 @@ function ProductPrice({
       {formatPrice(post.price)}
     </p>
   ) : (
-    <p className="text-h2 text-tone-trade-fg">{tradeOnlyLabel}</p>
+    <p className="text-h2 text-ink">{tradeOnlyLabel}</p>
   );
 }
 

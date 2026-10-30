@@ -14,6 +14,7 @@ import { ConfirmButton } from "@/components/kit/confirm-button";
 import { CountdownPill } from "@/components/kit/countdown-pill";
 import { GiveawayPhaseBadge } from "@/components/kit/giveaway-phase-badge";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnGiveawayPhase, viewerActsOnTicket } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
@@ -164,8 +165,7 @@ export function GiveawayDetail({
   }
 
   const participationAction = isGiver ? (
-    /* Only a Manual giveaway has anything for its giver to do. FirstCome
-       allocates as people register and Random is drawn by the system. */
+    /* Manual recipients are chosen by the giver; FirstCome allocates on join. */
     giveaway.allocation_method === "Manual" ? (
       <LinkButton
         size="lg"
@@ -173,7 +173,9 @@ export function GiveawayDetail({
         href={`/giveaway/${giveaway.giveaway_id}/manage`}
       >
         <Users className="size-5" />
-        Choose recipients
+        {/* `select()` closes the post in the same transaction, so a Manual
+            giveaway that is no longer Active has had its recipients chosen. */}
+        {giveaway.status === "Active" ? "Choose recipients" : "View recipients"}
       </LinkButton>
     ) : giveaway.allocation_method === "Random" ? (
       giveaway.status === "Active" ? (
@@ -213,25 +215,49 @@ export function GiveawayDetail({
         </div>
       ) : (
         <Notice tone="success">
-          <p className="text-body font-medium text-tone-success-fg">
+          <p className="text-body font-medium">
             The draw has run. A chat room is open with the winner.
           </p>
         </Notice>
       )
     ) : (
-      <Notice tone="success">
-        <p className="text-body font-medium text-tone-success-fg">
-          This is your giveaway. Nothing for you to do.
-        </p>
-        <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
-          {st.of(method).hint}. A chat room opens with each entrant as they
-          register so you can arrange collection.
-        </p>
-      </Notice>
+      <div className="flex flex-col gap-2">
+        <Notice tone="success">
+          <p className="text-body font-medium">
+            {phase === "open" || phase === "upcoming"
+              ? "This is your giveaway. Recipients receive a place as they register."
+              : "Registration has closed."}
+          </p>
+          <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
+            {st.of(method).hint}. A chat room opens with each entrant as they
+            register so you can arrange collection.
+          </p>
+        </Notice>
+        {phase === "open" || phase === "upcoming" ? (
+          <ConfirmButton
+            title="End registration now?"
+            description={`${giveaway.registered_count} ${giveaway.registered_count === 1 ? "person has" : "people have"} registered so far. This closes registration immediately — nobody else can join, and it cannot be undone. Existing recipients keep their places and can still collect their items.`}
+            confirmLabel="End registration"
+            doneMessage="Registration closed. Existing recipients can still collect their items."
+            icon={<Lock className="size-4" />}
+            onConfirm={() => unwrapAction(closeGiveawayRegistration(giveaway.giveaway_id))}
+            trigger={
+              <>
+                <Lock className="size-4" />
+                End registration now
+              </>
+            }
+            triggerProps={{ variant: "ghost", size: "sm" }}
+          />
+        ) : null}
+      </div>
     )
   ) : ticket ? (
     <div className="flex flex-col gap-2">
-      <StatusBadge status={TICKET_STATUS[ticket.status]} />
+      <StatusBadge
+        status={TICKET_STATUS[ticket.status]}
+        viewerActs={viewerActsOnTicket(ticket.status, true)}
+      />
       <LinkButton
         size="lg"
         block
@@ -242,7 +268,7 @@ export function GiveawayDetail({
     </div>
   ) : joinedStatus ? (
     <Notice tone="success">
-      <p className="text-body font-medium text-tone-success-fg">
+      <p className="text-body font-medium">
         {joinedStatus === "Waiting"
           ? "Your place is confirmed."
           : "Registered. Waiting for the result."}
@@ -268,7 +294,14 @@ export function GiveawayDetail({
     // An upcoming giveaway is listed on purpose, so a receiver knows to come
     // back; its message must not read as closed.
     <Surface shape="card" elevation="flat" className="bg-surface-sunken p-4">
-      <GiveawayPhaseBadge phase={phase} />
+      <GiveawayPhaseBadge
+        phase={phase}
+        viewerActs={viewerActsOnGiveawayPhase(
+          phase,
+          giveaway.allocation_method,
+          isGiver,
+        )}
+      />
       <p className="mt-2 text-caption leading-[1.6] text-ink-secondary">
         {CLOSED_MESSAGE[phase]}
       </p>
@@ -279,7 +312,7 @@ export function GiveawayDetail({
     <div className="flex flex-col gap-7 pb-6">
       <Link
         href="/giveaway"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("giveaway.back")}
@@ -309,7 +342,7 @@ export function GiveawayDetail({
           ) : null}
 
           {/* How you will find out, stated before you commit. */}
-          <Notice tone={method.tone} className="flex flex-col gap-2">
+          <Notice tone={method.tone} contentClassName="flex flex-col gap-2">
             <p className="text-body-sm font-semibold">
               {st.of(method).label}
             </p>
@@ -322,7 +355,7 @@ export function GiveawayDetail({
           </Notice>
           {giveaway.all_registered_guaranteed ? (
             <Notice tone="success">
-              <p className="text-body-sm font-medium text-tone-success-fg">
+              <p className="text-body-sm font-medium">
                 Registration has closed with no more than {giveaway.quantity}{" "}
                 entrant{giveaway.quantity === 1 ? "" : "s"}. Everyone registered
                 receives a place; no random elimination is needed.
@@ -333,11 +366,10 @@ export function GiveawayDetail({
 
         <aside className="min-w-0 md:col-span-2 xl:col-span-1 xl:sticky xl:top-24">
           <Surface shape="panel" className="overflow-hidden">
-            <div aria-hidden className="h-1 bg-tone-warning-solid" />
-            <div className="flex items-center gap-3 border-b border-line bg-tone-warning-bg p-5">
-              <Gift aria-hidden className="size-7 shrink-0 text-tone-warning-fg" />
+            <div className="flex items-center gap-3 border-b border-line p-5">
+              <Gift aria-hidden className="size-7 shrink-0 text-ink-muted" />
               <div>
-                <p data-numeric className="text-[2rem] leading-none font-bold text-tone-warning-fg">
+                <p data-numeric className="text-[2rem] leading-none font-bold text-ink">
                   {giveaway.quantity}
                 </p>
                 <p className="mt-1 text-body-sm font-medium text-ink-secondary">
@@ -374,7 +406,11 @@ export function GiveawayDetail({
                 </p>
               ) : null}
               {pickupCountdown ? (
-                <CountdownPill deadline={pickupCountdown} showLabel />
+                <CountdownPill
+                  deadline={pickupCountdown}
+                  showLabel
+                  viewerActs={ticket ? viewerActsOnTicket(ticket.status, true) : false}
+                />
               ) : null}
               <p
                 data-numeric
@@ -396,7 +432,7 @@ export function GiveawayDetail({
                 {participationAction}
               </div>
             </div>
-            <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-meta text-tone-warning-fg">
+            <div className="flex items-start gap-2 border-t border-line px-5 py-3 text-meta text-ink-secondary">
               <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
               <span>{t("giveaway.freeNote")}</span>
             </div>

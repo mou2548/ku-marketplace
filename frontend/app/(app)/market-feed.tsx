@@ -19,7 +19,12 @@ import { EmptyState } from "@/components/kit/empty-state";
 import { TextInput } from "@/components/kit/field";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { MasonryRows } from "@/components/kit/masonry-grid";
-import { PostCard } from "@/components/kit/post-card";
+import {
+  estimatePostCardHeight,
+  PostCard,
+  postCardImageUrl,
+  type PostCardProps,
+} from "@/components/kit/post-card";
 import { SearchField } from "@/components/kit/search-field";
 import { Tabs, TabList, SegmentTab, TabPanel } from "@/components/kit/tabs";
 import { useCategoryLabel } from "@/lib/category-text";
@@ -64,10 +69,13 @@ import {
 
 export function MarketFeed({
   posts,
+  imageRatios,
   initialFilters,
   initialSort,
 }: {
   posts: Post[];
+  /** post_id -> width / height of the card photo, read on the server. */
+  imageRatios: Record<number, number>;
   initialFilters: FeedFilters;
   initialSort: SortKey;
 }) {
@@ -483,14 +491,20 @@ export function MarketFeed({
         />
       ) : (
         /**
-         * Masonry, read left to right: listings are dealt across the columns
-         * in order, so the top row holds the first ones for every sort, and
-         * the columns still pack tightly.
+         * Pinterest-style masonry, read left to right: the top row holds the
+         * first listings for every sort, then each card goes to the shortest
+         * column. Cards differ in height because each photo keeps its own
+         * ratio (2:3 to 4:3), which is what made the old feed look full.
          */
         <MasonryRows
           items={filtered}
           getKey={(post) => post.post_id}
-          renderItem={renderCard}
+          renderItem={(post) => (
+            <PostCard {...cardProps(post, imageRatios[post.post_id])} />
+          )}
+          estimateHeight={(post, width) =>
+            estimatePostCardHeight(cardProps(post, imageRatios[post.post_id]), width)
+          }
         />
       )}
     </div>
@@ -530,29 +544,27 @@ function priceLabel(
   return t("feed.priceUpTo", { max: maxPrice ?? 0 });
 }
 
-/** One listing card in the feed grid. */
-function renderCard(post: Post) {
-  return (
-    <PostCard
-      key={post.post_id}
-      postId={post.post_id}
-      name={post.item.name}
-      price={post.price}
-      postType={post.post_type}
-      condition={post.item.condition}
-      imageUrl={post.item.images[0]?.image_url}
-      description={post.description}
-      courseName={post.item.course_name}
-      wantedItemOffer={post.wanted_item_offer}
-      seller={{
-        user_id: post.seller.user_id,
-        name: post.seller.name,
-        isVerified: post.seller.isVerified,
-        faculty: post.seller.faculty,
-        avatar_url: post.seller.avatar_url,
-      }}
-    />
-  );
+/** The props of one listing card; shared by the render and the height estimate. */
+function cardProps(post: Post, aspectRatio: number | undefined): PostCardProps {
+  return {
+    postId: post.post_id,
+    name: post.item.name,
+    price: post.price,
+    postType: post.post_type,
+    condition: post.item.condition,
+    imageUrl: postCardImageUrl(post),
+    aspectRatio,
+    description: post.description,
+    courseName: post.item.course_name,
+    wantedItemOffer: post.wanted_item_offer,
+    seller: {
+      user_id: post.seller.user_id,
+      name: post.seller.name,
+      isVerified: post.seller.isVerified,
+      faculty: post.seller.faculty,
+      avatar_url: post.seller.avatar_url,
+    },
+  };
 }
 
 /**

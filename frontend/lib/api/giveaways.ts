@@ -279,9 +279,9 @@ export async function joinGiveaway(
 }
 
 /**
- * `POST /giveaways/{id}/close-registration` — Random/Manual only. Moves
- * `register_deadline` to now so the next `drawGiveaway`/`selectRecipients`
- * call succeeds immediately, instead of waiting for the original deadline.
+ * `POST /giveaways/{id}/close-registration` — Moves `register_deadline` to now.
+ * Random/Manual can then allocate recipients; FirstCome moves to collection
+ * with existing recipients keeping their places.
  */
 export async function closeGiveawayRegistration(giveawayId: number): Promise<void> {
   const init = await authedInit();

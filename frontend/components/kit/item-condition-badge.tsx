@@ -2,15 +2,14 @@ import { getCopy } from "@/lib/copy";
 import { type ItemCondition } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
-const CONDITION_TONE: Record<ItemCondition, string> = {
-  New: "bg-tone-success-bg text-tone-success-fg",
-  "Very Good": "bg-tone-success-bg text-tone-success-fg",
-  Good: "bg-tone-warning-bg text-tone-warning-fg",
-  Acceptable: "bg-tone-warning-bg text-tone-warning-fg",
-  Poor: "bg-tone-danger-bg text-tone-danger-fg",
-};
+import { BADGE_PAINT } from "./tone";
 
-/** Item condition stays with the product details, separate from seller identity. */
+/**
+ * Item condition stays with the product details, separate from seller
+ * identity. Condition is a fact about the item, not something to act on, so
+ * it is information tier for every grade: a soft neutral chip. The grade is
+ * in the words.
+ */
 export function ItemConditionBadge({
   condition,
 }: {
@@ -21,11 +20,11 @@ export function ItemConditionBadge({
   return (
     <span
       className={cn(
-        "inline-flex w-fit max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-chip px-2 py-1 text-[0.75rem] leading-5",
-        CONDITION_TONE[condition],
+        "inline-flex min-h-[22px] w-fit max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-[4px] px-2 py-0.5 text-meta leading-[1.45] font-normal",
+        BADGE_PAINT.neutral,
       )}
     >
-      <span className="text-ink-secondary">{t("inventory.condition")}</span>
+      <span>{t("inventory.condition")}</span>
       <span className="font-semibold">
         {t(`card.conditionValue.${condition}`)}
       </span>

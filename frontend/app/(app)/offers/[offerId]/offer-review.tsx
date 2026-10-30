@@ -17,6 +17,7 @@ import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
 import { Overlay } from "@/components/kit/overlay";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnOffer } from "@/lib/badge-tier";
 import { Notice } from "@/components/patterns/notice";
 import { TradeBench } from "@/components/kit/trade-bench";
 import { TrustBadge } from "@/components/kit/trust-badge";
@@ -118,13 +119,13 @@ export function OfferReview({
     <div className="flex flex-col gap-5">
       <Link
         href="/offers"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />{t("offer.backToOffers")}</Link>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+          <p className="text-overline font-semibold text-ink-muted uppercase">
             {t("offer.reviewOffer")}
           </p>
           {/* The item stays the identity from inbox to detail. */}
@@ -142,7 +143,13 @@ export function OfferReview({
             </Link>
           </p>
         </div>
-        <StatusBadge status={OFFER_STATUS[offer.status]} />
+        <StatusBadge
+          status={OFFER_STATUS[offer.status]}
+          viewerActs={viewerActsOnOffer(
+            offer.status,
+            isOwner ? "received" : "sent",
+          )}
+        />
       </header>
 
       <Surface as="section" shape="card" className="overflow-hidden p-0">
@@ -190,9 +197,8 @@ export function OfferReview({
       />
 
       {accepted || offer.status === "Accepted" ? (
-        <Notice tone="success" className="flex flex-col gap-3">
-          <p className="flex items-center gap-2 text-body font-semibold text-tone-success-fg">
-            <CheckCircle2 aria-hidden className="size-5 shrink-0" />{t("offer.accepted")}</p>
+        <Notice tone="success" icon={CheckCircle2} contentClassName="flex flex-col gap-3">
+          <p className="text-body font-semibold">{t("offer.accepted")}</p>
           <p className="text-body-sm text-ink-secondary">
             {t("offer.acceptedBody", {
               name: sides.counterparty.name,
@@ -225,7 +231,7 @@ export function OfferReview({
             >
               <X className="size-4" />{t("offer.decline")}</Button>
 
-            <Button variant="trade" onPress={() => setDecision("accept")}>
+            <Button onPress={() => setDecision("accept")}>
               <Check className="size-4" />{t("offer.acceptOffer")}</Button>
           </ActionBar>
         ) : (
@@ -274,7 +280,7 @@ export function OfferReview({
               {t("offer.notYet")}
             </Button>
             <Button
-              variant={decision === "accept" ? "trade" : decision === "reject" ? "danger" : "primary"}
+              variant={decision === "reject" ? "danger" : "primary"}
               isLoading={busy}
               onPress={() => {
                 if (decision === "accept") void accept();
@@ -309,15 +315,19 @@ export function OfferReview({
           </p>
           {decision === "accept" ? (
             offer.additional_money > 0 ? (
-              <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-                This offer adds cash:{" "}
-                {formatPrice(offer.additional_money)} — a slip
-                upload and slip check are added before the QR.
-              </p>
+              <Notice tone="warning">
+                <p className="text-caption leading-[1.6]">
+                  This offer adds cash:{" "}
+                  {formatPrice(offer.additional_money)} — a slip
+                  upload and slip check are added before the QR.
+                </p>
+              </Notice>
             ) : (
-              <p className="rounded-control bg-tone-trade-bg p-3 text-caption leading-[1.6] text-tone-trade-fg">
-                Pure trade with no money. No slip needed. It ends with a QR scan.
-              </p>
+              <Notice tone="trade">
+                <p className="text-caption leading-[1.6]">
+                  Pure trade with no money. No slip needed. It ends with a QR scan.
+                </p>
+              </Notice>
             )
           ) : null}
           {actionError ? (
