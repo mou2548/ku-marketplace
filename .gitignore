@@ -2,3 +2,8 @@
 PROJECT_STANDARDS.md
 .env
 .claude/
+
+# Playwright MCP snapshots and test output
+.playwright-mcp/
+frontend/test-results/
+frontend/playwright-report/

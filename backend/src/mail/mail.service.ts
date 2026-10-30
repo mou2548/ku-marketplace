@@ -7,6 +7,8 @@ export class MailService {
   private readonly resend = process.env.RESEND_API_KEY
     ? new Resend(process.env.RESEND_API_KEY)
     : null;
+  private readonly senderEmail =
+    process.env.RESEND_FROM_EMAIL ?? 'noreply@ku-marketplace.phumitada.com';
 
   constructor() {
     if (!this.resend && process.env.NODE_ENV === 'production') {
@@ -22,7 +24,7 @@ export class MailService {
     if (!this.resend) return;
 
     const { data, error } = await this.resend.emails.send({
-      from: 'KU Marketplace <onboarding@resend.dev>',
+      from: `KU Marketplace <${this.senderEmail}>`,
       to: email,
       subject: 'รหัสยืนยัน OTP - KU Marketplace',
       html: `<p>รหัสยืนยันของคุณคือ: <b>${otp}</b></p><p>รหัสนี้จะหมดอายุใน 10 นาที</p>`,
@@ -48,7 +50,7 @@ export class MailService {
     if (!this.resend) return;
 
     const { data, error } = await this.resend.emails.send({
-      from: 'KU Marketplace <onboarding@resend.dev>',
+      from: `KU Marketplace <${this.senderEmail}>`,
       to: email,
       subject: 'รีเซ็ตรหัสผ่าน - KU Marketplace',
       html: `<p>รหัสยืนยันสำหรับตั้งรหัสผ่านใหม่คือ: <b>${otp}</b></p><p>รหัสนี้จะหมดอายุใน 10 นาที หากคุณไม่ได้เป็นผู้ขอ กรุณาเพิกเฉยต่ออีเมลนี้</p>`,

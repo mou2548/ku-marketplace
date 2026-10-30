@@ -4,17 +4,18 @@ import { formatDate } from "@/lib/date-format";
 
 
 import { getCopy } from "@/lib/copy";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
+import { Button as AriaButton } from "react-aria-components";
 
 import type { UserSummary } from "@/lib/api/types";
-import type { Tone } from "@/lib/status";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
+import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
-import { TONE_RAIL_LEFT } from "./tone";
 import { ProfileLink } from "./profile-link";
 import { TrustBadge } from "./trust-badge";
 
@@ -27,6 +28,9 @@ import { TrustBadge } from "./trust-badge";
  * `ActionCard` is the slot: SlipUploader, SlipReviewer, AppointmentCard, the
  * tracking-number form, and the QR launcher all render through it.
  */
+
+/** True while the current step is rendered inside the narrow-screen sheet. */
+const ActionInSheet = createContext(false);
 
 /** `CreateMessageDto.content` is `@MaxLength(2000)` in the API. */
 export const CHAT_MESSAGE_MAX = 2000;
@@ -97,17 +101,6 @@ export interface ChatThreadProps {
   className?: string;
 }
 
-/**
- * A stable colour per person so a run of messages is separable while scrolling
- * past it. Decorative and always paired with the name — `danger` and `success`
- * are excluded so an accent can never be read as a status.
- */
-const SENDER_TONES: Tone[] = ["info", "trade", "warning", "neutral"];
-
-function senderTone(senderId: number): Tone {
-  return SENDER_TONES[Math.abs(senderId) % SENDER_TONES.length];
-}
-
 /** Calendar day in the campus timezone, so a message near midnight groups the
  * same way for everyone regardless of the reader's own device timezone. */
 function dayKey(iso: string): string {
@@ -157,6 +150,59 @@ function ReceiptBubble({ url, label }: { url: string; label: string }) {
   );
 }
 
+/**
+ * The photos of one message. A photo that fails to load is dropped and the
+ * grid is laid out again from the ones that did: an empty 220px cell left
+ * where a broken photo was pushed the visible one away from the sender's side.
+ */
+function PhotoGrid({ urls, mine }: { urls: string[]; mine: boolean }) {
+  const t = getCopy();
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+  const shown = urls.filter((url) => !failed.has(url));
+
+  if (shown.length === 0) {
+    return (
+      <p className="rounded-control bg-surface-sunken px-3.5 py-2.5 text-caption text-ink-muted italic">
+        {t("chat.photoUnavailable")}
+      </p>
+    );
+  }
+
+  return (
+    <div className={cn("grid gap-1.5", shown.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
+      {shown.map((url, idx) => {
+        // An odd photo out takes the last row alone and sits on the sender's
+        // side, so no empty cell sits beside it.
+        const alone = shown.length > 1 && shown.length % 2 === 1 && idx === shown.length - 1;
+        return (
+          <PhotoViewerTrigger key={url}>
+            <button
+              type="button"
+              aria-label={t("chat.viewFullSize")}
+              className={cn(
+                "block overflow-hidden rounded-control",
+                shown.length === 1 && (mine ? "justify-self-end" : "justify-self-start"),
+                alone &&
+                  (mine ? "col-span-2 justify-self-end" : "col-span-2 justify-self-start"),
+              )}
+            >
+              <Image
+                src={url}
+                alt=""
+                width={220}
+                height={220}
+                className="aspect-square object-cover shadow-raised"
+                onError={() => setFailed((prev) => new Set(prev).add(url))}
+              />
+            </button>
+            <PhotoViewer src={url} alt="" title={t("chat.photo")} />
+          </PhotoViewerTrigger>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ChatThread({
   messages,
   viewerId,
@@ -179,13 +225,21 @@ export function ChatThread({
   const fileRef = useRef<HTMLInputElement>(null);
 
   /**
-   * The flow action folds away. It sits at the end of the thread where it
-   * belongs, but a scanner card is tall and there is no reason to look at it
-   * while reading back through the conversation. Open by default — it is the
-   * thing the deal is waiting on — and the toggle lives in the composer beside
-   * the attach button, so it is reachable without scrolling to the card.
+   * The flow action folds away. A scanner card is tall and there is no reason
+   * to look at it while reading back through the conversation, so the toggle
+   * lives in the composer beside the attach button.
+   *
+   * Wide screens show it as a panel above the composer, open by default — it is
+   * the thing the deal is waiting on, and there is room for all of it. Narrow
+   * screens show it as a bottom sheet instead, closed by default: a sheet that
+   * opened on its own would cover the conversation the moment a room loaded.
+   * The toggle is tinted while a step is folded away, so it is not lost. Once
+   * the person has pressed the toggle, their choice wins over either default.
    */
-  const [actionOpen, setActionOpen] = useState(true);
+  const isWide = useMediaQuery("(min-width: 1024px)");
+  const [actionChoice, setActionChoice] = useState<boolean | null>(null);
+  const actionOpen = actionChoice ?? isWide;
+  const setActionOpen = (next: boolean) => setActionChoice(next);
 
   // Jump, don't animate: a smooth scroll on every incoming message fights the
   // user when they are reading back through the thread.
@@ -240,7 +294,6 @@ export function ChatThread({
             const startsRun = messages[i - 1]?.sender_id !== m.sender_id;
             const named = showSenders && !mine;
             const sender = named ? senders?.get(m.sender_id) : undefined;
-            const tone = senderTone(m.sender_id);
             const startsNewDay =
               i === 0 ||
               dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
@@ -302,26 +355,7 @@ export function ChatThread({
                   ) : receipt ? (
                     <ReceiptBubble url={receipt.url} label={receipt.label} />
                   ) : m.image_urls?.length ? (
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {m.image_urls.slice(0, 5).map((url) => (
-                        <PhotoViewerTrigger key={url}>
-                          <button
-                            type="button"
-                            aria-label={t("chat.viewFullSize")}
-                            className="block overflow-hidden rounded-control"
-                          >
-                            <Image
-                              src={url}
-                              alt=""
-                              width={220}
-                              height={220}
-                              className="aspect-square object-cover shadow-raised"
-                            />
-                          </button>
-                          <PhotoViewer src={url} alt="" title={t("chat.photo")} />
-                        </PhotoViewerTrigger>
-                      ))}
-                    </div>
+                    <PhotoGrid urls={m.image_urls.slice(0, 5)} mine={mine} />
                   ) : null}
 
                   {m.content ? (
@@ -336,7 +370,6 @@ export function ChatThread({
                             // edge at all; the sunken tint gives the other
                             // side's message a shape without a border.
                             "rounded-bl-chip bg-surface-sunken text-ink",
-                        named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                       )}
                     >
                       {m.content}
@@ -376,10 +409,66 @@ export function ChatThread({
       {/* Attached above the composer, outside the scroll region, so the step
           the deal is waiting on cannot scroll out from under its own toggle.
           Read-only rooms have no composer and so no toggle — the action stays
-          open there rather than becoming unreachable. */}
-      {action && (actionOpen || isReadOnly) ? (
-        <div className="min-h-0 max-h-[45%] shrink-0 overflow-y-auto overscroll-contain">
+          open there rather than becoming unreachable.
+
+          Wide screens let the panel take the height its content needs; it only
+          scrolls when the window is too short to leave a strip of thread. On a
+          narrow screen the step is a bottom sheet (below), except in a
+          read-only room, which has no toggle to open one. */}
+      {action && (isReadOnly || (isWide && actionOpen)) ? (
+        <div className="min-h-0 max-h-[calc(100%-9rem)] shrink-0 overflow-y-auto overscroll-contain">
           {action}
+        </div>
+      ) : null}
+
+      {action && !isReadOnly && !isWide ? (
+        <Overlay
+          variant="sheet"
+          isOpen={actionOpen}
+          onOpenChange={setActionOpen}
+          title={t("chat.currentStep")}
+          bodyClassName="px-0"
+        >
+          <ActionInSheet.Provider value>{action}</ActionInSheet.Provider>
+        </Overlay>
+      ) : null}
+
+      {action && !isReadOnly ? (
+        /* The toggle is a tab standing on the top edge of the composer, in
+           a row of its own: floating over the thread it would hide the last
+           message, which sits flush against the composer. The row takes the
+           colour of whatever is above it (the thread, or the open panel) so
+           the tab reads as growing out of the bar. */
+        <div
+          className={cn(
+            "flex h-7 shrink-0 items-end justify-center",
+            isWide && actionOpen ? "bg-brand-subtle/30" : "bg-page/60",
+          )}
+        >
+          <AriaButton
+            aria-expanded={actionOpen}
+            aria-label={
+              actionOpen ? "Hide the current step" : "Show the current step"
+            }
+            onPress={() => setActionOpen(!actionOpen)}
+            className={cn(
+              // -mb-px sits the tab over the bar's top rule, so the two join.
+              // The pseudo-element lifts the touch target to 44px.
+              "relative -mb-px grid h-7 w-14 place-items-center rounded-t-control border border-b-0 border-line text-ink-secondary",
+              "before:absolute before:-inset-x-2 before:-top-4 before:bottom-0 before:content-['']",
+              "transition-colors duration-[--dur-fast] hover:text-ink",
+              // Green while the step is open, plain while it is folded away.
+              actionOpen ? "bg-brand-subtle text-ink-brand" : "bg-surface",
+            )}
+          >
+            <ChevronUp
+              aria-hidden
+              className={cn(
+                "size-5 transition-transform duration-[--dur-fast]",
+                actionOpen && "rotate-180",
+              )}
+            />
+          </AriaButton>
         </div>
       ) : null}
 
@@ -395,30 +484,6 @@ export function ChatThread({
             void submit();
           }}
         >
-          {action ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              pill
-              aria-expanded={actionOpen}
-              aria-label={
-                actionOpen ? "Hide the current step" : "Show the current step"
-              }
-              onPress={() => setActionOpen((v) => !v)}
-              // Tinted while folded away, so a pending step cannot be lost
-              // behind its own toggle.
-              className={cn(!actionOpen && "bg-brand-subtle text-ink-brand")}
-            >
-              <ChevronUp
-                className={cn(
-                  "size-5 transition-transform duration-[--dur-fast]",
-                  actionOpen && "rotate-180",
-                )}
-              />
-            </Button>
-          ) : null}
-
           <Button
             type="button"
             variant="ghost"
@@ -511,9 +576,12 @@ export function ActionCard({
   children: React.ReactNode;
   className?: string;
 }) {
+  // Inside the bottom sheet the sheet is the surface; the bar's rule and tint
+  // would draw a second panel within it.
+  const inSheet = useContext(ActionInSheet);
   return (
     <section
-      className={cn("border-t border-line bg-brand-subtle/30", className)}
+      className={cn(!inSheet && "border-t border-line bg-brand-subtle/30", className)}
       aria-label={title}
     >
       {/* This is the single most important sentence on the deal screen — the

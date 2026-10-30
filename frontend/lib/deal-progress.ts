@@ -82,8 +82,6 @@ export function describeDeal(
     if (!pays) return undefined;
     if (tx.payment_confirmed_by_seller_at)
       return { kind: "payment", label: "Payment confirmed by seller", tone: "success", done: true };
-    if (isSlipRejected(tx) && tx.refund_slip_url)
-      return { kind: "payment", label: "Slip rejected · refund sent, not confirmed yet", tone: "warning", done: false };
     if (isSlipRejected(tx))
       return { kind: "payment", label: "Slip rejected · new slip needed", tone: "danger", done: false };
     if (tx.payment_confirmed_by_buyer_at)
@@ -331,11 +329,6 @@ export function describeDeal(
 
   if (pays && !tx.payment_confirmed_by_buyer_at)
     return step("buyer", "Transfer the money and upload the slip", `Waiting for ${other} to pay`);
-
-  // The seller returned what arrived: the buyer confirms it before anything
-  // else, and the API refuses a new slip until they do.
-  if (pays && isSlipRejected(tx) && tx.refund_slip_url)
-    return step("buyer", "The seller sent a refund · confirm it reached you", `Waiting for ${other} to confirm the refund`);
 
   if (pays && isSlipRejected(tx))
     return step("buyer", "The seller rejected your slip · upload a new one", `Waiting for ${other} to send a new slip`);

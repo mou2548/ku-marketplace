@@ -12,11 +12,13 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarPlus,
+  Check,
   Flag,
   Info,
   MapPin,
   QrCode,
   ScanLine,
+  ShieldAlert,
   Truck,
   Undo2,
   XCircle,
@@ -33,6 +35,8 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { PaymentQr } from "@/components/kit/payment-qr";
+import { Notice } from "@/components/patterns/notice";
+import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import {
   SlipRejectDialog,
   SlipRejectedNotice,
@@ -42,6 +46,7 @@ import {
 } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnDeadline, viewerActsOnTransaction } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { unwrapAction } from "@/lib/action-result";
@@ -58,7 +63,7 @@ import {
   submitPaymentSlip,
   submitRefundSlip,
 } from "@/lib/actions/transactions";
-import { TONE_CHIP, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
+import { BADGE_PAINT, BADGE_SHAPE, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
 import {
   buildSteps,
   TransactionStepper,
@@ -91,7 +96,7 @@ import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { isDecodableImage } from "@/lib/image-check";
 import { openReturnWindow } from "@/lib/return-window";
-import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
+import type { RoomSummary } from "@/lib/rooms";
 import {
   ALLOCATION_METHOD,
   canReport,
@@ -255,6 +260,7 @@ function ProposeMeetup({
 export function RoomScreen({
   summary,
   viewerId,
+  viewerHasPromptPay,
   transaction: initialTransaction,
   giveaway,
   appointment: initialAppointment,
@@ -264,6 +270,8 @@ export function RoomScreen({
 }: {
   summary: RoomSummary;
   viewerId: number;
+  /** A refund goes to the buyer's PromptPay; without one it cannot be sent. */
+  viewerHasPromptPay: boolean;
   transaction?: Transaction;
   giveaway?: GiveawayPost;
   /**
@@ -707,93 +715,232 @@ export function RoomScreen({
             className="mb-3"
           />
         ) : null}
-        {/* Where to pay comes before proof of paying. */}
-        <PaymentQr transactionId={transaction.transaction_id} className="mb-3" />
-        <SlipUploader
-          amount={transaction.final_amount}
-          slipUrl={transaction.slip_image_url}
-          isUploaded={!!transaction.slip_image_url}
-          uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
-          onUpload={(file) =>
-            uploadAndRefresh(
-              () => uploadSlip("payment", file),
-              "Slip uploaded. Waiting on the seller.",
-            )
-          }
-        />
-      </ActionCard>
-    );
-  }
-
-  /** The buyer answers the seller's refund slip; the deal then goes back to unpaid. */
-  function confirmRefundCard(): React.ReactNode {
-    if (!transaction?.refund_slip_url) return null;
-    return (
-      <ActionCard title={t("deal.stepConfirmRefund")}>
-        <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-ink-secondary">{t("deal.confirmRefundBody")}</p>
-          {deadline ? <CountdownPill deadline={deadline} className="w-fit" /> : null}
-          <SlipViewer
-            embedded
-            slipUrl={transaction.refund_slip_url}
-            title={t("slip.refundSlip")}
-            uploadedAt={transaction.refund_submitted_at}
-          />
-          <Button
-            block
-            isLoading={busy}
-            onPress={() =>
-              act(
-                () => unwrapAction(confirmRefundReceived(transaction.transaction_id)),
-                t("deal.refundConfirmed"),
-                "Could not confirm the refund",
+        {/* Where to pay comes before proof of paying. Side by side on a wide
+            panel so both fit without scrolling; stacked on a narrow one. */}
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+          <PaymentQr transactionId={transaction.transaction_id} />
+          <SlipUploader
+            amount={transaction.final_amount}
+            slipUrl={transaction.slip_image_url}
+            isUploaded={!!transaction.slip_image_url}
+            uploadedAt={rejected ? null : transaction.payment_confirmed_by_buyer_at}
+            onUpload={(file) =>
+              uploadAndRefresh(
+                () => uploadSlip("payment", file),
+                "Slip uploaded. Waiting on the seller.",
               )
             }
-          >
-            {t("deal.confirmRefundButton")}
-          </Button>
+          />
         </div>
       </ActionCard>
     );
   }
 
   /**
-   * The seller rejected the slip. The buyer either sends a new one or, once
-   * the seller has sent back what arrived, confirms that refund first. The
-   * seller is not on the clock here, but is the only one who can return the
-   * money, so the refund uploader is offered to them throughout.
+   * The seller's refund: the QR for the buyer's PromptPay and this deal's
+   * amount, then the slip. The API refuses both until the buyer has PromptPay,
+   * and the QR card shows that refusal.
+   */
+  function refundSlipStep(stacked = false): React.ReactNode {
+    if (!transaction) return null;
+    return (
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          !stacked && !transaction.refund_slip_url && "lg:grid lg:grid-cols-2 lg:items-start",
+        )}
+      >
+        {!transaction.refund_slip_url ? (
+          <PaymentQr kind="refund" transactionId={transaction.transaction_id} />
+        ) : null}
+        <SlipUploader
+          amount={transaction.final_amount}
+          title={t("slip.refundSlip")}
+          slipUrl={transaction.refund_slip_url}
+          isUploaded={!!transaction.refund_slip_url}
+          uploadedAt={transaction.refund_submitted_at}
+          onUpload={(file) =>
+            uploadAndRefresh(
+              () => uploadSlip("refund", file),
+              t("deal.refundSlipUploaded"),
+            )
+          }
+        />
+      </div>
+    );
+  }
+
+  /** A new return meetup starts from the first meetup's place and time. The
+   * date is left empty: the old one is in the past. */
+  function startReturnMeetup() {
+    if (appointment) {
+      setPlace(appointment.location);
+      setTime(appointment.time.slice(0, 5));
+      setWhen(null);
+      setEditingAppointment(true);
+    }
+    setDetailsOpen(true);
+  }
+
+  /**
+   * Return and refund. The two halves do not wait on each other, so each shows
+   * while it is outstanding — side by side on a wide panel — and one that is
+   * finished shrinks to a single line.
+   *
+   * Who does what is the API's rule: the seller refunds and the buyer confirms
+   * it; the party who asked for the return scans the QR and the other party
+   * shows it. A sale also needs a return meetup agreed after the request before
+   * the API will issue a QR, so the QR is offered only once there is one.
+   */
+  function returnAndRefundAction(): React.ReactNode {
+    if (!transaction) return null;
+    const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
+    const isRequester = transaction.cancellation_requested_by === myId;
+
+    const moneyApplies = !!transaction.payment_confirmed_by_buyer_at;
+    const moneyDue = moneyApplies && !transaction.refund_confirmed_by_buyer;
+    const itemApplies = !!transaction.item_received_confirmed_by_buyer_at;
+    const itemDue = itemApplies && !transaction.item_return_confirmed_at;
+    if (!moneyDue && !itemDue) return null;
+    const both = moneyDue && itemDue;
+
+    const money =
+      viewer === "seller" ? (
+        refundSlipStep(both)
+      ) : transaction.refund_slip_url ? (
+        <>
+          {/* Check the amount against the bank app before confirming. */}
+          <SlipViewer
+            embedded
+            slipUrl={transaction.refund_slip_url}
+            title={t("slip.refundSlip")}
+            amount={transaction.final_amount}
+            uploadedAt={transaction.refund_submitted_at}
+          />
+          <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button>
+        </>
+      ) : viewerHasPromptPay ? (
+        <p>Waiting for the refund slip.</p>
+      ) : (
+        <PromptPayNotice message={t("deal.refundPromptPayNeeded")} />
+      );
+
+    // Trades carry no money and no meetup requirement; a sale needs a meetup
+    // created after the request (the API compares against the request time).
+    const requestedAt = transaction.cancellation_requested_at;
+    const returnMeetup =
+      appointment && requestedAt && Date.parse(appointment.created_at) >= Date.parse(requestedAt)
+        ? appointment
+        : undefined;
+    const meetupReady = transaction.offer_id != null || returnMeetup?.status === "Confirmed";
+
+    const item = !meetupReady ? (
+      returnMeetup?.status === "Pending" ? (
+        <AppointmentCard
+          status={returnMeetup.status}
+          scheduledAt={`${returnMeetup.date}T${returnMeetup.time}+07:00`}
+          place={returnMeetup.location}
+          awaitingViewer={returnMeetup.proposed_by !== viewerId}
+          onAccept={() => handleAppointmentResponse("confirm")}
+          onEdit={() => {
+            startEditingAppointment();
+            setDetailsOpen(true);
+          }}
+        />
+      ) : (
+        <>
+          <p className="text-body-sm text-ink-secondary">
+            Agree a time and place to hand the item back. The place and time of
+            your first meetup are filled in for you.
+          </p>
+          <Button block onPress={startReturnMeetup}>
+            <CalendarClock className="size-4" />
+            {t("deal.proposeTimeAndPlace")}
+          </Button>
+        </>
+      )
+    ) : isRequester ? (
+      <LinkButton block href={`/history/${transaction.transaction_id}/scan`}>
+        <ScanLine className="size-5" />
+        Scan the return QR when you get the item
+      </LinkButton>
+    ) : (
+      <OverlayTrigger>
+        <Button block size="lg">
+          <QrCode className="size-5" />
+          Show the return QR
+        </Button>
+        <Overlay
+          title="Return QR"
+          description="Show it only when both of you are ready to hand the item over."
+          size="sm"
+        >
+          <div className="flex justify-center py-2">
+            <QrTicket once onGenerate={requestHandoverToken} ariaLabel="Item return QR" />
+          </div>
+        </Overlay>
+      </OverlayTrigger>
+    );
+
+    const partHeading = "text-body-sm font-semibold text-ink-secondary";
+    const done = (text: string) => (
+      <p className="flex items-center gap-2 text-body-sm text-ink-secondary">
+        <Check aria-hidden className="size-4 text-ink-brand" />
+        {text}
+      </p>
+    );
+
+    return (
+      <ActionCard title="Return and refund">
+        <div className="flex flex-col gap-4">
+          {moneyApplies && !moneyDue ? done("Refund confirmed") : null}
+          {itemApplies && !itemDue ? done("Item returned") : null}
+          <div className={cn("flex flex-col gap-4", both && "lg:grid lg:grid-cols-2 lg:items-start")}>
+            {moneyDue ? (
+              <section aria-label="Refund" className="flex flex-col gap-3">
+                {both ? <h5 className={partHeading}>Refund</h5> : null}
+                {money}
+                {/* The clock for the buyer to confirm the money arrived. */}
+                {deadline && transaction.refund_slip_url ? (
+                  <div className="flex flex-col gap-1.5">
+                    <CountdownPill
+                      deadline={deadline}
+                      viewerActs={viewer === "buyer"}
+                      className="w-fit"
+                    />
+                    <p className="text-caption text-ink-muted">
+                      {viewer === "seller"
+                        ? `Waiting for ${summary.counterparty.name} to confirm the money arrived.`
+                        : "Confirm once the money reaches your account."}
+                    </p>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+            {itemDue ? (
+              <section aria-label="Return the item" className="flex flex-col gap-3">
+                {both ? <h5 className={partHeading}>Return the item</h5> : null}
+                {item}
+              </section>
+            ) : null}
+          </div>
+        </div>
+      </ActionCard>
+    );
+  }
+
+  /**
+   * The seller rejected the slip. The only way on is a new slip from the
+   * buyer; the seller just waits for it.
    */
   function slipRejectedAction(): React.ReactNode {
     if (!transaction) return null;
-    const refundSent = !!transaction.refund_slip_url;
-    if (viewer === "buyer") {
-      return refundSent ? confirmRefundCard() : uploadSlipCard(true);
-    }
+    if (viewer === "buyer") return uploadSlipCard(true);
     return (
-      <ActionCard
-        title={refundSent ? t("deal.refundSentTitle") : t("deal.slipRejectedSellerTitle")}
-      >
-        <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-ink-secondary">
-            {refundSent ? t("deal.refundSentBody") : t("deal.slipRejectedSellerBody")}
-          </p>
-          {refundSent && deadline ? (
-            <CountdownPill deadline={deadline} className="w-fit" />
-          ) : null}
-          <SlipUploader
-            embedded
-            title={t("slip.refundSlip")}
-            slipUrl={transaction.refund_slip_url}
-            isUploaded={refundSent}
-            uploadedAt={transaction.refund_submitted_at}
-            onUpload={(file) =>
-              uploadAndRefresh(
-                () => uploadSlip("refund", file),
-                t("deal.refundSlipUploaded"),
-              )
-            }
-          />
-        </div>
+      <ActionCard title={t("deal.slipRejectedSellerTitle")}>
+        <p className="text-body-sm text-ink-secondary">
+          {t("deal.slipRejectedSellerBody")}
+        </p>
       </ActionCard>
     );
   }
@@ -809,7 +956,7 @@ export function RoomScreen({
             return); both sides see it run down (audit A08). */}
         {deadline ? (
           <div className="my-3 flex flex-col gap-1.5">
-            <CountdownPill deadline={deadline} className="w-fit" />
+            <CountdownPill deadline={deadline} viewerActs={!asked} className="w-fit" />
             <p className="text-caption text-ink-muted">
               {asked
                 ? t("deal.cancelWaitingBy", { name: summary.counterparty.name })
@@ -839,22 +986,9 @@ export function RoomScreen({
       );
     }
     if (transaction.status === "Pending Refund" || (transaction.status === "Cancelled" && transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer)) {
-      const myId = viewer === "buyer" ? transaction.buyer_id : transaction.seller_id;
-      return <ActionCard title="Return and refund">
-        <div className="flex flex-col gap-3">
-          {transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer ? (
-            viewer === "seller" ? <SlipUploader amount={transaction.final_amount} title={t("slip.refundSlip")} slipUrl={transaction.refund_slip_url} isUploaded={!!transaction.refund_slip_url} uploadedAt={transaction.refund_submitted_at} onUpload={(file) => uploadAndRefresh(() => uploadSlip("refund", file), "Refund slip uploaded")} /> :
-            transaction.refund_slip_url ? <Button isLoading={busy} onPress={() => act(() => unwrapAction(confirmRefundReceived(transaction.transaction_id)), "Refund receipt confirmed", "Could not confirm refund")}>Confirm money received</Button> : <p>Waiting for the refund slip.</p>
-          ) : null}
-          {transaction.item_received_confirmed_by_buyer_at && !transaction.item_return_confirmed_at ? (
-            transaction.cancellation_requested_by === myId ? <LinkButton href={`/history/${transaction.transaction_id}/scan`}>Scan return QR after receiving the item</LinkButton> :
-            <QrTicket once onGenerate={requestHandoverToken} ariaLabel="Item return QR" caption="One code per 15 minutes. Show it only when both parties are ready to return the goods." />
-          ) : null}
-        </div>
-      </ActionCard>;
+      return returnAndRefundAction();
     }
-    // After a rejected slip the seller may return what arrived; until the
-    // buyer confirms that refund the API refuses a new slip (audit B16).
+    // A rejected slip waits on a new one from the buyer.
     if (requiresPayment(transaction) && isSlipRejected(transaction)) {
       return slipRejectedAction();
     }
@@ -969,23 +1103,25 @@ export function RoomScreen({
         return (
           <ActionCard title={t("deal.stepEnterTracking")}>
             <div className="flex flex-col gap-3">
-              <TextInput
-                label={t("deal.trackingNumber")}
-                value={tracking}
-                onChange={setTracking}
-                placeholder={t("deal.trackingPlaceholder")}
-                icon={<Truck className="size-4" />}
-                hint={t("deal.trackingHint")}
-              />
-              {/* Not before today: a past date made the deal "Past due" the
-                  moment it was saved. The API accepts one, so the form refuses. */}
-              <DatePickerField
-                label={t("deal.estimatedDelivery")}
-                value={deliveryDate ? parseDate(deliveryDate) : null}
-                onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
-                minValue={today(BANGKOK)}
-                isRequired
-              />
+              <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start">
+                <TextInput
+                  label={t("deal.trackingNumber")}
+                  value={tracking}
+                  onChange={setTracking}
+                  placeholder={t("deal.trackingPlaceholder")}
+                  icon={<Truck className="size-4" />}
+                  hint={t("deal.trackingHint")}
+                />
+                {/* Not before today: a past date made the deal "Past due" the
+                    moment it was saved. The API accepts one, so the form refuses. */}
+                <DatePickerField
+                  label={t("deal.estimatedDelivery")}
+                  value={deliveryDate ? parseDate(deliveryDate) : null}
+                  onChange={(value) => setDeliveryDate(value ? value.toString() : "")}
+                  minValue={today(BANGKOK)}
+                  isRequired
+                />
+              </div>
               <Button
                 block
                 isDisabled={
@@ -1062,26 +1198,12 @@ export function RoomScreen({
         );
       case "refund-slip":
         return (
-          <ActionCard title={t("deal.stepRefundSlip")}>
-            <SlipUploader
-              amount={transaction.final_amount}
-              title={t("slip.refundSlip")}
-              slipUrl={transaction.refund_slip_url}
-              isUploaded={!!transaction.refund_slip_url}
-              uploadedAt={transaction.refund_submitted_at}
-              onUpload={(file) =>
-                uploadAndRefresh(
-                  () => uploadSlip("refund", file),
-                  t("deal.refundSlipUploaded"),
-                )
-              }
-            />
-          </ActionCard>
+          <ActionCard title={t("deal.stepRefundSlip")}>{refundSlipStep()}</ActionCard>
         );
       case "confirm-refund":
-        // Only reached after a rejected slip; a cancellation's refund is
-        // handled by the return card above.
-        return slipRejectedAction();
+        // Only a cancellation's refund asks for this, and the return card
+        // above already handles Pending Refund.
+        return null;
       case undefined:
         return null;
       default: {
@@ -1268,12 +1390,9 @@ export function RoomScreen({
         </span>
 
         <span className="ml-auto flex min-w-0 shrink-[6] items-center justify-end gap-2">
-          <span
-            className={cn(
-              "shrink-0 rounded-chip border px-1.5 py-0.5 text-meta font-semibold",
-              TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
-            )}
-          >
+          {/* The room kind is a category: a neutral badge, told apart by
+              its word (trade has no colour). */}
+          <span className={cn(BADGE_SHAPE, BADGE_PAINT.neutral, "shrink-0")}>
             {summary.kind}
           </span>
           {/* The subject was dead text, and on anything under 640px it was
@@ -1341,10 +1460,12 @@ export function RoomScreen({
             transaction.status === "Pending Refund") ? (
             <section aria-label="Handover" className="flex flex-col gap-3">
               {transaction.active_report_id ? (
-                <p className="rounded-control border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-body-sm text-tone-danger-fg">
-                  An admin is reviewing this deal. Meetups, payments and
-                  handover are paused until they decide.
-                </p>
+                <Notice tone="danger" icon={ShieldAlert}>
+                  <p className="text-body-sm">
+                    An admin is reviewing this deal. Meetups, payments and
+                    handover are paused until they decide.
+                  </p>
+                </Notice>
               ) : appointment && editingAppointment ? (
                 // Pre-filled from the card it replaces — "Resend" updates that
                 // same card in place, "Discard" brings it back untouched.
@@ -1542,10 +1663,7 @@ function DealEventCard({ event }: { event: DealEvent }) {
   return (
     <div className="flex justify-center">
       <div
-        className={cn(
-          "flex max-w-[90%] items-start gap-3 rounded-control border px-3 py-2 text-caption",
-          TONE_CHIP[event.tone],
-        )}
+        className="flex max-w-[90%] items-start gap-3 rounded-control border border-line bg-surface px-3 py-2 text-caption text-ink"
       >
         <div className="min-w-0 flex-1">
           <p className="font-medium">{event.title}</p>
@@ -1616,20 +1734,29 @@ function DealDetails({
           </Link>
           <StatusBadge
             status={transactionStatusPresentation(transaction)}
+            viewerActs={viewerActsOnTransaction(transaction, viewer)}
             size="sm"
             className="w-fit"
           />
         </div>
 
         {headline ? (
-          <p
-            className={cn(
-              "rounded-control border px-3 py-2 text-body-sm font-medium",
-              TONE_CHIP[headlineTone ?? "info"],
-            )}
+          // A cancelled deal is ended: information, not the blocking strip
+          // a danger notice draws (quiet badges).
+          // The Handover section already draws the one blocking strip for
+          // an admin review, so this headline is never a second one.
+          <Notice
+            tone={
+              transaction.status === "Cancelled" &&
+              !transaction.active_report_id &&
+              headlineTone === "danger"
+                ? "neutral"
+                : (headlineTone ?? "info")
+            }
+            blocking={false}
           >
-            {headline}
-          </p>
+            <p className="text-body-sm font-medium">{headline}</p>
+          </Notice>
         ) : null}
 
         {transaction.delivery_method === "Shipping" ? (
@@ -1637,7 +1764,15 @@ function DealDetails({
         ) : deadline ? (
           <div className="flex flex-col gap-1.5">
             <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
-            <CountdownPill deadline={deadline} />
+            <CountdownPill
+              deadline={deadline}
+              viewerActs={viewerActsOnDeadline(
+                deadline.kind,
+                transaction,
+                viewer,
+                viewer === "buyer" ? transaction.buyer_id : transaction.seller_id,
+              )}
+            />
           </div>
         ) : null}
 

@@ -8,6 +8,7 @@ import { isActionFailure } from "@/lib/action-result";
 
 import { Button, type ButtonProps } from "./button";
 import { Overlay, OverlayTrigger } from "./overlay";
+import { Notice } from "@/components/patterns/notice";
 
 /**
  * A destructive (or otherwise consequential) action behind a confirmation
@@ -114,9 +115,9 @@ export function ConfirmButton({
             <p className="text-body text-ink-secondary">{doneMessage}</p>
           </div>
         ) : error ? (
-          <p className="rounded-control bg-tone-danger-bg p-3 text-body-sm text-tone-danger-fg">
-            {error}
-          </p>
+          <Notice tone="danger">
+            <p className="text-body-sm">{error}</p>
+          </Notice>
         ) : null}
       </Overlay>
     </OverlayTrigger>

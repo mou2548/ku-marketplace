@@ -14,6 +14,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnTicket } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { Notice } from "@/components/patterns/notice";
@@ -79,7 +80,10 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
               {t("giveaway.queueNumber", { number: ticket.queue_number })}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={TICKET_STATUS[ticket.status]} />
+              <StatusBadge
+                status={TICKET_STATUS[ticket.status]}
+                viewerActs={viewerActsOnTicket(ticket.status, true)}
+              />
               {ticket.status === "Waiting" || ticket.status === "Received" ? (
                 <span className="text-body-sm text-ink-muted">
                   {t("giveaway.selected")}
@@ -91,11 +95,10 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
 
         {ticket.status === "Waiting" ? (
           <Surface shape="panel" className="overflow-hidden p-0">
-            <div aria-hidden className="h-1 bg-tone-warning-solid" />
             <div className="p-5">
               <QrTicket once onGenerate={generate} />
             </div>
-            <div className="flex items-start gap-2 bg-tone-warning-bg px-5 py-3 text-caption text-tone-warning-fg">
+            <div className="flex items-start gap-2 border-t border-line px-5 py-3 text-caption text-ink-secondary">
               <Gift aria-hidden className="mt-0.5 size-4 shrink-0" />
               <span>{t("giveaway.ticketHint")}</span>
             </div>

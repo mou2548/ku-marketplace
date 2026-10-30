@@ -5,6 +5,8 @@ import type { AdminUserRef } from "@/lib/api/admin";
 import { nameOr } from "@/lib/admin-labels";
 import { cn } from "@/lib/utils";
 
+import { Button } from "@/components/kit/button";
+
 import { AdminInitials } from "./admin-ui";
 
 /**
@@ -215,12 +217,9 @@ export function AdminFilterBar({
           </select>
         </label>
       ))}
-      <button
-        type="submit"
-        className="touch-target min-h-10 rounded-[10px] border border-line-default bg-surface px-3.5 text-body-sm text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-      >
+      <Button type="submit" variant="secondary" size="sm" className="h-10">
         Apply
-      </button>
+      </Button>
     </form>
   );
 }

@@ -114,6 +114,9 @@ function setup(current: TransactionWithChildren, locks: typeof LOCK = []) {
     },
     post: { update: jest.fn().mockResolvedValue({}) },
     notification: { create: jest.fn().mockResolvedValue({}) },
+    user: {
+      findUnique: jest.fn().mockResolvedValue({ promptpayId: '0812345678' }),
+    },
   };
   const prisma = {
     ...tx,
@@ -217,40 +220,37 @@ describe('TransactionService after a rejected slip', () => {
     expect(tx.transaction.update).not.toHaveBeenCalled();
   });
 
-  it('makes the buyer answer a refund slip instead of sending a new payment slip', async () => {
-    const { service, writes } = setup(
-      rejected({ refund: refund([refundSlip()]) }),
-    );
-    await expect(
-      service.uploadPaymentSlip(7, 1, { slip_image_url: 'new.jpg' }),
-    ).rejects.toThrow(BadRequestException);
-    expect(writes()).toBe(0);
-  });
-
-  it('records the seller refund slip without changing the status', async () => {
-    const { service, tx } = setup(rejected());
-    await service.uploadRefundSlip(7, 2, { refund_slip_url: refundUrl });
-    expect(tx.transactionRefundSlip.create).toHaveBeenCalledWith({
-      data: { transactionId: 7, refundSlipUrl: refundUrl },
-    });
-    expect(tx.transaction.update).not.toHaveBeenCalled();
-  });
-
-  it('returns to Pending only once the buyer confirms the refund', async () => {
+  it('takes a new slip over an old refund slip, and clears the refund', async () => {
     const { service, tx } = setup(rejected({ refund: refund([refundSlip()]) }));
-    await service.confirmRefund(7, 1);
+    await service.uploadPaymentSlip(7, 1, { slip_image_url: 'new.jpg' });
+    expect(tx.transactionPayment.create).toHaveBeenCalledWith({
+      data: { transactionId: 7, slipImageUrl: 'new.jpg' },
+    });
     expect(tx.transactionRefundSlip.deleteMany).toHaveBeenCalledWith({
       where: { transactionId: 7 },
     });
     expect(tx.transactionRefund.deleteMany).toHaveBeenCalledWith({
       where: { transactionId: 7 },
     });
-    expect(tx.transaction.update).toHaveBeenCalledWith({
-      where: { transactionId: 7 },
-      data: { status: 'Pending' },
-    });
-    // The rejected slip itself stays on record.
-    expect(tx.transactionPayment.update).not.toHaveBeenCalled();
+    expect(tx.transaction.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses a refund slip from the seller', async () => {
+    const { service, writes } = setup(rejected());
+    await expect(
+      service.uploadRefundSlip(7, 2, { refund_slip_url: refundUrl }),
+    ).rejects.toThrow(BadRequestException);
+    expect(writes()).toBe(0);
+  });
+
+  it('refuses to confirm an old refund slip', async () => {
+    const { service, writes } = setup(
+      rejected({ refund: refund([refundSlip()]) }),
+    );
+    await expect(service.confirmRefund(7, 1)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(writes()).toBe(0);
   });
 
   it('refuses to confirm a refund the seller has not sent', async () => {
@@ -346,6 +346,59 @@ describe('actions while a report locks the transaction', () => {
     const { service } = setup(row(), LOCK);
     await expect(service.generateQr(7, 2)).rejects.toThrow(
       'under admin review',
+    );
+  });
+});
+
+describe('TransactionService refunds to the buyer PromptPay', () => {
+  const owed = () => row({ status: 'Pending Refund' });
+  const noPromptPay = (tx: ReturnType<typeof setup>['tx']) =>
+    tx.user.findUnique.mockResolvedValue({ promptpayId: null });
+
+  it('records a refund slip once the buyer has PromptPay', async () => {
+    const { service, tx } = setup(owed());
+    await service.uploadRefundSlip(7, 2, { refund_slip_url: refundUrl });
+    expect(tx.user.findUnique).toHaveBeenCalledWith({
+      where: { userId: 1 },
+      select: { promptpayId: true },
+    });
+    expect(tx.transactionRefundSlip.create).toHaveBeenCalledWith({
+      data: { transactionId: 7, refundSlipUrl: refundUrl },
+    });
+  });
+
+  it('refuses a refund slip while the buyer has no PromptPay', async () => {
+    const { service, tx, writes } = setup(owed());
+    noPromptPay(tx);
+    await expect(
+      service.uploadRefundSlip(7, 2, { refund_slip_url: refundUrl }),
+    ).rejects.toThrow('The buyer has not set up PromptPay yet');
+    expect(writes()).toBe(0);
+  });
+
+  it('builds the refund QR for the buyer number and the deal total', async () => {
+    const { service } = setup(owed());
+    const qr = await service.refundQr(7, 2);
+    expect(qr.amount).toBe(100);
+    expect(qr.promptpay_id).not.toBe('0812345678');
+    expect(qr.payload).toContain('0066812345678');
+  });
+
+  it('shows the refund QR to the seller only', async () => {
+    const { service } = setup(owed());
+    await expect(service.refundQr(7, 1)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('has no refund QR before the deal is cancelled', async () => {
+    const { service } = setup(row());
+    await expect(service.refundQr(7, 2)).rejects.toThrow(BadRequestException);
+  });
+
+  it('has no refund QR while the buyer has no PromptPay', async () => {
+    const { service, tx } = setup(owed());
+    noPromptPay(tx);
+    await expect(service.refundQr(7, 2)).rejects.toThrow(
+      'The buyer has not set up PromptPay yet',
     );
   });
 });

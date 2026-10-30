@@ -120,7 +120,7 @@ export class PostsService {
       // (the item's own facts, nested below, shared by every channel it backs).
       description: post.description ?? null,
       wanted_item_offer: post.wantedItemOffer ?? null,
-      price: post.price?.toNumber() ?? 0,
+      price: post.price?.toNumber() ?? null,
       quantity_total: post.quantityTotal,
       quantity_available: post.quantityRemaining,
       quantity_remaining: post.quantityRemaining,
@@ -514,7 +514,7 @@ export class PostsService {
 
     return {
       post_id: this.label('post', post.postId),
-      price: post.price?.toNumber() ?? 0,
+      price: post.price?.toNumber() ?? null,
       post_type: post.postType,
       quantity_total: post.quantityTotal,
       quantity_remaining: post.quantityRemaining,
@@ -996,7 +996,10 @@ export class PostsService {
       post_id: this.label('post', postPk),
       offer_id: this.label('offer', offerPk),
       delivery_method: transaction.deliveryMethod,
-      total_amount: transaction.totalAmount.toNumber(),
+      total_amount:
+        typeof transaction.totalAmount === 'number'
+          ? transaction.totalAmount
+          : transaction.totalAmount.toNumber(),
       status: 'accepted',
     };
   }

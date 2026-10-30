@@ -308,9 +308,8 @@ export function OfferComposer({
 
   if (sent) {
     return (
-      <Notice tone="success" className="flex flex-col gap-3 p-5">
-        <p className="flex items-center gap-2 text-body-lg font-semibold text-tone-success-fg">
-          <CheckCircle2 aria-hidden className="size-5 shrink-0" />{t("offer.sent")}</p>
+      <Notice tone="success" icon={CheckCircle2} contentClassName="flex flex-col gap-3">
+        <p className="text-body-lg font-semibold">{t("offer.sent")}</p>
         <p className="text-body-sm text-ink-secondary">
           You offered {post.seller.name}{" "}
           {offered.length > 0
@@ -349,7 +348,7 @@ export function OfferComposer({
         <ArrowLeft aria-hidden className="size-4" />{t("offer.backToListing")}</Link>
 
       <header>
-        <p className="text-overline font-semibold text-tone-trade-fg uppercase">
+        <p className="text-overline font-semibold text-ink-muted uppercase">
           {t("offer.buildOffer")}
         </p>
         <h1 className="mt-1 text-h1">{t("offer.composeTitle")}</h1>
@@ -380,13 +379,12 @@ export function OfferComposer({
               </h2>
             </div>
             {post.wanted_item_offer ? (
-              <div className="flex gap-2.5 rounded-control bg-tone-trade-bg p-3 text-tone-trade-fg">
-                <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <Notice tone="trade" icon={Sparkles}>
                 <p className="text-caption leading-[1.55]">
                   <span className="font-semibold">{t("offer.ownerWants")}</span>{" "}
                   {post.wanted_item_offer}
                 </p>
-              </div>
+              </Notice>
             ) : null}
             <TrustBadge
               name={post.seller.name}

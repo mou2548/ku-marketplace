@@ -10,7 +10,7 @@ import { ListingTypeBadge } from "@/components/kit/listing-type-badge";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
 import { Surface } from "@/components/kit/surface";
-import { TONE_CHIP } from "@/components/kit/tone";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 import { ProductGallery } from "@/components/market/product-gallery";
 import { unlistListing } from "@/lib/actions/posts";
 import {
@@ -153,13 +153,8 @@ export default async function ItemDetailPage({
                 className="flex flex-col gap-2 p-3"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex w-fit items-center gap-1 rounded-chip border px-2 py-0.5 text-[0.6875rem] leading-4 font-semibold",
-                      TONE_CHIP.trade,
-                    )}
-                  >
-                    <Gift aria-hidden className="size-3" />
+                  <span className={cn(BADGE_SHAPE, "w-fit", BADGE_PAINT.neutral)}>
+                    <Gift aria-hidden className="size-3.5 shrink-0" />
                     Giveaway
                   </span>
                   <span data-numeric className="text-meta text-ink-muted">
@@ -268,7 +263,7 @@ export default async function ItemDetailPage({
         ) : null}
       </div>
 
-      <div className="bg-brand-subtle px-5 py-3 text-meta text-ink-brand">
+      <div className="border-t border-line px-5 py-3 text-meta text-ink-secondary">
         {isTransferred
           ? "Read-only history"
           : available > 0
@@ -301,13 +296,7 @@ export default async function ItemDetailPage({
                 <StatusBadge status={ITEM_TRANSFERRED_STATUS} size="sm" />
               ) : null}
               <span
-                style={
-                  {
-                    "--slot-edge": rarity.fg,
-                    "--slot-glow": rarity.glow,
-                  } as React.CSSProperties
-                }
-                className="rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+                className={`${BADGE_SHAPE} ${BADGE_PAINT.neutral}`}
               >
                 {tStatus(rarity.labelKey)}
               </span>

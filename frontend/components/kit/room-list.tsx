@@ -20,7 +20,7 @@ import {
 
 import type { DealFactKind, DealProgress } from "@/lib/deal-progress";
 import type { RoomKind, RoomSortMode, RoomSummary } from "@/lib/rooms";
-import { ROOM_KIND_TONE, sortRooms } from "@/lib/rooms";
+import { sortRooms } from "@/lib/rooms";
 import { unwrapAction } from "@/lib/action-result";
 import { fetchRoomSummaries } from "@/lib/actions/chat";
 import {
@@ -38,7 +38,7 @@ import { EmptyState } from "./empty-state";
 import { PostImage } from "./post-image";
 import { SearchField } from "./search-field";
 import { StatusBadge } from "./status-badge";
-import { TONE_DOT, TONE_TEXT } from "./tone";
+import { BADGE_PAINT, BADGE_SHAPE, TONE_TEXT } from "./tone";
 
 /** The list matters less than an open thread, so it polls well below the
  * room's message poll. An open room floats itself on send (`markRoomActive`),
@@ -328,7 +328,6 @@ function RoomRow({
   onOpen: () => void;
 }) {
   const t = getCopy();
-  const tone = ROOM_KIND_TONE[room.kind];
   // A transaction room shows `room.progress`'s headline instead of the flat
   // status badge below — `Processing` alone cannot say "slip uploaded" from
   // "meetup agreed", `progress` can. The badge stays for a giveaway room,
@@ -407,8 +406,9 @@ function RoomRow({
           ) : null}
         </span>
 
-        {/* Person and room kind support the item identity. A dot + coloured
-            label stays light enough for a dense list. */}
+        {/* Person and room kind support the item identity. The kind is a
+            category, so it is told apart by its word, not a hue (trade has
+            no colour). */}
         <span className="flex min-w-0 items-center gap-1.5">
           <span
             className={cn(
@@ -422,14 +422,9 @@ function RoomRow({
           <span className="flex shrink-0 items-center gap-1">
             <span
               aria-hidden
-              className={cn("size-1.5 rounded-full", TONE_DOT[ROOM_KIND_TONE[room.kind]])}
+              className="size-1.5 rounded-full bg-signal-neutral-solid"
             />
-            <span
-              className={cn(
-                "text-meta font-semibold",
-                TONE_TEXT[tone],
-              )}
-            >
+            <span className="text-meta font-semibold text-ink-secondary">
               {t(`chat.${room.kind.toLowerCase()}`)}
             </span>
           </span>
@@ -454,7 +449,7 @@ function RoomRow({
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             {status ? <StatusBadge status={status} size="sm" /> : null}
             {room.needsYou ? (
-              <span className="inline-flex h-6 items-center rounded-pill border border-brand-subtle-hover bg-brand-subtle px-2 text-meta font-medium text-ink-brand">
+              <span className={cn(BADGE_SHAPE, BADGE_PAINT["act-warning"])}>
                 {t("chat.yourTurn")}
               </span>
             ) : null}

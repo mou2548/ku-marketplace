@@ -79,7 +79,7 @@ export function buildQueueRows(queues: AdminQueues): QueueRow[] {
     // the row names the slip rather than a tier it cannot know.
     title: "Membership slip",
     detail: `${request.user.name} · ${formatPrice(request.amount)} slip`,
-    status: { label: "Slip to check", tone: "warning" },
+    status: { label: "Slip to check", tone: "warning", lifecycle: "open", adminActs: true },
     createdAt: request.created_at,
   }));
 

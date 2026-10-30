@@ -52,7 +52,7 @@ describe('Activity diagram timers', () => {
       ),
     ).toMatchObject({ limit: 72 * HOUR, repeat: 24 * HOUR, escalate: false });
   });
-  it('stops the seller confirmation timer on a rejected slip and times the buyer once a refund is sent', () => {
+  it('stops the seller confirmation timer on a rejected slip and runs no refund timer there', () => {
     const paid = { status: 'Processing', paymentConfirmedByBuyerAt: now };
     expect(
       transactionDeadline(row({ ...paid, slipImageUrl: 'slip.jpg' })),
@@ -64,12 +64,7 @@ describe('Activity diagram timers', () => {
       transactionDeadline(
         row({ ...paid, slipImageUrl: null, refundSubmittedAt: now }),
       ),
-    ).toMatchObject({
-      phase: 'refund-confirmation',
-      limit: 24 * HOUR,
-      actorId: 1,
-      reporterId: 2,
-    });
+    ).toBeNull();
   });
   it('does not duplicate escalation while a report is active or after refund completion', () => {
     expect(

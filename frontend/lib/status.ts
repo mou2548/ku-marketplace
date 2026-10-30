@@ -25,8 +25,17 @@ export type Tone =
 /** Lucide icon name. Kept as a string so this module stays free of JSX. */
 export type IconName = string;
 
+/**
+ * Where a value sits in its own life, which decides the badge tier
+ * (`lib/badge-tier.ts`). `open`: still moving, someone may need to act.
+ * `ended`: terminal, nothing left to do. `category`: not a state at all (a
+ * listing type, an allocation method, a sanction kind), so never urgent.
+ */
+export type Lifecycle = "open" | "ended" | "category";
+
 export interface StatusPresentation {
   tone: Tone;
+  lifecycle: Lifecycle;
   /**
    * Message key under `status.` in messages/{en,th}.json — not the words.
    *
@@ -83,36 +92,36 @@ export type TransactionStatus =
   | "Refunded";
 
 export const TRANSACTION_STATUS: Record<TransactionStatus, StatusPresentation> = {
-  Pending: {
+  Pending: { lifecycle: "open",
     tone: "warning",
     labelKey: "transaction.Pending.label",
     icon: "Wallet",
     hintKey: "transaction.Pending.hint",
   },
-  Processing: {
+  Processing: { lifecycle: "open",
     tone: "info",
     labelKey: "transaction.Processing.label",
     icon: "Loader",
     hintKey: "transaction.Processing.hint",
   },
-  Completed: {
+  Completed: { lifecycle: "ended",
     tone: "success",
     labelKey: "transaction.Completed.label",
     icon: "CircleCheck",
     hintKey: "transaction.Completed.hint",
   },
-  Cancelled: {
+  Cancelled: { lifecycle: "ended",
     tone: "danger",
     labelKey: "transaction.Cancelled.label",
     icon: "CircleX",
   },
-  "Pending Refund": {
+  "Pending Refund": { lifecycle: "open",
     tone: "warning",
     labelKey: "transaction.Pending Refund.label",
     icon: "RotateCcw",
     hintKey: "transaction.Pending Refund.hint",
   },
-  Refunded: {
+  Refunded: { lifecycle: "ended",
     tone: "neutral",
     labelKey: "transaction.Refunded.label",
     icon: "CheckCheck",
@@ -133,27 +142,27 @@ export type OfferStatus =
   | "Withdrawn";
 
 export const OFFER_STATUS: Record<OfferStatus, StatusPresentation> = {
-  Pending: {
+  Pending: { lifecycle: "open",
     tone: "warning",
     labelKey: "offer.Pending.label",
     icon: "Hourglass",
   },
-  Accepted: {
+  Accepted: { lifecycle: "ended",
     tone: "success",
     labelKey: "offer.Accepted.label",
     icon: "Handshake",
   },
-  Rejected: {
+  Rejected: { lifecycle: "ended",
     tone: "danger",
     labelKey: "offer.Rejected.label",
     icon: "CircleX",
   },
-  Cancelled: {
+  Cancelled: { lifecycle: "ended",
     tone: "neutral",
     labelKey: "offer.Cancelled.label",
     icon: "Undo2",
   },
-  Withdrawn: {
+  Withdrawn: { lifecycle: "ended",
     tone: "neutral",
     labelKey: "offer.Withdrawn.label",
     icon: "Undo2",
@@ -172,6 +181,7 @@ export const OFFER_STATUS: Record<OfferStatus, StatusPresentation> = {
  * moved (sold, traded, or handed over via a giveaway), nothing left open.
  */
 export const ITEM_TRANSFERRED_STATUS: StatusPresentation = {
+  lifecycle: "ended",
   tone: "success",
   labelKey: "item.Transferred.label",
   icon: "PackageCheck",
@@ -180,9 +190,9 @@ export const ITEM_TRANSFERRED_STATUS: StatusPresentation = {
 export type PostType = "SellOnly" | "TradeOnly" | "Both";
 
 export const POST_TYPE: Record<PostType, StatusPresentation> = {
-  SellOnly: { tone: "success", labelKey: "postType.SellOnly.label", icon: "Tag" },
-  TradeOnly: { tone: "trade", labelKey: "postType.TradeOnly.label", icon: "ArrowLeftRight" },
-  Both: { tone: "trade", labelKey: "postType.Both.label", icon: "Sparkles" },
+  SellOnly: { lifecycle: "category", tone: "success", labelKey: "postType.SellOnly.label", icon: "Tag" },
+  TradeOnly: { lifecycle: "category", tone: "trade", labelKey: "postType.TradeOnly.label", icon: "ArrowLeftRight" },
+  Both: { lifecycle: "category", tone: "trade", labelKey: "postType.Both.label", icon: "Sparkles" },
 };
 
 /**
@@ -257,28 +267,28 @@ export type TicketStatus =
   | "Expired";
 
 export const TICKET_STATUS: Record<TicketStatus, StatusPresentation> = {
-  Registered: {
+  Registered: { lifecycle: "open",
     tone: "info",
     labelKey: "ticket.Registered.label",
     icon: "TicketCheck",
     hintKey: "ticket.Registered.hint",
   },
-  Waiting: {
+  Waiting: { lifecycle: "open",
     tone: "warning",
     labelKey: "ticket.Waiting.label",
     icon: "QrCode",
     hintKey: "ticket.Waiting.hint",
   },
-  Received: { tone: "success", labelKey: "ticket.Received.label", icon: "PartyPopper" },
+  Received: { lifecycle: "ended", tone: "success", labelKey: "ticket.Received.label", icon: "PartyPopper" },
   // Losing the draw is an outcome the entrant paid attention for, not a no-op.
-  Not_Selected: { tone: "danger", labelKey: "ticket.Not_Selected.label", icon: "CircleX" },
-  Forfeited: {
+  Not_Selected: { lifecycle: "ended", tone: "danger", labelKey: "ticket.Not_Selected.label", icon: "CircleX" },
+  Forfeited: { lifecycle: "ended",
     tone: "neutral",
     labelKey: "ticket.Forfeited.label",
     icon: "Undo2",
     hintKey: "ticket.Forfeited.hint",
   },
-  Expired: { tone: "danger", labelKey: "ticket.Expired.label", icon: "TimerOff" },
+  Expired: { lifecycle: "ended", tone: "danger", labelKey: "ticket.Expired.label", icon: "TimerOff" },
 };
 
 /**
@@ -294,39 +304,39 @@ export type EntrantStatus =
   | "Expired";
 
 export const ENTRANT_STATUS: Record<EntrantStatus, StatusPresentation> = {
-  Registered: {
+  Registered: { lifecycle: "open",
     tone: "info",
     labelKey: "entrant.Registered.label",
     icon: "TicketCheck",
     hintKey: "entrant.Registered.hint",
   },
-  Selected: {
+  Selected: { lifecycle: "open",
     tone: "success",
     labelKey: "entrant.Selected.label",
     icon: "CircleCheck",
     hintKey: "entrant.Selected.hint",
   },
-  Not_Selected: { tone: "danger", labelKey: "entrant.Not_Selected.label", icon: "CircleX" },
-  Forfeited: { tone: "neutral", labelKey: "entrant.Forfeited.label", icon: "Undo2" },
-  Expired: { tone: "danger", labelKey: "entrant.Expired.label", icon: "TimerOff" },
+  Not_Selected: { lifecycle: "ended", tone: "danger", labelKey: "entrant.Not_Selected.label", icon: "CircleX" },
+  Forfeited: { lifecycle: "ended", tone: "neutral", labelKey: "entrant.Forfeited.label", icon: "Undo2" },
+  Expired: { lifecycle: "ended", tone: "danger", labelKey: "entrant.Expired.label", icon: "TimerOff" },
 };
 
 export type AllocationMethod = "FirstCome" | "Random" | "Manual";
 
 export const ALLOCATION_METHOD: Record<AllocationMethod, StatusPresentation> = {
-  FirstCome: {
+  FirstCome: { lifecycle: "category",
     tone: "warning",
     labelKey: "allocation.FirstCome.label",
     icon: "Zap",
     hintKey: "allocation.FirstCome.hint",
   },
-  Random: {
+  Random: { lifecycle: "category",
     tone: "info",
     labelKey: "allocation.Random.label",
     icon: "Dices",
     hintKey: "allocation.Random.hint",
   },
-  Manual: {
+  Manual: { lifecycle: "category",
     tone: "trade",
     labelKey: "allocation.Manual.label",
     icon: "UserCheck",
@@ -346,18 +356,18 @@ export const ALLOCATION_METHOD: Record<AllocationMethod, StatusPresentation> = {
 export type AppointmentStatus = "Pending" | "Confirmed" | "Rejected";
 
 export const APPOINTMENT_STATUS: Record<AppointmentStatus, StatusPresentation> = {
-  Pending: {
+  Pending: { lifecycle: "open",
     tone: "warning",
     labelKey: "appointment.Pending.label",
     icon: "Hourglass",
     hintKey: "appointment.Pending.hint",
   },
-  Confirmed: {
+  Confirmed: { lifecycle: "ended",
     tone: "success",
     labelKey: "appointment.Confirmed.label",
     icon: "CalendarCheck",
   },
-  Rejected: {
+  Rejected: { lifecycle: "ended",
     tone: "danger",
     labelKey: "appointment.Rejected.label",
     icon: "CalendarX",
@@ -373,18 +383,18 @@ export type GiveawayStatus = "Active" | "Closed" | "Completed";
 
 export const GIVEAWAY_STATUS: Record<GiveawayStatus, StatusPresentation> = {
   // Open for entries is availability, not an achievement.
-  Active: {
+  Active: { lifecycle: "open",
     tone: "info",
     labelKey: "giveaway.Active.label",
     icon: "Gift",
   },
-  Closed: {
+  Closed: { lifecycle: "ended",
     tone: "warning",
     labelKey: "giveaway.Closed.label",
     icon: "Lock",
     hintKey: "giveaway.Closed.hint",
   },
-  Completed: {
+  Completed: { lifecycle: "ended",
     tone: "success",
     labelKey: "giveaway.Completed.label",
     icon: "CheckCheck",
@@ -398,41 +408,41 @@ export const GIVEAWAY_STATUS: Record<GiveawayStatus, StatusPresentation> = {
 export type UserStatus = "Active" | "Suspended" | "Banned" | "Deleted";
 
 export const USER_STATUS: Record<UserStatus, StatusPresentation> = {
-  Active: { tone: "success", labelKey: "user.Active.label", icon: "CircleCheck" },
+  Active: { lifecycle: "open", tone: "success", labelKey: "user.Active.label", icon: "CircleCheck" },
   // An account that cannot be used is a failure state, not a nudge — the same
   // severity the Suspend sanction that caused it already carries.
-  Suspended: {
+  Suspended: { lifecycle: "open",
     tone: "danger",
     labelKey: "user.Suspended.label",
     icon: "ShieldAlert",
     hintKey: "user.Suspended.hint",
   },
-  Banned: {
+  Banned: { lifecycle: "open",
     tone: "danger",
     labelKey: "user.Banned.label",
     icon: "ShieldX",
     hintKey: "user.Banned.hint",
   },
-  Deleted: { tone: "neutral", labelKey: "user.Deleted.label", icon: "Minus" },
+  Deleted: { lifecycle: "ended", tone: "neutral", labelKey: "user.Deleted.label", icon: "Minus" },
 };
 
 /** Sanction.type — the penalty an admin records against an account. */
 export type SanctionType = "Warning" | "Suspend" | "Ban";
 
 export const SANCTION_TYPE: Record<SanctionType, StatusPresentation> = {
-  Warning: {
+  Warning: { lifecycle: "category",
     tone: "warning",
     labelKey: "sanction.Warning.label",
     icon: "ShieldAlert",
     hintKey: "sanction.Warning.hint",
   },
-  Suspend: {
+  Suspend: { lifecycle: "category",
     tone: "danger",
     labelKey: "sanction.Suspend.label",
     icon: "TimerOff",
     hintKey: "sanction.Suspend.hint",
   },
-  Ban: {
+  Ban: { lifecycle: "category",
     tone: "danger",
     labelKey: "sanction.Ban.label",
     icon: "ShieldX",
@@ -450,15 +460,16 @@ export const SANCTION_TYPE: Record<SanctionType, StatusPresentation> = {
 export type SubscriptionStatus = "Active" | "Expired" | "Cancelled";
 
 export const SUBSCRIPTION_STATUS: Record<SubscriptionStatus, StatusPresentation> = {
-  Active: { tone: "success", labelKey: "subscription.Active.label", icon: "Crown" },
-  // Benefits have lapsed and renewing is an action the holder needs to take.
-  Expired: {
+  Active: { lifecycle: "open", tone: "success", labelKey: "subscription.Active.label", icon: "Crown" },
+  // Benefits have lapsed. Renewing is open to the holder, but an expired
+  // subscription is an ended state, so its badge is information tier.
+  Expired: { lifecycle: "ended",
     tone: "warning",
     labelKey: "subscription.Expired.label",
     icon: "TimerOff",
     hintKey: "subscription.Expired.hint",
   },
-  Cancelled: { tone: "neutral", labelKey: "subscription.Cancelled.label", icon: "Minus" },
+  Cancelled: { lifecycle: "ended", tone: "neutral", labelKey: "subscription.Cancelled.label", icon: "Minus" },
 };
 
 export type SubscriptionPaymentStatus = "Pending" | "Verified" | "Reject";
@@ -467,14 +478,14 @@ export const SUBSCRIPTION_PAYMENT_STATUS: Record<
   SubscriptionPaymentStatus,
   StatusPresentation
 > = {
-  Pending: {
+  Pending: { lifecycle: "open",
     tone: "warning",
     labelKey: "subscriptionPayment.Pending.label",
     icon: "Hourglass",
     hintKey: "subscriptionPayment.Pending.hint",
   },
-  Verified: { tone: "success", labelKey: "subscriptionPayment.Verified.label", icon: "CircleCheck" },
-  Reject: {
+  Verified: { lifecycle: "ended", tone: "success", labelKey: "subscriptionPayment.Verified.label", icon: "CircleCheck" },
+  Reject: { lifecycle: "ended",
     tone: "danger",
     labelKey: "subscriptionPayment.Reject.label",
     icon: "CircleX",
@@ -493,18 +504,18 @@ export type ReportStatus =
   | "Report_Dismissed";
 
 export const REPORT_STATUS: Record<ReportStatus, StatusPresentation> = {
-  Pending: { tone: "warning", labelKey: "report.Pending.label", icon: "Clock" },
-  Under_Investigation: {
+  Pending: { lifecycle: "open", tone: "warning", labelKey: "report.Pending.label", icon: "Clock" },
+  Under_Investigation: { lifecycle: "open",
     tone: "info",
     labelKey: "report.Under_Investigation.label",
     icon: "Search",
   },
-  Violation_Confirmed: {
+  Violation_Confirmed: { lifecycle: "ended",
     tone: "danger",
     labelKey: "report.Violation_Confirmed.label",
     icon: "ShieldAlert",
   },
-  Report_Dismissed: { tone: "neutral", labelKey: "report.Report_Dismissed.label", icon: "ShieldOff" },
+  Report_Dismissed: { lifecycle: "ended", tone: "neutral", labelKey: "report.Report_Dismissed.label", icon: "ShieldOff" },
 };
 
 /**
@@ -520,10 +531,10 @@ export const REPORT_STATUS: Record<ReportStatus, StatusPresentation> = {
 export type AppealStatus = "Pending" | "Under_Review" | "Approved" | "Rejected";
 
 export const APPEAL_STATUS: Record<AppealStatus, StatusPresentation> = {
-  Pending: { tone: "warning", labelKey: "appeal.Pending.label", icon: "Send" },
-  Under_Review: { tone: "info", labelKey: "appeal.Under_Review.label", icon: "Scale" },
-  Approved: { tone: "success", labelKey: "appeal.Approved.label", icon: "ShieldCheck" },
-  Rejected: { tone: "danger", labelKey: "appeal.Rejected.label", icon: "ShieldX" },
+  Pending: { lifecycle: "open", tone: "warning", labelKey: "appeal.Pending.label", icon: "Send" },
+  Under_Review: { lifecycle: "open", tone: "info", labelKey: "appeal.Under_Review.label", icon: "Scale" },
+  Approved: { lifecycle: "ended", tone: "success", labelKey: "appeal.Approved.label", icon: "ShieldCheck" },
+  Rejected: { lifecycle: "ended", tone: "danger", labelKey: "appeal.Rejected.label", icon: "ShieldX" },
 };
 
 /* ================================================================== *
@@ -611,6 +622,7 @@ export function transactionStatusPresentation(
 ): StatusPresentation {
   if (tx.status === "Pending" && !requiresPayment(tx)) {
     return {
+      lifecycle: "open",
       tone: "warning",
       labelKey: "transaction.PendingTrade.label",
       icon: "Handshake",
@@ -666,14 +678,8 @@ export function resolveTransactionActor(
       );
 
     case "Processing":
-      // A rejected slip hands the turn back to the buyer: send a new slip,
-      // or — once the seller has returned what arrived — confirm that refund.
-      // The API refuses a new slip while a refund slip is on file
-      // (`assertAwaitingPayment` in transaction.service.ts).
+      // A rejected slip hands the turn back to the buyer to send a new one.
       if (requiresPayment(tx) && isSlipRejected(tx)) {
-        if (tx.refund_slip_url) {
-          return you("buyer", "prompt.confirm-refund.you", "prompt.confirm-refund.them", "warning", "confirm-refund");
-        }
         return you("buyer", "prompt.upload-slip.you", "prompt.upload-slip.them", "warning", "upload-slip");
       }
       if (requiresPayment(tx) && !tx.payment_confirmed_by_seller_at) {

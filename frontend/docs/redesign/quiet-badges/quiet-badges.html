@@ -1,0 +1,336 @@
+<title>Quiet Badges</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: style switcher on top; the same real screens re-render in the chosen style. Base look = origin/main (Prompt, 20px cards, 12px controls). */
+:root {
+  --page: #ffffff; --surface: #ffffff; --sunken: #f4f6f5; --ink: #1f2421; --muted: #5a6560; --line: #dfe4e1;
+  --brand: #2e8f5a; --brand-strong: #257248; --brand-text: #257248;
+  /* main's current tones */
+  --m-n-bg: #f1f2f6; --m-n-bd: #a4b0be; --m-n-fg: #46505d;
+  --m-i-bg: #e4eaef; --m-i-bd: #6f8fa3; --m-i-fg: #2f4c5f;
+  --m-s-bg: #cde7d9; --m-s-bd: #2e8f5a; --m-s-fg: #1d6d41;
+  --m-w-bg: #f8efe0; --m-w-bd: #bd7b00; --m-w-fg: #754d03;
+  --m-d-bg: #fbe4e8; --m-d-bd: #b3455a; --m-d-fg: #96273b; --m-d-solid: #be324b;
+  --m-t-bg: #e8f3ff; --m-t-bd: #70a1ff; --m-t-fg: #1767ad;
+  /* research palette B (brand-harmonised): text / soft fill / solid */
+  --s-fg: #1d643d; --s-bg: #e5f1ea; --s-solid: #308455;
+  --w-fg: #6e5403; --w-bg: #f8f0d9; --w-solid: #dbba66;
+  --d-fg: #874437; --d-bg: #f8ebe7; --d-solid: #b05e4f;
+  --i-fg: #065f7f; --i-bg: #e2eff4; --i-solid: #057ea7;
+  --n-fg: #4c5b53; --n-bg: #eef1ef; --n-solid: #6b7a72;
+  --chip: #f1f3f2; --on-solid: #ffffff; --on-warn-solid: #2b2203;
+  --mark: #1f2421;
+  --font: "Prompt", ui-sans-serif, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #14171b; --surface: #1d2127; --sunken: #252a32; --ink: #e8ece9; --muted: #a7b1ab; --line: #333a42;
+  --brand: #2ed573; --brand-strong: #3ab572; --brand-text: #88e3ac;
+  --m-n-bg: #28322c; --m-n-bd: #637269; --m-n-fg: #d8e1db;
+  --m-i-bg: #1b3442; --m-i-bd: #6f8fa3; --m-i-fg: #c9e7f5;
+  --m-s-bg: #193c28; --m-s-bd: #52c684; --m-s-fg: #b9edcf;
+  --m-w-bg: #3d2d10; --m-w-bd: #bd7b00; --m-w-fg: #f9d898;
+  --m-d-bg: #3c1d24; --m-d-bd: #b3455a; --m-d-fg: #f3c1ca; --m-d-solid: #96273b;
+  --m-t-bg: #173a5e; --m-t-bd: #70a1ff; --m-t-fg: #86c5ff;
+  --s-fg: #8fd3ab; --s-bg: #1d3328; --s-solid: #4fae78;
+  --w-fg: #e9cf86; --w-bg: #352d16; --w-solid: #dbba66;
+  --d-fg: #f0b2a4; --d-bg: #3a2420; --d-solid: #d27a69;
+  --i-fg: #8fd0ea; --i-bg: #17303a; --i-solid: #3fa6cf;
+  --n-fg: #c3cec8; --n-bg: #2a312d; --n-solid: #8a9890;
+  --chip: #2a302c; --on-solid: #14171b; --on-warn-solid: #14171b; --mark: #e8ece9;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #14171b; --surface: #1d2127; --sunken: #252a32; --ink: #e8ece9; --muted: #a7b1ab; --line: #333a42;
+  --brand: #2ed573; --brand-strong: #3ab572; --brand-text: #88e3ac;
+  --m-n-bg: #28322c; --m-n-bd: #637269; --m-n-fg: #d8e1db;
+  --m-i-bg: #1b3442; --m-i-bd: #6f8fa3; --m-i-fg: #c9e7f5;
+  --m-s-bg: #193c28; --m-s-bd: #52c684; --m-s-fg: #b9edcf;
+  --m-w-bg: #3d2d10; --m-w-bd: #bd7b00; --m-w-fg: #f9d898;
+  --m-d-bg: #3c1d24; --m-d-bd: #b3455a; --m-d-fg: #f3c1ca; --m-d-solid: #96273b;
+  --m-t-bg: #173a5e; --m-t-bd: #70a1ff; --m-t-fg: #86c5ff;
+  --s-fg: #8fd3ab; --s-bg: #1d3328; --s-solid: #4fae78;
+  --w-fg: #e9cf86; --w-bg: #352d16; --w-solid: #dbba66;
+  --d-fg: #f0b2a4; --d-bg: #3a2420; --d-solid: #d27a69;
+  --i-fg: #8fd0ea; --i-bg: #17303a; --i-solid: #3fa6cf;
+  --n-fg: #c3cec8; --n-bg: #2a312d; --n-solid: #8a9890;
+  --chip: #2a302c; --on-solid: #14171b; --on-warn-solid: #14171b; --mark: #e8ece9;
+  color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 36px }
+h1 { font-size: 26px; font-weight: 700; margin: 0; text-wrap: balance }
+h2 { font-size: 19px; font-weight: 700; margin: 0 }
+h3 { font-size: 15px; font-weight: 600; margin: 0 }
+p { margin: 0 }
+.lede { color: var(--muted); max-width: 70ch; margin-top: 6px }
+.label { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted) }
+svg.ic { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
+
+/* style switcher */
+.switch { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); padding-block: 10px; border-bottom: 1px solid var(--line); display: grid; gap: 10px }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page) }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px }
+.tabs button { font: inherit; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; text-align: left; line-height: 1.3 }
+.tabs button small { color: var(--muted); font-size: 12px; font-weight: 400 }
+.tabs button[aria-pressed="true"] { border-color: var(--brand-text); box-shadow: 0 0 0 1px var(--brand-text) inset }
+.tabs button:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 2px }
+.desc { color: var(--muted); font-size: 14px; max-width: 80ch }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 16px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0 }
+.row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center }
+.col { display: grid; gap: 10px }
+
+/* ---------- BADGE ---------- */
+.badge { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 500 }
+/* current main */
+[data-style="0"] .badge { height: 28px; padding: 0 10px; border-radius: 999px; font-size: 13px; border: 1px solid; }
+[data-style="0"] .badge[data-t="s"] { background: var(--m-s-bg); color: var(--m-s-fg); border-color: var(--m-s-bd) }
+[data-style="0"] .badge[data-t="w"] { background: var(--m-w-bg); color: var(--m-w-fg); border-color: var(--m-w-bd) }
+[data-style="0"] .badge[data-t="i"], [data-style="0"] .badge[data-t="n"] { background: var(--m-i-bg); color: var(--m-i-fg); border-color: var(--m-i-bd) }
+[data-style="0"] .badge[data-t="t"] { background: var(--m-t-bg); color: var(--m-t-fg); border-color: var(--m-t-bd) }
+[data-style="0"] .badge[data-t="d"], [data-style="0"] .badge[data-t="x"] { background: var(--m-d-solid); color: #fff; border-color: var(--m-d-solid) }
+/* style 1: neutral grey chip, coloured icon only */
+[data-style="1"] .badge { height: 24px; padding: 0 8px; border-radius: 6px; font-size: 12px; background: var(--chip); color: var(--ink) }
+[data-style="1"] .badge svg { width: 14px; height: 14px }
+[data-style="1"] .badge[data-t="s"] svg { color: var(--s-solid) }
+[data-style="1"] .badge[data-t="w"] svg { color: var(--w-fg) }
+[data-style="1"] .badge[data-t="d"] svg, [data-style="1"] .badge[data-t="x"] svg { color: var(--d-solid) }
+[data-style="1"] .badge[data-t="i"] svg, [data-style="1"] .badge[data-t="n"] svg, [data-style="1"] .badge[data-t="t"] svg { color: var(--n-solid) }
+[data-style="1"] .badge[data-act] { background: var(--w-bg); color: var(--w-fg) }
+[data-style="1"] .badge[data-act][data-t="d"] { background: var(--d-bg); color: var(--d-fg) }
+/* style 2: soft tonal, no border */
+[data-style="2"] .badge { height: 24px; padding: 0 9px; border-radius: 6px; font-size: 12px }
+[data-style="2"] .badge[data-t="s"] { background: var(--s-bg); color: var(--s-fg) }
+[data-style="2"] .badge[data-t="w"] { background: var(--w-bg); color: var(--w-fg) }
+[data-style="2"] .badge[data-t="d"] { background: var(--d-bg); color: var(--d-fg) }
+[data-style="2"] .badge[data-t="i"] { background: var(--i-bg); color: var(--i-fg) }
+[data-style="2"] .badge[data-t="n"], [data-style="2"] .badge[data-t="t"], [data-style="2"] .badge[data-t="x"] { background: var(--n-bg); color: var(--n-fg) }
+/* style 3: two tiers - soft grey for information, calm solid only when someone must act */
+[data-style="3"] .badge { height: 22px; padding: 0 8px; border-radius: 4px; font-size: 12px; background: var(--n-bg); color: var(--n-fg) }
+[data-style="3"] .badge svg { width: 14px; height: 14px }
+[data-style="3"] .badge[data-t="s"] { background: var(--s-bg); color: var(--s-fg) }
+[data-style="3"] .badge[data-act][data-t="w"] { background: var(--w-solid); color: var(--on-warn-solid); font-weight: 600 }
+[data-style="3"] .badge[data-act][data-t="d"] { background: var(--d-solid); color: var(--on-solid); font-weight: 600 }
+
+/* ---------- NOTICE ---------- */
+.notice { display: flex; gap: 10px; font-size: 14px; line-height: 1.55 }
+.notice strong { display: block; font-weight: 600 }
+.notice .tile { display: grid; place-items: center; flex: none }
+[data-style="0"] .notice { border: 1px solid; border-radius: 12px; padding: 12px 14px }
+[data-style="0"] .notice[data-t="i"] { background: var(--m-i-bg); color: var(--m-i-fg); border-color: var(--m-i-bd) }
+[data-style="0"] .notice[data-t="s"] { background: var(--m-s-bg); color: var(--m-s-fg); border-color: var(--m-s-bd) }
+[data-style="0"] .notice[data-t="w"] { background: var(--m-w-bg); color: var(--m-w-fg); border-color: var(--m-w-bd) }
+[data-style="0"] .notice[data-t="d"] { background: var(--m-d-bg); color: var(--m-d-fg); border-color: var(--m-d-bd) }
+/* 1: grey box, no border, coloured icon, ink text */
+[data-style="1"] .notice { background: var(--sunken); border-radius: 12px; padding: 14px 16px; color: var(--ink) }
+[data-style="1"] .notice .tile svg { width: 20px; height: 20px }
+[data-style="1"] .notice[data-t="i"] .tile { color: var(--i-solid) } [data-style="1"] .notice[data-t="s"] .tile { color: var(--s-solid) }
+[data-style="1"] .notice[data-t="w"] .tile { color: var(--w-fg) } [data-style="1"] .notice[data-t="d"] .tile { color: var(--d-solid) }
+/* 2: soft tint, no border, coloured icon, ink text */
+[data-style="2"] .notice { border-radius: 12px; padding: 14px 16px; color: var(--ink) }
+[data-style="2"] .notice[data-t="i"] { background: var(--i-bg) } [data-style="2"] .notice[data-t="i"] .tile { color: var(--i-fg) }
+[data-style="2"] .notice[data-t="s"] { background: var(--s-bg) } [data-style="2"] .notice[data-t="s"] .tile { color: var(--s-fg) }
+[data-style="2"] .notice[data-t="w"] { background: var(--w-bg) } [data-style="2"] .notice[data-t="w"] .tile { color: var(--w-fg) }
+[data-style="2"] .notice[data-t="d"] { background: var(--d-bg) } [data-style="2"] .notice[data-t="d"] .tile { color: var(--d-fg) }
+/* 3: white card with hairline + tinted icon tile; blocking error is a solid strip */
+[data-style="3"] .notice { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--ink); align-items: flex-start }
+[data-style="3"] .notice .tile { width: 32px; height: 32px; border-radius: 8px }
+[data-style="3"] .notice[data-t="i"] .tile { background: var(--i-bg); color: var(--i-fg) }
+[data-style="3"] .notice[data-t="s"] .tile { background: var(--s-bg); color: var(--s-fg) }
+[data-style="3"] .notice[data-t="w"] .tile { background: var(--w-bg); color: var(--w-fg) }
+[data-style="3"] .notice[data-t="d"] { background: var(--d-solid); border-color: var(--d-solid); color: var(--on-solid) }
+[data-style="3"] .notice[data-t="d"] .tile { background: transparent; color: var(--on-solid) }
+
+/* ---------- BUTTONS ---------- */
+.btn { font: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid transparent; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap }
+.btn.block { width: 100% }
+.btn:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 2px }
+[data-style="0"] .btn { font-size: 17px; font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / .12), inset 0 1px 0 rgb(255 255 255 / .2) }
+[data-style="0"] .btn.primary { background: var(--brand); color: #fff }
+[data-style="0"] .btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--line); font-size: 15px; font-weight: 500 }
+[data-style="0"] .btn.danger { background: var(--m-d-solid); color: #fff; font-size: 15px; font-weight: 500 }
+[data-style="1"] .btn.primary, [data-style="2"] .btn.primary, [data-style="3"] .btn.primary { background: var(--brand-strong); color: var(--on-solid) }
+[data-style="1"] .btn.secondary { background: var(--chip); color: var(--ink) }
+[data-style="1"] .btn.danger { background: transparent; color: var(--d-solid); padding-inline: 10px }
+[data-style="2"] .btn.secondary { background: var(--s-bg); color: var(--s-fg) }
+[data-style="2"] .btn.danger { background: var(--surface); color: var(--d-fg); border-color: var(--d-solid) }
+[data-style="3"] .btn.secondary { background: var(--surface); color: var(--ink); border-color: #b9c3be }
+[data-style="3"] .btn.danger { background: var(--d-solid); color: var(--on-solid) }
+
+/* ---------- PHOTO MARK (Sold / Reserved / Free) ---------- */
+.listing { display: grid; gap: 8px; min-width: 0 }
+.photo { position: relative; aspect-ratio: 1 / 1; border-radius: 16px; background: linear-gradient(135deg, var(--sunken), var(--line)); max-width: 100%; display: grid; place-items: center; color: var(--muted); font-size: 12px }
+.mark { position: absolute; left: 8px; top: 8px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px }
+[data-style="0"] .mark { border: 1px solid var(--m-s-bd); background: var(--m-s-bg); color: var(--m-s-fg); border-radius: 999px }
+[data-style="0"] .mark.sold { border-color: var(--m-d-solid); background: var(--m-d-solid); color: #fff }
+[data-style="1"] .mark, [data-style="3"] .mark { background: var(--mark); color: var(--page); border-radius: 4px }
+[data-style="1"] .mark.free, [data-style="3"] .mark.free { background: var(--brand-strong); color: var(--on-solid) }
+[data-style="2"] .mark { background: var(--surface); color: var(--ink) }
+[data-style="2"] .mark.free { background: var(--s-bg); color: var(--s-fg) }
+.lt { font-size: 14px; font-weight: 500; line-height: 1.4 }
+.price { font-weight: 700; color: var(--brand-text) }
+.sub { font-size: 12px; color: var(--muted) }
+.feed { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+
+/* phone + table */
+.phone { background: var(--page); border: 1px solid var(--line); border-radius: 24px; overflow: hidden; max-width: 380px; width: 100%; justify-self: center }
+.phone .bar { height: 52px; border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 16px; font-weight: 700; color: var(--brand-text) }
+.phone .body { padding: 16px; display: grid; gap: 14px }
+.title { font-size: 19px; font-weight: 700; line-height: 1.4 }
+.meta { display: grid; gap: 4px; font-size: 14px; color: var(--muted) }
+.meta b { color: var(--ink); font-weight: 500 }
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface) }
+table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: 14px }
+th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--line) }
+td { padding: 11px 14px; border-top: 1px solid var(--line) }
+tr:first-child td { border-top: 0 }
+.foot { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 8px }
+.foot ol { margin: 0; padding-left: 20px; display: grid; gap: 4px }
+.src { font-size: 13px; color: var(--muted) }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4m0 3h.01"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3-3m6 11H7l3 3"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></symbol>
+</svg>
+
+<div class="wrap" id="root" data-style="1">
+  <header>
+    <p class="label">KU Marketplace · round 2</p>
+    <h1>Three styles for badges, message boxes and buttons</h1>
+    <p class="lede">มาจากการศึกษา 14 แอป marketplace (Mercari, Vinted, OLX, Facebook, eBay, Kaidee ฯลฯ) และ 8 design system (Material 3, Polaris, Primer, Carbon, Atlassian ฯลฯ) จุดร่วมคือ ไม่มีแอปไหนใช้พื้นสีอ่อนคู่กับขอบสีเดียวกันแบบที่เว็บเราใช้อยู่ ทุกแบบด้านล่างแก้ตรงนี้ ส่วนฟอนต์ มุม เมนู และ layout คงเหมือน main</p>
+  </header>
+
+  <div class="switch">
+    <div class="tabs" role="group" aria-label="Choose a style">
+      <button type="button" data-pick="0" aria-pressed="false">ตอนนี้ (main)<small>tinted + coloured border</small></button>
+      <button type="button" data-pick="1" aria-pressed="true">Style 1 · Neutral chip<small>OLX, Facebook, eBay</small></button>
+      <button type="button" data-pick="2" aria-pressed="false">Style 2 · Soft tone<small>Vinted, Polaris, Radix</small></button>
+      <button type="button" data-pick="3" aria-pressed="false">Style 3 · Urgent stands out<small>Mercari, Primer, Carbon</small></button>
+    </div>
+    <p class="desc" id="desc"></p>
+  </div>
+
+  <section class="grid">
+    <div class="card">
+      <h3>Status badges</h3>
+      <div class="row">
+        <span class="badge" data-t="s"><svg class="ic"><use href="#i-check"/></svg>Completed</span>
+        <span class="badge" data-t="n"><svg class="ic"><use href="#i-dots"/></svg>Processing</span>
+        <span class="badge" data-t="t"><svg class="ic"><use href="#i-swap"/></svg>Trade</span>
+        <span class="badge" data-t="x"><svg class="ic"><use href="#i-x"/></svg>Cancelled</span>
+        <span class="badge" data-t="s"><svg class="ic"><use href="#i-check"/></svg>Open for entries</span>
+      </div>
+      <p class="sub">สถานะทั่วไป (ไม่ต้องทำอะไร)</p>
+      <div class="row">
+        <span class="badge" data-t="w" data-act><svg class="ic"><use href="#i-clock"/></svg>Pay by 5 Nov</span>
+        <span class="badge" data-t="d" data-act><svg class="ic"><use href="#i-alert"/></svg>Slip rejected</span>
+      </div>
+      <p class="sub">สถานะที่ต้องทำอะไรสักอย่าง</p>
+    </div>
+    <div class="card">
+      <h3>Message boxes</h3>
+      <div class="col">
+        <div class="notice" data-t="i"><span class="tile"><svg class="ic"><use href="#i-info"/></svg></span><p>The giver picks 2 people after registration closes.</p></div>
+        <div class="notice" data-t="s"><span class="tile"><svg class="ic"><use href="#i-check"/></svg></span><p>Your item is listed. Buyers can see it now.</p></div>
+        <div class="notice" data-t="w"><span class="tile"><svg class="ic"><use href="#i-alert"/></svg></span><p><strong>Add your PromptPay number</strong>You need it before you can sell.</p></div>
+        <div class="notice" data-t="d"><span class="tile"><svg class="ic"><use href="#i-x"/></svg></span><p><strong>The seller rejected your slip</strong>Upload a new one to continue.</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Buttons</h3>
+      <div class="row">
+        <button class="btn primary" type="button">Buy now</button>
+        <button class="btn secondary" type="button">Make an offer</button>
+        <button class="btn danger" type="button">Cancel deal</button>
+      </div>
+      <p class="sub">ปุ่มหลักสีเขียว 1 ปุ่มต่อหน้า (แบบใหม่ทั้ง 3 ใช้เขียวเข้ม #257248 ให้ตัวหนังสือขาวผ่าน contrast)</p>
+      <h3 style="margin-top:6px">Listing marks</h3>
+      <div class="feed">
+        <div class="listing"><div class="photo"><span class="mark sold">Sold</span>photo</div><p class="lt">Desk lamp</p><p class="price">฿250</p></div>
+        <div class="listing"><div class="photo"><span class="mark sold">Reserved</span>photo</div><p class="lt">fx-991 calculator</p><p class="price">฿400</p></div>
+        <div class="listing"><div class="photo"><span class="mark free">Free</span>photo</div><p class="lt">TOEIC book</p><p class="sub">Giveaway</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 style="margin-bottom:12px">In real screens</h2>
+    <div class="grid">
+      <div class="phone">
+        <div class="bar">KU Marketplace</div>
+        <div class="body">
+          <div class="photo" style="aspect-ratio:4/3">photo</div>
+          <div class="row"><span class="badge" data-t="s"><svg class="ic"><use href="#i-check"/></svg>Open for entries</span><span class="badge" data-t="n"><svg class="ic"><use href="#i-dots"/></svg>Giver picks</span></div>
+          <p class="title">หนังสือศัพท์ TOEIC</p>
+          <div class="meta"><p>Places <b>2</b> · Registered <b>6</b></p><p>Pickup <b>หอพักชาย ตึก 5</b></p><p>Closes <b>Sun 2 Nov, 17:00</b></p></div>
+          <div class="notice" data-t="i"><span class="tile"><svg class="ic"><use href="#i-info"/></svg></span><p>The giver picks 2 people from everyone registered after registration closes.</p></div>
+          <button class="btn primary block" type="button">Register for this giveaway</button>
+        </div>
+      </div>
+      <div class="col" style="gap:16px; align-content:start; min-width:0">
+        <div>
+          <p class="label" style="margin-bottom:8px">Admin · Reports</p>
+          <div class="tw"><table>
+            <thead><tr><th>Case</th><th>Reported user</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>#14 Scam</td><td>Anan S.</td><td><span class="badge" data-t="w" data-act><svg class="ic"><use href="#i-clock"/></svg>Needs review</span></td></tr>
+              <tr><td>#13 Item not as described</td><td>Pim K.</td><td><span class="badge" data-t="n"><svg class="ic"><use href="#i-dots"/></svg>Under review</span></td></tr>
+              <tr><td>#12 Harassment</td><td>Krit T.</td><td><span class="badge" data-t="x"><svg class="ic"><use href="#i-x"/></svg>Violation confirmed</span></td></tr>
+              <tr><td>#11 No show</td><td>Mai P.</td><td><span class="badge" data-t="s"><svg class="ic"><use href="#i-check"/></svg>Dismissed</span></td></tr>
+            </tbody></table></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:8px">History</p>
+          <div class="tw"><table><tbody>
+            <tr><td>Desk lamp · ฿250</td><td><span class="badge" data-t="s"><svg class="ic"><use href="#i-check"/></svg>Completed</span></td></tr>
+            <tr><td>Calculator fx-991 · Trade</td><td><span class="badge" data-t="w" data-act><svg class="ic"><use href="#i-clock"/></svg>Pay by 5 Nov</span></td></tr>
+            <tr><td>Drawing set · ฿120</td><td><span class="badge" data-t="x"><svg class="ic"><use href="#i-x"/></svg>Cancelled</span></td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="foot">
+    <h2>เลือก 1 แบบ</h2>
+    <ol>
+      <li><b>Style 1 · Neutral chip</b> สถานะทุกตัวเป็นป้ายเทาเรียบ มีแค่ไอคอนที่มีสี เฉพาะเรื่องที่ต้องทำถึงมีพื้นสีอ่อน กล่องข้อความเป็นกล่องเทาไม่มีขอบ ป้าย Sold/Reserved เป็นป้ายดำบนรูป</li>
+      <li><b>Style 2 · Soft tone</b> ป้ายยังมีสีตามสถานะ แต่พื้นอ่อนลง ไม่มีขอบ โทนสีปรับให้เข้ากับเขียว KU กล่องข้อความพื้นสีอ่อนไม่มีขอบ ตัวหนังสือดำ</li>
+      <li><b>Style 3 · Urgent stands out</b> ป้ายทั่วไปเทาเล็ก เรื่องที่ต้องทำเป็นป้ายสีทึบ กล่องข้อความพื้นขาวมีไอคอนในช่องสี ข้อผิดพลาดร้ายแรงเป็นแถบแดงทึบ</li>
+    </ol>
+    <p class="src">ที่มา: research/marketplaces.md และ research/design-systems.md ในโฟลเดอร์เดียวกัน</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var root = document.getElementById("root");
+  var desc = document.getElementById("desc");
+  var text = {
+    "0": "ตอนนี้ใน main: ป้ายพื้นสีอ่อน + ขอบสีเดียวกัน ป้ายแดงทึบ กล่องข้อความพื้นสีทุกกล่อง",
+    "1": "Style 1: ป้ายเทาเรียบทุกสถานะ ไอคอนเท่านั้นที่มีสี / เรื่องที่ต้องทำมีพื้นสีอ่อน / กล่องข้อความเทาไม่มีขอบ / ปุ่มรองพื้นเทา ปุ่มยกเลิกเป็นตัวหนังสือแดง",
+    "2": "Style 2: ป้ายพื้นสีอ่อนตามสถานะ ไม่มีขอบ / กล่องข้อความพื้นสีอ่อน ไม่มีขอบ ตัวหนังสือดำ / ปุ่มรองเป็นเขียวอ่อน ปุ่มยกเลิกขอบแดง",
+    "3": "Style 3: ป้ายทั่วไปเทา เรื่องที่ต้องทำเป็นป้ายสีทึบ / กล่องข้อความพื้นขาว ไอคอนอยู่ในช่องสี ข้อผิดพลาดเป็นแถบแดงทึบ / ปุ่มรองขอบเทา"
+  };
+  var buttons = document.querySelectorAll("[data-pick]");
+  function pick(v) {
+    root.setAttribute("data-style", v);
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-pick") === v)); });
+    desc.textContent = text[v];
+    try { localStorage.setItem("qb-style", v); } catch (e) {}
+  }
+  buttons.forEach(function (b) { b.addEventListener("click", function () { pick(b.getAttribute("data-pick")); }); });
+  var start = "1";
+  try { start = localStorage.getItem("qb-style") || "1"; } catch (e) {}
+  pick(start);
+})();
+</script>

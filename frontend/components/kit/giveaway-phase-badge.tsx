@@ -8,16 +8,20 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import type { GiveawayPhase } from "@/lib/giveaway-phase";
+import { badgePaint } from "@/lib/badge-tier";
+import {
+  GIVEAWAY_PHASE_LIFECYCLE,
+  type GiveawayPhase,
+} from "@/lib/giveaway-phase";
 import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
-import { TONE_CHIP } from "./tone";
+import { BADGE_PAINT, BADGE_SHAPE } from "./tone";
 
 /**
  * The giveaway's state as a badge, from `giveawayPhase` rather than the
  * stored status, so it always agrees with the dates printed beside it
- * (audit G01). Same chip as a washed `StatusBadge`: tone, icon and words.
+ * (audit G01). Same badge as `StatusBadge`: two tiers, icon and words.
  */
 const PHASE: Record<GiveawayPhase, { label: string; hint: string; tone: Tone; icon: LucideIcon }> = {
   upcoming: {
@@ -60,9 +64,12 @@ const PHASE: Record<GiveawayPhase, { label: string; hint: string; tone: Tone; ic
 
 export function GiveawayPhaseBadge({
   phase,
+  viewerActs = false,
   className,
 }: {
   phase: GiveawayPhase;
+  /** From `viewerActsOnGiveawayPhase`; left out, the badge is information. */
+  viewerActs?: boolean;
   className?: string;
 }) {
   const { label, hint, tone, icon: Icon } = PHASE[phase];
@@ -70,8 +77,8 @@ export function GiveawayPhaseBadge({
     <span
       title={hint}
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-pill border px-2 text-meta font-medium whitespace-nowrap",
-        TONE_CHIP[tone],
+        BADGE_SHAPE,
+        BADGE_PAINT[badgePaint(tone, GIVEAWAY_PHASE_LIFECYCLE[phase], viewerActs)],
         className,
       )}
     >

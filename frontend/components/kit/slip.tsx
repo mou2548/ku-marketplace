@@ -500,35 +500,45 @@ export function SlipReviewer({
   const t = getCopy();
 
   return (
-    <Surface shape="card" className={cn("p-4", className)}>
+    <Surface shape="card" className={cn("@container p-4", className)}>
       <header className="mb-3 flex flex-col gap-2">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{title ?? t("slip.check")}</h4>
         <TrustBadge name={buyer.name} isVerified={buyer.isVerified} avatarUrl={buyer.avatar_url} size="sm" />
       </header>
 
-      <SlipFrame
-        src={slipUrl}
-        alt={t("slip.transferSlip")}
-        title={t("slip.transferSlip")}
-        caption={formatPrice(amount)}
-      />
+      {/* The slip beside the decision once the card is wide enough, so the
+          buttons are not pushed below a tall image. Keyed to the card's own
+          width, not the screen's: this also renders in the admin queue. */}
+      <div className="flex flex-col @xl:grid @xl:grid-cols-2 @xl:items-center @xl:gap-5">
+        <SlipFrame
+          src={slipUrl}
+          alt={t("slip.transferSlip")}
+          title={t("slip.transferSlip")}
+          caption={formatPrice(amount)}
+        />
 
-      <dl className="mt-3 flex items-baseline justify-between text-body-sm">
-        <dt className="text-ink-muted">{t("slip.amountDue")}</dt>
-        <dd data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
-          {formatPrice(amount)}
-        </dd>
-      </dl>
-      <UploadedAt
-        at={uploadedAt}
-        labelKey={uploader === "buyer" ? "slip.uploadedByBuyerAt" : "slip.uploadedAt"}
-      />
+        <div className="flex flex-col">
+          <dl className="mt-3 flex items-baseline justify-between text-body-sm @xl:mt-0">
+            <dt className="text-ink-muted">{t("slip.amountDue")}</dt>
+            <dd data-numeric className="shrink-0 whitespace-nowrap text-body-lg font-semibold">
+              {formatPrice(amount)}
+            </dd>
+          </dl>
+          <UploadedAt
+            at={uploadedAt}
+            labelKey={uploader === "buyer" ? "slip.uploadedByBuyerAt" : "slip.uploadedAt"}
+          />
 
-      <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
-        <Button variant="secondary" block onPress={onReject} isDisabled={isBusy}>
-          <X className="size-4" />{t("slip.amountWrong")}</Button>
-        <Button variant="primary" block onPress={onConfirm} isLoading={isBusy}>
-          <Check className="size-4" />{t("slip.confirmReceived")}</Button>
+          {/* Side by side only when the card itself has room: button labels
+              no longer wrap (quiet badges), and in the admin queue the card
+              is narrow even on a wide screen. */}
+          <div className="mt-4 flex flex-col-reverse gap-2 @md:flex-row">
+            <Button variant="secondary" block onPress={onReject} isDisabled={isBusy}>
+              <X className="size-4" />{t("slip.amountWrong")}</Button>
+            <Button variant="primary" block onPress={onConfirm} isLoading={isBusy}>
+              <Check className="size-4" />{t("slip.confirmReceived")}</Button>
+          </div>
+        </div>
       </div>
     </Surface>
   );
@@ -642,14 +652,13 @@ export function SlipRejectedNotice({
 }) {
   const t = getCopy("slip");
   return (
-    <Notice tone="danger" className={cn("flex items-start gap-3", className)}>
-      <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+    <Notice tone="danger" icon={AlertTriangle} className={className}>
       <div className="flex min-w-0 flex-col gap-1">
         <p className="text-body-sm font-semibold">{t("rejectedTitle")}</p>
         <p className="text-body-sm break-words">
           {reason ? reason : t("rejectedNoReason")}
         </p>
-        <p className="text-caption text-ink-secondary">{t("rejectedNext")}</p>
+        <p className="text-caption">{t("rejectedNext")}</p>
       </div>
     </Notice>
   );

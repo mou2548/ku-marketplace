@@ -109,10 +109,11 @@ export class UsersService {
   /**
    * A buyer pays through a QR built from this ID, so it has to stay while
    * something of the user's can still be paid for: a listing with a price, or
-   * a deal in progress that carries money.
+   * a deal in progress that carries money. A refund goes back the same way, so
+   * it also stays while the user is still owed one.
    */
   private async assertCanClearPromptPay(userId: number) {
-    const [sellingPosts, openDeals] = await Promise.all([
+    const [sellingPosts, openDeals, owedRefunds] = await Promise.all([
       this.prisma.post.count({
         where: {
           item: { ownerId: userId },
@@ -128,7 +129,20 @@ export class UsersService {
           totalAmount: { gt: 0 },
         },
       }),
+      this.prisma.transaction.count({
+        where: {
+          buyerId: userId,
+          status: 'Pending Refund',
+          totalAmount: { gt: 0 },
+          NOT: { refund: { slips: { some: { status: 'Confirmed' } } } },
+        },
+      }),
     ]);
+    if (owedRefunds > 0) {
+      throw new ConflictException(
+        'ยังลบ PromptPay ไม่ได้ เพราะยังมีรายการที่รอรับเงินคืน',
+      );
+    }
     if (sellingPosts > 0 || openDeals > 0) {
       throw new ConflictException(
         'ยังลบ PromptPay ไม่ได้ เพราะมีโพสต์ขายหรือรายการซื้อขายที่ยังไม่จบ',

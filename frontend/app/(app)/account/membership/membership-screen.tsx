@@ -20,6 +20,7 @@ import { unwrapAction } from "@/lib/action-result";
 import { subscribeToMembership } from "@/lib/actions/membership";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { Membership, MembershipTier } from "@/lib/api/membership";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 import { cn } from "@/lib/utils";
 
 /**
@@ -91,7 +92,6 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
   const rail = (
     <>
       <Surface shape="panel" className="overflow-hidden p-0">
-        <div aria-hidden className="h-1 bg-tone-warning-solid" />
         <div className="flex flex-col gap-3 p-5">
         <p className="text-overline text-ink-muted uppercase">
           Your membership
@@ -121,7 +121,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
       {membership.pending_review ? (
         <Notice tone="warning">
-          <p className="text-body text-tone-warning-fg">
+          <p className="text-body">
             Your slip is with an admin. Your tier changes as soon as it is
             approved, and you do not need to send it again.
           </p>
@@ -162,7 +162,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                   className={cn(
                     "flex h-full flex-col gap-3 overflow-hidden p-4",
                     isSelected &&
-                      "bg-[var(--membership-bg)] ring-2 ring-[var(--membership-fg)]",
+                      "ring-2 ring-brand",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -171,7 +171,7 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
                       {t.tier}
                     </span>
                     {isCurrent ? (
-                      <span className="rounded-pill bg-tone-success-bg px-2 py-0.5 text-meta font-semibold text-tone-success-fg">
+                      <span className={cn(BADGE_SHAPE, BADGE_PAINT.success)}>
                         Current
                       </span>
                     ) : null}

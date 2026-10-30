@@ -15,7 +15,6 @@ import {
   Menu,
   Package,
   Plus,
-  ShieldCheck,
   Store,
 } from "lucide-react";
 
@@ -26,6 +25,7 @@ import { Button, LinkButton } from "./button";
 import { ThemeSwitch } from "@/components/patterns/theme-switch";
 
 import { Drawer, DrawerTrigger } from "./drawer";
+import { ModeSwitch } from "./mode-switch";
 import { RestrictedShell, type Restriction } from "./restricted-shell";
 import { UserAvatar } from "./user-avatar";
 
@@ -48,10 +48,10 @@ interface NavEntry {
   icon: typeof Store;
   badge?: keyof NavBadges;
   /**
-   * On the phone tab bar. Five at most — past that the targets get too narrow
-   * to hit and the bar stops reading as a set of places. Giveaway is the one
-   * that stays in the drawer: it is the secondary job in PRODUCT.md, and the
-   * drawer still lists everything.
+   * On the phone tab bar. Giveaway joined as a sixth tab (owner decision
+   * 2026-10-30): tucked in the drawer, students did not find it on a phone
+   * at all and only met it in landscape, where the top bar appears. Six is
+   * the ceiling — at 360px each tab is 60px, still past the 44px target.
    */
   onTabBar?: true;
 }
@@ -65,7 +65,7 @@ const NAV: NavEntry[] = [
   { href: "/history", labelKey: "nav.history", icon: History, badge: "deals", onTabBar: true },
   { href: "/chat", labelKey: "nav.chat", icon: MessagesSquare, onTabBar: true },
   { href: "/inventory", labelKey: "nav.inventory", icon: Package, onTabBar: true },
-  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift },
+  { href: "/giveaway", labelKey: "nav.giveaway", icon: Gift, onTabBar: true },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -228,16 +228,9 @@ export function AppShell({
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
+            {/* Below 640px the header has no room for it; the drawer carries it. */}
             {user?.isAdmin && (
-              <Link
-                href="/admin"
-                aria-label="Switch to admin mode"
-                title="Switch to admin mode"
-                className="flex min-h-11 items-center gap-1.5 rounded-control px-2 text-body-sm font-semibold text-ink-brand hover:bg-brand-subtle"
-              >
-                <ShieldCheck aria-hidden className="size-5" />
-                <span>Admin</span>
-              </Link>
+              <ModeSwitch current="market" className="mr-1 hidden sm:inline-flex" />
             )}
             <ThemeSwitch />
 
@@ -302,7 +295,7 @@ export function AppShell({
               ({ href, labelKey, icon: Icon, badge }) => {
                 const active = isActive(pathname, href);
                 return (
-                  <li key={href} className="flex-1">
+                  <li key={href} className="min-w-0 flex-1">
                     <Link
                       href={href}
                       aria-current={active ? "page" : undefined}
@@ -327,7 +320,9 @@ export function AppShell({
                           className="absolute -top-0.5 right-1.5 ring-2 ring-surface"
                         />
                       </span>
-                      <span className="text-meta leading-none">{t(labelKey)}</span>
+                      <span className="max-w-full truncate text-meta leading-none">
+                        {t(labelKey)}
+                      </span>
                     </Link>
                   </li>
                 );
@@ -348,12 +343,13 @@ function MobileMenu({
 }: {
   pathname: string;
   badges: NavBadges;
-  user?: { name: string; avatarUrl?: string | null };
+  user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
   onNavigate: () => void;
 }) {
   const t = getCopy();
   return (
     <div className="flex h-full flex-col gap-3">
+      {user?.isAdmin && <ModeSwitch current="market" className="self-start sm:hidden" />}
       <LinkButton href="/post" block size="lg" onClick={onNavigate}>
         <Plus className="size-5" />{t("nav.postAnItem")}</LinkButton>
 

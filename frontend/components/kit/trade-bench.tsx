@@ -6,6 +6,7 @@ import { ArrowDownLeft, ArrowUpRight, Coins, PackageOpen, X } from "lucide-react
 
 import type { InventoryItem } from "./inventory-slot";
 import { EmptySlot, InventoryGrid, InventorySlot } from "./inventory-slot";
+import { NOTICE_TILE } from "./tone";
 import { Surface } from "./surface";
 import { TextInput } from "./field";
 import type { MoneyDirection } from "@/lib/offers";
@@ -125,7 +126,6 @@ export function TradeBench({
         className="overflow-hidden p-0"
         aria-label={t("offer.whatYouReceive")}
       >
-        <div aria-hidden className="h-1 bg-tone-success-solid" />
         <div className="p-4">
           <header className="mb-4">
             <div className="flex items-baseline justify-between gap-2">
@@ -168,7 +168,7 @@ export function TradeBench({
       </Surface>
 
       {/* ---- The seam: cash gap + direction ---- */}
-      <div className="flex shrink-0 flex-row items-center gap-3 rounded-card bg-tone-trade-bg/55 p-3 lg:flex-col lg:justify-center lg:text-center">
+      <div className="flex shrink-0 flex-row items-center gap-3 rounded-card border border-line bg-surface p-3 lg:flex-col lg:justify-center lg:text-center">
         {/* A bidirectional arrow sat here and stated no direction at all. The
             seam now says which way the cash travels in words, because that is
             the half of the trade the two item piles cannot show. */}
@@ -179,8 +179,8 @@ export function TradeBench({
             isReadOnly && additionalMoney === 0
               ? "bg-surface text-ink-muted"
               : youPay
-              ? "bg-tone-warning-bg text-tone-warning-fg"
-              : "bg-tone-success-bg text-tone-success-fg",
+              ? NOTICE_TILE.warning
+              : NOTICE_TILE.success,
           )}
         >
           {isReadOnly && additionalMoney === 0 ? (
@@ -248,7 +248,6 @@ export function TradeBench({
         className="overflow-hidden p-0"
         aria-label={t("offer.yourSide")}
       >
-        <div aria-hidden className="h-1 bg-tone-trade-solid" />
         <div className="p-4">
           <header className="mb-4">
             <div className="flex items-baseline justify-between gap-2">
@@ -356,7 +355,7 @@ export function TradeSourcePanel({
       shape="panel"
       className={cn("overflow-hidden p-0", className)}
     >
-      <div className="flex items-start gap-3 bg-brand-subtle/55 px-4 py-3.5">
+      <div className="flex items-start gap-3 px-4 py-3.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-pill bg-surface text-ink-brand shadow-flat">
           <PackageOpen aria-hidden className="size-4" />
         </span>
