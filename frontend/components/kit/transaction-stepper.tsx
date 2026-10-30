@@ -9,7 +9,7 @@ import {
 } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
-import { TONE_CHIP, TONE_DOT } from "./tone";
+import { BADGE_PAINT, BADGE_SHAPE, TONE_DOT } from "./tone";
 import { isSlipRejected } from "@/lib/slip-state";
 
 /**
@@ -234,18 +234,15 @@ export function TransactionStepper({
                 {step.label}
               </p>
 
-              {/* Your own turn is not a warning. Amber says something has gone
-                  wrong; the message here is "you are up", which is the brand's
-                  job. And a solid fill on a step inside a stepper spends the
-                  screen's one saturated element on a label (register.md §2) —
-                  the action card below already carries the weight. */}
+              {/* Quiet badges: waiting on you is the one "act now" state
+                  here, so it is the calm warning solid; waiting on the other
+                  side is information, a soft neutral. */}
               {waitingLabel ? (
                 <span
                   className={cn(
-                    "mt-1 inline-flex items-center rounded-pill border px-2 py-0.5 text-meta font-medium",
-                    waitingOnYou
-                      ? "border-brand-subtle-hover bg-brand-subtle text-ink-brand"
-                      : TONE_CHIP.neutral,
+                    BADGE_SHAPE,
+                    "mt-1",
+                    BADGE_PAINT[waitingOnYou ? "act-warning" : "neutral"],
                   )}
                 >
                   {waitingLabel}

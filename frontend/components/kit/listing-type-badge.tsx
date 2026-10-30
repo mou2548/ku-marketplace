@@ -2,6 +2,14 @@ import { useStatusText } from "@/lib/status-text";
 import { POST_TYPE, type PostType } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
+import { StatusIcon } from "./icon";
+import { BADGE_PAINT, BADGE_SHAPE } from "./tone";
+
+/**
+ * A listing type is a category, not a state, so it is always information
+ * tier: a soft neutral chip. Sale, trade and both are told apart by icon and
+ * label, never by hue (trade has no colour).
+ */
 export function ListingTypeBadge({
   type,
   className,
@@ -10,21 +18,12 @@ export function ListingTypeBadge({
   className?: string;
 }) {
   const st = useStatusText();
+  const presentation = POST_TYPE[type];
 
   return (
-    <span
-      className={cn(
-        "inline-flex w-fit items-center rounded-chip px-2 py-0.5 text-[0.6875rem] leading-4 font-semibold",
-        type === "SellOnly" &&
-          "bg-[var(--listing-sale-bg)] text-[var(--listing-sale-fg)]",
-        type === "TradeOnly" &&
-          "bg-[var(--listing-trade-bg)] text-[var(--listing-trade-fg)]",
-        type === "Both" &&
-          "bg-[var(--listing-both-bg)] text-[var(--listing-both-fg)]",
-        className,
-      )}
-    >
-      {st.of(POST_TYPE[type]).label}
+    <span className={cn(BADGE_SHAPE, "w-fit", BADGE_PAINT.neutral, className)}>
+      <StatusIcon name={presentation.icon} className="size-3.5 shrink-0" />
+      {st.of(presentation).label}
     </span>
   );
 }

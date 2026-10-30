@@ -17,6 +17,7 @@ import { createAppeal } from "@/lib/actions/appeals";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { EligibleAppeal } from "@/lib/api/appeals";
 import { formatDateTime } from "@/lib/date-format";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 import { cn } from "@/lib/utils";
 
 const MIN_LENGTH = 40;
@@ -155,7 +156,7 @@ export function AppealForm({
                   <span className="font-medium text-ink">
                     {decision.reason_category}
                   </span>
-                  <span className="rounded-pill bg-tone-danger-bg px-2.5 py-0.5 text-meta font-medium text-tone-danger-fg">
+                  <span className={cn(BADGE_SHAPE, BADGE_PAINT.neutral)}>
                     {SANCTION[decision.sanction ?? "none"] ?? "Penalty"}
                   </span>
                 </span>

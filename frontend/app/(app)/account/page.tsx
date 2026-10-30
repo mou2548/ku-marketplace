@@ -188,9 +188,9 @@ export default async function AccountPage() {
 
         <Link
           href="/account/membership"
-          className="flex items-center gap-4 rounded-card bg-[var(--membership-bg)] px-5 py-4 text-[var(--membership-fg)] transition-[filter] hover:brightness-[0.98]"
+          className="flex items-center gap-4 rounded-card border border-line bg-surface px-5 py-4 text-ink transition-colors hover:bg-surface-sunken"
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface/60">
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--membership-bg)] text-[var(--membership-fg)]">
             <Crown aria-hidden className="size-5" />
           </span>
           <span className="flex min-w-0 flex-1 flex-col">

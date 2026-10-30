@@ -3,6 +3,7 @@ import type { AdminTransactionStatus } from "@/lib/api/admin";
 import type {
   AppealStatus,
   AppointmentStatus,
+  Lifecycle,
   ReportStatus,
 } from "@/lib/status";
 import { formatPrice } from "@/lib/format-price";
@@ -22,33 +23,41 @@ export type AdminTone = "neutral" | "info" | "warning" | "danger" | "success";
 export interface AdminLabel {
   label: string;
   tone: AdminTone;
+  /** Decides the pill's tier with the tone (`lib/badge-tier.ts`). */
+  lifecycle: Lifecycle;
+  /**
+   * The admin is the one who must act on it: a report or appeal awaiting
+   * review, a slip to check (owner ruling 2026-10-30). Only these are the
+   * act-now solid in admin views.
+   */
+  adminActs: boolean;
 }
 
 export const ADMIN_REPORT_STATUS: Record<ReportStatus, AdminLabel> = {
-  Pending: { label: "New", tone: "neutral" },
-  Under_Investigation: { label: "Under investigation", tone: "info" },
-  Violation_Confirmed: { label: "Violation confirmed", tone: "danger" },
-  Report_Dismissed: { label: "Dismissed", tone: "neutral" },
+  Pending: { label: "New", tone: "warning", lifecycle: "open", adminActs: true },
+  Under_Investigation: { label: "Under investigation", tone: "info", lifecycle: "open", adminActs: false },
+  Violation_Confirmed: { label: "Violation confirmed", tone: "danger", lifecycle: "ended", adminActs: false },
+  Report_Dismissed: { label: "Dismissed", tone: "neutral", lifecycle: "ended", adminActs: false },
 };
 
 export const ADMIN_APPEAL_STATUS: Record<AppealStatus, AdminLabel> = {
-  Pending: { label: "New", tone: "neutral" },
-  Under_Review: { label: "Under review", tone: "info" },
-  Approved: { label: "Upheld", tone: "success" },
-  Rejected: { label: "Rejected", tone: "danger" },
+  Pending: { label: "New", tone: "warning", lifecycle: "open", adminActs: true },
+  Under_Review: { label: "Under review", tone: "info", lifecycle: "open", adminActs: false },
+  Approved: { label: "Upheld", tone: "success", lifecycle: "ended", adminActs: false },
+  Rejected: { label: "Rejected", tone: "danger", lifecycle: "ended", adminActs: false },
 };
 
 export const ADMIN_APPOINTMENT_STATUS: Record<AppointmentStatus, AdminLabel> = {
-  Pending: { label: "Proposed", tone: "warning" },
-  Confirmed: { label: "Confirmed", tone: "success" },
-  Rejected: { label: "Rejected", tone: "neutral" },
+  Pending: { label: "Proposed", tone: "warning", lifecycle: "open", adminActs: false },
+  Confirmed: { label: "Confirmed", tone: "success", lifecycle: "ended", adminActs: false },
+  Rejected: { label: "Rejected", tone: "neutral", lifecycle: "ended", adminActs: false },
 };
 
 export const ADMIN_ACCOUNT_STATUS: Record<string, AdminLabel> = {
-  Active: { label: "Active", tone: "success" },
-  Suspended: { label: "Suspended", tone: "warning" },
-  Banned: { label: "Banned", tone: "danger" },
-  Deleted: { label: "Deleted", tone: "neutral" },
+  Active: { label: "Active", tone: "success", lifecycle: "open", adminActs: false },
+  Suspended: { label: "Suspended", tone: "warning", lifecycle: "open", adminActs: false },
+  Banned: { label: "Banned", tone: "danger", lifecycle: "open", adminActs: false },
+  Deleted: { label: "Deleted", tone: "neutral", lifecycle: "ended", adminActs: false },
 };
 
 /** Mirrors `TEMPORARY_SUSPENSION_DAYS` in `backend/src/report/account-standing.ts`. */
@@ -121,20 +130,22 @@ export const ADMIN_TRANSACTION_STATUS: Record<
   AdminTransactionStatus,
   AdminLabel
 > = {
-  Pending: { label: "Pending", tone: "neutral" },
-  Processing: { label: "Processing", tone: "info" },
-  Completed: { label: "Completed", tone: "success" },
-  Cancelled: { label: "Cancelled", tone: "neutral" },
-  "Pending Refund": { label: "Refunding", tone: "warning" },
-  Refunded: { label: "Refunded", tone: "neutral" },
+  Pending: { label: "Pending", tone: "neutral", lifecycle: "open", adminActs: false },
+  Processing: { label: "Processing", tone: "info", lifecycle: "open", adminActs: false },
+  Completed: { label: "Completed", tone: "success", lifecycle: "ended", adminActs: false },
+  Cancelled: { label: "Cancelled", tone: "neutral", lifecycle: "ended", adminActs: false },
+  "Pending Refund": { label: "Refunding", tone: "warning", lifecycle: "open", adminActs: false },
+  Refunded: { label: "Refunded", tone: "neutral", lifecycle: "ended", adminActs: false },
 };
 
 /** Shown when a nullable status column holds no value (very old rows). */
-const NOT_SET: AdminLabel = { label: "Not set", tone: "neutral" };
+const NOT_SET: AdminLabel = { label: "Not set", tone: "neutral", lifecycle: "open", adminActs: false };
 /** Shown for a value this build does not know, instead of guessing a tone. */
 const unknownLabel = (value: string): AdminLabel => ({
   label: `Unknown (${value})`,
   tone: "warning",
+  lifecycle: "open",
+  adminActs: false,
 });
 
 /** `User.user_status`, which the schema allows to be null. */

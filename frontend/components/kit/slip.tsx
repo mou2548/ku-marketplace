@@ -529,7 +529,10 @@ export function SlipReviewer({
             labelKey={uploader === "buyer" ? "slip.uploadedByBuyerAt" : "slip.uploadedAt"}
           />
 
-          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
+          {/* Side by side only when the card itself has room: button labels
+              no longer wrap (quiet badges), and in the admin queue the card
+              is narrow even on a wide screen. */}
+          <div className="mt-4 flex flex-col-reverse gap-2 @md:flex-row">
             <Button variant="secondary" block onPress={onReject} isDisabled={isBusy}>
               <X className="size-4" />{t("slip.amountWrong")}</Button>
             <Button variant="primary" block onPress={onConfirm} isLoading={isBusy}>
@@ -649,14 +652,13 @@ export function SlipRejectedNotice({
 }) {
   const t = getCopy("slip");
   return (
-    <Notice tone="danger" className={cn("flex items-start gap-3", className)}>
-      <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
+    <Notice tone="danger" icon={AlertTriangle} className={className}>
       <div className="flex min-w-0 flex-col gap-1">
         <p className="text-body-sm font-semibold">{t("rejectedTitle")}</p>
         <p className="text-body-sm break-words">
           {reason ? reason : t("rejectedNoReason")}
         </p>
-        <p className="text-caption text-ink-secondary">{t("rejectedNext")}</p>
+        <p className="text-caption">{t("rejectedNext")}</p>
       </div>
     </Notice>
   );

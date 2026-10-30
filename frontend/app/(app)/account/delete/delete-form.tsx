@@ -55,13 +55,14 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
 
       <h1 className="text-h1">Close your account</h1>
 
-      <Notice tone="danger" className="flex max-w-xl gap-3">
-        <AlertTriangle
-          aria-hidden
-          className="mt-0.5 size-5 shrink-0 text-tone-danger-fg"
-        />
+      <Notice
+        tone="danger"
+        icon={AlertTriangle}
+        blocking={false}
+        className="max-w-xl"
+      >
         <div className="flex flex-col gap-2 text-body-sm text-ink-secondary">
-          <p className="font-semibold text-tone-danger-fg">
+          <p className="font-semibold text-ink">
             This cannot be undone.
           </p>
           <ul className="flex list-disc flex-col gap-1 pl-4">
@@ -80,11 +81,13 @@ export function DeleteAccountForm({ blocked }: { blocked: number }) {
       </Notice>
 
       {blocked > 0 ? (
-        <p className="max-w-xl rounded-control bg-tone-warning-bg p-3 text-body-sm text-tone-warning-fg">
-          You have {blocked} deal{blocked === 1 ? "" : "s"} still in progress.
-          Finish or cancel {blocked === 1 ? "it" : "them"} before closing the
-          account.
-        </p>
+        <Notice tone="warning" className="max-w-xl">
+          <p className="text-body-sm">
+            You have {blocked} deal{blocked === 1 ? "" : "s"} still in progress.
+            Finish or cancel {blocked === 1 ? "it" : "them"} before closing the
+            account.
+          </p>
+        </Notice>
       ) : null}
 
       <TextInput

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
 import { Surface } from "./surface";
+import { viewerActsOnAppointment } from "@/lib/badge-tier";
+
 import { StatusBadge } from "./status-badge";
 
 /**
@@ -78,9 +80,8 @@ export function AppointmentCard({
       elevation={status === "Pending" ? "floating" : "raised"}
       className={cn(
         "overflow-hidden",
-        // A pending card carries a warning-toned rail so it reads as an open
-        // question, not a settled fact.
-        status === "Pending" && "ring-2 ring-tone-warning-border",
+        // A pending card reads as an open question through its act-now
+        // badge and its floating elevation; no coloured ring.
         status === "Rejected" && "opacity-70",
         className,
       )}
@@ -88,7 +89,11 @@ export function AppointmentCard({
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
         <h4 className="text-[1.125rem] leading-[1.4] font-semibold">{t("appointment.meetup")}</h4>
         <span className="flex items-center gap-1.5">
-          <StatusBadge status={copy} size="sm" />
+          <StatusBadge
+            status={copy}
+            viewerActs={viewerActsOnAppointment(status, awaitingViewer)}
+            size="sm"
+          />
           {/* The awaiting side already gets an "Edit" button in the action
               row below — showing the pencil here too would just duplicate
               it, so this is for the other cases: the proposer touching up

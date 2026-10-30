@@ -27,6 +27,7 @@ import {
   shippingDeadline,
   type Deadline,
 } from "@/lib/status";
+import { Notice } from "@/components/patterns/notice";
 
 /**
  * §7.5.3's table — one reason, one precondition, one required evidence type.
@@ -267,9 +268,11 @@ export function ReportForm({
         <EvidencePicker files={evidence} onChange={setEvidence} label="Photos" />
       </Surface>
 
-      <p className="rounded-control bg-tone-warning-bg p-3 text-caption leading-[1.6] text-tone-warning-fg">
-        A false report counts against your own account. Only submit when you are sure.
-      </p>
+      <Notice tone="warning">
+        <p className="text-caption leading-[1.6]">
+          A false report counts against your own account. Only submit when you are sure.
+        </p>
+      </Notice>
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="ghost" onPress={() => router.back()}>

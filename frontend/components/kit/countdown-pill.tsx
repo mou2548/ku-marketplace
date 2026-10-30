@@ -6,9 +6,10 @@ import { AlarmClock, TimerOff } from "lucide-react";
 import type { Deadline, Tone } from "@/lib/status";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { useStatusText } from "@/lib/status-text";
+import { badgePaint } from "@/lib/badge-tier";
 import { cn } from "@/lib/utils";
 
-import { TONE_CHIP, TONE_SOLID } from "./tone";
+import { BADGE_PAINT, BADGE_SHAPE } from "./tone";
 
 /**
  * Research risk R2. Flow 1 runs four clocks — 24h to confirm a slip, 8h
@@ -49,6 +50,12 @@ export interface CountdownPillProps {
   showLabel?: boolean;
   className?: string;
   onExpire?: () => void;
+  /**
+   * The viewer is the one who must move before this clock runs out (for a
+   * deal clock, `viewerActsOnDeadline`). Only then does it turn into the
+   * act-now solid near the end; left out, it stays information tier.
+   */
+  viewerActs?: boolean;
 }
 
 export function CountdownPill({
@@ -57,6 +64,7 @@ export function CountdownPill({
   showLabel = false,
   className,
   onExpire,
+  viewerActs = false,
 }: CountdownPillProps) {
   const st = useStatusText();
   const now = useNow(1000);
@@ -73,22 +81,21 @@ export function CountdownPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1",
-        "text-caption leading-[1.5] font-medium",
-        // Solid only once `toneFor` has escalated to danger — under an hour,
-        // or past due. Everything above that is a chip: a countdown that is
-        // still days away has no business being the loudest thing on screen
-        // (register.md §2 budgets one saturated fill per screen), and this
-        // pill sits next to a StatusBadge and a turn pill on every history
-        // row.
-        tone === "danger" ? TONE_SOLID[tone] : cn("border", TONE_CHIP[tone]),
+        BADGE_SHAPE,
+        // A labelled countdown can be long; let it wrap on a phone.
+        "h-auto min-h-[22px] py-0.5 leading-[1.45] whitespace-normal",
+        // Information tier until the countdown's own warning threshold
+        // (under six hours), then a calm solid: warning, and danger under an
+        // hour or past due, but only for the viewer who has to move (owner
+        // ruling 2026-10-30: the other side sees the information tier).
+        BADGE_PAINT[badgePaint(tone, "open", viewerActs)],
         className,
       )}
     >
       {expired ? (
-        <TimerOff aria-hidden className="size-4" />
+        <TimerOff aria-hidden className="size-3.5 shrink-0" />
       ) : (
-        <AlarmClock aria-hidden className="size-4" />
+        <AlarmClock aria-hidden className="size-3.5 shrink-0" />
       )}
       {showLabel ? (
         // Was text-white/70, which measured 3.25:1 to 4.24:1 depending on the

@@ -11,26 +11,28 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Depth over outline (design principle 9): every solid button carries a lit top
- * edge via --shadow-raised, and presses by translating 1px rather than only
- * changing colour.
+ * Quiet badges, Style 3 (docs/redesign/quiet-badges/plan.md, owner decision
+ * 2026-10-30).
  *
- * `bg-brand text-on-brand` is 4.04:1, which passes only as large text. WCAG's
- * large text is 18.66px at weight 700 (14pt bold); the old 15-17px at 500 was
- * normal text and failed (audit P05). Decision D2 keeps the brand fill and
- * makes the primary label large: `text-action` is 19px at 700, set in the
- * compound variants below so no size can shrink it again. A bigger label
- * needs room, so a primary button may wrap to a second line instead of
- * running out of a 360px screen; its height becomes a minimum for that.
- * Never use --brand for body copy. See docs/design/tokens.md §2.
+ * - Primary: a primary-700 fill (`--action-primary`, white label 5.87:1; the
+ *   dark theme flips to a light green with dark text), 15px/600, never wraps.
+ *   One per screen. This replaces decision D2's brand fill with a 19px/700
+ *   label, which only passed as large text and had to be allowed to wrap.
+ * - Secondary: white surface, a 1px `--action-secondary-border` edge, ink.
+ * - Danger: the calm danger solid, for the confirming step of a destructive
+ *   action.
+ * - Ghost and subtle are unchanged. There is no trade variant: trade has no
+ *   colour, so a trade action is a primary or a secondary like any other.
+ *
+ * Flat: no raised shadow. The press still translates 1px.
  */
 const button = cva(
   [
     "relative inline-flex items-center justify-center gap-2",
     // The 44px floor on phones. See globals.css, TOUCH TARGETS.
     "touch-target",
-    "font-medium whitespace-nowrap select-none",
-    "transition-[transform,background-color,box-shadow] duration-[--dur-fast] ease-[--ease-out]",
+    "font-semibold whitespace-nowrap select-none",
+    "transition-[transform,background-color,filter] duration-[--dur-fast] ease-[--ease-out]",
     "disabled:pointer-events-none disabled:opacity-45",
     "data-[pressed]:translate-y-px",
   ],
@@ -38,26 +40,20 @@ const button = cva(
     variants: {
       variant: {
         primary:
-          "bg-brand [color:var(--on-brand)] shadow-raised hover:bg-brand-hover data-[pressed]:bg-brand-active",
-        // No border: `shadow-raised` already ends in a hairline ring, and
-        // stacking one on top made a secondary button pixel-identical to a
-        // Surface card — which is what made a wide one stop reading as a
-        // button at all. Same reason surface.tsx dropped its border.
+          "border border-transparent bg-action-primary text-on-action-primary hover:brightness-95 data-[pressed]:brightness-90",
         secondary:
-          "bg-surface [color:var(--text-primary)] shadow-raised hover:bg-gray-50 data-[pressed]:bg-gray-100",
+          "border border-action-secondary-border bg-surface text-ink hover:bg-surface-sunken data-[pressed]:bg-surface-sunken",
         subtle:
           "bg-brand-subtle [color:var(--text-brand)] hover:bg-[var(--brand-subtle-hover)] data-[pressed]:bg-[var(--brand-subtle-hover)]",
         ghost:
           "[color:var(--text-secondary)] hover:bg-gray-100 hover:[color:var(--text-primary)] data-[pressed]:bg-gray-200",
         danger:
-          "bg-tone-danger-solid [color:var(--on-brand-strong)] shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
-        trade:
-          "bg-tone-trade-solid [color:var(--on-brand-strong)] shadow-raised hover:brightness-95 data-[pressed]:brightness-90",
+          "border border-transparent bg-signal-danger-solid text-on-signal hover:brightness-95 data-[pressed]:brightness-90",
       },
       size: {
         sm: "h-9 rounded-control px-3 text-body-sm",
-        md: "h-11 rounded-control px-4 text-body",
-        lg: "h-13 rounded-control px-6 text-body-lg",
+        md: "h-11 rounded-control px-4 text-[0.9375rem] leading-[1.4]",
+        lg: "h-13 rounded-control px-6 text-[0.9375rem] leading-[1.4]",
         icon: "size-11 rounded-control",
         "icon-sm": "size-9 rounded-control",
       },
@@ -65,15 +61,12 @@ const button = cva(
       block: { true: "w-full", false: "" },
       pill: { true: "rounded-pill", false: "" },
     },
+    // Ghost and subtle keep their origin/main type: 500 weight, 16px at md
+    // and 17px at lg.
     compoundVariants: [
-      {
-        variant: "primary",
-        className:
-          "text-action font-bold whitespace-normal text-balance text-center",
-      },
-      { variant: "primary", size: "sm", className: "h-auto min-h-9 py-1" },
-      { variant: "primary", size: "md", className: "h-auto min-h-11 py-1.5" },
-      { variant: "primary", size: "lg", className: "h-auto min-h-13 py-2" },
+      { variant: ["ghost", "subtle"], className: "font-medium" },
+      { variant: ["ghost", "subtle"], size: "md", className: "text-body" },
+      { variant: ["ghost", "subtle"], size: "lg", className: "text-body-lg" },
     ],
     defaultVariants: { variant: "primary", size: "md", block: false },
   },

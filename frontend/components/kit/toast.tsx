@@ -14,7 +14,7 @@ import type { Tone } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
-import { TONE_CHIP } from "./tone";
+import { NOTICE_TILE } from "./tone";
 
 /**
  * Confirmations for actions that do not change the screen — a slip uploaded, a
@@ -123,14 +123,26 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       role={urgent ? "alert" : "status"}
       aria-live={urgent ? "assertive" : "polite"}
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-card border px-4 py-3",
+        // A message box that floats: white with a hairline and the tone in
+        // the icon tile; a failure is the solid danger strip.
+        "pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-control border px-3.5 py-3",
         "shadow-floating",
         "anim-rise-in [--ku-rise:0.5rem]",
-        TONE_CHIP[toast.tone],
+        urgent
+          ? "border-signal-danger-solid bg-signal-danger-solid text-on-signal"
+          : "border-line bg-surface text-ink",
       )}
     >
-      <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <p className="min-w-0 flex-1 text-body-sm font-medium break-words">
+      <span
+        aria-hidden
+        className={cn(
+          "grid size-8 shrink-0 place-items-center rounded-[8px]",
+          urgent ? "text-on-signal" : NOTICE_TILE[toast.tone],
+        )}
+      >
+        <Icon className="size-4" />
+      </span>
+      <p className="min-w-0 flex-1 self-center text-body-sm font-medium break-words">
         {toast.message}
       </p>
       <Button
@@ -138,7 +150,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         size="icon-sm"
         pill
         aria-label="Close notification"
-        className="-m-2 shrink-0"
+        className={cn("-m-2 shrink-0", urgent && "[color:inherit] hover:bg-transparent hover:[color:inherit]")}
         onPress={onClose}
       >
         <X className="size-4" />

@@ -205,7 +205,7 @@ function Parties({ report }: { report: Report }) {
       >
         <ArrowRight className="size-5" />
       </span>
-      <AdminBox className="flex flex-col gap-2 border-tone-danger-border p-4">
+      <AdminBox className="flex flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-meta font-medium text-tone-danger-fg">
             Reported user · receives any sanction
@@ -216,6 +216,8 @@ function Parties({ report }: { report: Report }) {
                 ADMIN_ACCOUNT_STATUS[target.status] ?? {
                   label: target.status,
                   tone: "neutral",
+                  lifecycle: "open",
+                  adminActs: false,
                 }
               }
             />
@@ -461,7 +463,7 @@ function Transcript({
                 ref={m.message_id === firstFlaggedId ? firstFlaggedRef : undefined}
                 className={
                   isFlagged
-                    ? "rounded-[8px] border-l-2 border-tone-danger-border bg-tone-danger-bg px-3 py-2"
+                    ? "rounded-[8px] border border-line bg-surface px-3 py-2"
                     : undefined
                 }
               >

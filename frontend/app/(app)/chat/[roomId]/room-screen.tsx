@@ -18,6 +18,7 @@ import {
   MapPin,
   QrCode,
   ScanLine,
+  ShieldAlert,
   Truck,
   Undo2,
   XCircle,
@@ -34,6 +35,7 @@ import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { ProfileLink } from "@/components/kit/profile-link";
 import { ReportUserDialog } from "@/components/kit/report-user-dialog";
 import { PaymentQr } from "@/components/kit/payment-qr";
+import { Notice } from "@/components/patterns/notice";
 import { PromptPayNotice } from "@/components/patterns/promptpay-notice";
 import {
   SlipRejectDialog,
@@ -44,6 +46,7 @@ import {
 } from "@/components/kit/slip";
 import { QrTicket } from "@/components/kit/qr-ticket";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnDeadline, viewerActsOnTransaction } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { useToast } from "@/components/kit/toast";
 import { unwrapAction } from "@/lib/action-result";
@@ -60,7 +63,7 @@ import {
   submitPaymentSlip,
   submitRefundSlip,
 } from "@/lib/actions/transactions";
-import { TONE_CHIP, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
+import { BADGE_PAINT, BADGE_SHAPE, TONE_DOT, TONE_TEXT } from "@/components/kit/tone";
 import {
   buildSteps,
   TransactionStepper,
@@ -93,7 +96,7 @@ import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { isDecodableImage } from "@/lib/image-check";
 import { openReturnWindow } from "@/lib/return-window";
-import { ROOM_KIND_TONE, type RoomSummary } from "@/lib/rooms";
+import type { RoomSummary } from "@/lib/rooms";
 import {
   ALLOCATION_METHOD,
   canReport,
@@ -900,7 +903,11 @@ export function RoomScreen({
                 {/* The clock for the buyer to confirm the money arrived. */}
                 {deadline && transaction.refund_slip_url ? (
                   <div className="flex flex-col gap-1.5">
-                    <CountdownPill deadline={deadline} className="w-fit" />
+                    <CountdownPill
+                      deadline={deadline}
+                      viewerActs={viewer === "buyer"}
+                      className="w-fit"
+                    />
                     <p className="text-caption text-ink-muted">
                       {viewer === "seller"
                         ? `Waiting for ${summary.counterparty.name} to confirm the money arrived.`
@@ -949,7 +956,7 @@ export function RoomScreen({
             return); both sides see it run down (audit A08). */}
         {deadline ? (
           <div className="my-3 flex flex-col gap-1.5">
-            <CountdownPill deadline={deadline} className="w-fit" />
+            <CountdownPill deadline={deadline} viewerActs={!asked} className="w-fit" />
             <p className="text-caption text-ink-muted">
               {asked
                 ? t("deal.cancelWaitingBy", { name: summary.counterparty.name })
@@ -1383,12 +1390,9 @@ export function RoomScreen({
         </span>
 
         <span className="ml-auto flex min-w-0 shrink-[6] items-center justify-end gap-2">
-          <span
-            className={cn(
-              "shrink-0 rounded-chip border px-1.5 py-0.5 text-meta font-semibold",
-              TONE_CHIP[ROOM_KIND_TONE[summary.kind]],
-            )}
-          >
+          {/* The room kind is a category: a neutral badge, told apart by
+              its word (trade has no colour). */}
+          <span className={cn(BADGE_SHAPE, BADGE_PAINT.neutral, "shrink-0")}>
             {summary.kind}
           </span>
           {/* The subject was dead text, and on anything under 640px it was
@@ -1456,10 +1460,12 @@ export function RoomScreen({
             transaction.status === "Pending Refund") ? (
             <section aria-label="Handover" className="flex flex-col gap-3">
               {transaction.active_report_id ? (
-                <p className="rounded-control border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-body-sm text-tone-danger-fg">
-                  An admin is reviewing this deal. Meetups, payments and
-                  handover are paused until they decide.
-                </p>
+                <Notice tone="danger" icon={ShieldAlert}>
+                  <p className="text-body-sm">
+                    An admin is reviewing this deal. Meetups, payments and
+                    handover are paused until they decide.
+                  </p>
+                </Notice>
               ) : appointment && editingAppointment ? (
                 // Pre-filled from the card it replaces — "Resend" updates that
                 // same card in place, "Discard" brings it back untouched.
@@ -1657,10 +1663,7 @@ function DealEventCard({ event }: { event: DealEvent }) {
   return (
     <div className="flex justify-center">
       <div
-        className={cn(
-          "flex max-w-[90%] items-start gap-3 rounded-control border px-3 py-2 text-caption",
-          TONE_CHIP[event.tone],
-        )}
+        className="flex max-w-[90%] items-start gap-3 rounded-control border border-line bg-surface px-3 py-2 text-caption text-ink"
       >
         <div className="min-w-0 flex-1">
           <p className="font-medium">{event.title}</p>
@@ -1731,20 +1734,29 @@ function DealDetails({
           </Link>
           <StatusBadge
             status={transactionStatusPresentation(transaction)}
+            viewerActs={viewerActsOnTransaction(transaction, viewer)}
             size="sm"
             className="w-fit"
           />
         </div>
 
         {headline ? (
-          <p
-            className={cn(
-              "rounded-control border px-3 py-2 text-body-sm font-medium",
-              TONE_CHIP[headlineTone ?? "info"],
-            )}
+          // A cancelled deal is ended: information, not the blocking strip
+          // a danger notice draws (quiet badges).
+          // The Handover section already draws the one blocking strip for
+          // an admin review, so this headline is never a second one.
+          <Notice
+            tone={
+              transaction.status === "Cancelled" &&
+              !transaction.active_report_id &&
+              headlineTone === "danger"
+                ? "neutral"
+                : (headlineTone ?? "info")
+            }
+            blocking={false}
           >
-            {headline}
-          </p>
+            <p className="text-body-sm font-medium">{headline}</p>
+          </Notice>
         ) : null}
 
         {transaction.delivery_method === "Shipping" ? (
@@ -1752,7 +1764,15 @@ function DealDetails({
         ) : deadline ? (
           <div className="flex flex-col gap-1.5">
             <p className="text-meta text-ink-muted">{st.key(deadline.labelKey)}</p>
-            <CountdownPill deadline={deadline} />
+            <CountdownPill
+              deadline={deadline}
+              viewerActs={viewerActsOnDeadline(
+                deadline.kind,
+                transaction,
+                viewer,
+                viewer === "buyer" ? transaction.buyer_id : transaction.seller_id,
+              )}
+            />
           </div>
         ) : null}
 

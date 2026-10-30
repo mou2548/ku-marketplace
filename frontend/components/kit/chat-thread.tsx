@@ -10,14 +10,12 @@ import { ChevronUp, ImagePlus, ReceiptText, Send } from "lucide-react";
 import { Button as AriaButton } from "react-aria-components";
 
 import type { UserSummary } from "@/lib/api/types";
-import type { Tone } from "@/lib/status";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
 import { Overlay } from "./overlay";
 import { PhotoViewer, PhotoViewerTrigger } from "./photo-viewer";
-import { TONE_RAIL_LEFT } from "./tone";
 import { ProfileLink } from "./profile-link";
 import { TrustBadge } from "./trust-badge";
 
@@ -101,17 +99,6 @@ export interface ChatThreadProps {
    */
   receipts?: Map<string, string>;
   className?: string;
-}
-
-/**
- * A stable colour per person so a run of messages is separable while scrolling
- * past it. Decorative and always paired with the name — `danger` and `success`
- * are excluded so an accent can never be read as a status.
- */
-const SENDER_TONES: Tone[] = ["info", "trade", "warning", "neutral"];
-
-function senderTone(senderId: number): Tone {
-  return SENDER_TONES[Math.abs(senderId) % SENDER_TONES.length];
 }
 
 /** Calendar day in the campus timezone, so a message near midnight groups the
@@ -254,7 +241,6 @@ export function ChatThread({
             const startsRun = messages[i - 1]?.sender_id !== m.sender_id;
             const named = showSenders && !mine;
             const sender = named ? senders?.get(m.sender_id) : undefined;
-            const tone = senderTone(m.sender_id);
             const startsNewDay =
               i === 0 ||
               dayKey(m.created_at) !== dayKey(messages[i - 1].created_at);
@@ -369,7 +355,6 @@ export function ChatThread({
                             // edge at all; the sunken tint gives the other
                             // side's message a shape without a border.
                             "rounded-bl-chip bg-surface-sunken text-ink",
-                        named && cn("border-l-2 pl-3", TONE_RAIL_LEFT[tone]),
                       )}
                     >
                       {m.content}

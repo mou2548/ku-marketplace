@@ -60,7 +60,7 @@ export default async function AdminItemPage({
         description={`${item.category} · ${item.condition}`}
       >
         {item.deleted_at ? (
-          <AdminPill status={{ label: "Deleted", tone: "neutral" }} />
+          <AdminPill status={{ label: "Deleted", tone: "neutral", lifecycle: "ended", adminActs: false }} />
         ) : null}
       </AdminPageHeader>
 

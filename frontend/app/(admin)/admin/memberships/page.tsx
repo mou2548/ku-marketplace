@@ -3,6 +3,8 @@ import { Crown } from "lucide-react";
 
 import { EmptyState } from "@/components/kit/empty-state";
 import { Surface } from "@/components/kit/surface";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
+import { cn } from "@/lib/utils";
 import { listPendingPayments } from "@/lib/api/membership";
 import { getAccessToken, isCurrentUserAdmin } from "@/lib/api/session";
 
@@ -70,12 +72,11 @@ export default async function AdminMembershipsPage({
         {requests.map((r) => (
           <li key={r.request_id}>
             <Surface shape="panel" className="overflow-hidden p-0">
-              <div aria-hidden className="h-1 bg-tone-warning-solid" />
               <div className="flex items-center justify-between gap-2 px-4 pt-4">
                 <span className="text-overline text-ink-muted uppercase">
                   Request #{r.request_id}
                 </span>
-                <span className="flex items-center gap-1.5 rounded-pill border border-tone-warning-border bg-tone-warning-bg px-2.5 py-1 text-meta font-semibold text-tone-warning-fg">
+                <span className={cn(BADGE_SHAPE, BADGE_PAINT.neutral)}>
                   <Crown aria-hidden className="size-3.5" />
                   {r.tier}
                 </span>

@@ -33,6 +33,7 @@ import type { ItemPayload } from "@/lib/api/items";
 import type { Item, ItemCategory } from "@/lib/api/types";
 import { CATEGORY_OPTIONS, hasExtraField } from "@/lib/categories";
 import { ITEM_CONDITION, type ItemCondition } from "@/lib/status";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
 
 interface Photo {
   key: string;
@@ -194,13 +195,7 @@ export function ItemForm({
         </p>
         <p className="text-h3">{name.trim() || "Untitled item"}</p>
         <span
-          style={
-            {
-              "--slot-edge": ITEM_CONDITION[condition].fg,
-              "--slot-glow": ITEM_CONDITION[condition].glow,
-            } as React.CSSProperties
-          }
-          className="w-fit rounded-pill bg-[var(--slot-glow)] px-2.5 py-1 text-meta font-medium text-[var(--slot-edge)]"
+          className={`${BADGE_SHAPE} w-fit ${BADGE_PAINT.neutral}`}
         >
           {st.of(ITEM_CONDITION[condition]).label}
         </span>

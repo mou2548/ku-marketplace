@@ -172,10 +172,8 @@ export function ManageGiveaway({
                     shape="card"
                     elevation="raised"
                     className={cn(
-                      "flex items-center gap-3 border-l-2 p-4",
-                      picked.has(e.receiver_id)
-                        ? "border-l-tone-warning-solid bg-tone-warning-bg/35"
-                        : "border-l-transparent",
+                      "flex items-center gap-3 p-4",
+                      picked.has(e.receiver_id) && "bg-surface-sunken",
                     )}
                   >
                     <Checkbox

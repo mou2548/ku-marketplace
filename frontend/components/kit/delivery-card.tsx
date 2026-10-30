@@ -11,6 +11,7 @@ import type { Transaction } from "@/lib/api/types";
 import { shippingDeadline } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
+import { Button } from "./button";
 import { Notice } from "@/components/patterns/notice";
 
 import { CountdownPill } from "./countdown-pill";
@@ -98,16 +99,13 @@ export function DeliveryCard({
   }
 
   return (
-    <Notice tone="info" className={cn("flex flex-col gap-3", className)}
+    <Notice
+      tone="info"
+      icon={tracking ? PackageCheck : Truck}
+      className={className}
+      contentClassName="flex flex-col gap-3"
     >
-      <p className="flex items-center gap-2 text-body font-semibold text-tone-info-fg">
-        {tracking ? (
-          <PackageCheck aria-hidden className="size-4 shrink-0" />
-        ) : (
-          <Truck aria-hidden className="size-4 shrink-0" />
-        )}
-        {headline}
-      </p>
+      <p className="text-body font-semibold">{headline}</p>
 
       {tracking ? (
         <div className="flex items-center gap-2">
@@ -117,18 +115,18 @@ export function DeliveryCard({
           >
             {tracking}
           </span>
-          <button
-            type="button"
-            onClick={copy}
+          <Button
+            variant="secondary"
+            size="icon-sm"
+            onPress={copy}
             aria-label={t("delivery.copyTracking")}
-            className="touch-target grid size-9 shrink-0 place-items-center rounded-control bg-surface text-ink-secondary shadow-raised hover:text-ink"
           >
             {copied ? (
               <Check aria-hidden className="size-4 text-brand" />
             ) : (
               <Copy aria-hidden className="size-4" />
             )}
-          </button>
+          </Button>
         </div>
       ) : null}
 

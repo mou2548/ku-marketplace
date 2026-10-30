@@ -22,15 +22,9 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { describeDeal, type DealProgress } from "@/lib/deal-progress";
-import type { TicketStatus, Tone } from "@/lib/status";
+import type { TicketStatus } from "@/lib/status";
 
 export type RoomKind = "Sale" | "Trade" | "Giveaway";
-
-export const ROOM_KIND_TONE: Record<RoomKind, Tone> = {
-  Sale: "success",
-  Trade: "trade",
-  Giveaway: "warning",
-};
 
 export interface RoomSummary {
   room_id: number;

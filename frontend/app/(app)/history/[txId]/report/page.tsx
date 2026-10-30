@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnTransaction } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { TwoColumn } from "@/components/kit/two-column";
@@ -60,7 +61,6 @@ export default async function ReportPage({
    */
   const subject = (
     <Surface shape="panel" className="overflow-hidden p-0">
-      <div aria-hidden className="h-1 bg-tone-danger-solid" />
       <div className="flex flex-col gap-3 p-5">
       <p className="text-overline text-ink-muted uppercase">
         The deal you are reporting
@@ -84,6 +84,7 @@ export default async function ReportPage({
 
       <StatusBadge
         status={transactionStatusPresentation(tx)}
+        viewerActs={viewerActsOnTransaction(tx, viewer)}
         size="sm"
         className="w-fit"
       />

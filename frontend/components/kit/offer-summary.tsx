@@ -6,6 +6,7 @@ import type { MoneyDirection } from "@/lib/offers";
 import { ITEM_CONDITION } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
+import { BADGE_PAINT, BADGE_SHAPE } from "./tone";
 import { PostImage } from "./post-image";
 import { formatPrice } from "@/lib/format-price";
 
@@ -64,7 +65,7 @@ export function OfferSummary({
 
       <span
         aria-hidden
-        className="grid size-8 place-self-center place-items-center rounded-pill bg-tone-trade-bg text-tone-trade-fg"
+        className="grid size-8 place-self-center place-items-center rounded-pill bg-signal-neutral-bg text-signal-neutral-fg"
       >
         <ArrowLeftRight className="size-4" />
       </span>
@@ -93,7 +94,7 @@ function Stack({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-control bg-surface-sunken/70 p-2.5 sm:p-3">
-      <span className="text-overline font-semibold text-tone-trade-fg uppercase">
+      <span className="text-overline font-semibold text-ink-muted uppercase">
         {label}
       </span>
       <ul className="flex min-w-0 flex-1 flex-col gap-2">
@@ -133,7 +134,7 @@ function Stack({
           <li className="mt-auto shrink-0">
             <span
               data-numeric
-              className="flex items-center gap-1 rounded-pill bg-tone-trade-bg px-2.5 py-1 text-caption font-semibold whitespace-nowrap text-tone-trade-fg"
+              className={cn(BADGE_SHAPE, BADGE_PAINT.neutral)}
             >
               <Coins aria-hidden className="size-3.5" />+{formatPrice(money)}
             </span>

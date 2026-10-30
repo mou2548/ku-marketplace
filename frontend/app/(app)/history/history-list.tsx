@@ -11,6 +11,7 @@ import { CountdownPill } from "@/components/kit/countdown-pill";
 import { EmptyState } from "@/components/kit/empty-state";
 import { PostImage } from "@/components/kit/post-image";
 import { StatusBadge } from "@/components/kit/status-badge";
+import { viewerActsOnDeadline, viewerActsOnTicket } from "@/lib/badge-tier";
 import { Surface } from "@/components/kit/surface";
 import { useStatusText } from "@/lib/status-text";
 import type { GiveawayTicket, Transaction } from "@/lib/api/types";
@@ -203,7 +204,11 @@ export function HistoryList({
                         })}
                       </p>
                     </div>
-                    <StatusBadge status={TICKET_STATUS[ticket.status]} size="sm" />
+                    <StatusBadge
+                      status={TICKET_STATUS[ticket.status]}
+                      viewerActs={viewerActsOnTicket(ticket.status, true)}
+                      size="sm"
+                    />
                   </Surface>
                 </Link>
               </li>
@@ -254,18 +259,23 @@ function DealRow({ tx, viewerId }: { tx: HistoryTransaction; viewerId: number })
 
   return (
     <Surface shape="card" className="overflow-hidden p-0">
-      <div
-        aria-hidden
-        className={cn("h-1", isTrade ? "bg-tone-trade-solid" : "bg-brand")}
-      />
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-overline font-semibold text-ink-muted uppercase">
             {isTrade ? t("history.trade") : t("history.sale")} · {tx.created_date_label}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            {deadline ? <CountdownPill deadline={deadline} /> : null}
-            <StatusBadge status={transactionStatusPresentation(tx)} size="sm" />
+            {deadline ? (
+              <CountdownPill
+                deadline={deadline}
+                viewerActs={viewerActsOnDeadline(deadline.kind, tx, viewer, viewerId)}
+              />
+            ) : null}
+            <StatusBadge
+              status={transactionStatusPresentation(tx)}
+              viewerActs={isViewersTurn}
+              size="sm"
+            />
           </div>
         </div>
 

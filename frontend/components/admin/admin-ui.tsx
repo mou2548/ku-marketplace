@@ -1,4 +1,6 @@
-import type { AdminLabel, AdminTone } from "@/lib/admin-labels";
+import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
+import type { AdminLabel } from "@/lib/admin-labels";
+import { badgePaint } from "@/lib/badge-tier";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,16 +11,8 @@ import { cn } from "@/lib/utils";
  * CLAUDE.md §3.1 "depth over outline"; student surfaces keep their shadows.
  */
 
-const PILL_TONE: Record<AdminTone, string> = {
-  neutral: "bg-tone-neutral-bg text-tone-neutral-fg",
-  info: "bg-tone-info-bg text-tone-info-fg",
-  warning: "bg-tone-warning-bg text-tone-warning-fg",
-  danger: "bg-tone-danger-bg text-tone-danger-fg",
-  success: "bg-tone-success-bg text-tone-success-fg",
-};
-
-/** A status as text on a soft wash. The words carry the meaning; the wash
- * only groups, so it never stands alone (WCAG 1.4.1). */
+/** A status as a quiet badge: the words carry the meaning, and only a case
+ * an admin has to act on gets a solid fill (`lib/badge-tier.ts`). */
 export function AdminPill({
   status,
   className,
@@ -29,8 +23,8 @@ export function AdminPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-pill px-2.5 text-meta font-medium leading-[1.7]",
-        PILL_TONE[status.tone],
+        BADGE_SHAPE,
+        BADGE_PAINT[badgePaint(status.tone, status.lifecycle, status.adminActs)],
         className,
       )}
     >

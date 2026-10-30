@@ -129,7 +129,7 @@ export function RestrictedShell({
 
       <div
         role="status"
-        className="flex items-start gap-3 border-b border-tone-danger-border bg-tone-danger-bg px-4 py-3 text-body-sm text-tone-danger-fg lg:px-8"
+        className="flex items-start gap-3 border-b border-signal-danger-solid bg-signal-danger-solid px-4 py-3 text-body-sm text-on-signal lg:px-8"
       >
         <ShieldAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
         <p>

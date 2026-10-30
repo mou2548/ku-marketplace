@@ -101,8 +101,7 @@ export function EditProfileForm({ profile }: { profile: User }) {
 
       <h1 className="text-h1">Edit profile</h1>
 
-      <Notice tone="neutral" className="flex max-w-3xl gap-3">
-        <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+      <Notice tone="neutral" icon={Lock} className="max-w-3xl">
         <div className="flex flex-col gap-1">
           <p className="text-body-sm font-medium">
             {profile.first_name_en} {profile.last_name_en} · {profile.email}

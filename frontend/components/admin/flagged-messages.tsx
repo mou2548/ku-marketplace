@@ -24,7 +24,7 @@ export function FlaggedMessages({
         {messages.map((m) => (
           <li
             key={m.message_id}
-            className="rounded-[8px] border-l-2 border-tone-danger-border bg-tone-danger-bg px-3 py-2"
+            className="rounded-[8px] border border-line bg-surface px-3 py-2"
           >
             <FlaggedMessageBody message={m} />
           </li>

@@ -20,6 +20,7 @@
  */
 
 import type { GiveawayPost } from "@/lib/api/types";
+import type { Lifecycle } from "@/lib/status";
 
 export type GiveawayPhase =
   /** Active, registration window still ahead. */
@@ -78,3 +79,18 @@ export function giveawayPhase(g: PhaseInput, now: number | null): GiveawayPhase 
 export function isBrowsable(phase: GiveawayPhase | null): boolean {
   return phase === "open" || phase === "upcoming";
 }
+
+/**
+ * A phase's place in its life, for the badge tier (`lib/badge-tier.ts`).
+ * "All places taken" is ended. "Registration closed" is still open: a
+ * Manual giver has recipients to choose (`viewerActsOnGiveawayPhase`);
+ * everyone else sees it as information because they are not the actor.
+ */
+export const GIVEAWAY_PHASE_LIFECYCLE: Record<GiveawayPhase, Lifecycle> = {
+  upcoming: "open",
+  open: "open",
+  full: "ended",
+  closed: "open",
+  pickup: "open",
+  finished: "ended",
+};
