@@ -5,12 +5,13 @@ import { formatPrice } from "@/lib/format-price";
 
 
 import { getCopy } from "@/lib/copy";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
+import { PromptPayQr } from "@/components/kit/payment-qr";
 import { SlipUploader } from "@/components/kit/slip";
 import { Surface } from "@/components/kit/surface";
 import { Notice } from "@/components/patterns/notice";
@@ -21,6 +22,7 @@ import { subscribeToMembership } from "@/lib/actions/membership";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { Membership, MembershipTier } from "@/lib/api/membership";
 import { BADGE_PAINT, BADGE_SHAPE } from "@/components/kit/tone";
+import { maskMobile, MEMBERSHIP_PROMPTPAY, promptPayPayload } from "@/lib/promptpay";
 import { cn } from "@/lib/utils";
 
 /**
@@ -83,6 +85,23 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
   const [selected, setSelected] = useState<MembershipTier>("Gold");
 
   const current = TIERS.find((t) => t.tier === selected);
+  const price = current?.price ?? 0;
+  // A malformed account constant shows the QR's error card instead of taking
+  // the page down.
+  const membershipQr = useMemo(() => {
+    try {
+      return {
+        qr: {
+          payload: promptPayPayload(MEMBERSHIP_PROMPTPAY, price),
+          amount: price,
+          promptpay_id: maskMobile(MEMBERSHIP_PROMPTPAY),
+        },
+        failed: false,
+      };
+    } catch {
+      return { qr: null, failed: true };
+    }
+  }, [price]);
 
   /**
    * Where you stand, on the left. The three tiers are a comparison and want the
@@ -287,11 +306,21 @@ export function MembershipScreen({ membership }: { membership: Membership }) {
 
         <Overlay
           title={`Subscribe to ${selected}`}
-          description="Transfer the amount, then upload the slip. An admin checks it and switches your tier."
+          description="Scan the QR to pay, then upload the slip. An admin checks it and switches your tier."
         >
+          {/* The dialog used to ask for a slip without saying where to send
+              the money. The QR fixes the account and the tier's price, so
+              the banking app fills both in. */}
+          <PromptPayQr
+            qr={membershipQr.qr}
+            error={membershipQr.failed ? t("slip.payQrFailed") : null}
+            kind="membership"
+            fileSuffix={selected.toLowerCase()}
+            className="mb-4"
+          />
           <SlipUploader
             embedded
-            amount={current?.price ?? 0}
+            amount={price}
             onUpload={async (file) => {
               const url = await unwrapAction(uploadFile(file));
               await unwrapAction(subscribeToMembership(selected, url));
