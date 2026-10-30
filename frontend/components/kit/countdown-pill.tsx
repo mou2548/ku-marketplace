@@ -21,7 +21,8 @@ import { BADGE_PAINT, BADGE_SHAPE } from "./tone";
  * deadline approaches so urgency is legible before it matters.
  */
 
-function format(input: number): string {
+/** `1d 2h`, `3h 20m`, `4:05` or `12s` — how long is left, at the precision that matters. */
+export function formatRemaining(input: number): string {
   const ms = Math.max(0, input);
   const hours = Math.floor(ms / 3_600_000);
   const minutes = Math.floor((ms % 3_600_000) / 60_000);
@@ -116,7 +117,7 @@ export function CountdownPill({
         // from the server render by the request's transit time.
         suppressHydrationWarning
       >
-        {!known ? "…" : expired ? expiredLabel : `${format(ms)} left`}
+        {!known ? "…" : expired ? expiredLabel : `${formatRemaining(ms)} left`}
       </time>
     </span>
   );
