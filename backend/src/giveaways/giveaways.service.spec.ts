@@ -50,6 +50,59 @@ describe('GiveawaysService allocation boundaries', () => {
     return { service: new GiveawaysService(prisma), tx };
   }
 
+  it.each(['FirstCome', 'Random', 'Manual'])(
+    'lets the giver close %s registration without changing existing tickets',
+    async (allocationMethod) => {
+      const { service, tx } = setupTransaction();
+      tx.giveawayPost.findUnique.mockResolvedValue({
+        giveawayId: 2,
+        giverId: 99,
+        status: 'Active',
+        allocationMethod,
+        registerDeadline: null,
+      });
+
+      await service.closeRegistrationEarly('2', 99);
+
+      expect(tx.giveawayPost.update).toHaveBeenCalledWith({
+        where: { giveawayId: 2 },
+        data: {
+          registerDeadline: expect.any(Date),
+          ...(allocationMethod === 'FirstCome' ? { status: 'Closed' } : {}),
+        },
+      });
+      expect(tx.giveawayTicket.updateMany).not.toHaveBeenCalled();
+      expect(tx.giveawayTicket.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects closing FirstCome registration by someone other than the giver', async () => {
+    const { service, tx } = setupTransaction();
+    tx.giveawayPost.findUnique.mockResolvedValue({
+      giverId: 99,
+      allocationMethod: 'FirstCome',
+      status: 'Active',
+    });
+
+    await expect(service.closeRegistrationEarly('2', 12)).rejects.toThrow(
+      'เฉพาะผู้ให้เท่านั้นที่ปิดรับลงทะเบียนได้',
+    );
+    expect(tx.giveawayPost.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects new FirstCome entrants after the giver closes registration', async () => {
+    const { service, tx } = setupTransaction();
+    tx.giveawayPost.findUnique.mockResolvedValue({
+      giverId: 99,
+      allocationMethod: 'FirstCome',
+      status: 'Closed',
+      registerDeadline: new Date(Date.now() - 1_000),
+    });
+
+    await expect(service.join('2', 12)).rejects.toThrow('กิจกรรมนี้ปิดรับแล้ว');
+    expect(tx.giveawayTicket.create).not.toHaveBeenCalled();
+  });
+
   it('allocates the final First Come place and closes registration atomically', async () => {
     const { service, tx } = setupTransaction();
     tx.giveawayPost.findUnique.mockResolvedValue({

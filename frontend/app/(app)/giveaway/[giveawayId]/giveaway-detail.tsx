@@ -165,8 +165,7 @@ export function GiveawayDetail({
   }
 
   const participationAction = isGiver ? (
-    /* Only a Manual giveaway has anything for its giver to do. FirstCome
-       allocates as people register and Random is drawn by the system. */
+    /* Manual recipients are chosen by the giver; FirstCome allocates on join. */
     giveaway.allocation_method === "Manual" ? (
       <LinkButton
         size="lg"
@@ -222,15 +221,36 @@ export function GiveawayDetail({
         </Notice>
       )
     ) : (
-      <Notice tone="success">
-        <p className="text-body font-medium">
-          This is your giveaway. Nothing for you to do.
-        </p>
-        <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
-          {st.of(method).hint}. A chat room opens with each entrant as they
-          register so you can arrange collection.
-        </p>
-      </Notice>
+      <div className="flex flex-col gap-2">
+        <Notice tone="success">
+          <p className="text-body font-medium">
+            {phase === "open" || phase === "upcoming"
+              ? "This is your giveaway. Recipients receive a place as they register."
+              : "Registration has closed."}
+          </p>
+          <p className="mt-1 text-caption leading-[1.6] text-ink-secondary">
+            {st.of(method).hint}. A chat room opens with each entrant as they
+            register so you can arrange collection.
+          </p>
+        </Notice>
+        {phase === "open" || phase === "upcoming" ? (
+          <ConfirmButton
+            title="End registration now?"
+            description={`${giveaway.registered_count} ${giveaway.registered_count === 1 ? "person has" : "people have"} registered so far. This closes registration immediately — nobody else can join, and it cannot be undone. Existing recipients keep their places and can still collect their items.`}
+            confirmLabel="End registration"
+            doneMessage="Registration closed. Existing recipients can still collect their items."
+            icon={<Lock className="size-4" />}
+            onConfirm={() => unwrapAction(closeGiveawayRegistration(giveaway.giveaway_id))}
+            trigger={
+              <>
+                <Lock className="size-4" />
+                End registration now
+              </>
+            }
+            triggerProps={{ variant: "ghost", size: "sm" }}
+          />
+        ) : null}
+      </div>
     )
   ) : ticket ? (
     <div className="flex flex-col gap-2">

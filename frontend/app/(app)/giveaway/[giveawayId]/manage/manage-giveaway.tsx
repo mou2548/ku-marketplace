@@ -352,6 +352,26 @@ export function ManageGiveaway({
         </div>
       ) : null}
 
+      {giveaway.allocation_method === "FirstCome" &&
+      giveaway.status === "Active" &&
+      (registerEndMs === null || (now !== UNKNOWN_TIME && now < registerEndMs)) ? (
+        <ConfirmButton
+          title="End registration now?"
+          description={`${giveaway.registered_count} ${giveaway.registered_count === 1 ? "person has" : "people have"} registered so far. This closes registration immediately — nobody else can join, and it cannot be undone. Existing recipients keep their places and can still collect their items.`}
+          confirmLabel="End registration"
+          doneMessage="Registration closed. Existing recipients can still collect their items."
+          icon={<Lock className="size-4" />}
+          onConfirm={() => unwrapAction(closeGiveawayRegistration(giveaway.giveaway_id))}
+          trigger={
+            <>
+              <Lock className="size-4" />
+              End registration now
+            </>
+          }
+          triggerProps={{ variant: "ghost", size: "sm" }}
+        />
+      ) : null}
+
       <ActionBar>
         {/* `QrScanner` is a full-screen component (design principle 7) and
             breaks inside `Overlay`'s height-capped dialog, so the handover
