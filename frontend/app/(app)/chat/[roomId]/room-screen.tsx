@@ -451,8 +451,16 @@ export function RoomScreen({
     transaction && !["Completed", "Cancelled", "Refunded"].includes(transaction.status);
   const reportable = canReport(deadline ? [deadline] : [], now) || Boolean(missedMeetup);
 
-  // Flow 3: only the giver may type in a giveaway room.
-  const giveawayReadOnly = !!giveaway && giveaway.giver_id !== viewerId;
+  // A giveaway room is a group chat: the giver and everyone holding a ticket
+  // that was selected (Waiting) or collected (Received) may type. The API
+  // admits exactly those people, so this only mirrors it; someone who merely
+  // registered is not in the room at all.
+  const canPostInGiveaway =
+    !giveaway ||
+    giveaway.giver_id === viewerId ||
+    summary.giveawayTicketStatus === "Waiting" ||
+    summary.giveawayTicketStatus === "Received";
+  const giveawayReadOnly = !canPostInGiveaway;
 
   // A giveaway room holds the giver plus every recipient, and a bubble that is
   // not yours could be any of them. Naming senders needs a roster; a deal room
@@ -1460,7 +1468,7 @@ export function RoomScreen({
         action={stepAction ?? returnEntry}
         events={progressEvents}
         isReadOnly={giveawayReadOnly}
-        readOnlyNotice="Only the giver can post here. Ask questions in person at pickup."
+        readOnlyNotice="Only the giver and people selected for this giveaway can post here."
         onSend={handleSend}
         onAttach={handleAttach}
       />
