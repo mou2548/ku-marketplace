@@ -300,7 +300,7 @@ export function AppShell({
                       href={href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1",
+                        "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 max-[380px]:px-0",
                         "transition-colors duration-[--dur-fast]",
                         active ? "font-semibold text-ink-brand" : "text-ink-muted",
                       )}
@@ -320,7 +320,11 @@ export function AppShell({
                           className="absolute -top-0.5 right-1.5 ring-2 ring-surface"
                         />
                       </span>
-                      <span className="max-w-full truncate text-meta leading-none">
+                      {/* Six tabs at 360px leave 60px each, and "Inventory"
+                          and "Giveaway" were cut to "Invento…" at 12px
+                          (retest R06). Narrow phones get 11px with tighter
+                          tracking instead of a shorter word. */}
+                      <span className="max-w-full truncate text-meta leading-none max-[380px]:text-[0.6875rem] max-[380px]:tracking-[-0.01em]">
                         {t(labelKey)}
                       </span>
                     </Link>
