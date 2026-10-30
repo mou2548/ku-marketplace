@@ -77,13 +77,16 @@ export function TrustBadge({
       </span>
 
       <span className={cn("flex min-w-0 flex-col", stacked && "gap-1")}>
+        {/* The ellipsis goes on the name itself. On this flex row it only
+            clipped, and what it clipped first was the verified mark, leaving
+            a stray "(" at the end of a long Thai name. */}
         <span
           className={cn(
-            "flex items-center gap-1 truncate font-medium",
+            "flex min-w-0 items-center gap-1 font-medium",
             NAME_SIZE[size],
           )}
         >
-          {name}
+          <span className="truncate">{name}</span>
           {isVerified ? (
             <>
               <BadgeCheck
