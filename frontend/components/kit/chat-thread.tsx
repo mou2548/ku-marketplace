@@ -316,25 +316,44 @@ export function ChatThread({
                   ) : receipt ? (
                     <ReceiptBubble url={receipt.url} label={receipt.label} />
                   ) : m.image_urls?.length ? (
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {m.image_urls.slice(0, 5).map((url) => (
-                        <PhotoViewerTrigger key={url}>
-                          <button
-                            type="button"
-                            aria-label={t("chat.viewFullSize")}
-                            className="block overflow-hidden rounded-control"
-                          >
-                            <Image
-                              src={url}
-                              alt=""
-                              width={220}
-                              height={220}
-                              className="aspect-square object-cover shadow-raised"
-                            />
-                          </button>
-                          <PhotoViewer src={url} alt="" title={t("chat.photo")} />
-                        </PhotoViewerTrigger>
-                      ))}
+                    <div
+                      className={cn(
+                        "grid gap-1.5",
+                        m.image_urls.length === 1 ? "grid-cols-1" : "grid-cols-2",
+                      )}
+                    >
+                      {m.image_urls.slice(0, 5).map((url, idx, shown) => {
+                        // An odd photo out takes the last row alone and sits on
+                        // the sender's side, so no empty cell sits beside it.
+                        const alone =
+                          shown.length > 1 &&
+                          shown.length % 2 === 1 &&
+                          idx === shown.length - 1;
+                        return (
+                          <PhotoViewerTrigger key={url}>
+                            <button
+                              type="button"
+                              aria-label={t("chat.viewFullSize")}
+                              className={cn(
+                                "block overflow-hidden rounded-control",
+                                alone &&
+                                  (mine
+                                    ? "col-span-2 justify-self-end"
+                                    : "col-span-2 justify-self-start"),
+                              )}
+                            >
+                              <Image
+                                src={url}
+                                alt=""
+                                width={220}
+                                height={220}
+                                className="aspect-square object-cover shadow-raised"
+                              />
+                            </button>
+                            <PhotoViewer src={url} alt="" title={t("chat.photo")} />
+                          </PhotoViewerTrigger>
+                        );
+                      })}
                     </div>
                   ) : null}
 
