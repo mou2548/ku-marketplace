@@ -109,7 +109,9 @@ export function PostComposer({
   const router = useRouter();
   const toast = useToast();
   const tz = getLocalTimeZone();
-  const nowDT = toCalendarDateTime(now(tz));
+  // Fixed when the form opens: recomputed on every render, the "earliest
+  // allowed" time kept moving past the default values and turned them red.
+  const [nowDT] = useState(() => toCalendarDateTime(now(getLocalTimeZone())));
 
   // Shared with the inventory card's Unlisted number and the offer stash,
   // so a handed-over item reads 0 here too (lib/item-availability.ts).

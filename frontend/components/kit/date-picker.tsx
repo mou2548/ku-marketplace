@@ -1,5 +1,6 @@
 "use client";
 
+import { toCalendarDate, type CalendarDate } from "@internationalized/date";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Button,
@@ -24,7 +25,8 @@ import {
 } from "react-aria-components";
 
 import { getCopy } from "@/lib/copy";
-import { DATE_LOCALE, formatFieldDate } from "@/lib/date-format";
+import { keepWithinBounds } from "@/lib/date-bounds";
+import { DATE_LOCALE, formatFieldDate, formatFieldDateTime } from "@/lib/date-format";
 
 import { cn } from "@/lib/utils";
 
@@ -102,11 +104,64 @@ export function DatePickerField<T extends DateValue>({
     props.onChange?.(merged as unknown as Parameters<NonNullable<typeof props.onChange>>[0]);
   }
 
+  /**
+   * Every pick passes through here so a day chosen on the day a bound falls on
+   * keeps a time the bound allows (see `keepWithinBounds`).
+   */
+  function commit(next: T) {
+    props.onChange?.(
+      keepWithinBounds(next, props.minValue, props.maxValue) as unknown as Parameters<
+        NonNullable<typeof props.onChange>
+      >[0],
+    );
+  }
+
+  /**
+   * A day of the neighbouring month, shown to fill the first or last week.
+   * The calendar leaves those unselectable, which read as "that day is not
+   * allowed" when the day is just in the other month (the 31st shown greyed at
+   * the top of November). They are made clickable here when the field's own
+   * range allows them; the calendar jumps to the month picked. Pointer only:
+   * the keyboard already crosses months with the arrow keys.
+   */
+  function canPickOutside(date: CalendarDate): boolean {
+    if (!props.value || props.isDisabled || props.isReadOnly) return false;
+    if (props.minValue && date.compare(toCalendarDate(props.minValue)) < 0) return false;
+    if (props.maxValue && date.compare(toCalendarDate(props.maxValue)) > 0) return false;
+    return !props.isDateUnavailable?.(date);
+  }
+
+  function pickOutside(date: CalendarDate, close: () => void) {
+    const current = props.value as unknown as {
+      set: (fields: { year: number; month: number; day: number }) => T;
+    } | null;
+    if (!current) return;
+    commit(current.set({ year: date.year, month: date.month, day: date.day }));
+    if (!showTimeField) close();
+  }
+
+  /** A bound's date, with its time when it has one. */
+  function describeBound(bound: DateValue): string {
+    return "hour" in bound ? formatFieldDateTime(bound) : formatFieldDate(bound);
+  }
+
   return (
     // This calendar-only context fixes date order; there is no app language switch.
     <I18nProvider locale={DATE_LOCALE}>
       <AriaDatePicker
         {...props}
+        onChange={(next) => {
+          // Only a change of day is adjusted. Typing in the time segments goes
+          // through untouched: moving the value under the cursor would make an
+          // hour like "17" impossible to type one digit at a time.
+          const before = props.value;
+          const dayChanged =
+            !before ||
+            !next ||
+            toCalendarDate(next as DateValue).compare(toCalendarDate(before)) !== 0;
+          if (next && dayChanged) commit(next as unknown as T);
+          else props.onChange?.(next);
+        }}
         shouldCloseOnSelect={showTimeField ? false : undefined}
         className={cn("flex flex-col gap-1.5", className)}
       >
@@ -140,9 +195,9 @@ export function DatePickerField<T extends DateValue>({
           {errorMessage ??
             ((validation) =>
               validation.validationDetails.rangeUnderflow && props.minValue
-                ? t("minDate", { date: formatFieldDate(props.minValue) })
+                ? t("minDate", { date: describeBound(props.minValue) })
                 : validation.validationDetails.rangeOverflow && props.maxValue
-                  ? t("maxDate", { date: formatFieldDate(props.maxValue) })
+                  ? t("maxDate", { date: describeBound(props.maxValue) })
                   : validation.validationErrors.join(" "))}
         </FieldError>
 
@@ -194,9 +249,37 @@ export function DatePickerField<T extends DateValue>({
                             "data-[selected]:bg-brand data-[selected]:font-semibold data-[selected]:text-on-brand",
                             "data-[outside-month]:text-ink-disabled",
                             "data-[disabled]:opacity-35",
+                            // A neighbouring month's day is "disabled" to the
+                            // calendar but may be pickable (below); its own text
+                            // colour, not a blanket fade, says which.
+                            "data-[outside-month]:data-[disabled]:opacity-100",
                             "data-[unavailable]:line-through data-[unavailable]:opacity-40",
                           )}
-                        />
+                        >
+                          {({ formattedDate, isOutsideMonth }) => {
+                            if (!isOutsideMonth) return formattedDate;
+                            // Anything left visible from another month can be
+                            // clicked. The ones that cannot are hidden rather
+                            // than faded: two shades of grey did not say which
+                            // was which.
+                            if (!canPickOutside(date)) {
+                              return (
+                                <span aria-hidden className="invisible">
+                                  {formattedDate}
+                                </span>
+                              );
+                            }
+                            return (
+                              <span
+                                aria-hidden
+                                onClick={() => pickOutside(date, close)}
+                                className="grid size-full cursor-pointer place-items-center rounded-control font-medium text-ink-secondary hover:bg-brand-subtle"
+                              >
+                                {formattedDate}
+                              </span>
+                            );
+                          }}
+                        </CalendarCell>
                       )}
                     </CalendarGridBody>
                   </CalendarGrid>

@@ -104,3 +104,14 @@ export function formatDateTime(value: DateInput, now: DateInput = Date.now()): s
 export function formatFieldDate(date: { year: number; month: number; day: number }): string {
   return `${pad2(date.day)}/${pad2(date.month)}/${date.year}`;
 }
+
+/** `31/10/2026 18:00`: the same, with the time, for a bound that has one. */
+export function formatFieldDateTime(date: {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+}): string {
+  return `${formatFieldDate(date)} ${pad2(date.hour)}:${pad2(date.minute)}`;
+}
