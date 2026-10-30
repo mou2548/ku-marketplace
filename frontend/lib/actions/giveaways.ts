@@ -6,6 +6,7 @@ import {
   closeGiveawayRegistration as closeGiveawayRegistrationApi,
   confirmTicketQr as confirmTicketQrApi,
   createGiveaway as createGiveawayApi,
+  deleteGiveaway as deleteGiveawayApi,
   drawGiveaway as drawGiveawayApi,
   forfeitTicket as forfeitTicketApi,
   generateTicketQr as generateTicketQrApi,
@@ -42,6 +43,13 @@ export async function closeGiveawayRegistration(giveawayId: number): Promise<Act
   return runAction(async () => {
     await requireSession();
     await closeGiveawayRegistrationApi(giveawayId);
+  });
+}
+
+export async function deleteGiveaway(giveawayId: number): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    await requireSession();
+    await deleteGiveawayApi(giveawayId);
   });
 }
 

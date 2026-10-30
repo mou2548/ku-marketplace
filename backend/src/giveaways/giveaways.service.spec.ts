@@ -18,6 +18,81 @@ const ticket = (ticketId: number) => ({
   receiver: receiver(ticketId + 10),
 });
 
+describe('GiveawaysService deletion', () => {
+  function setup(giverId = 99, registrations = 0) {
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ giveaway_id: 2 }]),
+      giveawayPost: {
+        findUnique: jest.fn().mockResolvedValue({ giveawayId: 2, giverId }),
+        delete: jest.fn().mockResolvedValue({ giveawayId: 2 }),
+      },
+      giveawayTicket: { count: jest.fn().mockResolvedValue(registrations) },
+      giveawayImage: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      chatMessage: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      chatRoom: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    return { service: new GiveawaysService(prisma), tx };
+  }
+
+  it('allows the owner to delete an unregistered giveaway and its dependent records', async () => {
+    const { service, tx } = setup();
+    await expect(service.remove('giveaway_002', 99)).resolves.toEqual({
+      giveaway_id: 'giveaway_002',
+    });
+    expect(tx.$queryRaw).toHaveBeenCalled();
+    expect(tx.giveawayTicket.count).toHaveBeenCalledWith({
+      where: { giveawayId: 2 },
+    });
+    expect(tx.chatMessage.deleteMany).toHaveBeenCalledWith({
+      where: { room: { giveawayId: 2 } },
+    });
+    expect(tx.chatRoom.deleteMany).toHaveBeenCalledWith({
+      where: { giveawayId: 2 },
+    });
+    expect(tx.giveawayImage.deleteMany).toHaveBeenCalledWith({
+      where: { giveawayId: 2 },
+    });
+    expect(tx.giveawayPost.delete).toHaveBeenCalledWith({
+      where: { giveawayId: 2 },
+    });
+  });
+
+  it.each([1, 2])(
+    'blocks deletion with %i historical registration(s), without filtering ticket status',
+    async (count) => {
+      const { service, tx } = setup(99, count);
+      await expect(service.remove('2', 99)).rejects.toThrow(
+        'someone has already registered',
+      );
+      expect(tx.giveawayTicket.count).toHaveBeenCalledWith({
+        where: { giveawayId: 2 },
+      });
+      expect(tx.giveawayPost.delete).not.toHaveBeenCalled();
+      expect(tx.giveawayImage.deleteMany).not.toHaveBeenCalled();
+      expect(tx.chatRoom.deleteMany).not.toHaveBeenCalled();
+      expect(tx.chatMessage.deleteMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it('blocks deletion by another user', async () => {
+    const { service, tx } = setup();
+    await expect(service.remove('2', 12)).rejects.toThrow('Only the giver');
+    expect(tx.giveawayPost.delete).not.toHaveBeenCalled();
+  });
+
+  it('returns not found if the giveaway is gone', async () => {
+    const { service, tx } = setup();
+    tx.giveawayPost.findUnique.mockResolvedValue(null);
+    await expect(service.remove('2', 99)).rejects.toThrow('Giveaway not found');
+    expect(tx.giveawayPost.delete).not.toHaveBeenCalled();
+  });
+});
+
 describe('GiveawaysService allocation boundaries', () => {
   function setupTransaction(overrides: Record<string, unknown> = {}) {
     const tx = {
