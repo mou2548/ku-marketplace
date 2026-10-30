@@ -63,7 +63,7 @@ export default async function AdminUserPage({
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <Link
         href="/admin/users"
-        className="inline-flex min-h-10 items-center gap-1.5 self-start text-body-sm text-ink-secondary hover:text-ink"
+        className="touch-link inline-flex min-h-10 items-center gap-1.5 self-start text-body-sm text-ink-secondary hover:text-ink"
       >
         <ArrowLeft aria-hidden className="size-4" />
         All users
@@ -197,7 +197,7 @@ export default async function AdminUserPage({
               <AdminTd>
                 <Link
                   href={`/admin/reports/${verdict.report_id}`}
-                  className="touch-link font-medium hover:underline"
+                  className="touch-link min-w-11 font-medium hover:underline"
                 >
                   #{verdict.report_id}
                 </Link>

@@ -197,7 +197,7 @@ export function ReportForm({
     <div className="flex w-full max-w-xl flex-col gap-5">
       <Link
         href={`/history/${transactionId}`}
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-brand hover:underline"
       >
         <ArrowLeft aria-hidden className="size-4" />
         Back to the chat

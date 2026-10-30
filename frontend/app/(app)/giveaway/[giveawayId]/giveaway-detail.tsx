@@ -312,7 +312,7 @@ export function GiveawayDetail({
     <div className="flex flex-col gap-7 pb-6">
       <Link
         href="/giveaway"
-        className="flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
+        className="touch-link flex w-fit items-center gap-1.5 text-body-sm font-medium text-ink-secondary hover:text-ink-brand"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("giveaway.back")}

@@ -316,7 +316,7 @@ export function PostComposer({
         </h2>
         <Link
           href="/inventory/new"
-          className="flex items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
+          className="touch-link flex items-center gap-1 text-body-sm font-medium text-ink-brand hover:underline"
         >
           <Plus aria-hidden className="size-4" />
           Add

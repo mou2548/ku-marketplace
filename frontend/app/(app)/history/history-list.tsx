@@ -139,7 +139,7 @@ export function HistoryList({
                 aria-pressed={lens === item}
                 onClick={() => setLens(item)}
                 className={cn(
-                  "min-h-11 shrink-0 border-b-2 px-0.5 text-body transition-colors duration-[--dur-fast]",
+                  "min-h-11 min-w-11 shrink-0 border-b-2 px-0.5 text-body transition-colors duration-[--dur-fast]",
                   lens === item
                     ? "border-brand font-semibold text-ink"
                     : "border-transparent text-ink-muted hover:text-ink",
@@ -192,7 +192,7 @@ export function HistoryList({
             <h2 className="text-[1.125rem] font-semibold">{t("history.giveaways")}</h2>
             <Link
               href="/giveaway"
-              className="text-body-sm font-medium text-ink-brand hover:underline"
+              className="touch-link text-body-sm font-medium text-ink-brand hover:underline"
             >{t("history.seeAll")}</Link>
           </div>
           <ul className="flex flex-col gap-2">
