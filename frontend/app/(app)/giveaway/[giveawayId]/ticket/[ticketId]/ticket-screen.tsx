@@ -10,6 +10,7 @@ import { Clock, Gift, MapPin } from "lucide-react";
 
 import { Button } from "@/components/kit/button";
 import { ChatThread } from "@/components/kit/chat-thread";
+import { formatRemaining } from "@/components/kit/countdown-pill";
 import { Overlay, OverlayTrigger } from "@/components/kit/overlay";
 import { PostImage } from "@/components/kit/post-image";
 import { QrTicket } from "@/components/kit/qr-ticket";
@@ -23,6 +24,7 @@ import { unwrapAction } from "@/lib/action-result";
 import { forfeitTicket, generateTicketQr } from "@/lib/actions/giveaways";
 import type { GiveawayTicket } from "@/lib/api/types";
 import { TICKET_STATUS } from "@/lib/status";
+import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 
 export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
   const t = getCopy();
@@ -30,6 +32,17 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
   const router = useRouter();
   const toast = useToast();
   const [forfeiting, setForfeiting] = useState(false);
+
+  // The API refuses a code before the window opens and after it closes. Asking
+  // anyway left an empty box with a one-line error under it, and the page never
+  // asked again when the window opened. So the code is only requested inside the
+  // window: `QrTicket` asks once when it appears, which is the moment it opens.
+  const now = useNow(1000);
+  const known = now !== UNKNOWN_TIME;
+  const startMs = giveaway.pickup_start ? Date.parse(giveaway.pickup_start) : null;
+  const endMs = giveaway.pickup_deadline ? Date.parse(giveaway.pickup_deadline) : null;
+  const notStarted = known && startMs !== null && now < startMs;
+  const ended = known && endMs !== null && now >= endMs;
 
   const generate = useCallback(
     () => unwrapAction(generateTicketQr(giveaway.giveaway_id, ticket.ticket_id)),
@@ -93,7 +106,32 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
           </div>
         </header>
 
-        {ticket.status === "Waiting" ? (
+        {ticket.status !== "Waiting" ? (
+          <TicketOutcome status={ticket.status} />
+        ) : !known ? null : notStarted && startMs !== null ? (
+          <Surface shape="panel" className="flex flex-col items-center gap-3 p-6 text-center">
+            <Clock aria-hidden className="size-8 text-ink-muted" />
+            <h2 className="text-h3">{t("giveaway.qrNotYetTitle")}</h2>
+            <p className="max-w-sm text-body text-ink-secondary">
+              {t("giveaway.qrNotYetBody", { date: formatDateTime(new Date(startMs)) })}
+            </p>
+            <p
+              data-numeric
+              aria-live="off"
+              className="text-body-lg font-semibold"
+              suppressHydrationWarning
+            >
+              {t("giveaway.qrOpensIn", { time: formatRemaining(startMs - now) })}
+            </p>
+          </Surface>
+        ) : ended && endMs !== null ? (
+          <Notice tone="warning">
+            <p className="text-body font-medium">{t("giveaway.pickupEndedTitle")}</p>
+            <p className="text-body-sm">
+              {t("giveaway.pickupEndedBody", { date: formatDateTime(new Date(endMs)) })}
+            </p>
+          </Notice>
+        ) : (
           <Surface shape="panel" className="overflow-hidden p-0">
             <div className="p-5">
               <QrTicket once onGenerate={generate} />
@@ -103,8 +141,6 @@ export function TicketScreen({ ticket }: { ticket: GiveawayTicket }) {
               <span>{t("giveaway.ticketHint")}</span>
             </div>
           </Surface>
-        ) : (
-          <TicketOutcome status={ticket.status} />
         )}
 
         <Surface shape="card" className="flex flex-col gap-2.5 p-4">

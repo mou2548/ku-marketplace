@@ -5,7 +5,7 @@ import { getCopy } from "@/lib/copy";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CircleCheck, Info, Lock, ScanLine, Users } from "lucide-react";
+import { ArrowLeft, CircleCheck, Info, Lock, ScanLine, Trash2, Users } from "lucide-react";
 
 import { ActionBar } from "@/components/kit/action-bar";
 import { Button, LinkButton } from "@/components/kit/button";
@@ -20,7 +20,7 @@ import { Notice } from "@/components/patterns/notice";
 import { TrustBadge } from "@/components/kit/trust-badge";
 import { useToast } from "@/components/kit/toast";
 import { unwrapAction } from "@/lib/action-result";
-import { closeGiveawayRegistration, selectRecipients } from "@/lib/actions/giveaways";
+import { closeGiveawayRegistration, deleteGiveaway, selectRecipients } from "@/lib/actions/giveaways";
 import type { RecipientRow } from "@/lib/api/giveaways";
 import type { GiveawayPost } from "@/lib/api/types";
 import { ALLOCATION_METHOD, TICKET_STATUS } from "@/lib/status";
@@ -381,6 +381,30 @@ export function ManageGiveaway({
           triggerProps={{ variant: "ghost", size: "sm" }}
         />
       ) : null}
+
+      <section className="flex flex-col items-start gap-2">
+        <h2 className="text-body font-semibold">Delete giveaway</h2>
+        <p className="text-caption text-ink-secondary">
+          {entrants.length > 0
+            ? "This giveaway cannot be deleted because someone has already registered, even if they later forfeit."
+            : "You can delete this giveaway before anyone registers. Your item will stay in your inventory."}
+        </p>
+        <ConfirmButton
+          title="Delete this giveaway?"
+          description="This permanently removes the giveaway. Your item will stay in your inventory. Deletion is only allowed if nobody has ever registered."
+          confirmLabel="Delete giveaway"
+          doneMessage="Giveaway deleted."
+          icon={<Trash2 aria-hidden className="size-4" />}
+          onConfirm={() => unwrapAction(deleteGiveaway(giveaway.giveaway_id))}
+          onDone={() => {
+            toast.success("Giveaway deleted.");
+            router.replace("/giveaway");
+            router.refresh();
+          }}
+          trigger={<><Trash2 aria-hidden className="size-4" />Delete giveaway</>}
+          triggerProps={{ variant: "danger", isDisabled: entrants.length > 0 }}
+        />
+      </section>
 
       <ActionBar>
         {/* `QrScanner` is a full-screen component (design principle 7) and

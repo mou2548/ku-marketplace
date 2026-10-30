@@ -625,6 +625,11 @@ const COPY: { [key: string]: CopyNode } = {
       "collectionTicket": "Collection ticket",
       "selected": "You were selected",
       "ticketHint": "Open this QR when you meet the giver. One code lasts 15 minutes; if it expires, reopen this ticket for a new one.",
+      "qrNotYetTitle": "Your QR opens when pickup starts",
+      "qrNotYetBody": "Pickup starts {date}. This page shows the code by itself at that time.",
+      "qrOpensIn": "Opens in {time}",
+      "pickupEndedTitle": "The pickup window has ended",
+      "pickupEndedBody": "This ticket can no longer be collected. The window closed {date}.",
       "giverNotes": "Notes from the giver"
     },
     "notifications": {

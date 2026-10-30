@@ -337,6 +337,39 @@ export class GiveawaysService {
     );
   }
 
+  async remove(id: string, giverId: number) {
+    const giveawayId = this.id(id, 'giveaway');
+    return this.prisma.$transaction(async (tx) => {
+      // Share join's row lock so registration and deletion cannot race.
+      await tx.$queryRaw`
+        SELECT "giveaway_id"
+        FROM "Giveaway_Post"
+        WHERE "giveaway_id" = ${giveawayId}
+        FOR UPDATE
+      `;
+      const giveaway = await tx.giveawayPost.findUnique({
+        where: { giveawayId },
+      });
+      if (!giveaway) throw new NotFoundException('Giveaway not found');
+      if (giveaway.giverId !== giverId) {
+        throw new ForbiddenException('Only the giver can delete this giveaway');
+      }
+      // Count every historical registration, including forfeited/expired tickets.
+      if (await tx.giveawayTicket.count({ where: { giveawayId } })) {
+        throw new ConflictException(
+          'This giveaway cannot be deleted because someone has already registered',
+        );
+      }
+      await tx.chatMessage.deleteMany({
+        where: { room: { giveawayId } },
+      });
+      await tx.chatRoom.deleteMany({ where: { giveawayId } });
+      await tx.giveawayImage.deleteMany({ where: { giveawayId } });
+      await tx.giveawayPost.delete({ where: { giveawayId } });
+      return { giveaway_id: this.label('giveaway', giveawayId) };
+    });
+  }
+
   async join(id: string, receiverId: number) {
     const giveawayId = this.id(id, 'giveaway');
     return this.prisma.$transaction(async (tx) => {

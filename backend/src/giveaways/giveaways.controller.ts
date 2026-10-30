@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -46,6 +47,13 @@ export class GiveawaysController {
   @ResponseMessage('รายละเอียดโพสต์แจกของสำเร็จ')
   detail(@Param('id') id: string) {
     return this.giveawaysService.detail(id);
+  }
+
+  @Delete('giveaways/:id')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Giveaway deleted successfully')
+  remove(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.giveawaysService.remove(id, user.userId);
   }
 
   @Post('giveaways/:id/join')

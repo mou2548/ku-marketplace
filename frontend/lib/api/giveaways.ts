@@ -278,6 +278,12 @@ export async function joinGiveaway(
   return toGiveawayTicket(raw, giveaway);
 }
 
+/** `DELETE /giveaways/{id}` — owner only, before any historical registration. */
+export async function deleteGiveaway(giveawayId: number): Promise<void> {
+  const init = await authedInit();
+  await apiFetch(`/giveaways/${giveawayId}`, { ...init, method: "DELETE" });
+}
+
 /**
  * `POST /giveaways/{id}/close-registration` — Moves `register_deadline` to now.
  * Random/Manual can then allocate recipients; FirstCome moves to collection
