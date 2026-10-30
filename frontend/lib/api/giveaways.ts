@@ -342,7 +342,18 @@ export async function getMyTicket(
   giveaway: GiveawayPost,
   viewerId: number,
 ): Promise<GiveawayTicket | undefined> {
-  const rows = await getRecipients(giveawayId);
+  return ticketFromRoster(await getRecipients(giveawayId), giveaway, viewerId);
+}
+
+/**
+ * The viewer's ticket out of a roster already fetched, for a caller that needs
+ * the roster for something else too and should not ask for it twice.
+ */
+export function ticketFromRoster(
+  rows: RecipientRow[],
+  giveaway: GiveawayPost,
+  viewerId: number,
+): GiveawayTicket | undefined {
   const mine = rows.find((row) => row.receiver_id === viewerId);
   if (!mine) return undefined;
   return {
