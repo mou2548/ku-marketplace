@@ -19,3 +19,27 @@ export function isSlipRejected(
     !tx.payment_confirmed_by_seller_at
   );
 }
+
+/**
+ * A Cancelled deal that still owes the buyer money back: the seller had
+ * confirmed the payment, or a refund slip is already on file. A deal cancelled
+ * by agreement while the buyer's slip stood rejected owes nothing (backend
+ * `cancelTransaction`), even though the buyer's upload time is still set.
+ */
+export function isRefundOwedOnCancelled(
+  tx: Pick<
+    Transaction,
+    | "status"
+    | "payment_confirmed_by_buyer_at"
+    | "payment_confirmed_by_seller_at"
+    | "refund_submitted_at"
+    | "refund_confirmed_by_buyer"
+  >,
+): boolean {
+  return (
+    tx.status === "Cancelled" &&
+    !!tx.payment_confirmed_by_buyer_at &&
+    (!!tx.payment_confirmed_by_seller_at || !!tx.refund_submitted_at) &&
+    !tx.refund_confirmed_by_buyer
+  );
+}

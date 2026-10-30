@@ -69,6 +69,18 @@ test('a refund slip on a Pending Refund deal hands the turn to the buyer', () =>
   assert.equal(status.resolveTransactionActor(owed, 'seller').action, 'refund-slip');
 });
 
+test('a deal cancelled after a rejected slip owes nothing back', () => {
+  const cancelled = rejected({
+    status: 'Cancelled',
+    cancellation_response: 'Approved',
+    cancellation_requested_at: '2026-10-21T08:00:00.000Z',
+  });
+  assert.equal(slipState.isRefundOwedOnCancelled(cancelled), false);
+  assert.doesNotMatch(describeDeal(cancelled, BUYER, []).headline, /refund/i);
+  const confirmed = { ...cancelled, payment_confirmed_by_seller_at: '2026-10-20T10:00:00.000Z' };
+  assert.equal(slipState.isRefundOwedOnCancelled(confirmed), true);
+});
+
 test('a rejected slip runs no refund clock', () => {
   assert.equal(deadlineFor(refunded()), undefined);
   assert.equal(deadlineFor(rejected()), undefined);

@@ -29,10 +29,10 @@
 import type { AppointmentCardData, Transaction } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
 import { formatDate, formatDateTime } from "@/lib/date-format";
-import { isSlipRejected } from "@/lib/slip-state";
+import { isRefundOwedOnCancelled, isSlipRejected } from "@/lib/slip-state";
 import { requiresPayment, type Party, type Tone } from "@/lib/status";
 
-export { isSlipRejected };
+export { isRefundOwedOnCancelled, isSlipRejected };
 
 export type DealFactKind =
   | "payment"
@@ -167,10 +167,7 @@ export function describeDeal(
 
   // `Cancelled` with money still owed is handled as a refund below, the same
   // way the room's action card treats it.
-  const refundOwedOnCancelled =
-    tx.status === "Cancelled" &&
-    !!tx.payment_confirmed_by_buyer_at &&
-    !tx.refund_confirmed_by_buyer;
+  const refundOwedOnCancelled = isRefundOwedOnCancelled(tx);
 
   if (tx.status === "Cancelled" && !refundOwedOnCancelled && !tx.active_report_id) {
     const by = tx.cancellation_requested_by;

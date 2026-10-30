@@ -260,6 +260,30 @@ describe('TransactionService after a rejected slip', () => {
     );
     expect(writes()).toBe(0);
   });
+
+  it('an approved cancellation ends the deal with nothing owed back', async () => {
+    const { service, tx } = setup(
+      rejected({ cancellations: [cancellation()] }),
+    );
+    await service.respondToCancellation(7, 2, { response: 'Approved' });
+    expect(tx.transaction.update).toHaveBeenCalledWith({
+      where: { transactionId: 7 },
+      data: { status: 'Cancelled' },
+    });
+    expect(tx.transactionRefund.upsert).not.toHaveBeenCalled();
+    expect(tx.post.update).toHaveBeenCalled();
+  });
+
+  it('an upheld rejected-cancellation report still owes the buyer a refund', async () => {
+    const { service, tx } = setup(
+      rejected({ cancellations: [cancellation({ response: 'Rejected' })] }),
+    );
+    await service.settleReportedTransaction(30, true);
+    expect(tx.transaction.update).toHaveBeenCalledWith({
+      where: { transactionId: 7 },
+      data: { status: 'Pending Refund' },
+    });
+  });
 });
 
 describe('TransactionService payment and cancellation rows', () => {

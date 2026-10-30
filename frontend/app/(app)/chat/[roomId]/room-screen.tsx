@@ -87,7 +87,7 @@ import type {
   UserSummary,
 } from "@/lib/api/types";
 import { deriveAppointmentView } from "@/lib/appointment";
-import { describeDeal, isSlipRejected } from "@/lib/deal-progress";
+import { describeDeal, isRefundOwedOnCancelled, isSlipRejected } from "@/lib/deal-progress";
 import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
@@ -957,6 +957,11 @@ export function RoomScreen({
             </p>
           </div>
         ) : null}
+        {/* Accepting while the slip stands rejected settles it as unpaid: the
+            backend cancels with nothing owed back. */}
+        {!asked && isSlipRejected(transaction) ? (
+          <p className="mb-3 text-body-sm text-tone-warning-fg">{t("deal.acceptAfterRejectedSlip")}</p>
+        ) : null}
         {!asked ? <div className="flex gap-3">
           <Button isLoading={busy} onPress={() => act(() => unwrapAction(answerCancellation(transaction.transaction_id, "accept")), "Request accepted", "Could not respond")}>Accept</Button>
           <Button variant="danger" isLoading={busy} onPress={() => act(() => unwrapAction(answerCancellation(transaction.transaction_id, "reject")), "Sent for review", "Could not respond")}>Reject</Button>
@@ -978,7 +983,7 @@ export function RoomScreen({
         </ActionCard>
       );
     }
-    if (transaction.status === "Pending Refund" || (transaction.status === "Cancelled" && transaction.payment_confirmed_by_buyer_at && !transaction.refund_confirmed_by_buyer)) {
+    if (transaction.status === "Pending Refund" || isRefundOwedOnCancelled(transaction)) {
       return returnAndRefundAction();
     }
     // A rejected slip waits on a new one from the buyer.
@@ -1565,6 +1570,9 @@ export function RoomScreen({
             </>
           }
         >
+          {viewer === "buyer" && isSlipRejected(transaction) ? (
+            <p className="mb-3 text-body-sm text-tone-warning-fg">{t("deal.cancelAfterRejectedSlip")}</p>
+          ) : null}
           <TextInput
             label={t("deal.reason")}
             value={cancelReason}
