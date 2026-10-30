@@ -128,10 +128,12 @@ function ReceiptBubble({ url, label }: { url: string; label: string }) {
   const t = getCopy();
   return (
     <PhotoViewerTrigger>
-      <button
-        type="button"
+      {/* AriaButton, not <button>: the trigger opens the viewer through a
+          press event only react-aria's Button receives. A plain button
+          rendered and did nothing when tapped. */}
+      <AriaButton
         aria-label={t("chat.viewFullSize")}
-        className="block w-[min(15rem,60vw)] overflow-hidden rounded-card bg-surface shadow-raised"
+        className="block w-[min(15rem,60vw)] overflow-hidden rounded-card bg-surface shadow-raised outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <span className="flex items-center gap-1.5 px-3 py-2 text-meta font-semibold text-ink-brand">
           <ReceiptText aria-hidden className="size-3.5" />
@@ -144,7 +146,7 @@ function ReceiptBubble({ url, label }: { url: string; label: string }) {
           height={640}
           className="max-h-64 w-full bg-surface-sunken object-contain"
         />
-      </button>
+      </AriaButton>
       <PhotoViewer src={url} alt={label} title={label} />
     </PhotoViewerTrigger>
   );
@@ -176,11 +178,10 @@ function PhotoGrid({ urls, mine }: { urls: string[]; mine: boolean }) {
         const alone = shown.length > 1 && shown.length % 2 === 1 && idx === shown.length - 1;
         return (
           <PhotoViewerTrigger key={url}>
-            <button
-              type="button"
+            <AriaButton
               aria-label={t("chat.viewFullSize")}
               className={cn(
-                "block overflow-hidden rounded-control",
+                "block overflow-hidden rounded-control outline-none focus-visible:ring-2 focus-visible:ring-brand",
                 shown.length === 1 && (mine ? "justify-self-end" : "justify-self-start"),
                 alone &&
                   (mine ? "col-span-2 justify-self-end" : "col-span-2 justify-self-start"),
@@ -194,7 +195,7 @@ function PhotoGrid({ urls, mine }: { urls: string[]; mine: boolean }) {
                 className="aspect-square object-cover shadow-raised"
                 onError={() => setFailed((prev) => new Set(prev).add(url))}
               />
-            </button>
+            </AriaButton>
             <PhotoViewer src={url} alt="" title={t("chat.photo")} />
           </PhotoViewerTrigger>
         );
