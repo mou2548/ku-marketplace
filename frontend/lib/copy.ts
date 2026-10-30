@@ -657,6 +657,7 @@ const COPY: { [key: string]: CopyNode } = {
     },
     "chat": {
       "photosExpired": "Photos from this message have expired and are no longer shown.",
+      "photoUnavailable": "This photo could not be loaded.",
       "viewFullSize": "View photo full size",
       "photo": "Photo",
       "attachImages": "Attach images, up to 5",
