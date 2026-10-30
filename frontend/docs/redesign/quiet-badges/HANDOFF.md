@@ -1,6 +1,6 @@
 # Quiet badges: handoff for a new session
 
-Updated 2026-10-31. Read this first, then `plan.md` in this folder.
+Updated 2026-10-30. Read this first, then `plan.md` in this folder.
 
 ## Where things are
 
@@ -43,29 +43,43 @@ Updated 2026-10-31. Read this first, then `plan.md` in this folder.
 
 ## Status
 
-- Implemented in the working tree: tokens (`--signal-*`, `--action-*`), `lib/badge-tier.ts`
-  with tests, `lifecycle` on every status map entry, `StatusBadge`, `Notice`,
-  `Button`, chip components, about 20 hand-painted boxes, 9 stripes and 4 rails removed.
-- Was in progress when this note was written: the per-viewer tier, the admin and
-  delete-account rulings, and the visual gate.
-- Last known checks: lint, tsc and `npm test` (76/76) passed before the rulings.
+Updated 2026-10-30 after the reviewer pass.
+
+- Committed on `feature/giveaway-admin-quiet-badges` (not pushed):
+  - `4beacb7` feat(frontend): quieter badges, message boxes and buttons
+  - `8f70cc3` feat(frontend): giveaway phone tab and URL-driven tabs (the
+    owner's changes from another chat)
+  - plus the docs commit that carries this update.
+- Reviewer fixes inside `4beacb7`: countdowns are act-now only for the side
+  that must move (`viewerActsOnDeadline`, `CountdownPill viewerActs`); the
+  deal headline in a room is never a second blocking strip, and an admin
+  review on a cancelled deal is no longer shown as neutral.
+- Checks on each committed tree: lint, `tsc`, `npm test` 84/84. Spot check
+  on an isolated stack (43000/44000) at 360 and 1280, light and dark: no
+  horizontal scroll. Stack torn down.
+- **Not committed, waiting for the owner:** the behaviour changes in
+  `app/(app)/giveaway/[giveawayId]/manage/manage-giveaway.tsx` (pick the
+  remaining places after a first selection, stay on the page after
+  confirming, chosen entrants first, back link to `?tab=given`, a Details
+  button). Their origin is unknown. Also, the backend `select` is one-shot:
+  it marks every other entrant Not selected and closes the giveaway. So the
+  "You can pick N more" path can never work as written. Only the rail
+  removal from that file is committed.
+- `frontend/CLAUDE.md` is still modified and uncommitted (by design).
 
 ## Next steps
 
-1. Check `git status` and `git diff --stat` on `feature/giveaway-admin-quiet-badges`;
-   confirm the rulings above are all applied (`lib/badge-tier.ts`, its tests).
-2. Run lint, `npx tsc --noEmit`, `npm test` under Node 20
-   (`~/.nvm/versions/node/v20.20.2/bin`).
-3. Visual gate on an isolated stack (own ports, not 3000/4000; recipe:
-   `git show redesign/full:frontend/docs/redesign/stack.md` and
-   `redesign/full:frontend/scripts/redesign-stack/`): compare with `origin/main` at
-   360/768/1280, light and dark; only badges, boxes and buttons may differ; no
-   horizontal scroll; axe clean. Tear the stack down.
-4. A reviewer pass (`code-review` at medium), then commit.
-5. Start the owner's dev servers for a look: backend `npm run start:dev` in
-   `backend/` (port 4000), frontend `npm run dev` in `frontend/` (port 3000), both
-   with Node 20.
-6. Push and open the PR into `develop` only after the owner says so.
+1. Owner: decide on the uncommitted `manage-giveaway.tsx` changes (see
+   above). Commit them, rework them or discard them.
+2. Owner questions left open: the light secondary button border `#b9c3be`
+   is 1.81:1 on white (below the 3:1 UI-boundary guideline, but it is the
+   approved value). `GIVEAWAY_STATUS.Closed` is `ended` while the pickup
+   phase is `open`. The badge result is the same today (no one acts on
+   either), but the two tables disagree.
+3. Start the owner's dev servers for a look: backend `npm run start:dev` in
+   `backend/` (port 4000), frontend `npm run dev` in `frontend/` (port 3000),
+   both with Node 20.
+4. Push and open the PR into `develop` only after the owner says so.
 
 ## Files in this folder
 
