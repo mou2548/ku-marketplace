@@ -1045,12 +1045,22 @@ export class TransactionService {
    * A cancellation that takes effect: Pending Refund if money or goods have
    * moved, otherwise Cancelled. The stock goes back on the market unless the
    * buyer is still holding the goods.
+   *
+   * `rejectedSlipIsUnpaid`: the seller agreed to cancel while the buyer's
+   * latest slip stood rejected, so both sides accept that no money moved and
+   * nothing is owed back. An admin ruling does not pass it: an upheld report
+   * still owes the buyer a refund.
    */
-  private async cancelTransaction(tx: Db, transaction: TransactionRow) {
+  private async cancelTransaction(
+    tx: Db,
+    transaction: TransactionRow,
+    { rejectedSlipIsUnpaid = false } = {},
+  ) {
     const { transactionId } = transaction;
+    const unpaid = rejectedSlipIsUnpaid && this.slipRejected(transaction);
     const owed =
-      transaction.paymentConfirmedByBuyerAt ||
-      transaction.itemReceivedConfirmedByBuyerAt;
+      transaction.itemReceivedConfirmedByBuyerAt ||
+      (!unpaid && transaction.paymentConfirmedByBuyerAt);
     await tx.transaction.update({
       where: { transactionId },
       data: {
@@ -1140,7 +1150,9 @@ export class TransactionService {
   /**
    * §8.7 — the other party answers.
    *
-   *   Approved  → Cancelled, and the item goes back on the market.
+   *   Approved  → Cancelled, and the item goes back on the market. Pending
+   *               Refund instead once money or goods moved; a slip the seller
+   *               rejected does not count as money moved.
    *   Rejected  → NOT cancelled and NOT auto-resolved. The dispute goes to an
    *               admin: a Transaction report is opened, and while it stays
    *               open the confirm buttons stay locked.
@@ -1169,7 +1181,9 @@ export class TransactionService {
         data: { response: dto.response, respondedAt: new Date() },
       });
       if (dto.response === CancellationResponse.Approved) {
-        await this.cancelTransaction(tx, transaction);
+        await this.cancelTransaction(tx, transaction, {
+          rejectedSlipIsUnpaid: true,
+        });
         return;
       }
       const report = await tx.report.create({

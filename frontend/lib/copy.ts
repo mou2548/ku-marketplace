@@ -539,6 +539,8 @@ const COPY: { [key: string]: CopyNode } = {
       "requestCancellation": "Request cancellation",
       "cancelTitle": "Request to cancel this deal",
       "cancelBody": "The other side has 72 hours to respond. If they do not, it goes to an admin.",
+      "cancelAfterRejectedSlip": "Your last payment slip was rejected. If the seller accepts, the deal ends with no refund. If you did transfer the money, upload a new slip or report the deal instead.",
+      "acceptAfterRejectedSlip": "The last payment slip was rejected, so accepting ends the deal with no refund.",
       "keepDeal": "Keep the deal",
       "sendCancelRequest": "Send cancellation request",
       "reason": "Reason",

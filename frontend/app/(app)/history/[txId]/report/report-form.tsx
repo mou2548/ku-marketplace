@@ -17,6 +17,7 @@ import { useToast } from "@/components/kit/toast";
 import { useStatusText } from "@/lib/status-text";
 import { unwrapAction } from "@/lib/action-result";
 import { createReport } from "@/lib/actions/reports";
+import { isRefundOwedOnCancelled } from "@/lib/slip-state";
 import { isReportDetailsValid, REPORT_DETAILS_MIN } from "@/lib/report-rules";
 import { uploadFile } from "@/lib/actions/uploads";
 import type { ChatMessage, Transaction } from "@/lib/api/types";
@@ -103,7 +104,7 @@ const REASONS: {
     label: "Agreed to a refund, then it never came",
     occursWhen: "After both sides agreed to cancel and to refund it themselves",
     evidence: "The chat history where the refund was agreed",
-    eligible: (tx) => tx.status === "Cancelled" && !!tx.payment_confirmed_by_buyer_at,
+    eligible: (tx) => isRefundOwedOnCancelled(tx),
   },
 ];
 
