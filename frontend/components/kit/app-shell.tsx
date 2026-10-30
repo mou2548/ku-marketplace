@@ -1,7 +1,7 @@
 "use client";
 
 import { getCopy } from "@/lib/copy";
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,6 +19,15 @@ import {
 } from "lucide-react";
 
 import { logout } from "@/lib/actions/auth";
+import {
+  DEALS_SEEN_EVENT,
+  parseSeenKeys,
+  pruneSeenKeys,
+  readSeenCookie,
+  serializeSeenKeys,
+  unseenCount,
+  writeSeenKeys,
+} from "@/lib/deal-badge";
 import { cn } from "@/lib/utils";
 
 import { Button, LinkButton } from "./button";
@@ -95,9 +104,30 @@ function Dot({ value, className }: { value?: number; className?: string }) {
   );
 }
 
+/** Re-read the cookie in this tab after a write, and when the tab comes back
+ * (another tab may have opened History meanwhile). */
+function subscribeSeen(onChange: () => void) {
+  const onVisible = () => document.visibilityState === "visible" && onChange();
+  window.addEventListener(DEALS_SEEN_EVENT, onChange);
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    window.removeEventListener(DEALS_SEEN_EVENT, onChange);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
+}
+
 export interface AppShellProps {
   children: React.ReactNode;
   badges?: NavBadges;
+  /**
+   * One key per deal waiting on the viewer, at its current step
+   * (`lib/deal-badge`). Null when the deals could not be read.
+   */
+  dealKeys?: string[] | null;
+  /** The seen-deals cookie as the server read it, for the first paint. */
+  seenDeals?: string;
+  /** That cookie's name; per account. */
+  seenCookie?: string;
   user?: { name: string; avatarUrl?: string | null; isAdmin?: boolean };
   /** Set for a suspended or banned account: it gets the restricted shell. */
   restriction?: Restriction | null;
@@ -105,12 +135,41 @@ export interface AppShellProps {
 
 export function AppShell({
   children,
-  badges = {},
+  badges: serverBadges = {},
+  dealKeys = null,
+  seenDeals = "",
+  seenCookie,
   user,
   restriction,
 }: AppShellProps) {
   const t = getCopy();
   const pathname = usePathname() ?? "";
+
+  /**
+   * The History dot goes out once the History list has been opened and comes
+   * back when a deal waits at a step not seen there (lib/deal-badge.ts). The
+   * list page writes the cookie (history/mark-deals-seen.tsx); here it is
+   * read, and pruned to the deals still waiting, so a deal that leaves the
+   * list and later returns counts as new.
+   */
+  const onHistoryList = pathname === "/history";
+  const seenRaw = useSyncExternalStore(
+    subscribeSeen,
+    () => (seenCookie ? readSeenCookie(seenCookie) : ""),
+    () => seenDeals,
+  );
+  const seen = parseSeenKeys(seenRaw);
+  const pruned = dealKeys ? serializeSeenKeys(pruneSeenKeys(seen, dealKeys)) : null;
+  useEffect(() => {
+    // On the list the page writes the cookie itself; this effect runs after
+    // the page's and would overwrite it with the older keys.
+    if (onHistoryList || !seenCookie || pruned === null || pruned === seenRaw) return;
+    writeSeenKeys(seenCookie, parseSeenKeys(pruned));
+  }, [onHistoryList, seenCookie, pruned, seenRaw]);
+  const badges: NavBadges = {
+    ...serverBadges,
+    deals: onHistoryList ? 0 : unseenCount(dealKeys ?? [], seen),
+  };
   /**
    * The drawer has to be told to close.
    *

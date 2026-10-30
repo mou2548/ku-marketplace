@@ -5,8 +5,11 @@ import { getGiveaways, getMyTicket } from "@/lib/api/giveaways";
 import { getCurrentUserId } from "@/lib/api/session";
 import { getTransactions } from "@/lib/api/transactions";
 import type { GiveawayTicket } from "@/lib/api/types";
+import { dealBadgeKeys, dealsSeenCookie } from "@/lib/deal-badge";
+import { buildInbox } from "@/lib/inbox";
 
 import { HistoryList } from "./history-list";
+import { MarkDealsSeen } from "./mark-deals-seen";
 
 /**
  * E8 — history in one place.
@@ -53,18 +56,24 @@ export default async function DealsPage({
   ).filter((ticket): ticket is GiveawayTicket => ticket !== undefined);
 
   return (
-    <HistoryList
-      transactions={transactions.map((transaction) => ({
-        ...transaction,
-        // Reuse the server's text during hydration; browser ICU data can differ.
-        created_date_label: formatDate(transaction.created_at),
-      }))}
-      tickets={tickets}
-      viewerId={viewerId}
-      initialStatus={typeof status === "string" ? status : undefined}
-      // A new ?status= on the same route (the tab bar, another shortcut)
-      // remounts the list so its filter follows the URL.
-      key={typeof status === "string" ? status : "all"}
-    />
+    <>
+      <MarkDealsSeen
+        cookie={dealsSeenCookie(viewerId)}
+        keys={dealBadgeKeys(buildInbox(transactions, [], viewerId).yours)}
+      />
+      <HistoryList
+        transactions={transactions.map((transaction) => ({
+          ...transaction,
+          // Reuse the server's text during hydration; browser ICU data can differ.
+          created_date_label: formatDate(transaction.created_at),
+        }))}
+        tickets={tickets}
+        viewerId={viewerId}
+        initialStatus={typeof status === "string" ? status : undefined}
+        // A new ?status= on the same route (the tab bar, another shortcut)
+        // remounts the list so its filter follows the URL.
+  key={typeof status === "string" ? status : "all"}
+      />
+    </>
   );
 }
