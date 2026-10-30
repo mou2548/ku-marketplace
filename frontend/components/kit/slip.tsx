@@ -11,6 +11,12 @@ import { Button as AriaButton } from "react-aria-components";
 import { AlertTriangle, Check, ImagePlus, RotateCcw, Send, X, ZoomIn } from "lucide-react";
 
 import { isDecodableImage } from "@/lib/image-check";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_BEFORE_CONVERT_BYTES,
+  needsConversion,
+  prepareImageForUpload,
+} from "@/lib/image-prepare";
 import { cn } from "@/lib/utils";
 
 import { Notice } from "@/components/patterns/notice";
@@ -306,7 +312,10 @@ export function SlipUploader({
 
   async function handleFile(file: File) {
     const pick = ++pickRef.current;
-    if (file.size > MAX_BYTES) {
+    // A GIF or SVG becomes a PNG before it is sent, so its size is judged after
+    // that; the ceiling here only stops a huge file being decoded at all.
+    const limit = needsConversion(file) ? MAX_BEFORE_CONVERT_BYTES : MAX_BYTES;
+    if (file.size > limit) {
       setChecking(false);
       setError(t("slip.errorTooLarge"));
       return;
@@ -316,15 +325,28 @@ export function SlipUploader({
     setChecking(true);
     const isImage = await isDecodableImage(file);
     if (pick !== pickRef.current) return;
+    let ready: File | null = null;
+    if (isImage) {
+      try {
+        ready = await prepareImageForUpload(file);
+      } catch {
+        ready = null;
+      }
+      if (pick !== pickRef.current) return;
+    }
     setChecking(false);
-    if (!isImage) {
+    if (!ready) {
       setError(t("slip.errorNotImage"));
+      return;
+    }
+    if (ready.size > MAX_BYTES) {
+      setError(t("slip.errorTooLarge"));
       return;
     }
     setError(null);
     setReason(null);
     setSent(false);
-    setPending({ file, url: URL.createObjectURL(file) });
+    setPending({ file: ready, url: URL.createObjectURL(ready) });
   }
 
   async function send() {
@@ -417,7 +439,7 @@ export function SlipUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_IMAGE_TYPES}
         hidden
         aria-label={t("slip.choose")}
         onChange={(e) => {

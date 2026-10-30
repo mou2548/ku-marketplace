@@ -4,8 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 
 import { isDecodableImage } from "@/lib/image-check";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_BEFORE_CONVERT_BYTES,
+  needsConversion,
+  prepareImageForUpload,
+} from "@/lib/image-prepare";
 
-const ACCEPT = "image/jpeg,image/png,image/webp";
+const ACCEPT = ACCEPTED_IMAGE_TYPES;
 /** The upload endpoint's own limit. */
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -54,8 +60,12 @@ export function EvidencePicker({
   }, [files]);
 
   async function add(picked: File[]) {
-    const tooBig = picked.filter((file) => file.size > MAX_BYTES);
-    const sized = picked.filter((file) => file.size <= MAX_BYTES);
+    // A GIF or SVG is sent as a PNG, so its size is judged after that; this
+    // ceiling only stops a huge file being decoded at all.
+    const limitOf = (file: File) =>
+      needsConversion(file) ? MAX_BEFORE_CONVERT_BYTES : MAX_BYTES;
+    const tooBig = picked.filter((file) => file.size > limitOf(file));
+    const sized = picked.filter((file) => file.size <= limitOf(file));
     const room = Math.max(0, max - files.length);
     // Cut to the free slots before decoding: decoding is the expensive step,
     // so it only runs on files that could actually be kept, one at a time.
@@ -63,16 +73,24 @@ export function EvidencePicker({
     // The type is read from the file name; decoding is what proves a photo
     // (audit B04), so a renamed text file is turned away here, not by the API.
     const ok: File[] = [];
+    let oversized = 0;
     for (const file of candidates) {
-      if (await isDecodableImage(file)) ok.push(file);
+      if (!(await isDecodableImage(file))) continue;
+      try {
+        const ready = await prepareImageForUpload(file);
+        if (ready.size > MAX_BYTES) oversized += 1;
+        else ok.push(ready);
+      } catch {
+        // Unreadable once drawn: counted below as not a photo.
+      }
     }
-    const notImages = candidates.length - ok.length;
+    const notImages = candidates.length - ok.length - oversized;
     setError(
       notImages
         ? notImages === 1
           ? "1 file was not a photo and was left out."
           : `${notImages} files were not photos and were left out.`
-        : tooBig.length
+        : tooBig.length + oversized
           ? "Each photo must be 5MB or smaller."
           : sized.length > room
             ? `Up to ${max} photos.`

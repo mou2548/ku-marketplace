@@ -95,6 +95,11 @@ import { buildDealTimeline, type DealEvent } from "@/lib/deal-timeline";
 import { UNKNOWN_TIME, useNow } from "@/lib/use-now";
 import { deadlineFor } from "@/lib/inbox";
 import { isDecodableImage } from "@/lib/image-check";
+import {
+  MAX_BEFORE_CONVERT_BYTES,
+  needsConversion,
+  prepareImageForUpload,
+} from "@/lib/image-prepare";
 import { openReturnWindow } from "@/lib/return-window";
 import type { RoomSummary } from "@/lib/rooms";
 import {
@@ -611,7 +616,12 @@ export function RoomScreen({
     const picked = Array.from(files);
     // Size and the cap are free to check; decoding is not, so both run first
     // and only the survivors are decoded, one at a time.
-    const sized = picked.filter((file) => file.size <= MAX_ATTACH_BYTES);
+    // A GIF or SVG is sent as a PNG, so its size is judged after that; the
+    // ceiling here only stops a huge file being decoded at all.
+    const sized = picked.filter(
+      (file) =>
+        file.size <= (needsConversion(file) ? MAX_BEFORE_CONVERT_BYTES : MAX_ATTACH_BYTES),
+    );
     if (sized.length < picked.length) toast.error(t("errors.api.fileTooLarge"));
     const candidates = sized.slice(0, MAX_ATTACH_PHOTOS);
     if (sized.length > MAX_ATTACH_PHOTOS) toast.warning(t("deal.photoLimit"));
@@ -619,11 +629,20 @@ export function RoomScreen({
     setBusy(true);
     // Read the bytes, not the file name (audit B04).
     const selected: File[] = [];
+    let oversized = 0;
     for (const file of candidates) {
-      if (await isDecodableImage(file)) selected.push(file);
+      if (!(await isDecodableImage(file))) continue;
+      try {
+        const ready = await prepareImageForUpload(file);
+        if (ready.size > MAX_ATTACH_BYTES) oversized += 1;
+        else selected.push(ready);
+      } catch {
+        // Unreadable once drawn: counted below as not an image.
+      }
     }
-    const notImages = candidates.length - selected.length;
+    const notImages = candidates.length - selected.length - oversized;
     if (notImages) toast.error(t("chat.notAnImage", { count: notImages }));
+    if (oversized) toast.error(t("errors.api.fileTooLarge"));
     if (!selected.length) {
       setBusy(false);
       return;

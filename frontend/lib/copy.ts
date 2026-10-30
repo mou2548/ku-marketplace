@@ -717,7 +717,7 @@ const COPY: { [key: string]: CopyNode } = {
       "viewFull": "View full slip",
       "unavailable": "This slip could not be loaded.",
       "choose": "Choose a slip image",
-      "formats": "JPG or PNG, up to 5 MB",
+      "formats": "JPG, PNG, GIF, SVG or WebP, up to 5 MB",
       "uploading": "Uploading",
       "check": "Check the slip and confirm payment",
       "checkMembership": "Check the slip against the requested tier",

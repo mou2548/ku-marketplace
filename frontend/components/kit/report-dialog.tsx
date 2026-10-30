@@ -37,7 +37,7 @@ export function EvidenceNote({ canPickMessages }: { canPickMessages: boolean }) 
         <p className="font-medium">Evidence helps an admin decide faster</p>
         <p>
           Photos: screenshots or pictures of what happened, up to 5, each 5MB
-          or smaller (JPEG, PNG or WEBP).
+          or smaller (JPG, PNG, GIF, SVG or WebP).
           {canPickMessages
             ? " Chat messages: tick the exact messages the report is about."
             : " To point at chat messages, report from the chat with this person instead."}
