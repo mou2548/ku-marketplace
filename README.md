@@ -1,15 +1,136 @@
 # KU Marketplace
 
-Next.js frontend, NestJS API, PostgreSQL and Redis. Features include accounts,
-item listings, purchase/trade offers, transaction chat, appointments, giveaways,
-membership, reports and appeals.
+KU Marketplace is a full-stack marketplace backend + frontend built with NestJS, Next.js, Prisma, PostgreSQL, Redis, and Resend. The application supports item listings, marketplace trading, giveaways, memberships, transactions, reports, appeals, and OTP-based auth.
 
-## Local setup (fresh clone)
+## 1. Product Domain
 
-Requires Node.js **20.19 or newer within Node 20**, npm, Docker and Docker Compose.
-Run the following commands from the repository root:
+Primary public site:
+- https://ku-market.phumitada.com
 
-```sh
+Recommended public API entry point:
+- https://api.ku-market.phumitada.com
+
+Email domain for transactional mail:
+- `noreply@ku-market.phumitada.com` or the verified subdomain configured in Resend
+
+This repository is structured as a monorepo with:
+- `frontend/` — Next.js web app
+- `backend/` — NestJS API server
+- `docker-compose.yml` — local Postgres + Redis
+- `backend/prisma/` — Prisma schema and migration files
+
+---
+
+## 2. System Overview
+
+```mermaid
+flowchart LR
+    U[User Browser] --> C[Cloudflare DNS]
+    C --> F[Frontend: Next.js\nku-market.phumitada.com]
+    F --> B[Backend API: NestJS\napi.ku-market.phumitada.com]
+    B --> P[(PostgreSQL)]
+    B --> R[(Redis)]
+    B --> S[Resend Email API]
+    B --> CL[Cloudinary]
+
+    U -->|OTP / reset / notification| S
+    B -->|uploads| CL
+```
+
+### Runtime responsibilities
+
+- Frontend:
+  - Next.js app for marketplace UI
+  - consumes the backend API via `NEXT_PUBLIC_API_URL`
+  - handles client-side routing, forms, and auth UX
+
+- Backend:
+  - NestJS API
+  - Prisma ORM against PostgreSQL
+  - Redis for OTP/session/cache support
+  - Mail sending through Resend
+  - Cloudinary for image upload handling
+
+- Data layer:
+  - PostgreSQL stores the transactional marketplace domain
+  - Redis stores transient auth and validation state
+
+---
+
+## 3. Request Flow
+
+```mermaid
+sequenceDiagram
+    participant U as Browser
+    participant F as Frontend
+    participant B as Backend API
+    participant P as PostgreSQL
+    participant R as Redis
+    participant M as Resend
+
+    U->>F: Register / login / reset password
+    F->>B: POST /auth/*
+    B->>R: Store OTP / temporary auth state
+    B->>M: Send email with Resend
+    U->>F: Enter OTP
+    F->>B: Verify OTP
+    B->>P: Persist user / status changes
+    B-->>F: JWT / authenticated response
+```
+
+Important: the auth flow is designed so the backend owns OTP issuance and validation, while the frontend simply displays the flow to the user.
+
+---
+
+## 4. Deployment Topology
+
+For production on a VPS or Kubernetes cluster, the intended topology is:
+
+```mermaid
+flowchart TB
+    subgraph Internet
+      D[DNS: ku-market.phumitada.com]
+    end
+
+    subgraph ReverseProxy
+      CF[Cloudflare / ingress / load balancer]
+    end
+
+    subgraph AppTier
+      FE[Frontend Pod / VPS service]
+      BE[Backend API Pod / VPS service]
+    end
+
+    subgraph DataTier
+      PG[(PostgreSQL)]
+      RD[(Redis)]
+    end
+
+    D --> CF
+    CF --> FE
+    FE --> BE
+    BE --> PG
+    BE --> RD
+    BE --> RESEND[Resend]
+```
+
+Production examples:
+- Frontend DNS: `ku-market.phumitada.com` -> VPS or ingress target
+- API DNS: `api.ku-market.phumitada.com` -> backend target
+- Email sender: `noreply@ku-market.phumitada.com` (or the verified subdomain approved by Resend)
+
+---
+
+## 5. Local Development Setup
+
+Requirements:
+- Node.js 20.x
+- npm
+- Docker + Docker Compose
+
+From repository root:
+
+```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.local.example frontend/.env.local
 npm ci --prefix backend
@@ -17,100 +138,238 @@ npm ci --prefix frontend
 docker compose up -d postgres redis
 ```
 
-On PowerShell use `Copy-Item` instead of `cp`. Backend installation generates the
-Prisma client automatically. PostgreSQL executes `init.sql` (schema and demo data)
-only when its data volume is empty. Wait for the database to be ready; inspect
-`docker compose logs postgres` if startup fails.
+Then start each service:
 
-Open two terminals from the repository root:
-
-```sh
+```bash
 npm run start:dev --prefix backend
-```
-
-```sh
 npm run dev --prefix frontend
 ```
 
-Open <http://localhost:3000>. The API listens on <http://localhost:4000>.
-If you change the API port, update `PORT` in `backend/.env` and
-`NEXT_PUBLIC_API_URL` in `frontend/.env.local`, then restart both servers.
+Local defaults:
+- Frontend: http://localhost:3000
+- API: http://localhost:4000
+- PostgreSQL: local docker service
+- Redis: local docker service
 
-## Demo accounts and integrations
+If you change backend port or frontend URL, update:
+- `backend/.env` -> `PORT`, `DATABASE_URL`, `REDIS_HOST`, etc.
+- `frontend/.env.local` -> `NEXT_PUBLIC_API_URL`
 
-Fresh databases include `user1@ku.th`, `user2@ku.th` and `admin1@ku.th`, with
-password `KuDemo123!`. These are local demo accounts only. The suspended account
-`user8@ku.th` can sign in only to view its profile and use the appeal flow;
-marketplace actions remain blocked. Existing volumes keep their old data
-and passwords; pulling this change does not overwrite them.
+---
 
-Registration and password reset require Redis. Without `RESEND_API_KEY`, local
-OTP codes appear in the backend terminal. Real email delivery requires a Resend
-key and an allowed recipient/sender configuration. Production requires the key.
-Image uploads (including payment slips and chat images) require the three
-Cloudinary settings documented in `backend/.env.example`.
+## 6. Environment Variables
 
-Use unique token secrets and real service credentials for deployed environments.
-Do not commit `.env` files. Never deploy the seeded demo database publicly.
+### Frontend
+Example:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+Production example:
+
+```env
+NEXT_PUBLIC_API_URL=https://api.ku-market.phumitada.com
+```
+
+### Backend
+Example values:
+
+```env
+PORT=4000
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mydb?schema=public"
+REDIS_HOST=localhost
+REDIS_PORT=6379
+JWT_SECRET=change_this_in_production
+CLOUDINARY_CLOUD_NAME=your_cloud
+CLOUDINARY_API_KEY=your_key
+CLOUDINARY_API_SECRET=your_secret
+RESEND_API_KEY=re_xxxxxxxxx
+RESEND_FROM_EMAIL=noreply@ku-market.phumitada.com
+```
+
+Important:
+- `RESEND_FROM_EMAIL` must match a domain verified in Resend
+- `DATABASE_URL` must point to a reachable PostgreSQL instance
+- never commit `.env` files to source control
+
+---
+
+## 7. Domain and DNS Configuration
+
+For the production domain `ku-market.phumitada.com`, the recommended DNS target is the frontend VPS or the ingress endpoint.
+
+Example Cloudflare values:
+
+```text
+A/AAAA record:
+  ku-market.phumitada.com -> VPS public IP
+
+CNAME record:
+  api.ku-market.phumitada.com -> backend load balancer / ingress target
+```
+
+If using a custom subdomain for email:
+
+```text
+A or CNAME:
+  ku-market.phumitada.com -> app server
+  api.ku-market.phumitada.com -> backend server
+```
+
+And in Resend:
+- verify the exact sender domain used by the app
+- then configure `RESEND_FROM_EMAIL` to a sender belonging to that verified domain
+
+Example valid sender:
+- `noreply@ku-market.phumitada.com`
+
+Example invalid sender:
+- `onboarding@resend.dev`
+- `something@another-domain.com` when that domain is not verified
+
+---
+
+## 8. Email / OTP Configuration
+
+OTP emails are sent through Resend from the backend service. The app intentionally avoids hardcoding the sender to the default Resend domain. Instead it reads configuration at runtime.
+
+The relevant sender logic is environment-driven via:
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+
+The backend checks:
+- if `NODE_ENV !== 'production'`, OTP is printed in the app log instead of sending real mail
+- if `NODE_ENV === 'production'`, a valid `RESEND_API_KEY` is required
+
+This protects local workflows while enforcing production email configuration.
+
+### Example accepted sender values
+
+```env
+RESEND_FROM_EMAIL=noreply@ku-market.phumitada.com
+```
+
+### Example rejected sender values
+
+```env
+RESEND_FROM_EMAIL=onboarding@resend.dev
+```
+
+The latter is a Resend sandbox/test address and should not be used for production email delivery.
+
+---
+
+## 9. Data Layer
+
+### PostgreSQL
+Used for:
+- users
+- posts
+- offers
+- transactions
+- giveaways
+- reports and appeals
+- membership
+- appointment cards
+
+Prisma is used as the ORM layer.
 
 ```bash
-docker compose up -d 
-```
-
-Docker does not rerun `init.sql` when you pull changes. Back up your database
-before applying schema updates. The existing incremental SQL updates can be run
-from the repository root in order:
-
-```sh
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/migrations/20260906190000_giveaway_capacity_and_ticket_states/migration.sql
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/migrations/20260906193000_close_full_first_come/migration.sql
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/migrations/20260909000000_item_quantity_and_soft_delete/migration.sql
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/migrations/20260909010000_flow_notifications/migration.sql
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/migrations/20260909020000_report_sanction/migration.sql
 npm run prisma:generate --prefix backend
 ```
 
-Schema v3 (the `Transaction` split) is different: it moves data and drops
-columns, so it runs once, in a single transaction, after a small preparation
-script for databases built from `init.sql`. A fresh volume gets both
-automatically; an existing local database needs them applied by hand:
+Local migration steps can be run from the repo root when schema updates are needed, but for a clean local development environment the standard Docker workflow is:
 
-```sh
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 < backend/prisma/local/before-schema-v3.sql
-docker compose exec -T postgres psql -U postgres -d mydb -v ON_ERROR_STOP=1 -1 < backend/prisma/migrations/20261011000000_schema_v3_transaction_split/migration.sql
-npm run prisma:generate --prefix backend
+```bash
+docker compose up -d postgres redis
 ```
 
-The redirection examples use a POSIX shell; on PowerShell pipe `Get-Content -Raw`
-into the same Docker command. These migrations extend the schema from `init.sql`;
-they are not a complete empty-database Prisma migration history. Do not use
-`prisma migrate deploy` as a substitute for fresh initialization.
+### Redis
+Used for:
+- OTP tracking
+- temporary auth state
+- retry/fallback state when needed
 
-`docker compose down` stops services while retaining data. Avoid `down -v` unless
-you intend to delete all local database and Redis data.
+---
 
-## Verification
+## 10. Local Database Recovery / Refresh Pattern
 
-```sh
+If the local database needs to be rebuilt from scripts:
+
+```bash
+kubectl exec -i ku-marketplace-postgres-0 -- psql -U postgres -d ku-marketplace-postgres -v ON_ERROR_STOP=1 < init.sql
+kubectl exec -i ku-marketplace-postgres-0 -- psql -U postgres -d ku-marketplace-postgres -v ON_ERROR_STOP=1 < backend/prisma/local/before-schema-v3.sql
+kubectl exec -i ku-marketplace-postgres-0 -- psql -U postgres -d ku-marketplace-postgres -v ON_ERROR_STOP=1 < backend/prisma/migrations/20261011000000_schema_v3_transaction_split/migration.sql
+```
+
+For local Docker-based dev, use the repository root scripts and `docker compose` instead of direct `kubectl` commands.
+
+---
+
+## 11. Verification Commands
+
+Run the relevant checks before production deployment:
+
+```bash
 npm test --prefix backend -- --runInBand
 npm run build --prefix backend
 npm test --prefix frontend
 npm run lint --prefix frontend
 npm run build --prefix frontend
+```
+
+For full e2e validation:
+
+```bash
 npm run test:e2e --prefix backend -- --runInBand
 ```
 
-Integration tests create temporary isolated PostgreSQL schemas and use
-namespaced Redis keys (never FLUSHDB). They require both PostgreSQL and Redis.
-Set DATABASE_URL, REDIS_HOST and REDIS_PORT to dedicated test services before
-running them. The legacy-upgrade test preserves original rows while applying
-every incremental migration twice. Frontend builds fetch Google Fonts, so internet access is required.
+---
 
-See [the verification report](frontend/docs/verification-report.md) for executed
-cases, browser evidence and remaining device/integration checks.
+## 12. Troubleshooting Checklist
 
-The optional API console runs on port 3001:
+### Frontend cannot reach API
+- confirm `NEXT_PUBLIC_API_URL` in `frontend/.env.local`
+- verify the backend is listening on the expected port
+- ensure CORS is configured correctly in NestJS
 
-- **Line endings**: `.gitattributes` ตั้งค่าให้ทุกไฟล์ text เก็บเป็น LF เสมอ ไม่ว่าจะ commit จาก Windows หรือ Mac — ไม่ต้องตั้งค่าอะไรเพิ่มเอง
-- **Node version**: โปรเจ็คนี้ไม่ได้ใช้ nvm — ทุกคนต้องลง Node 20 ตรงจาก nodejs.org เอง และเช็คด้วย `node -v` ก่อน install ทุกครั้งที่สลับเครื่อง/โปรเจ็ค
-- **Docker**: ใช้แค่รัน Postgres ตอน dev เท่านั้น ยังไม่มี Dockerfile สำหรับ frontend/backend (จะเพิ่มตอนใกล้ deploy จริง)
+### Database connection fails
+- confirm `DATABASE_URL` is reachable from the pod/VPS
+- confirm PostgreSQL is running and accepting connections
+- verify service name / cluster DNS is correct
+
+### Email not arriving
+- verify the Resend domain in the dashboard
+- ensure sender matches the verified domain exactly
+- confirm `RESEND_API_KEY` is present and valid
+- check `NODE_ENV` and backend logs
+
+### Domain not resolving
+- validate Cloudflare DNS records
+- wait for DNS propagation
+- verify the A/CNAME points to the correct public target
+
+---
+
+## 13. Production Hardening Notes
+
+- never deploy `.env` files
+- use Kubernetes secrets or managed secret storage in production
+- rotate `JWT_SECRET`, `RESEND_API_KEY`, and Cloudinary secrets regularly
+- keep database, Redis, and app tiers isolated by service boundaries
+- prefer HTTPS everywhere and enforce TLS on public routes
+
+---
+
+## 14. Summary
+
+The app is designed around a clean separation of concerns:
+- frontend for UX and routing
+- backend for business logic and DB access
+- PostgreSQL for source-of-truth persistence
+- Redis for temporary state
+- Resend for transactional email
+- Cloudflare for public DNS and edge routing
+
+The production domain should map consistently to the app entry points, and the Resend sender address must match the verified domain exactly; otherwise, email delivery will fail even though the domain shows as verified in the dashboard.
